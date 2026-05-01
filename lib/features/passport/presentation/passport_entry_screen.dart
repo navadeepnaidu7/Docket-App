@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/motion/entry_reveal.dart';
 import '../../nfc/presentation/nfc_scanner_sheet.dart' as import_nfc_sheet;
 import '../application/passport_draft_controller.dart';
+import '../application/passport_list_provider.dart';
 import '../domain/passport_profile.dart';
 
 class PassportEntryScreen extends ConsumerStatefulWidget {
@@ -92,6 +93,38 @@ class _PassportEntryScreenState extends ConsumerState<PassportEntryScreen> {
     );
 
     if (result != null) {
+      if (!mounted) return;
+      // 1 & 3: Raw Output Debug Dialog so you can see exactly what came from the chip
+      await showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          final photoValue = result['photoBase64']?.toString() ?? '';
+          final hasImage = photoValue.isNotEmpty;
+          final debugData = Map<String, dynamic>.from(result);
+          if (hasImage) {
+             debugData['photoBase64'] = '[IMAGE RETRIEVED! Base64 String length: ${photoValue.length}]';
+          } else {
+             debugData['photoBase64'] = '[NO IMAGE FOUND OR DECODE FAILED]';
+          }
+
+          return AlertDialog(
+            title: const Text('NFC Chip Data (Raw)', style: TextStyle(fontWeight: FontWeight.bold)),
+            content: SingleChildScrollView(
+              child: SelectableText(
+                debugData.entries.map((e) => '${e.key}:\n${e.value}').join('\n\n'),
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Apply Details'),
+              )
+            ],
+          );
+        }
+      );
+
       // Update fields from NFC data
       setState(() {
         if (result['firstName'] != null) {
@@ -110,12 +143,25 @@ class _PassportEntryScreenState extends ConsumerState<PassportEntryScreen> {
 
   void _saveDraft() {
     _syncDraft();
-    HapticFeedback.mediumImpact();
+    HapticFeedback.heavyImpact();
+    // Save to global list for Dashboard
+    final profile = ref.read(passportDraftProvider);
+    ref.read(passportListProvider.notifier).addPassport(profile);
+
+    // Show quick sheet, then jump back to Dashboard
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) => const _SaveSheet(),
     );
+
+    // Give it a brief moment to show the updated sheet safely, then pop both the sheet and screen.
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) {
+        Navigator.of(context).pop(); // pop sheet
+        Navigator.of(context).pop(); // pop entry screen back to dashboard
+      }
+    });
   }
 
   @override
@@ -938,7 +984,7 @@ class _SaveSheet extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Draft updated',
+              'Passport Saved!',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 22,
@@ -947,7 +993,7 @@ class _SaveSheet extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Your local passport profile is refreshed in memory.',
+              'Your passport has been securely added to your SlickPort dashboard.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white70),
             ),

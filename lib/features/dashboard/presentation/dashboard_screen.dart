@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../passport/application/passport_draft_controller.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../passport/presentation/passport_entry_screen.dart';
@@ -51,6 +52,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   void _openPassportEntry() {
+    ref.read(passportDraftProvider.notifier).reset();
     Navigator.of(context).push(
       PageRouteBuilder<void>(
         transitionDuration: const Duration(milliseconds: 680),

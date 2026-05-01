@@ -18,6 +18,8 @@ import org.jmrtd.BACKey
 import org.jmrtd.PassportService
 import org.jmrtd.lds.icao.DG1File
 import org.jmrtd.lds.icao.DG2File
+import org.jmrtd.lds.icao.DG11File
+import org.jmrtd.lds.icao.DG12File
 import java.io.ByteArrayOutputStream
 import com.gemalto.jp2.JP2Decoder
 
@@ -162,7 +164,42 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                     response["nationality"] = mrzInfo.nationality
                     response["documentNumber"] = mrzInfo.documentNumber
                     response["gender"] = mrzInfo.gender.toString()
+                    response["dateOfBirth"] = mrzInfo.dateOfBirth
+                    response["dateOfExpiry"] = mrzInfo.dateOfExpiry
+                    response["issuingState"] = mrzInfo.issuingState
+                    response["documentCode"] = mrzInfo.documentCode
                     response["photoBase64"] = photoBase64
+
+                    // Read DG11 (Additional Personal Details - Optional)
+                    try {
+                        val dg11In = passportService.getInputStream(PassportService.EF_DG11)
+                        val dg11File = DG11File(dg11In)
+                        response["dg11_fullName"] = dg11File.nameOfHolder
+                        response["dg11_personalNumber"] = dg11File.personalNumber
+                        response["dg11_placeOfBirth"] = dg11File.placeOfBirth?.joinToString(", ")
+                        response["dg11_permanentAddress"] = dg11File.permanentAddress?.joinToString(", ")
+                        response["dg11_telephone"] = dg11File.telephone
+                        response["dg11_profession"] = dg11File.profession
+                        response["dg11_title"] = dg11File.title
+                        response["dg11_personalSummary"] = dg11File.personalSummary
+                        response["dg11_custodyInformation"] = dg11File.custodyInformation
+                    } catch (e: Exception) {
+                        response["dg11_status"] = "Not Present or Read Error"
+                    }
+
+                    // Read DG12 (Document Details - Optional)
+                    try {
+                        val dg12In = passportService.getInputStream(PassportService.EF_DG12)
+                        val dg12File = DG12File(dg12In)
+                        response["dg12_issuingAuthority"] = dg12File.issuingAuthority
+                        response["dg12_dateOfIssue"] = dg12File.dateOfIssue
+                        response["dg12_endorsementsAndObservations"] = dg12File.endorsementsAndObservations
+                        response["dg12_taxOrExitRequirements"] = dg12File.taxOrExitRequirements
+                        response["dg12_dateAndTimeOfPersonalization"] = dg12File.dateAndTimeOfPersonalization
+                        response["dg12_personalizationSystemSerialNumber"] = dg12File.personalizationSystemSerialNumber
+                    } catch (e: Exception) {
+                        response["dg12_status"] = "Not Present or Read Error"
+                    }
 
                     withContext(Dispatchers.Main) {
                         scanResult?.success(response)
