@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -105,9 +106,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final PassportProfile profile = ref.watch(passportDraftProvider);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: SystemUiOverlayStyle.dark,
       child: Scaffold(
-        backgroundColor: const Color(0xFF080E1C),
+        backgroundColor: const Color(0xFFF2F2F7),
         extendBody: true,
         body: Stack(
           children: <Widget>[
@@ -190,70 +191,99 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
 // ─── BACKDROP ────────────────────────────────────────────────────────────────
 
-class _WalletBackdrop extends StatelessWidget {
+class _WalletBackdrop extends StatefulWidget {
   const _WalletBackdrop();
+
+  @override
+  State<_WalletBackdrop> createState() => _WalletBackdropState();
+}
+
+class _WalletBackdropState extends State<_WalletBackdrop>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 14),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return SizedBox.expand(
       child: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: <Color>[
-              Color(0xFF0B1120),
-              Color(0xFF080E1C),
-              Color(0xFF06091A),
-            ],
-          ),
+        decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
+        child: AnimatedBuilder(
+          animation: _ctrl,
+          builder: (context, _) {
+            return CustomPaint(
+              painter: _AppleCardGradientPainter(_ctrl.value),
+            );
+          },
         ),
-        child: CustomPaint(painter: _BackdropGlowPainter()),
       ),
     );
   }
 }
 
-class _BackdropGlowPainter extends CustomPainter {
+class _AppleCardGradientPainter extends CustomPainter {
+  _AppleCardGradientPainter(this.progress);
+  final double progress;
+
   @override
   void paint(Canvas canvas, Size size) {
-    // soft top-center glow
-    final Paint glow1 = Paint()
-      ..shader = RadialGradient(
-        colors: <Color>[
-          const Color(0xFF2855C8).withValues(alpha: 0.18),
-          Colors.transparent,
-        ],
-      ).createShader(Rect.fromCircle(
-        center: Offset(size.width * 0.5, size.height * 0.18),
-        radius: size.width * 0.65,
-      ));
-    canvas.drawCircle(
-      Offset(size.width * 0.5, size.height * 0.18),
-      size.width * 0.65,
-      glow1,
+    final double w = size.width;
+    final double h = size.height;
+
+    void drawOrb(Color color, double cx, double cy, double radius) {
+      final Paint paint = Paint()
+        ..shader = RadialGradient(
+          colors: [color, color.withValues(alpha: 0)],
+        ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: radius));
+      canvas.drawCircle(Offset(cx, cy), radius, paint);
+    }
+
+    // Soft pink/orange orb
+    final double t1 = progress * 2 * math.pi;
+    drawOrb(
+      const Color(0xFFFFB347).withValues(alpha: 0.45),
+      w * 0.5 + math.cos(t1) * w * 0.35,
+      h * 0.3 + math.sin(t1) * h * 0.15,
+      w * 0.9,
     );
 
-    // subtle bottom glow
-    final Paint glow2 = Paint()
-      ..shader = RadialGradient(
-        colors: <Color>[
-          const Color(0xFF19D3C5).withValues(alpha: 0.07),
-          Colors.transparent,
-        ],
-      ).createShader(Rect.fromCircle(
-        center: Offset(size.width * 0.5, size.height * 0.88),
-        radius: size.width * 0.5,
-      ));
-    canvas.drawCircle(
-      Offset(size.width * 0.5, size.height * 0.88),
-      size.width * 0.5,
-      glow2,
+    // Soft purple orb
+    final double t2 = progress * 2 * math.pi + (math.pi * 0.66);
+    drawOrb(
+      const Color(0xFFCBA1F7).withValues(alpha: 0.35),
+      w * 0.3 + math.cos(t2) * w * 0.45,
+      h * 0.6 + math.sin(t2) * h * 0.25,
+      w * 1.0,
+    );
+
+    // Soft blue orb
+    final double t3 = progress * 2 * math.pi + (math.pi * 1.33);
+    drawOrb(
+      const Color(0xFF81D4FA).withValues(alpha: 0.45),
+      w * 0.7 + math.cos(t3) * w * 0.3,
+      h * 0.5 + math.sin(t3) * h * 0.35,
+      w * 0.9,
     );
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _AppleCardGradientPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
 }
 
 // ─── HEADER WIDGETS ───────────────────────────────────────────────────────────
@@ -271,8 +301,8 @@ class _DotIndicator extends StatelessWidget {
       height: 8,
       decoration: BoxDecoration(
         color: active
-            ? Colors.white.withValues(alpha: 0.85)
-            : Colors.white.withValues(alpha: 0.22),
+            ? const Color(0xFF1C1C1E)
+            : const Color(0xFF1C1C1E).withValues(alpha: 0.22),
         borderRadius: BorderRadius.circular(99),
       ),
     );
@@ -312,16 +342,35 @@ class _GlassIconButtonState extends State<_GlassIconButton> {
               width: 46,
               height: 46,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(17),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.16),
-                ),
+                shape: BoxShape.circle,
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: Icon(
-                widget.icon,
-                color: Colors.white.withValues(alpha: 0.80),
-                size: 22,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(23),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.55),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        width: 0.5,
+                      ),
+                    ),
+                    child: Icon(
+                      widget.icon,
+                      color: const Color(0xFF1C1C1E).withValues(alpha: 0.85),
+                      size: 22,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -388,26 +437,36 @@ class _AddFabState extends State<_AddFab> with SingleTickerProviderStateMixin {
           height: 64,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white,
             boxShadow: <BoxShadow>[
               BoxShadow(
-                color: Colors.white.withValues(alpha: 0.18),
-                blurRadius: 24,
-                spreadRadius: 2,
-              ),
-              BoxShadow(
-                color: const Color(0xFF000000).withValues(alpha: 0.35),
-                blurRadius: 20,
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 16,
                 offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: RotationTransition(
-            turns: Tween<double>(begin: 0, end: 0.125).animate(_rotateAnim),
-            child: const Icon(
-              Icons.add_rounded,
-              size: 32,
-              color: Color(0xFF080E1C),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(32),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.65),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    width: 0.5,
+                  ),
+                ),
+                child: RotationTransition(
+                  turns: Tween<double>(begin: 0, end: 0.125).animate(_rotateAnim),
+                  child: const Icon(
+                    Icons.add_rounded,
+                    size: 32,
+                    color: Color(0xFF1C1C1E),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -434,9 +493,15 @@ class _AddItemSheet extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
             decoration: BoxDecoration(
-              color: const Color(0xFF0E1524).withValues(alpha: 0.94),
+              color: Colors.white.withValues(alpha: 0.98),
               borderRadius: BorderRadius.circular(36),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 30,
+                  offset: const Offset(0, -10),
+                ),
+              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -445,9 +510,9 @@ class _AddItemSheet extends StatelessWidget {
                 Center(
                   child: Container(
                     width: 40,
-                    height: 4,
+                    height: 5,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
+                      color: const Color(0xFFE5E5EA),
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),
@@ -458,7 +523,7 @@ class _AddItemSheet extends StatelessWidget {
                   child: Text(
                     'Add to Wallet',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Color(0xFF1C1C1E),
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.3,
@@ -471,7 +536,7 @@ class _AddItemSheet extends StatelessWidget {
                   child: Text(
                     "Choose what you'd like to add",
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.45),
+                      color: const Color(0xFF8E8E93),
                       fontSize: 15,
                     ),
                   ),
@@ -553,9 +618,8 @@ class _AddOptionState extends State<_AddOption> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.06),
+            color: const Color(0xFFF2F2F7),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
           ),
           child: Row(
             children: <Widget>[
@@ -578,7 +642,7 @@ class _AddOptionState extends State<_AddOption> {
                         Text(
                           widget.title,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: Color(0xFF1C1C1E),
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
@@ -591,13 +655,13 @@ class _AddOptionState extends State<_AddOption> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.08),
+                              color: const Color(0xFFE5E5EA),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: Text(
+                            child: const Text(
                               'Soon',
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.40),
+                                color: Color(0xFF8E8E93),
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -609,17 +673,17 @@ class _AddOptionState extends State<_AddOption> {
                     const SizedBox(height: 3),
                     Text(
                       widget.subtitle,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.42),
+                      style: const TextStyle(
+                        color: Color(0xFF8E8E93),
                         fontSize: 13,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(
+              const Icon(
                 Icons.chevron_right_rounded,
-                color: Colors.white.withValues(alpha: 0.25),
+                color: Color(0xFFC7C7CC),
                 size: 22,
               ),
             ],
@@ -646,9 +710,15 @@ class _SettingsSheet extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
             decoration: BoxDecoration(
-              color: const Color(0xFF0E1524).withValues(alpha: 0.94),
+              color: Colors.white.withValues(alpha: 0.98),
               borderRadius: BorderRadius.circular(36),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 30,
+                  offset: const Offset(0, -10),
+                ),
+              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -656,9 +726,9 @@ class _SettingsSheet extends StatelessWidget {
                 Center(
                   child: Container(
                     width: 40,
-                    height: 4,
+                    height: 5,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
+                      color: const Color(0xFFE5E5EA),
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),
@@ -669,7 +739,7 @@ class _SettingsSheet extends StatelessWidget {
                   child: Text(
                     'Wallet Settings',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: Color(0xFF1C1C1E),
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.3,
@@ -700,7 +770,7 @@ class _SettingsSheet extends StatelessWidget {
                 const SizedBox(height: 12),
                 _SettingsRow(
                   icon: Icons.info_outline_rounded,
-                  iconColor: Colors.white38,
+                  iconColor: const Color(0xFF8E8E93),
                   title: 'About SlickPort',
                   subtitle: 'Version, legal, open source',
                 ),
@@ -748,9 +818,8 @@ class _SettingsRowState extends State<_SettingsRow> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.06),
+            color: const Color(0xFFF2F2F7),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
           ),
           child: Row(
             children: <Widget>[
@@ -771,7 +840,7 @@ class _SettingsRowState extends State<_SettingsRow> {
                     Text(
                       widget.title,
                       style: const TextStyle(
-                        color: Colors.white,
+                        color: Color(0xFF1C1C1E),
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
@@ -779,17 +848,17 @@ class _SettingsRowState extends State<_SettingsRow> {
                     const SizedBox(height: 2),
                     Text(
                       widget.subtitle,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.40),
+                      style: const TextStyle(
+                        color: Color(0xFF8E8E93),
                         fontSize: 13,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(
+              const Icon(
                 Icons.chevron_right_rounded,
-                color: Colors.white.withValues(alpha: 0.22),
+                color: Color(0xFFC7C7CC),
                 size: 22,
               ),
             ],
