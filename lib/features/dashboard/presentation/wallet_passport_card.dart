@@ -41,11 +41,11 @@ class _WalletPassportCardState extends State<WalletPassportCard>
     super.initState();
     _flipCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 550),
     );
     _flipAnim = CurvedAnimation(
       parent: _flipCtrl,
-      curve: Curves.easeInOutQuart,
+      curve: Curves.easeInOutSine,
     );
 
     _shimmerCtrl = AnimationController(
@@ -110,7 +110,7 @@ class _WalletPassportCardState extends State<WalletPassportCard>
 
   @override
   Widget build(BuildContext context) {
-    const double cardHeight = 540.0;
+    const double cardHeight = 570.0;
 
     return SizedBox(
       height: cardHeight,
@@ -129,31 +129,40 @@ class _WalletPassportCardState extends State<WalletPassportCard>
                 // Add a smooth scale-down effect at the middle of the flip (angle = pi/2)
                 final double scale = 1.0 - 0.08 * math.sin(_flipAnim.value * math.pi);
 
-                return AnimatedContainer(
-                  duration: _touching
-                      ? const Duration(milliseconds: 60)
-                      : const Duration(milliseconds: 500),
-                  curve: _touching ? Curves.linear : Curves.easeOutCubic,
-                  transformAlignment: Alignment.center,
+                return Transform(
+                  alignment: Alignment.center,
                   transform: Matrix4.identity()
                     ..setEntry(3, 2, 0.001)
                     ..scaleByDouble(scale, scale, 1.0, 1.0)
-                    ..rotateX(_tiltX * 0.14)
-                    ..rotateY(_tiltY * 0.14 + angle),
-                  child: isBack
-                      ? Transform(
-                          alignment: Alignment.center,
-                          transform: Matrix4.rotationY(math.pi),
-                          child: _CardBack(
-                            profile: widget.profile,
-                            shimmerCtrl: _shimmerCtrl,
+                    ..rotateY(angle),
+                  child: AnimatedContainer(
+                    duration: _touching
+                        ? const Duration(milliseconds: 60)
+                        : const Duration(milliseconds: 500),
+                    curve: _touching ? Curves.linear : Curves.easeOutCubic,
+                    transformAlignment: Alignment.center,
+                    transform: Matrix4.identity()
+                      ..rotateX(_tiltX * 0.14)
+                      ..rotateY(_tiltY * 0.14),
+                    child: isBack
+                        ? Transform(
+                            alignment: Alignment.center,
+                            transform: Matrix4.rotationY(math.pi),
+                            child: RepaintBoundary(
+                              child: _CardBack(
+                                profile: widget.profile,
+                                shimmerCtrl: _shimmerCtrl,
+                              ),
+                            ),
+                          )
+                        : RepaintBoundary(
+                            child: _CardFront(
+                              profile: widget.profile,
+                              shimmerCtrl: _shimmerCtrl,
+                              pulseCtrl: _pulseCtrl,
+                            ),
                           ),
-                        )
-                      : _CardFront(
-                          profile: widget.profile,
-                          shimmerCtrl: _shimmerCtrl,
-                          pulseCtrl: _pulseCtrl,
-                        ),
+                  ),
                 );
               },
             ),
@@ -185,7 +194,7 @@ class _CardFront extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(45),
         boxShadow: <BoxShadow>[
           BoxShadow(
             color: const Color(0xFF0D1B2A).withValues(alpha: 0.55),
@@ -201,7 +210,7 @@ class _CardFront extends StatelessWidget {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(45),
         child: Stack(
           children: <Widget>[
             // — base gradient (deep navy, passport-like) —
@@ -460,7 +469,7 @@ class _CardBack extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(45),
         boxShadow: <BoxShadow>[
           BoxShadow(
             color: const Color(0xFF0D1B2A).withValues(alpha: 0.55),
@@ -471,7 +480,7 @@ class _CardBack extends StatelessWidget {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(45),
         child: Stack(
           children: <Widget>[
             // — background —
@@ -572,22 +581,72 @@ class _CardBack extends StatelessWidget {
 
                   const SizedBox(height: 24),
 
-                  // fields grid
+                  // fields grid & photo
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Expanded(child: _BackField(label: 'DATE OF BIRTH', value: dob)),
-                      Expanded(child: _BackField(label: 'DATE OF EXPIRY', value: expiry)),
+                      // NFC Photo Placeholder
+                      Container(
+                        width: 90,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.1),
+                            width: 1,
+                          ),
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.nfc_rounded,
+                                color: Colors.white.withValues(alpha: 0.25),
+                                size: 28,
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'NFC\nPHOTO',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.25),
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      // Fields
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Row(
+                              children: <Widget>[
+                                Expanded(child: _BackField(label: 'DOB', value: dob)),
+                                Expanded(child: _BackField(label: 'EXPIRY', value: expiry)),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: <Widget>[
+                                Expanded(child: _BackField(label: 'NATIONALITY', value: nationality)),
+                                Expanded(child: _BackField(label: 'GENDER', value: 'MALE')),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            const _BackField(label: 'PLACE OF BIRTH', value: 'INDIA'),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: <Widget>[
-                      Expanded(child: _BackField(label: 'NATIONALITY', value: nationality)),
-                      Expanded(child: _BackField(label: 'GENDER', value: 'MALE')),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  _BackField(label: 'PLACE OF BIRTH', value: 'INDIA'),
 
                   const Spacer(),
 

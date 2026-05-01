@@ -129,16 +129,38 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       // gear icon header
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(22, 12, 22, 0),
+                          padding: const EdgeInsets.fromLTRB(26, 40, 22, 0),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              // page indicator dots (future: multiple cards)
-                              Row(
-                                children: <Widget>[
-                                  _DotIndicator(active: true),
-                                  const SizedBox(width: 6),
-                                  _DotIndicator(active: false),
+                              // Greeting
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    () {
+                                      final hour = DateTime.now().hour;
+                                      if (hour < 12) return 'Good morning,';
+                                      if (hour < 17) return 'Good afternoon,';
+                                      return 'Good evening,';
+                                    }(),
+                                    style: const TextStyle(
+                                      color: Color(0xFF8E8E93),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    profile.name.isEmpty ? 'User' : profile.name.split(' ').first,
+                                    style: const TextStyle(
+                                      color: Color(0xFF1C1C1E),
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
                                 ],
                               ),
                               // gear button
@@ -287,27 +309,6 @@ class _AppleCardGradientPainter extends CustomPainter {
 }
 
 // ─── HEADER WIDGETS ───────────────────────────────────────────────────────────
-
-class _DotIndicator extends StatelessWidget {
-  const _DotIndicator({required this.active});
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-      width: active ? 22 : 8,
-      height: 8,
-      decoration: BoxDecoration(
-        color: active
-            ? const Color(0xFF1C1C1E)
-            : const Color(0xFF1C1C1E).withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(99),
-      ),
-    );
-  }
-}
 
 class _GlassIconButton extends StatefulWidget {
   const _GlassIconButton({required this.icon, required this.onTap});
