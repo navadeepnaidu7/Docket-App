@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/motion/entry_reveal.dart';
+import '../../nfc/presentation/nfc_scanner_sheet.dart' as import_nfc_sheet;
 import '../application/passport_draft_controller.dart';
 import '../domain/passport_profile.dart';
 
@@ -61,6 +62,50 @@ class _PassportEntryScreenState extends ConsumerState<PassportEntryScreen> {
       ..updateDateOfBirth(_dateOfBirthController.text)
       ..updateExpiryDate(_expiryDateController.text)
       ..updateMrzRaw(_mrzController.text);
+  }
+
+  Future<void> _startNfcScan() async {
+    _syncDraft();
+    
+    // Passport needs to be YYMMDD for BAC
+    final dobParts = _dateOfBirthController.text.split('-');
+    final expParts = _expiryDateController.text.split('-');
+    
+    String dobFormatted = _dateOfBirthController.text;
+    String expFormatted = _expiryDateController.text;
+    
+    if (dobParts.length == 3) dobFormatted = "${dobParts[0].substring(2)}${dobParts[1]}${dobParts[2]}";
+    if (expParts.length == 3) expFormatted = "${expParts[0].substring(2)}${expParts[1]}${expParts[2]}";
+
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: import_nfc_sheet.NfcScannerSheet(
+          passportNumber: _passportNumberController.text,
+          dateOfBirth: dobFormatted,
+          expiryDate: expFormatted,
+        ),
+      ),
+    );
+
+    if (result != null) {
+      // Update fields from NFC data
+      setState(() {
+        if (result['firstName'] != null) {
+          _nameController.text = "${result['firstName']} ${result['lastName'] ?? ''}".trim();
+        }
+        if (result['nationality'] != null) _nationalityController.text = result['nationality'];
+        if (result['documentNumber'] != null) _passportNumberController.text = result['documentNumber'];
+      });
+      _syncDraft();
+      
+      if (result['photoBase64'] != null) {
+         ref.read(passportDraftProvider.notifier).updateImagePath(result['photoBase64']);
+      }
+    }
   }
 
   void _saveDraft() {
@@ -133,6 +178,7 @@ class _PassportEntryScreenState extends ConsumerState<PassportEntryScreen> {
                           expiryDateController: _expiryDateController,
                           mrzController: _mrzController,
                           onChanged: _syncDraft,
+                          onScanNfc: _startNfcScan,
                         )
                       : _ScannerPanel(
                           key: const ValueKey<String>('scanner'),
@@ -478,6 +524,7 @@ class _ManualPanel extends StatelessWidget {
     required this.expiryDateController,
     required this.mrzController,
     required this.onChanged,
+    required this.onScanNfc,
   });
 
   final TextEditingController nameController;
@@ -487,6 +534,7 @@ class _ManualPanel extends StatelessWidget {
   final TextEditingController expiryDateController;
   final TextEditingController mrzController;
   final VoidCallback onChanged;
+  final VoidCallback onScanNfc;
 
   @override
   Widget build(BuildContext context) {
@@ -541,6 +589,30 @@ class _ManualPanel extends StatelessWidget {
             maxLines: 4,
             textInputAction: TextInputAction.newline,
             onChanged: onChanged,
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: onScanNfc,
+              icon: const Icon(Icons.nfc_rounded, color: Colors.white),
+              label: const Text(
+                'Verify Identity (NFC)',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF007AFF),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 0,
+              ),
+            ),
           ),
         ],
       ),

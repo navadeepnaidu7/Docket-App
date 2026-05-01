@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../passport/application/passport_draft_controller.dart';
+import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../passport/presentation/passport_entry_screen.dart';
 import 'wallet_passport_card.dart';
@@ -103,7 +103,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    final PassportProfile profile = ref.watch(passportDraftProvider);
+    final List<PassportProfile> passports = ref.watch(passportListProvider);
+
+    // Get the currently displayed profile name for the header greeting
+    final String currentName = passports.isNotEmpty ? passports.first.name : '';
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
@@ -153,7 +156,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    profile.name.isEmpty ? 'User' : profile.name.split(' ').first,
+                                    currentName.isEmpty ? 'User' : currentName.split(' ').first,
                                     style: const TextStyle(
                                       color: Color(0xFF1C1C1E),
                                       fontSize: 22,
@@ -173,14 +176,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         ),
                       ),
 
-                      // passport card hero
+                      // passport cards page view
                       SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-                            child: WalletPassportCard(profile: profile),
-                          ),
+                        hasScrollBody: true,
+                        child: PageView.builder(
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: passports.isEmpty ? 1 : passports.length,
+                          itemBuilder: (context, index) {
+                            final profile = passports.isEmpty ? const PassportProfile.empty() : passports[index];
+                            return Padding(
+                              padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+                              child: Center(
+                                child: WalletPassportCard(profile: profile),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ],

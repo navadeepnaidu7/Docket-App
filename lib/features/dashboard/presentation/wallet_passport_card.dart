@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 
@@ -597,28 +598,38 @@ class _CardBack extends StatelessWidget {
                             width: 1,
                           ),
                         ),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.nfc_rounded,
-                                color: Colors.white.withValues(alpha: 0.25),
-                                size: 28,
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'NFC\nPHOTO',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.25),
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.0,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: profile.imagePath.isNotEmpty
+                              ? Image.memory(
+                                  base64Decode(profile.imagePath),
+                                  fit: BoxFit.cover,
+                                  width: 90,
+                                  height: 120,
+                                )
+                              : Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.nfc_rounded,
+                                        color: Colors.white.withValues(alpha: 0.25),
+                                        size: 28,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'NFC\nPHOTO',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(alpha: 0.25),
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 1.0,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
                         ),
                       ),
                       const SizedBox(width: 20),

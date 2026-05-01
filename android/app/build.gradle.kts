@@ -42,3 +42,12 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    implementation("org.jmrtd:jmrtd:0.7.38")
+    implementation("net.sf.scuba:scuba-sc-android:0.0.23")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.75")
+    implementation("com.github.Tgo1014:JP2ForAndroid:1.0.4") {
+        exclude(group = "org.bouncycastle", module = "bcprov-jdk15to18")
+    }
+}
