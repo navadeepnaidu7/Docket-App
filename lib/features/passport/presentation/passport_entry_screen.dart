@@ -135,9 +135,19 @@ class _PassportEntryScreenState extends ConsumerState<PassportEntryScreen> {
       });
       _syncDraft();
       
+      final draftNotifier = ref.read(passportDraftProvider.notifier);
       if (result['photoBase64'] != null) {
-         ref.read(passportDraftProvider.notifier).updateImagePath(result['photoBase64']);
+         draftNotifier.updateImagePath(result['photoBase64']);
       }
+      
+      // Update new fields if they exist
+      final updatedProfile = ref.read(passportDraftProvider).copyWith(
+        gender: result['gender']?.toString(),
+        placeOfBirth: result['dg11_placeOfBirth']?.toString(),
+        issueDate: result['dg12_dateOfIssue']?.toString(),
+        issuingAuthority: result['dg12_issuingAuthority']?.toString(),
+      );
+      draftNotifier.replaceWith(updatedProfile);
     }
   }
 

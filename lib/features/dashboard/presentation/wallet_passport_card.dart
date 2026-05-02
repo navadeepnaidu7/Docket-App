@@ -459,11 +459,18 @@ class _CardBack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String dob =
-        profile.dateOfBirth.isEmpty ? '01 JAN 1990' : profile.dateOfBirth;
+        profile.dateOfBirth.isEmpty ? 'N/A' : profile.dateOfBirth;
     final String expiry =
-        profile.expiryDate.isEmpty ? '01 JAN 2035' : profile.expiryDate;
+        profile.expiryDate.isEmpty ? 'N/A' : profile.expiryDate;
     final String nationality =
-        profile.nationality.isEmpty ? 'INDIAN' : profile.nationality;
+        profile.nationality.isEmpty ? 'N/A' : profile.nationality;
+    final String gender = 
+        profile.gender.isEmpty ? 'N/A' : profile.gender;
+    final String placeOfBirth = 
+        profile.placeOfBirth.isEmpty ? 'N/A' : profile.placeOfBirth;
+    final String issueDate = 
+        profile.issueDate.isEmpty ? 'N/A' : profile.issueDate;
+        
     final String mrz = profile.mrzRaw.trim().isEmpty
         ? 'P<IND<<HOLDER<<NAME<<<<<<<<<<<<<<<<<<<<<\nA123456780IND9001011M3501011<<<<<<<<<<<04'
         : profile.mrzRaw;
@@ -648,11 +655,17 @@ class _CardBack extends StatelessWidget {
                             Row(
                               children: <Widget>[
                                 Expanded(child: _BackField(label: 'NATIONALITY', value: nationality)),
-                                Expanded(child: _BackField(label: 'GENDER', value: 'MALE')),
+                                Expanded(child: _BackField(label: 'GENDER', value: gender)),
                               ],
                             ),
                             const SizedBox(height: 16),
-                            const _BackField(label: 'PLACE OF BIRTH', value: 'INDIA'),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Expanded(child: _BackField(label: 'PLACE OF BIRTH', value: placeOfBirth)),
+                                Expanded(child: _BackField(label: 'ISSUE DATE', value: issueDate)),
+                              ],
+                            ),
                           ],
                         ),
                       ),

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../dashboard/presentation/dashboard_screen.dart';
 
@@ -70,7 +71,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
   }
 
-  void _continue() {
+  Future<void> _continue() async {
     final int current = _page.round();
     if (current < _steps.length - 1) {
       _pageController.animateToPage(
@@ -80,6 +81,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
       return;
     }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_seen_onboarding', true);
+
+    if (!mounted) return;
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(

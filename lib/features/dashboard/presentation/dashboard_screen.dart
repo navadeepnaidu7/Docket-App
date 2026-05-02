@@ -185,11 +185,47 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           physics: const BouncingScrollPhysics(),
                           itemCount: passports.isEmpty ? 1 : passports.length,
                           itemBuilder: (context, index) {
-                            final profile = passports.isEmpty ? const PassportProfile.empty() : passports[index];
-                            return Padding(
-                              padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-                              child: Center(
-                                child: WalletPassportCard(profile: profile),
+                            if (passports.isEmpty) {
+                              return const Padding(
+                                padding: EdgeInsets.fromLTRB(20, 16, 20, 100),
+                                child: Center(
+                                  child: WalletPassportCard(profile: PassportProfile.empty()),
+                                ),
+                              );
+                            }
+
+                            final profile = passports[index];
+                            return Dismissible(
+                              key: Key(profile.passportNumber),
+                              direction: DismissDirection.up,
+                              background: Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 200),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withValues(alpha: 0.1),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.delete_outline, color: Colors.red, size: 32),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      const Text('Swipe up to delete', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              onDismissed: (_) {
+                                ref.read(passportListProvider.notifier).removePassport(profile.passportNumber);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+                                child: Center(
+                                  child: WalletPassportCard(profile: profile),
+                                ),
                               ),
                             );
                           },
