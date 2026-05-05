@@ -21,6 +21,7 @@ class IdDocument {
     this.gender = '',
     this.imagePath = '',
     this.issueDate = '',
+    this.qrImageBase64 = '',
   }) : id = id ?? _generateId();
 
   IdDocument.empty(IdDocumentType docType)
@@ -33,7 +34,8 @@ class IdDocument {
         address = '',
         gender = '',
         imagePath = '',
-        issueDate = '';
+        issueDate = '',
+        qrImageBase64 = '';
 
   final String id;
   final IdDocumentType type;
@@ -45,6 +47,7 @@ class IdDocument {
   final String gender;       // Aadhaar-specific
   final String imagePath;
   final String issueDate;
+  final String qrImageBase64;
 
   IdDocument copyWith({
     String? id,
@@ -57,6 +60,7 @@ class IdDocument {
     String? gender,
     String? imagePath,
     String? issueDate,
+    String? qrImageBase64,
   }) {
     return IdDocument(
       id: id ?? this.id,
@@ -69,6 +73,7 @@ class IdDocument {
       gender: gender ?? this.gender,
       imagePath: imagePath ?? this.imagePath,
       issueDate: issueDate ?? this.issueDate,
+      qrImageBase64: qrImageBase64 ?? this.qrImageBase64,
     );
   }
 
@@ -83,6 +88,7 @@ class IdDocument {
         'gender': gender,
         'imagePath': imagePath,
         'issueDate': issueDate,
+        'qrImageBase64': qrImageBase64,
       };
 
   factory IdDocument.fromMap(Map<String, dynamic> map) => IdDocument(
@@ -99,6 +105,7 @@ class IdDocument {
         gender: map['gender'] ?? '',
         imagePath: map['imagePath'] ?? '',
         issueDate: map['issueDate'] ?? '',
+        qrImageBase64: map['qrImageBase64'] ?? '',
       );
 
   String toJson() => json.encode(toMap());

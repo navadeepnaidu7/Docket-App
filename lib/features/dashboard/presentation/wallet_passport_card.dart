@@ -239,15 +239,16 @@ class _CardFront extends StatelessWidget {
         borderRadius: BorderRadius.circular(40),
         child: Stack(
           children: <Widget>[
-            // — base gradient (deep navy, passport-like) —
+            // — base gradient (rich navy matching Indian passport) —
             Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                   colors: <Color>[
-                    Color(0xFF14244B),
-                    Color(0xFF0A1226),
+                    Color(0xFF1E3163),
+                    Color(0xFF152347),
+                    Color(0xFF0F1A38),
                   ],
                 ),
               ),
@@ -598,7 +599,7 @@ class _CardBack extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF14244B), Color(0xFF0A1226)],
+          colors: [Color(0xFF1E3163), Color(0xFF152347), Color(0xFF0F1A38)],
         ),
         boxShadow: <BoxShadow>[
           BoxShadow(
@@ -1034,12 +1035,13 @@ class _AshokaPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()
-      ..color = color ?? Colors.white.withValues(alpha: 0.022)
+      ..color = color ?? Colors.white.withValues(alpha: 0.06)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.7;
+      ..strokeWidth = 0.8;
 
-    final Offset center = Offset(size.width * 0.72, size.height * 0.42);
-    for (double r = 24; r < 160; r += 16) {
+    // Bottom-right position matching the reference passport
+    final Offset center = Offset(size.width * 0.78, size.height * 0.62);
+    for (double r = 20; r < 200; r += 18) {
       canvas.drawCircle(center, r, paint);
     }
     for (int i = 0; i < 24; i++) {
@@ -1047,8 +1049,8 @@ class _AshokaPainter extends CustomPainter {
       canvas.drawLine(
         center,
         Offset(
-          center.dx + 150 * math.cos(angle),
-          center.dy + 150 * math.sin(angle),
+          center.dx + 190 * math.cos(angle),
+          center.dy + 190 * math.sin(angle),
         ),
         paint,
       );
@@ -1065,17 +1067,13 @@ class _SecurityLinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Horizontal brushed-fabric texture matching the real passport cover
     final Paint paint = Paint()
-      ..color = color ?? Colors.white.withValues(alpha: 0.012)
-      ..strokeWidth = 0.6;
+      ..color = color ?? Colors.white.withValues(alpha: 0.028)
+      ..strokeWidth = 0.7;
 
-    // diagonal security micro-lines
-    for (double x = -size.height; x < size.width * 2; x += 9) {
-      canvas.drawLine(
-        Offset(x, 0),
-        Offset(x + size.height * 0.6, size.height),
-        paint,
-      );
+    for (double y = 0; y < size.height; y += 3.5) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }
   }
 

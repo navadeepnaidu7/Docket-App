@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -434,23 +435,25 @@ class _CardBack extends StatelessWidget {
                   Expanded(
                     child: _FieldGrid(fields: fields),
                   ),
-                  // QR placeholder
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(8),
+                  if (_isBase64Image(document.imagePath))
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        GestureDetector(
+                          onTap: () => _showFullImage(context, document.imagePath),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.memory(
+                              base64Decode(document.imagePath),
+                              width: 72,
+                              height: 72,
+                              fit: BoxFit.cover,
+                              alignment: Alignment.center,
+                            ),
+                          ),
                         ),
-                        child: Icon(Icons.qr_code_rounded,
-                            color: Colors.white.withValues(alpha: 0.4),
-                            size: 28),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -467,6 +470,72 @@ class _CardBack extends StatelessWidget {
       if (p.length == 3) return '${p[2]}/${p[1]}/${p[0]}';
     }
     return d;
+  }
+
+  void _showFullImage(BuildContext context, String base64Image) {
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierColor: Colors.black87,
+        pageBuilder: (ctx, a1, a2) => _FullImageViewer(base64Image: base64Image),
+        transitionsBuilder: (ctx, anim, a2, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration: const Duration(milliseconds: 220),
+      ),
+    );
+  }
+
+  /// Returns true only if the string looks like base64-encoded image data
+  /// (not a file path like /data/user/...).
+  static bool _isBase64Image(String s) =>
+      s.length > 100 && !s.startsWith('/') && !s.contains('\\');
+}
+
+// ── Full-screen image viewer ──────────────────────────────────────────────────
+
+class _FullImageViewer extends StatelessWidget {
+  const _FullImageViewer({required this.base64Image});
+  final String base64Image;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Center(
+                child: InteractiveViewer(
+                  child: Image.memory(
+                    base64Decode(base64Image),
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close_rounded,
+                        color: Colors.white, size: 20),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

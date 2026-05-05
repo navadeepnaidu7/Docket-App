@@ -57,12 +57,10 @@ class IdScannerService {
         .where((l) => l.isNotEmpty)
         .toList();
 
-    // PAN number: 5 letters + 4 digits + 1 letter
     final panRegex = RegExp(r'[A-Z]{5}[0-9]{4}[A-Z]');
     final panMatch = panRegex.firstMatch(text.replaceAll(' ', ''));
     final documentNumber = panMatch?.group(0) ?? '';
 
-    // DOB: DD/MM/YYYY
     final dobRegex = RegExp(r'\b(\d{2}/\d{2}/\d{4})\b');
     final dobMatch = dobRegex.firstMatch(text);
     String dateOfBirth = '';
@@ -71,15 +69,11 @@ class IdScannerService {
       dateOfBirth = '${parts[2]}-${parts[1]}-${parts[0]}';
     }
 
-    // Find label indices first so we can distinguish holder vs father
     int nameIdx = -1;
     int fatherIdx = -1;
     for (int i = 0; i < lines.length; i++) {
       final lower = lines[i].toLowerCase().trim();
-      // "Name" label: exact match or ends with " name" but NOT a father label
-      if (fatherIdx == -1 &&
-          nameIdx == -1 &&
-          (lower == 'name' || lower == 'नाम') ) {
+      if (fatherIdx == -1 && nameIdx == -1 && (lower == 'name' || lower == 'नाम')) {
         nameIdx = i;
       }
       if (lower.contains('father') ||
@@ -99,7 +93,6 @@ class IdScannerService {
       fatherName = _toTitleCase(lines[fatherIdx + 1]);
     }
 
-    // Fallback: scan all-caps lines in order; first valid one = holder, second = father
     if (holderName.isEmpty || holderName == fatherName) {
       final capsLines = <String>[];
       for (final line in lines) {
@@ -118,7 +111,6 @@ class IdScannerService {
       }
     }
 
-    // Guard: if holder == father (mis-assignment), clear holder so user fills it
     if (holderName == fatherName && holderName.isNotEmpty) holderName = '';
 
     if (documentNumber.isEmpty && holderName.isEmpty) return null;
@@ -136,14 +128,12 @@ class IdScannerService {
   // ── Aadhaar Card extractor ────────────────────────────────────────────────
 
   static IdScanResult? _extractAadhaar(String text, String imagePath) {
-    // Aadhaar: 4 4 4 digit groups
     final aadhaarRegex = RegExp(r'\b(\d{4})\s(\d{4})\s(\d{4})\b');
     final aadhaarMatch = aadhaarRegex.firstMatch(text);
     final documentNumber = aadhaarMatch != null
         ? '${aadhaarMatch.group(1)} ${aadhaarMatch.group(2)} ${aadhaarMatch.group(3)}'
         : '';
 
-    // DOB: DD/MM/YYYY or Year of Birth: YYYY
     final dobRegex = RegExp(r'\b(\d{2}/\d{2}/\d{4})\b');
     final dobMatch = dobRegex.firstMatch(text);
     String dateOfBirth = '';
@@ -156,7 +146,6 @@ class IdScannerService {
       if (yobMatch != null) dateOfBirth = yobMatch.group(1)!;
     }
 
-    // Gender
     String gender = '';
     if (RegExp(r'\bMALE\b', caseSensitive: false).hasMatch(text)) {
       gender = 'Male';
@@ -166,7 +155,6 @@ class IdScannerService {
       gender = 'Other';
     }
 
-    // Name: first prominent all-caps line before the Aadhaar number
     final lines = text
         .split('\n')
         .map((l) => l.trim())
@@ -186,7 +174,6 @@ class IdScannerService {
       }
     }
 
-    // Address: lines after "Address" label
     String address = '';
     for (int i = 0; i < lines.length; i++) {
       if (lines[i].toLowerCase().startsWith('address')) {

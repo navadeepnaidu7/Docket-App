@@ -1,5 +1,8 @@
 import 'dart:ui';
 
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -84,7 +87,13 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
     });
     _syncDraft();
     if (result.capturedImagePath.isNotEmpty) {
-      ref.read(idDraftProvider.notifier).updateImagePath(result.capturedImagePath);
+      // Encode the full image to base64 so it persists across app restarts
+      try {
+        final bytes = await File(result.capturedImagePath).readAsBytes();
+        ref.read(idDraftProvider.notifier).updateImagePath(base64Encode(bytes));
+      } catch (_) {
+        ref.read(idDraftProvider.notifier).updateImagePath(result.capturedImagePath);
+      }
     }
 
     if (mounted) {
