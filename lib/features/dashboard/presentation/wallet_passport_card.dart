@@ -254,8 +254,20 @@ class _CardFront extends StatelessWidget {
               ),
             ),
 
-            // — Ashoka Chakra watermark background —
-            const Positioned.fill(child: CustomPaint(painter: _AshokaPainter())),
+            // — Ashoka Chakra watermark —
+            Positioned(
+              right: -40,
+              bottom: -20,
+              child: RepaintBoundary(
+                child: Opacity(
+                  opacity: 0.07,
+                  child: SvgPicture.asset(
+                    'assets/identity/Ashoka_Chakra.svg',
+                    width: 280,
+                  ),
+                ),
+              ),
+            ),
 
             // — subtle security pattern lines —
             const Positioned.fill(child: CustomPaint(painter: _SecurityLinePainter())),
@@ -620,7 +632,19 @@ class _CardBack extends StatelessWidget {
         child: Stack(
           children: <Widget>[
             // Watermarks
-            Positioned.fill(child: CustomPaint(painter: _AshokaPainter(color: Colors.white.withValues(alpha: 0.05)))),
+            Positioned(
+              right: -30,
+              bottom: -10,
+              child: RepaintBoundary(
+                child: Opacity(
+                  opacity: 0.18,
+                  child: SvgPicture.asset(
+                    'assets/identity/Ashoka_Chakra.svg',
+                    width: 220,
+                  ),
+                ),
+              ),
+            ),
             Positioned.fill(child: CustomPaint(painter: _SecurityLinePainter(color: Colors.white.withValues(alpha: 0.02)))),
 
             // Tricolor top strip
@@ -1027,40 +1051,6 @@ class _DetailBlock extends StatelessWidget {
 }
 
 // ─── PAINTERS ────────────────────────────────────────────────────────────────
-
-class _AshokaPainter extends CustomPainter {
-  const _AshokaPainter({this.color});
-  final Color? color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = color ?? Colors.white.withValues(alpha: 0.06)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8;
-
-    // Bottom-right position matching the reference passport
-    final Offset center = Offset(size.width * 0.78, size.height * 0.62);
-    for (double r = 20; r < 200; r += 18) {
-      canvas.drawCircle(center, r, paint);
-    }
-    for (int i = 0; i < 24; i++) {
-      final double angle = (i / 24) * 2 * math.pi;
-      canvas.drawLine(
-        center,
-        Offset(
-          center.dx + 190 * math.cos(angle),
-          center.dy + 190 * math.sin(angle),
-        ),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
 class _SecurityLinePainter extends CustomPainter {
   const _SecurityLinePainter({this.color});
   final Color? color;

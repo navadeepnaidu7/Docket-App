@@ -116,26 +116,38 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   void _showAddSheet() {
     HapticFeedback.mediumImpact();
-    if (_tabCtrl.index == 1) {
-      // IDs tab
+    if (_tabCtrl.index == 0) {
+      // Docs tab — choose Passport or ID
       showModalBottomSheet<void>(
         context: context,
         useSafeArea: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (_) => AddIdSheet(onSelectType: _openIdEntry),
+        builder: (_) => _AddItemSheet(
+          onAddPassport: () {
+            Navigator.of(context).pop();
+            _showPassportTypeSheet();
+          },
+          onAddId: () {
+            Navigator.of(context).pop();
+            showModalBottomSheet<void>(
+              context: context,
+              useSafeArea: true,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => AddIdSheet(onSelectType: _openIdEntry),
+            );
+          },
+        ),
       );
     } else {
-      // Passports tab
+      // Tickets tab — coming soon
       showModalBottomSheet<void>(
         context: context,
         useSafeArea: true,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (_) => _AddItemSheet(onAddPassport: () {
-          Navigator.of(context).pop();
-          _showPassportTypeSheet();
-        }),
+        builder: (_) => const _TicketsComingSoonSheet(),
       );
     }
   }
@@ -312,69 +324,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           controller: _tabCtrl,
                           physics: const NeverScrollableScrollPhysics(),
                           children: [
-                            // Tab 0: Passports
-                            PageView.builder(
-                              physics: const BouncingScrollPhysics(),
-                              itemCount:
-                                  passports.isEmpty ? 1 : passports.length,
-                              itemBuilder: (context, index) {
-                                if (passports.isEmpty) {
-                                  return Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                        20, 16, 20, 100),
-                                    child: Center(
-                                      child: WalletPassportCard(
-                                          profile: PassportProfile.empty()),
-                                    ),
-                                  );
-                                }
-                                final profile = passports[index];
-                                return Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                      20, 16, 20, 100),
-                                  child: Center(
-                                    child: WalletPassportCard(
-                                      profile: profile,
-                                      onLongPress: () =>
-                                          _showDeleteDialog(profile),
-                                    ),
-                                  ),
-                                );
-                              },
+                            // Tab 0: Docs (Passports + IDs combined)
+                            _DocsTab(
+                              passports: passports,
+                              idDocs: idDocs,
+                              onDeletePassport: _showDeleteDialog,
+                              onDeleteId: _showDeleteIdDialog,
                             ),
 
-                            // Tab 1: IDs
-                            idDocs.isEmpty
-                                ? _EmptyIdsState(
-                                    onAdd: () {
-                                      showModalBottomSheet<void>(
-                                        context: context,
-                                        useSafeArea: true,
-                                        isScrollControlled: true,
-                                        backgroundColor: Colors.transparent,
-                                        builder: (_) => AddIdSheet(
-                                            onSelectType: _openIdEntry),
-                                      );
-                                    },
-                                  )
-                                : PageView.builder(
-                                    physics: const BouncingScrollPhysics(),
-                                    itemCount: idDocs.length,
-                                    itemBuilder: (context, index) {
-                                      final doc = idDocs[index];
-                                      return Padding(
-                                        padding: const EdgeInsets.fromLTRB(
-                                            20, 16, 20, 100),
-                                        child: Center(
-                                          child: WalletIdCard(
-                                            document: doc,
-                                            onLongPress: () =>
-                                                _showDeleteIdDialog(doc),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
+                            // Tab 1: Tickets
+                            const _EmptyTicketsState(),
                           ],
                         ),
                       ),
@@ -435,14 +394,12 @@ class _PillTabBar extends StatelessWidget {
             dividerColor: Colors.transparent,
             labelColor: Colors.white,
             unselectedLabelColor: const Color(0xFF8E8E93),
-            labelStyle: const TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w700),
-            unselectedLabelStyle: const TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w600),
+            labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             padding: const EdgeInsets.all(4),
             tabs: const [
-              Tab(text: 'Passports'),
-              Tab(text: 'IDs'),
+              Tab(text: 'Docs'),
+              Tab(text: 'Tickets'),
             ],
           ),
         ),
@@ -451,11 +408,81 @@ class _PillTabBar extends StatelessWidget {
   }
 }
 
-// ─── EMPTY IDs STATE ──────────────────────────────────────────────────────────
+// ─── DOCS TAB (passports + IDs combined) ─────────────────────────────────────
 
-class _EmptyIdsState extends StatelessWidget {
-  const _EmptyIdsState({required this.onAdd});
-  final VoidCallback onAdd;
+class _DocsTab extends StatelessWidget {
+  const _DocsTab({
+    required this.passports,
+    required this.idDocs,
+    required this.onDeletePassport,
+    required this.onDeleteId,
+  });
+
+  final List<PassportProfile> passports;
+  final List<IdDocument> idDocs;
+  final void Function(PassportProfile) onDeletePassport;
+  final void Function(IdDocument) onDeleteId;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <Object>[...passports, ...idDocs];
+    if (items.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(32, 0, 32, 100),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72, height: 72,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4C7CFF).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.folder_open_rounded,
+                    color: Color(0xFF4C7CFF), size: 36),
+              ),
+              const SizedBox(height: 20),
+              const Text('No Documents Yet',
+                  style: TextStyle(color: Color(0xFF1C1C1E),
+                      fontSize: 22, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              const Text('Tap + to add a passport or ID card.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Color(0xFF8E8E93), fontSize: 15)),
+            ],
+          ),
+        ),
+      );
+    }
+    return PageView.builder(
+      physics: const BouncingScrollPhysics(),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+          child: Center(
+            child: item is PassportProfile
+                ? WalletPassportCard(
+                    profile: item,
+                    onLongPress: () => onDeletePassport(item),
+                  )
+                : WalletIdCard(
+                    document: item as IdDocument,
+                    onLongPress: () => onDeleteId(item),
+                  ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─── EMPTY TICKETS STATE ──────────────────────────────────────────────────────
+
+class _EmptyTicketsState extends StatelessWidget {
+  const _EmptyTicketsState();
 
   @override
   Widget build(BuildContext context) {
@@ -466,53 +493,23 @@ class _EmptyIdsState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 72,
-              height: 72,
+              width: 72, height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFF1C3252).withValues(alpha: 0.1),
+                color: const Color(0xFF19D3C5).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.badge_rounded,
-                  color: Color(0xFF1C3252), size: 36),
+              child: const Icon(Icons.confirmation_number_rounded,
+                  color: Color(0xFF19D3C5), size: 36),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'No ID Cards Yet',
-              style: TextStyle(
-                  color: Color(0xFF1C1C1E),
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800),
-            ),
+            const Text('Tickets Coming Soon',
+                style: TextStyle(color: Color(0xFF1C1C1E),
+                    fontSize: 22, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             const Text(
-              'Add your PAN Card or Aadhaar Card\nto keep them handy.',
+              'Store flight, train, bus and event\ntickets in your wallet.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: Color(0xFF8E8E93), fontSize: 15, height: 1.5),
-            ),
-            const SizedBox(height: 28),
-            GestureDetector(
-              onTap: onAdd,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24, vertical: 14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1C3252),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.add_rounded, color: Colors.white, size: 20),
-                    SizedBox(width: 8),
-                    Text('Add ID Card',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15)),
-                  ],
-                ),
-              ),
+              style: TextStyle(color: Color(0xFF8E8E93), fontSize: 15, height: 1.5),
             ),
           ],
         ),
@@ -789,9 +786,10 @@ class _AddFabState extends State<_AddFab> with SingleTickerProviderStateMixin {
 // ─── ADD ITEM SHEET ───────────────────────────────────────────────────────────
 
 class _AddItemSheet extends StatelessWidget {
-  const _AddItemSheet({required this.onAddPassport});
+  const _AddItemSheet({required this.onAddPassport, required this.onAddId});
 
   final VoidCallback onAddPassport;
+  final VoidCallback onAddId;
 
   @override
   Widget build(BuildContext context) {
@@ -817,11 +815,9 @@ class _AddItemSheet extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                // drag handle
                 Center(
                   child: Container(
-                    width: 40,
-                    height: 5,
+                    width: 40, height: 5,
                     decoration: BoxDecoration(
                       color: const Color(0xFFE5E5EA),
                       borderRadius: BorderRadius.circular(99),
@@ -831,26 +827,16 @@ class _AddItemSheet extends StatelessWidget {
                 const SizedBox(height: 28),
                 const Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Add to Wallet',
-                    style: TextStyle(
-                      color: Color(0xFF1C1C1E),
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
+                  child: Text('Add Document',
+                    style: TextStyle(color: Color(0xFF1C1C1E),
+                        fontSize: 26, fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3)),
                 ),
                 const SizedBox(height: 6),
                 const Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(
-                    "Choose what you'd like to add",
-                    style: TextStyle(
-                      color: Color(0xFF8E8E93),
-                      fontSize: 15,
-                    ),
-                  ),
+                  child: Text("Choose what you'd like to add",
+                    style: TextStyle(color: Color(0xFF8E8E93), fontSize: 15)),
                 ),
                 const SizedBox(height: 24),
                 _AddOption(
@@ -862,12 +848,70 @@ class _AddItemSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 _AddOption(
-                  icon: Icons.confirmation_number_rounded,
-                  iconColor: const Color(0xFF19D3C5),
-                  title: 'Ticket',
-                  subtitle: 'Flight, train or event ticket',
-                  onTap: () => Navigator.of(context).pop(),
-                  comingSoon: true,
+                  icon: Icons.badge_rounded,
+                  iconColor: const Color(0xFF1C3252),
+                  title: 'ID Card',
+                  subtitle: 'PAN Card, Aadhaar or national ID',
+                  onTap: onAddId,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TicketsComingSoonSheet extends StatelessWidget {
+  const _TicketsComingSoonSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(36),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 14, 24, 32),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.98),
+              borderRadius: BorderRadius.circular(36),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE5E5EA),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                Container(
+                  width: 64, height: 64,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF19D3C5).withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.confirmation_number_rounded,
+                      color: Color(0xFF19D3C5), size: 32),
+                ),
+                const SizedBox(height: 20),
+                const Text('Tickets Coming Soon',
+                    style: TextStyle(color: Color(0xFF1C1C1E),
+                        fontSize: 22, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                const Text(
+                  'Flight, train, bus and event tickets\nwill be available in a future update.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Color(0xFF8E8E93),
+                      fontSize: 15, height: 1.5),
                 ),
               ],
             ),
@@ -978,7 +1022,6 @@ class _AddOption extends StatefulWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.comingSoon = false,
   });
 
   final IconData icon;
@@ -986,7 +1029,6 @@ class _AddOption extends StatefulWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final bool comingSoon;
 
   @override
   State<_AddOption> createState() => _AddOptionState();
@@ -1042,27 +1084,7 @@ class _AddOptionState extends State<_AddOption> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        if (widget.comingSoon) ...<Widget>[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE5E5EA),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'Soon',
-                              style: TextStyle(
-                                color: Color(0xFF8E8E93),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
+
                       ],
                     ),
                     const SizedBox(height: 3),
