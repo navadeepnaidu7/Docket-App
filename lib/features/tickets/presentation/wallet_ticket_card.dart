@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-// ── Mock data model ───────────────────────────────────────────────────────────
+// ── Data model ────────────────────────────────────────────────────────────────
 
 enum TicketStatus { active, expired }
 
@@ -97,470 +98,448 @@ final List<MockTicket> mockTickets = [
   ),
 ];
 
-// ── Ticket card widget ────────────────────────────────────────────────────────
+// ── Compact card (same height pattern as passport card) ───────────────────────
 
-class WalletTicketCard extends StatelessWidget {
+class WalletTicketCard extends StatefulWidget {
   const WalletTicketCard({super.key, required this.ticket});
   final MockTicket ticket;
 
   @override
+  State<WalletTicketCard> createState() => _WalletTicketCardState();
+}
+
+class _WalletTicketCardState extends State<WalletTicketCard> {
+  bool _pressed = false;
+
+  void _openDetail() {
+    HapticFeedback.mediumImpact();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _TicketDetailSheet(ticket: widget.ticket),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final bool isActive = ticket.status == TicketStatus.active;
+    final t = widget.ticket;
+    final bool isActive = t.status == TicketStatus.active;
+    final Color accent =
+        isActive ? const Color(0xFF34C759) : const Color(0xFF8E8E93);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 32,
-            offset: const Offset(0, 12),
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTap: _openDetail,
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOutCubic,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1A2E),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.32),
+                blurRadius: 36,
+                offset: const Offset(0, 14),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ── Main body ──────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Operator row
-                  Row(
-                    children: [
-                      Container(
-                        width: 36, height: 36,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2A2A3E),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.train_rounded,
-                            color: Color(0xFF4C7CFF), size: 20),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(ticket.operator,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700)),
-                      const Spacer(),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text('PNR',
-                              style: TextStyle(
-                                  color: Color(0xFF8E8E93),
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.8)),
-                          Text(ticket.pnr,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5)),
-                        ],
-                      ),
-                      const SizedBox(width: 10),
-                      Icon(Icons.qr_code_2_rounded,
-                          color: Colors.white.withValues(alpha: 0.5), size: 26),
-                    ],
-                  ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Top accent bar ──────────────────────────────────
+                Container(
+                  height: 3,
+                  color: isActive
+                      ? const Color(0xFF34C759)
+                      : const Color(0xFF3A3A4E),
+                ),
 
-                  const SizedBox(height: 14),
-
-                  // Train name + status
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2A2A3E),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(ticket.trainName,
-                            style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600)),
-                      ),
-                      const Spacer(),
-                      Container(
-                        width: 7, height: 7,
-                        decoration: BoxDecoration(
-                          color: isActive
-                              ? const Color(0xFF34C759)
-                              : const Color(0xFF8E8E93),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        isActive ? 'ON TIME' : 'COMPLETED',
-                        style: TextStyle(
-                          color: isActive
-                              ? const Color(0xFF34C759)
-                              : const Color(0xFF8E8E93),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Route row
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(ticket.fromName,
-                              style: const TextStyle(
-                                  color: Color(0xFF8E8E93), fontSize: 11)),
-                          Text(ticket.fromCode,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.5)),
-                        ],
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: CustomPaint(
-                                  painter: _DashedLinePainter(),
-                                  child: const SizedBox(height: 1),
-                                ),
-                              ),
-                              Container(
-                                width: 34, height: 34,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF2A2A3E),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.train_rounded,
-                                    color: Colors.white70, size: 18),
-                              ),
-                              Expanded(
-                                child: CustomPaint(
-                                  painter: _DashedLinePainter(),
-                                  child: const SizedBox(height: 1),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(ticket.toName,
-                              style: const TextStyle(
-                                  color: Color(0xFF8E8E93), fontSize: 11)),
-                          Text(ticket.toCode,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.5)),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Times row
-                  Row(
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      // Operator + status
+                      Row(
                         children: [
-                          Text(ticket.departTime,
+                          Container(
+                            width: 32, height: 32,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF252540),
+                              borderRadius: BorderRadius.circular(9),
+                            ),
+                            child: const Icon(Icons.train_rounded,
+                                color: Color(0xFF4C7CFF), size: 18),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(t.operator,
                               style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800)),
-                          Text(ticket.date,
-                              style: const TextStyle(
-                                  color: Color(0xFF8E8E93), fontSize: 11)),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700)),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 9, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 6, height: 6,
+                                  decoration: BoxDecoration(
+                                      color: accent, shape: BoxShape.circle),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  isActive ? 'ON TIME' : 'COMPLETED',
+                                  style: TextStyle(
+                                      color: accent,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.4),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+
+                      const SizedBox(height: 20),
+
+                      // Route — big station codes
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(t.fromCode,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 34,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -1)),
+                              Text(t.fromName,
+                                  style: const TextStyle(
+                                      color: Color(0xFF8E8E93), fontSize: 11)),
+                            ],
+                          ),
+                          Expanded(
+                            child: Column(
                               children: [
-                                const Icon(Icons.access_time_rounded,
-                                    color: Color(0xFF8E8E93), size: 12),
-                                const SizedBox(width: 3),
-                                Text(ticket.duration,
+                                Row(
+                                  children: [
+                                    Expanded(child: _DashedLine()),
+                                    Container(
+                                      width: 30, height: 30,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF252540),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.train_rounded,
+                                          color: Colors.white54, size: 16),
+                                    ),
+                                    Expanded(child: _DashedLine()),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(t.duration,
                                     style: const TextStyle(
                                         color: Color(0xFF8E8E93),
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600)),
                               ],
                             ),
-                            const SizedBox(height: 3),
-                            Text(
-                              '${ticket.ticketClass}  •  ${ticket.coach}  •  ${ticket.seat}',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  color: Color(0xFF8E8E93), fontSize: 10),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(ticket.arriveTime,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800)),
-                          Text(ticket.date,
-                              style: const TextStyle(
-                                  color: Color(0xFF8E8E93), fontSize: 11)),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Live status bar
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF12122A),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 7, height: 7,
-                              decoration: BoxDecoration(
-                                color: isActive
-                                    ? const Color(0xFF34C759)
-                                    : const Color(0xFF8E8E93),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              isActive ? 'LIVE STATUS' : 'JOURNEY STATUS',
-                              style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.8),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Text(ticket.fromCode,
-                                style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600)),
-                            Expanded(
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 8),
-                                child: _ProgressTrack(
-                                    progress: ticket.progressFraction,
-                                    isActive: isActive),
-                              ),
-                            ),
-                            Text(ticket.toCode,
-                                style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          isActive
-                              ? 'Running on time'
-                              : 'Journey completed',
-                          style: TextStyle(
-                            color: isActive
-                                ? const Color(0xFF34C759)
-                                : const Color(0xFF8E8E93),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Passenger row
-                  Row(
-                    children: [
-                      const Icon(Icons.person_outline_rounded,
-                          color: Color(0xFF8E8E93), size: 22),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('PASSENGER',
-                              style: TextStyle(
-                                  color: Color(0xFF8E8E93),
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.8)),
-                          Text(ticket.passengerName,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                      const Spacer(),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text('COACH & SEAT',
-                              style: TextStyle(
-                                  color: Color(0xFF8E8E93),
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.8)),
-                          Row(
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text(
-                                '${ticket.coach}  •  ${ticket.seat}',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF2A2A3E),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                      color: Colors.white24, width: 0.5),
-                                ),
-                                child: Text(ticket.berth,
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700)),
-                              ),
+                              Text(t.toCode,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 34,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -1)),
+                              Text(t.toName,
+                                  style: const TextStyle(
+                                      color: Color(0xFF8E8E93), fontSize: 11)),
                             ],
                           ),
                         ],
                       ),
+
+                      const SizedBox(height: 16),
+
+                      // Times + date
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _TimeBlock(time: t.departTime, date: t.date, align: CrossAxisAlignment.start),
+                          Text(t.ticketClass,
+                              style: const TextStyle(
+                                  color: Color(0xFF8E8E93),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600)),
+                          _TimeBlock(time: t.arriveTime, date: t.date, align: CrossAxisAlignment.end),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Progress bar
+                      _ProgressTrack(
+                          progress: t.progressFraction, isActive: isActive),
+
+                      const SizedBox(height: 16),
                     ],
                   ),
-                ],
+                ),
+
+                // ── Perforated divider ──────────────────────────────
+                _PerforatedDivider(),
+
+                // ── Bottom strip: passenger + tap hint ─────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person_outline_rounded,
+                          color: Color(0xFF8E8E93), size: 18),
+                      const SizedBox(width: 8),
+                      Text(t.passengerName,
+                          style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      Text('${t.coach} · ${t.seat}',
+                          style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600)),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF252540),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(t.berth,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Detail bottom sheet ───────────────────────────────────────────────────────
+
+class _TicketDetailSheet extends StatelessWidget {
+  const _TicketDetailSheet({required this.ticket});
+  final MockTicket ticket;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = ticket;
+    final bool isActive = t.status == TicketStatus.active;
+    final Color accent =
+        isActive ? const Color(0xFF34C759) : const Color(0xFF8E8E93);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.88,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (context, scrollCtrl) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1A1A2E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: ListView(
+          controller: scrollCtrl,
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 20),
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(99),
+                ),
               ),
             ),
 
-            // ── Perforated divider ─────────────────────────────────────
-            _PerforatedDivider(),
+            // Train name + status
+            Row(
+              children: [
+                Expanded(
+                  child: Text(t.trainName,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800)),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    isActive ? 'CONFIRMED' : 'COMPLETED',
+                    style: TextStyle(
+                        color: accent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
 
-            // ── QR + booking ID section ────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-              child: Row(
-                children: [
-                  Container(
-                    width: 72, height: 72,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.qr_code_2_rounded,
-                        color: Colors.black, size: 56),
+            const SizedBox(height: 24),
+
+            // Route
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(t.fromCode,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900)),
+                      Text(t.fromName,
+                          style: const TextStyle(
+                              color: Color(0xFF8E8E93), fontSize: 12)),
+                      const SizedBox(height: 4),
+                      Text(t.departTime,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700)),
+                      Text(t.date,
+                          style: const TextStyle(
+                              color: Color(0xFF8E8E93), fontSize: 12)),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 7, height: 7,
-                              decoration: BoxDecoration(
-                                color: isActive
-                                    ? const Color(0xFF34C759)
-                                    : const Color(0xFF8E8E93),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              isActive ? 'CONFIRMED' : 'COMPLETED',
-                              style: TextStyle(
-                                color: isActive
-                                    ? const Color(0xFF34C759)
-                                    : const Color(0xFF8E8E93),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              isActive
-                                  ? Icons.check_circle_outline_rounded
-                                  : Icons.history_rounded,
-                              color: isActive
-                                  ? const Color(0xFF34C759)
-                                  : const Color(0xFF8E8E93),
-                              size: 14,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(ticket.bookingId,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.5)),
-                        const Text('Booking ID',
-                            style: TextStyle(
-                                color: Color(0xFF8E8E93), fontSize: 12)),
-                      ],
-                    ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.arrow_forward_rounded,
+                          color: Color(0xFF8E8E93), size: 20),
+                      const SizedBox(height: 4),
+                      Text(t.duration,
+                          style: const TextStyle(
+                              color: Color(0xFF8E8E93), fontSize: 11)),
+                    ],
                   ),
-                  const Icon(Icons.chevron_right_rounded,
-                      color: Color(0xFF8E8E93), size: 20),
-                ],
-              ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(t.toCode,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900)),
+                      Text(t.toName,
+                          style: const TextStyle(
+                              color: Color(0xFF8E8E93), fontSize: 12)),
+                      const SizedBox(height: 4),
+                      Text(t.arriveTime,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700)),
+                      Text(t.date,
+                          style: const TextStyle(
+                              color: Color(0xFF8E8E93), fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // Details grid
+            _DetailGrid(items: [
+              ('CLASS', t.ticketClass),
+              ('COACH', t.coach),
+              ('SEAT', t.seat),
+              ('BERTH', t.berth),
+              ('PASSENGER', t.passengerName),
+              ('PNR', t.pnr),
+            ]),
+
+            const SizedBox(height: 24),
+
+            // Progress
+            _ProgressTrack(progress: t.progressFraction, isActive: isActive),
+
+            const SizedBox(height: 24),
+
+            // QR + booking ID
+            _PerforatedDivider(),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  width: 80, height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.qr_code_2_rounded,
+                      color: Colors.black, size: 64),
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(t.bookingId,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5)),
+                    const Text('Booking ID',
+                        style: TextStyle(
+                            color: Color(0xFF8E8E93), fontSize: 13)),
+                  ],
+                ),
+              ],
             ),
           ],
         ),
@@ -569,23 +548,88 @@ class WalletTicketCard extends StatelessWidget {
   }
 }
 
-// ── Painters & helpers ────────────────────────────────────────────────────────
+class _DetailGrid extends StatelessWidget {
+  const _DetailGrid({required this.items});
+  final List<(String, String)> items;
 
-class _DashedLinePainter extends CustomPainter {
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: items.map((item) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF252540),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(item.$1,
+                style: const TextStyle(
+                    color: Color(0xFF8E8E93),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8)),
+            const SizedBox(height: 3),
+            Text(item.$2,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700)),
+          ],
+        ),
+      )).toList(),
+    );
+  }
+}
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+class _TimeBlock extends StatelessWidget {
+  const _TimeBlock({required this.time, required this.date, required this.align});
+  final String time;
+  final String date;
+  final CrossAxisAlignment align;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: align,
+      children: [
+        Text(time,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w800)),
+        Text(date,
+            style: const TextStyle(color: Color(0xFF8E8E93), fontSize: 10)),
+      ],
+    );
+  }
+}
+
+class _DashedLine extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _DashPainter(),
+      child: const SizedBox(height: 1),
+    );
+  }
+}
+
+class _DashPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white24
-      ..strokeWidth = 1;
-    const dashW = 4.0;
-    const gap = 4.0;
+    final p = Paint()..color = Colors.white24..strokeWidth = 1;
     double x = 0;
     while (x < size.width) {
-      canvas.drawLine(Offset(x, 0), Offset(x + dashW, 0), paint);
-      x += dashW + gap;
+      canvas.drawLine(Offset(x, 0), Offset(x + 4, 0), p);
+      x += 8;
     }
   }
-
   @override
   bool shouldRepaint(covariant CustomPainter old) => false;
 }
@@ -597,56 +641,33 @@ class _ProgressTrack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final w = constraints.maxWidth;
-      final filled = w * progress.clamp(0.0, 1.0);
+    final color = isActive ? const Color(0xFF34C759) : const Color(0xFF8E8E93);
+    return LayoutBuilder(builder: (context, c) {
+      final w = c.maxWidth;
+      final filled = (w * progress.clamp(0.0, 1.0));
       return SizedBox(
-        height: 20,
+        height: 24,
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Track
-            Container(
-              height: 3,
-              decoration: BoxDecoration(
-                color: Colors.white12,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            // Filled
+            Container(height: 3, decoration: BoxDecoration(
+              color: Colors.white12, borderRadius: BorderRadius.circular(2))),
             Align(
               alignment: Alignment.centerLeft,
-              child: Container(
-                width: filled,
-                height: 3,
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? const Color(0xFF34C759)
-                      : const Color(0xFF8E8E93),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+              child: Container(width: filled, height: 3,
+                  decoration: BoxDecoration(
+                    color: color, borderRadius: BorderRadius.circular(2))),
             ),
-            // Train icon at progress point
             Positioned(
-              left: (filled - 14).clamp(0, w - 28),
+              left: (filled - 12).clamp(0, w - 24),
               child: Container(
-                width: 28, height: 28,
+                width: 24, height: 24,
                 decoration: BoxDecoration(
                   color: const Color(0xFF1A1A2E),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isActive
-                        ? const Color(0xFF34C759)
-                        : const Color(0xFF8E8E93),
-                    width: 1.5,
-                  ),
+                  border: Border.all(color: color, width: 1.5),
                 ),
-                child: Icon(Icons.train_rounded,
-                    size: 14,
-                    color: isActive
-                        ? const Color(0xFF34C759)
-                        : const Color(0xFF8E8E93)),
+                child: Icon(Icons.train_rounded, size: 12, color: color),
               ),
             ),
           ],
@@ -660,60 +681,29 @@ class _PerforatedDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 24,
+      height: 20,
       child: Row(
         children: [
-          // Left notch
-          Container(
-            width: 12, height: 24,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF2F2F7),
-              borderRadius: BorderRadius.only(
-                topRight: Radius.circular(12),
-                bottomRight: Radius.circular(12),
-              ),
-            ),
-          ),
-          // Dashed line
-          Expanded(
-            child: CustomPaint(
-              painter: _HorizontalDashPainter(),
-              child: const SizedBox(height: 1),
-            ),
-          ),
-          // Right notch
-          Container(
-            width: 12, height: 24,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF2F2F7),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(12),
-                bottomLeft: Radius.circular(12),
-              ),
-            ),
-          ),
+          Container(width: 10, height: 20,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF2F2F7),
+                borderRadius: BorderRadius.only(
+                  topRight: Radius.circular(10),
+                  bottomRight: Radius.circular(10),
+                ))),
+          Expanded(child: CustomPaint(
+            painter: _DashPainter(),
+            child: const SizedBox(height: 1),
+          )),
+          Container(width: 10, height: 20,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF2F2F7),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(10),
+                  bottomLeft: Radius.circular(10),
+                ))),
         ],
       ),
     );
   }
-}
-
-class _HorizontalDashPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white12
-      ..strokeWidth = 1.5;
-    const dashW = 6.0;
-    const gap = 5.0;
-    double x = 0;
-    final y = size.height / 2;
-    while (x < size.width) {
-      canvas.drawLine(Offset(x, y), Offset(x + dashW, y), paint);
-      x += dashW + gap;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
 }

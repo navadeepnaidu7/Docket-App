@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/motion/entry_reveal.dart';
+import '../../../core/sound/sound_service.dart';
 import '../../mrz_scanner/domain/mrz_result.dart';
 import '../../mrz_scanner/presentation/mrz_scanner_screen.dart';
 import '../../nfc/presentation/nfc_scanner_sheet.dart' as import_nfc_sheet;
@@ -221,6 +222,7 @@ class _PassportEntryScreenState extends ConsumerState<PassportEntryScreen> {
     }
 
     HapticFeedback.heavyImpact();
+    SoundService.success();
     // Save to global list for Dashboard
     ref.read(passportListProvider.notifier).addPassport(profile);
 

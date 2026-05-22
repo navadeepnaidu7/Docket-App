@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/motion/entry_reveal.dart';
+import '../../../core/sound/sound_service.dart';
 import '../application/id_draft_controller.dart';
 import '../application/id_list_provider.dart';
 import '../application/id_scanner_service.dart';
@@ -131,6 +132,7 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
     }
 
     HapticFeedback.heavyImpact();
+    SoundService.success();
     ref.read(idListProvider.notifier).addDocument(doc);
 
     showGeneralDialog<void>(

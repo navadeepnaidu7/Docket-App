@@ -79,8 +79,7 @@ class _TicketsTabState extends State<TicketsTab> {
                   itemBuilder: (context, index) {
                     return Padding(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                      child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
+                      child: Center(
                         child: WalletTicketCard(ticket: filtered[index]),
                       ),
                     );

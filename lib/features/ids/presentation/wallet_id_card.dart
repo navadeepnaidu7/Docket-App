@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/sound/sound_service.dart';
+
 import '../domain/id_document.dart';
 
 /// Horizontal wallet card for PAN and Aadhaar with 3D tilt + tap-flip.
@@ -50,6 +52,7 @@ class _WalletIdCardState extends State<WalletIdCard>
   void _handleTap() {
     if (_dragging) return;
     HapticFeedback.mediumImpact();
+    SoundService.flip();
     if (_showBack) {
       _flipCtrl.reverse();
     } else {

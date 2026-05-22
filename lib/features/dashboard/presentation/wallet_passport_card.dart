@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+
+import '../../../core/sound/sound_service.dart';
 
 import '../../passport/domain/passport_profile.dart';
 
@@ -70,6 +71,7 @@ class _WalletPassportCardState extends State<WalletPassportCard>
   void _handleTap() {
     if (_dragging) return;
     HapticFeedback.mediumImpact();
+    SoundService.flip();
     _pulseCtrl.forward(from: 0);
     if (_showBack) {
       _flipCtrl.reverse();
