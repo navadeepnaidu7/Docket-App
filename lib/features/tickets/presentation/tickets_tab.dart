@@ -43,7 +43,7 @@ class _TicketsTabState extends State<TicketsTab> {
   Widget build(BuildContext context) {
     final filtered = _filtered;
     final double fabClearance =
-        MediaQuery.of(context).padding.bottom + 16 + 52 + 20;
+        MediaQuery.of(context).padding.bottom + 16 + 58 + 20;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

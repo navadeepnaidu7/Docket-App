@@ -16,6 +16,7 @@ import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../passport/presentation/passport_entry_screen.dart';
 import '../../tickets/presentation/tickets_tab.dart';
+import '../../tickets/presentation/wallet_ticket_card.dart';
 import 'wallet_passport_card.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -51,6 +52,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       curve: const Interval(0.0, 1.0, curve: Curves.easeOutQuint),
     ));
     _tabCtrl = TabController(length: 2, vsync: this);
+    _tabCtrl.addListener(() { if (!_tabCtrl.indexIsChanging) setState(() {}); });
     _entryCtrl.forward();
   }
 
@@ -252,7 +254,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         extendBody: true,
         body: Stack(
           children: <Widget>[
-            const RepaintBoundary(child: _WalletBackdrop()),
+            RepaintBoundary(child: _WalletBackdrop(tabIndex: _tabCtrl.index)),
             SafeArea(
               child: FadeTransition(
                 opacity: _entryFade,
@@ -262,51 +264,56 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     children: [
                       // ── Header ──────────────────────────────────────────
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 36, 20, 0),
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: <Widget>[
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  () {
-                                    final hour = DateTime.now().hour;
-                                    if (hour < 12) return 'Good morning,';
-                                    if (hour < 17) return 'Good afternoon,';
-                                    return 'Good evening,';
-                                  }(),
-                                  style: const TextStyle(
-                                    color: Color(0xFF8E8E93),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                    letterSpacing: -0.1,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    () {
+                                      final hour = DateTime.now().hour;
+                                      if (hour < 12) return 'Good morning';
+                                      if (hour < 17) return 'Good afternoon';
+                                      return 'Good evening';
+                                    }(),
+                                    style: const TextStyle(
+                                      color: Color(0xFF8E8E93),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      letterSpacing: -0.1,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  currentName.isEmpty
-                                      ? 'User'
-                                      : currentName.split(' ').first,
-                                  style: const TextStyle(
-                                    color: Color(0xFF1C1C1E),
-                                    fontSize: 34,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -1.5,
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    currentName.isEmpty
+                                        ? 'Traveller'
+                                        : currentName.split(' ').first,
+                                    style: const TextStyle(
+                                      color: Color(0xFF1C1C1E),
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -1.2,
+                                      height: 1.1,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 8),
+                                  _NextTripChip(tickets: mockTickets),
+                                ],
+                              ),
                             ),
-                            _GlassIconButton(
-                              icon: Icons.settings_rounded,
+                            const SizedBox(width: 12),
+                            _AvatarButton(
+                              name: currentName,
                               onTap: _showSettingsSheet,
                             ),
                           ],
                         ),
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
 
                       // ── Tab content ──────────────────────────────────────
                       Expanded(
@@ -334,7 +341,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               ),
             ),
 
-            // ── Bottom island bar (pill tabs + add button) ───────────────
+            // ── Bottom island bar ────────────────────────────────────────
             Positioned(
               bottom: 0,
               left: 0,
@@ -362,7 +369,253 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 }
 
-// ─── FROSTED PILL TAB BAR ─────────────────────────────────────────────────────
+// ─── ISLAND BAR ──────────────────────────────────────────────────────────────
+
+class _IslandBar extends StatefulWidget {
+  const _IslandBar({required this.controller, required this.onAdd});
+  final TabController controller;
+  final VoidCallback onAdd;
+
+  @override
+  State<_IslandBar> createState() => _IslandBarState();
+}
+
+class _IslandBarState extends State<_IslandBar> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.animation!.addListener(_onAnim);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.animation!.removeListener(_onAnim);
+    super.dispose();
+  }
+
+  void _onAnim() => setState(() {});
+
+  @override
+  Widget build(BuildContext context) {
+    final double t = (widget.controller.animation!.value).clamp(0.0, 1.0);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(26),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          height: 58,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.9),
+              width: 0.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // ── Tab items ──────────────────────────────────────────
+              Expanded(
+                child: Stack(
+                  children: [
+                    // Sliding active indicator
+                    AnimatedAlign(
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment(t * 2 - 1, 0),
+                      child: FractionallySizedBox(
+                        widthFactor: 0.5,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 7),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1C1C1E),
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.15),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Tab labels with icons
+                    Row(
+                      children: [
+                        _IslandTab(
+                          icon: Icons.wallet_rounded,
+                          label: 'Docs',
+                          index: 0,
+                          t: t,
+                          controller: widget.controller,
+                        ),
+                        _IslandTab(
+                          icon: Icons.confirmation_number_rounded,
+                          label: 'Tickets',
+                          index: 1,
+                          t: t,
+                          controller: widget.controller,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── Divider ────────────────────────────────────────────
+              Container(
+                width: 0.5,
+                height: 28,
+                color: const Color(0xFF1C1C1E).withValues(alpha: 0.10),
+              ),
+
+              // ── Add button ─────────────────────────────────────────
+              _IslandAddButton(onTap: widget.onAdd),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IslandTab extends StatelessWidget {
+  const _IslandTab({
+    required this.icon,
+    required this.label,
+    required this.index,
+    required this.t,
+    required this.controller,
+  });
+  final IconData icon;
+  final String label;
+  final int index;
+  final double t;
+  final TabController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool active = index == 0 ? t < 0.5 : t >= 0.5;
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          controller.animateTo(index);
+        },
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: active
+                  ? Colors.white
+                  : const Color(0xFF8E8E93),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w400,
+                color: active
+                    ? Colors.white
+                    : const Color(0xFF8E8E93),
+                letterSpacing: -0.1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _IslandAddButton extends StatefulWidget {
+  const _IslandAddButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  State<_IslandAddButton> createState() => _IslandAddButtonState();
+}
+
+class _IslandAddButtonState extends State<_IslandAddButton>
+    with SingleTickerProviderStateMixin {
+  bool _pressed = false;
+  late final AnimationController _rotCtrl;
+  late final Animation<double> _rotAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _rotCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
+    _rotAnim = CurvedAnimation(parent: _rotCtrl, curve: Curves.easeOutBack);
+  }
+
+  @override
+  void dispose() {
+    _rotCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) {
+        setState(() => _pressed = true);
+        _rotCtrl.forward();
+      },
+      onTapCancel: () {
+        setState(() => _pressed = false);
+        _rotCtrl.reverse();
+      },
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        _rotCtrl.reverse();
+      },
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
+        scale: _pressed ? 0.92 : 1.0,
+        child: SizedBox(
+          width: 64,
+          height: 58,
+          child: Center(
+            child: RotationTransition(
+              turns: Tween<double>(begin: 0, end: 0.125).animate(_rotAnim),
+              child: const Icon(
+                Icons.add_rounded,
+                size: 26,
+                color: Color(0xFF1C1C1E),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── FROSTED PILL TAB BAR (kept for reference, replaced by _IslandBar) ────────
 
 class _PillTabBar extends StatefulWidget {
   const _PillTabBar({required this.controller});
@@ -395,8 +648,8 @@ class _PillTabBarState extends State<_PillTabBar> {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
-          height: 52,
-          constraints: const BoxConstraints(maxWidth: 260),
+          height: 58,
+          constraints: const BoxConstraints(maxWidth: 280),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.60),
             borderRadius: BorderRadius.circular(22),
@@ -435,8 +688,8 @@ class _PillTabBarState extends State<_PillTabBar> {
               // Labels
               Row(
                 children: [
-                  _TabLabel(label: 'Docs', index: 0, controller: widget.controller, t: t),
-                  _TabLabel(label: 'Tickets', index: 1, controller: widget.controller, t: t),
+                  _TabLabel(label: 'Docs', icon: Icons.wallet_rounded, index: 0, controller: widget.controller, t: t),
+                  _TabLabel(label: 'Tickets', icon: Icons.confirmation_number_rounded, index: 1, controller: widget.controller, t: t),
                 ],
               ),
             ],
@@ -450,11 +703,13 @@ class _PillTabBarState extends State<_PillTabBar> {
 class _TabLabel extends StatelessWidget {
   const _TabLabel({
     required this.label,
+    required this.icon,
     required this.index,
     required this.controller,
     required this.t,
   });
   final String label;
+  final IconData icon;
   final int index;
   final TabController controller;
   final double t;
@@ -470,14 +725,25 @@ class _TabLabel extends StatelessWidget {
           controller.animateTo(index);
         },
         child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.1,
-              color: selected ? Colors.white : const Color(0xFF8E8E93),
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 17,
+                color: selected ? Colors.white : const Color(0xFF8E8E93),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  letterSpacing: -0.1,
+                  color: selected ? Colors.white : const Color(0xFF8E8E93),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -526,7 +792,7 @@ class _DocsTabState extends State<_DocsTab> {
 
   @override
   Widget build(BuildContext context) {
-    final double fabClearance = MediaQuery.of(context).padding.bottom + 16 + 52 + 20;
+    final double fabClearance = MediaQuery.of(context).padding.bottom + 16 + 58 + 20;
     final items = <Object>[...widget.passports, ...widget.idDocs];
     if (items.isEmpty) {
       return Center(
@@ -725,8 +991,9 @@ class _WalletBackdrop extends StatefulWidget {
 }
 
 class _WalletBackdropState extends State<_WalletBackdrop>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _ctrl;
+  late AnimationController _colorCtrl;
 
   @override
   void initState() {
@@ -735,11 +1002,27 @@ class _WalletBackdropState extends State<_WalletBackdrop>
       vsync: this,
       duration: const Duration(seconds: 22),
     )..repeat();
+    _colorCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+      value: widget.tabIndex.toDouble(),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_WalletBackdrop old) {
+    super.didUpdateWidget(old);
+    if (old.tabIndex != widget.tabIndex) {
+      widget.tabIndex == 1
+          ? _colorCtrl.animateTo(1.0, curve: Curves.easeOutCubic)
+          : _colorCtrl.animateTo(0.0, curve: Curves.easeOutCubic);
+    }
   }
 
   @override
   void dispose() {
     _ctrl.dispose();
+    _colorCtrl.dispose();
     super.dispose();
   }
 
@@ -750,10 +1033,10 @@ class _WalletBackdropState extends State<_WalletBackdrop>
         decoration: const BoxDecoration(color: Color(0xFFF2F2F7)),
         child: RepaintBoundary(
           child: AnimatedBuilder(
-            animation: _ctrl,
+            animation: Listenable.merge([_ctrl, _colorCtrl]),
             builder: (context, _) {
               return CustomPaint(
-                painter: _AppleCardGradientPainter(_ctrl.value),
+                painter: _AppleCardGradientPainter(_ctrl.value, _colorCtrl.value),
               );
             },
           ),
@@ -764,8 +1047,21 @@ class _WalletBackdropState extends State<_WalletBackdrop>
 }
 
 class _AppleCardGradientPainter extends CustomPainter {
-  _AppleCardGradientPainter(this.progress);
+  _AppleCardGradientPainter(this.progress, this.colorT);
   final double progress;
+  final double colorT; // 0 = Docs (cool), 1 = Tickets (warm)
+
+  // Docs palette — cool blue/indigo
+  static const _d1 = Color(0xFF5B8DEF); // blue
+  static const _d2 = Color(0xFF9B7FE8); // indigo
+  static const _d3 = Color(0xFF64B5F6); // sky
+
+  // Tickets palette — warm amber/coral
+  static const _t1 = Color(0xFFFFB347); // amber
+  static const _t2 = Color(0xFFFF6B6B); // coral
+  static const _t3 = Color(0xFFFFD166); // gold
+
+  Color _lerp(Color a, Color b) => Color.lerp(a, b, colorT)!;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -780,28 +1076,25 @@ class _AppleCardGradientPainter extends CustomPainter {
       canvas.drawCircle(Offset(cx, cy), radius, paint);
     }
 
-    // Soft amber orb
     final double t1 = progress * 2 * math.pi;
     drawOrb(
-      const Color(0xFFFFB347).withValues(alpha: 0.13),
+      _lerp(_d1, _t1).withValues(alpha: 0.13),
       w * 0.5 + math.cos(t1) * w * 0.35,
       h * 0.3 + math.sin(t1) * h * 0.15,
       w * 0.9,
     );
 
-    // Soft purple orb
     final double t2 = progress * 2 * math.pi + (math.pi * 0.66);
     drawOrb(
-      const Color(0xFFCBA1F7).withValues(alpha: 0.10),
+      _lerp(_d2, _t2).withValues(alpha: 0.10),
       w * 0.3 + math.cos(t2) * w * 0.45,
       h * 0.6 + math.sin(t2) * h * 0.25,
       w * 1.0,
     );
 
-    // Soft blue orb
     final double t3 = progress * 2 * math.pi + (math.pi * 1.33);
     drawOrb(
-      const Color(0xFF81D4FA).withValues(alpha: 0.13),
+      _lerp(_d3, _t3).withValues(alpha: 0.13),
       w * 0.7 + math.cos(t3) * w * 0.3,
       h * 0.5 + math.sin(t3) * h * 0.35,
       w * 0.9,
@@ -809,9 +1102,8 @@ class _AppleCardGradientPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _AppleCardGradientPainter oldDelegate) {
-    return oldDelegate.progress != progress;
-  }
+  bool shouldRepaint(covariant _AppleCardGradientPainter old) =>
+      old.progress != progress || old.colorT != colorT;
 }
 
 // ─── HEADER WIDGETS ───────────────────────────────────────────────────────────
@@ -859,6 +1151,149 @@ class _GlassIconButtonState extends State<_GlassIconButton> {
                 widget.icon,
                 color: const Color(0xFF1C1C1E).withValues(alpha: 0.80),
                 size: 20,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── NEXT TRIP CHIP ───────────────────────────────────────────────────────────
+
+class _NextTripChip extends StatelessWidget {
+  const _NextTripChip({required this.tickets});
+  final List<MockTicket> tickets;
+
+  MockTicket? get _next {
+    final active = tickets.where((t) => t.status == TicketStatus.active).toList();
+    if (active.isEmpty) return null;
+    return active.first;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = _next;
+    if (t == null) {
+      return const SizedBox.shrink();
+    }
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      child: GestureDetector(
+        onTap: () {
+          // Switch to tickets tab
+          DefaultTabController.maybeOf(context)?.animateTo(1);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1C1C1E).withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: const Color(0xFF1C1C1E).withValues(alpha: 0.08),
+              width: 0.5,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF30D158),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Next  ${t.fromCode} → ${t.toCode}',
+                style: const TextStyle(
+                  color: Color(0xFF1C1C1E),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '· ${t.date}',
+                style: const TextStyle(
+                  color: Color(0xFF8E8E93),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 14,
+                color: Color(0xFF8E8E93),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── AVATAR BUTTON ────────────────────────────────────────────────────────────
+
+class _AvatarButton extends StatefulWidget {
+  const _AvatarButton({required this.name, required this.onTap});
+  final String name;
+  final VoidCallback onTap;
+
+  @override
+  State<_AvatarButton> createState() => _AvatarButtonState();
+}
+
+class _AvatarButtonState extends State<_AvatarButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final String initial = widget.name.isNotEmpty
+        ? widget.name.trim()[0].toUpperCase()
+        : '?';
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
+        scale: _pressed ? 0.96 : 1.0,
+        child: ClipOval(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1C1E).withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.75),
+                  width: 0.5,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    color: Color(0xFF1C1C1E),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                  ),
+                ),
               ),
             ),
           ),
@@ -921,8 +1356,8 @@ class _AddFabState extends State<_AddFab> with SingleTickerProviderStateMixin {
         curve: Curves.easeOutCubic,
         scale: _pressed ? 0.96 : 1.0,
         child: Container(
-          width: 52,
-          height: 52,
+          width: 58,
+          height: 58,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             boxShadow: <BoxShadow>[

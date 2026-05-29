@@ -509,12 +509,55 @@ class _CardHeader extends StatelessWidget {
 
           const SizedBox(height: 22),
 
-          // Date + class row
+          // Progress bar (active only)
+          if (isActive && t.progressFraction > 0) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: Stack(
+                      children: [
+                        Container(
+                          height: 3,
+                          color: Colors.white.withValues(alpha: 0.15),
+                        ),
+                        FractionallySizedBox(
+                          widthFactor: t.progressFraction.clamp(0.0, 1.0),
+                          child: Container(
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  '${(t.progressFraction * 100).round()}%',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+          ],
+
+          // Date + class row + days badge
           Row(
             children: [
               _MetaChip(label: t.date),
               const SizedBox(width: 8),
               _MetaChip(label: t.ticketClass),
+              const Spacer(),
+              if (isActive) _DaysBadge(dateStr: t.date),
             ],
           ),
         ],
@@ -644,6 +687,65 @@ class _TearLinePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _TearLinePainter old) =>
       old.cardColor != cardColor;
+}
+
+// ── Days badge ────────────────────────────────────────────────────────────────
+
+class _DaysBadge extends StatelessWidget {
+  const _DaysBadge({required this.dateStr});
+  final String dateStr;
+
+  String _label() {
+    try {
+      // Parse "23 Mar 2024" format
+      final parts = dateStr.split(' ');
+      if (parts.length != 3) return '';
+      const months = {
+        'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
+        'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12,
+      };
+      final d = DateTime(
+        int.parse(parts[2]),
+        months[parts[1]] ?? 1,
+        int.parse(parts[0]),
+      );
+      final diff = d.difference(DateTime.now()).inDays;
+      if (diff < 0) return '';
+      if (diff == 0) return 'Today';
+      if (diff == 1) return 'Tomorrow';
+      return 'In $diff days';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label = _label();
+    if (label.isEmpty) return const SizedBox.shrink();
+    final bool urgent = label == 'Today' || label == 'Tomorrow';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: urgent
+            ? const Color(0xFFFF9F0A).withValues(alpha: 0.25)
+            : Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(8),
+        border: urgent
+            ? Border.all(color: const Color(0xFFFF9F0A).withValues(alpha: 0.5), width: 0.5)
+            : null,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: urgent ? const Color(0xFFFF9F0A) : Colors.white.withValues(alpha: 0.7),
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.1,
+        ),
+      ),
+    );
+  }
 }
 
 // ── Status pill ───────────────────────────────────────────────────────────────
