@@ -1,14 +1,25 @@
 import 'package:flutter/material.dart';
 
+// A custom easeOutQuint curve — matches Apple's spring-like deceleration.
+class _EaseOutQuint extends Curve {
+  const _EaseOutQuint();
+  @override
+  double transformInternal(double t) {
+    final double u = 1 - t;
+    return 1 - u * u * u * u * u;
+  }
+}
+
+const Curve easeOutQuint = _EaseOutQuint();
+
 class EntryReveal extends StatefulWidget {
   const EntryReveal({
     super.key,
     required this.child,
     this.delay = Duration.zero,
-    this.duration = const Duration(milliseconds: 520),
-    this.curve = Curves.easeOutCubic,
-    this.slideY = 22,
-    this.scale = 0.98,
+    this.duration = const Duration(milliseconds: 480),
+    this.curve = easeOutQuint,
+    this.slideY = 20,
     this.enabled,
   });
 
@@ -17,23 +28,21 @@ class EntryReveal extends StatefulWidget {
   final Duration duration;
   final Curve curve;
   final double slideY;
-  final double scale;
   final bool? enabled;
 
   @override
   State<EntryReveal> createState() => _EntryRevealState();
 }
 
-class _EntryRevealState extends State<EntryReveal> with SingleTickerProviderStateMixin {
+class _EntryRevealState extends State<EntryReveal>
+    with SingleTickerProviderStateMixin {
   AnimationController? _controller;
   late Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
-    if (!(widget.enabled ?? true)) {
-      return;
-    }
+    if (!(widget.enabled ?? true)) return;
 
     final Duration total = widget.delay + widget.duration;
     final int totalMs = total.inMilliseconds == 0 ? 1 : total.inMilliseconds;
@@ -42,7 +51,7 @@ class _EntryRevealState extends State<EntryReveal> with SingleTickerProviderStat
     _controller = AnimationController(vsync: this, duration: total);
     _animation = CurvedAnimation(
       parent: _controller!,
-      curve: Interval(start, 1, curve: widget.curve),
+      curve: Interval(start, 1.0, curve: widget.curve),
     );
     _controller!.forward();
   }
@@ -55,27 +64,18 @@ class _EntryRevealState extends State<EntryReveal> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    if (!(widget.enabled ?? true)) {
-      return widget.child;
-    }
+    if (!(widget.enabled ?? true)) return widget.child;
 
     return AnimatedBuilder(
       animation: _animation,
       child: widget.child,
       builder: (BuildContext context, Widget? child) {
-        final double value = _animation.value.clamp(0, 1);
-        final double translateY = widget.slideY * (1 - value);
-        final double scale = widget.scale + (1 - widget.scale) * value;
-
+        final double v = _animation.value;
         return Opacity(
-          opacity: value,
+          opacity: v,
           child: Transform.translate(
-            offset: Offset(0, translateY),
-            child: Transform.scale(
-              scale: scale,
-              alignment: Alignment.center,
-              child: child,
-            ),
+            offset: Offset(0, widget.slideY * (1 - v)),
+            child: child,
           ),
         );
       },

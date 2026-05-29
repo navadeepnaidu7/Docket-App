@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,21 +37,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     super.initState();
     _entryCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 820),
+      duration: const Duration(milliseconds: 560),
     );
     _entryFade = CurvedAnimation(
       parent: _entryCtrl,
-      curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
+      curve: const Interval(0.0, 0.65, curve: Curves.easeOut),
     );
     _entrySlide = Tween<Offset>(
-      begin: const Offset(0, 0.06),
+      begin: const Offset(0, 0.04),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _entryCtrl,
-      curve: const Interval(0.0, 0.8, curve: Curves.easeOutQuart),
+      curve: const Interval(0.0, 1.0, curve: Curves.easeOutQuint),
     ));
     _tabCtrl = TabController(length: 2, vsync: this);
-    _tabCtrl.addListener(() => setState(() {}));
     _entryCtrl.forward();
   }
 
@@ -66,19 +66,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     ref.read(passportDraftProvider.notifier).updateIsEPassport(isEPassport);
     Navigator.of(context).push(
       PageRouteBuilder<void>(
-        transitionDuration: const Duration(milliseconds: 680),
-        reverseTransitionDuration: const Duration(milliseconds: 400),
+        transitionDuration: const Duration(milliseconds: 400),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
         pageBuilder: (_, _, _) => const PassportEntryScreen(),
         transitionsBuilder: (_, Animation<double> animation, _, Widget child) {
           final Animation<double> curved = CurvedAnimation(
             parent: animation,
-            curve: Curves.easeOutCubic,
+            curve: Curves.easeOutQuint,
           );
           return FadeTransition(
             opacity: curved,
             child: SlideTransition(
               position: Tween<Offset>(
-                begin: const Offset(0, 0.06),
+                begin: const Offset(0, 0.04),
                 end: Offset.zero,
               ).animate(curved),
               child: child,
@@ -92,19 +92,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   void _openIdEntry(IdDocumentType type) {
     Navigator.of(context).push(
       PageRouteBuilder<void>(
-        transitionDuration: const Duration(milliseconds: 680),
-        reverseTransitionDuration: const Duration(milliseconds: 400),
+        transitionDuration: const Duration(milliseconds: 400),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
         pageBuilder: (_, _, _) => IdEntryScreen(type: type),
         transitionsBuilder: (_, Animation<double> animation, _, Widget child) {
           final Animation<double> curved = CurvedAnimation(
             parent: animation,
-            curve: Curves.easeOutCubic,
+            curve: Curves.easeOutQuint,
           );
           return FadeTransition(
             opacity: curved,
             child: SlideTransition(
               position: Tween<Offset>(
-                begin: const Offset(0, 0.06),
+                begin: const Offset(0, 0.04),
                 end: Offset.zero,
               ).animate(curved),
               child: child,
@@ -186,58 +186,55 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   void _showDeleteDialog(PassportProfile profile) {
     HapticFeedback.heavyImpact();
-    showDialog<void>(
+    showCupertinoModalPopup<void>(
       context: context,
-      builder: (BuildContext ctx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Remove Passport?'),
-          content: Text('Are you sure you want to remove ${profile.name}\'s passport from your wallet?'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-            TextButton(
-              onPressed: () {
-                ref.read(passportListProvider.notifier).removePassport(profile.id);
-                Navigator.of(ctx).pop();
-              },
-              child: const Text('Remove', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
+      builder: (BuildContext ctx) => CupertinoActionSheet(
+        title: const Text('Remove Passport?'),
+        message: Text(
+          'This will remove ${profile.name}\'s passport from your wallet.',
+        ),
+        actions: <CupertinoActionSheetAction>[
+          CupertinoActionSheetAction(
+            isDestructiveAction: true,
+            onPressed: () {
+              ref.read(passportListProvider.notifier).removePassport(profile.id);
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Remove'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
     );
   }
 
   void _showDeleteIdDialog(IdDocument doc) {
     HapticFeedback.heavyImpact();
-    showDialog<void>(
+    final String label = doc.holderName.isEmpty ? 'this card' : "${doc.holderName}'s";
+    final String type = doc.type == IdDocumentType.pan ? 'PAN Card' : 'Aadhaar Card';
+    showCupertinoModalPopup<void>(
       context: context,
-      builder: (BuildContext ctx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Remove ID Card?'),
-          content: Text(
-              'Are you sure you want to remove ${doc.holderName.isEmpty ? 'this card' : "${doc.holderName}'s"} ${doc.type == IdDocumentType.pan ? 'PAN Card' : 'Aadhaar Card'} from your wallet?'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-            TextButton(
-              onPressed: () {
-                ref.read(idListProvider.notifier).removeDocument(doc.id);
-                Navigator.of(ctx).pop();
-              },
-              child: const Text('Remove',
-                  style: TextStyle(
-                      color: Colors.red, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
+      builder: (BuildContext ctx) => CupertinoActionSheet(
+        title: const Text('Remove ID Card?'),
+        message: Text('This will remove $label $type from your wallet.'),
+        actions: <CupertinoActionSheetAction>[
+          CupertinoActionSheetAction(
+            isDestructiveAction: true,
+            onPressed: () {
+              ref.read(idListProvider.notifier).removeDocument(doc.id);
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Remove'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
     );
   }
 
@@ -255,7 +252,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         extendBody: true,
         body: Stack(
           children: <Widget>[
-            const _WalletBackdrop(),
+            const RepaintBoundary(child: _WalletBackdrop()),
             SafeArea(
               child: FadeTransition(
                 opacity: _entryFade,
@@ -265,7 +262,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     children: [
                       // ── Header ──────────────────────────────────────────
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(26, 40, 22, 0),
+                        padding: const EdgeInsets.fromLTRB(20, 36, 20, 0),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,9 +279,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                   }(),
                                   style: const TextStyle(
                                     color: Color(0xFF8E8E93),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: -0.2,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: -0.1,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
@@ -294,9 +291,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                       : currentName.split(' ').first,
                                   style: const TextStyle(
                                     color: Color(0xFF1C1C1E),
-                                    fontSize: 32,
+                                    fontSize: 34,
                                     fontWeight: FontWeight.w800,
-                                    letterSpacing: -1.2,
+                                    letterSpacing: -1.5,
                                   ),
                                 ),
                               ],
@@ -311,18 +308,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
                       const SizedBox(height: 20),
 
-                      // ── Frosted pill tab bar ─────────────────────────────
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 26),
-                        child: _PillTabBar(controller: _tabCtrl),
-                      ),
-
-                      const SizedBox(height: 12),
-
                       // ── Tab content ──────────────────────────────────────
                       Expanded(
                         child: TabBarView(
                           controller: _tabCtrl,
+                          clipBehavior: Clip.none,
                           physics: const NeverScrollableScrollPhysics(),
                           children: [
                             // Tab 0: Docs (Passports + IDs combined)
@@ -344,18 +334,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               ),
             ),
 
-            // ── FAB ──────────────────────────────────────────────────────
+            // ── Bottom island bar (pill tabs + add button) ───────────────
             Positioned(
               bottom: 0,
               left: 0,
               right: 0,
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 28),
-                  child: Center(
-                    child: _AddFab(onTap: _showAddSheet),
-                  ),
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).padding.bottom + 16,
+                  left: 20,
+                  right: 20,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _PillTabBar(controller: _tabCtrl),
+                    const SizedBox(width: 10),
+                    _AddFab(onTap: _showAddSheet),
+                  ],
                 ),
               ),
             ),
@@ -368,40 +364,120 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
 // ─── FROSTED PILL TAB BAR ─────────────────────────────────────────────────────
 
-class _PillTabBar extends StatelessWidget {
+class _PillTabBar extends StatefulWidget {
   const _PillTabBar({required this.controller});
   final TabController controller;
 
   @override
+  State<_PillTabBar> createState() => _PillTabBarState();
+}
+
+class _PillTabBarState extends State<_PillTabBar> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.animation!.addListener(_onTabAnim);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.animation!.removeListener(_onTabAnim);
+    super.dispose();
+  }
+
+  void _onTabAnim() => setState(() {});
+
+  @override
   Widget build(BuildContext context) {
+    final double t = (widget.controller.animation!.value).clamp(0.0, 1.0);
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(22),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
-          height: 44,
+          height: 52,
+          constraints: const BoxConstraints(maxWidth: 260),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.8)),
-          ),
-          child: TabBar(
-            controller: controller,
-            indicator: BoxDecoration(
-              color: const Color(0xFF1C1C1E),
-              borderRadius: BorderRadius.circular(16),
+            color: Colors.white.withValues(alpha: 0.60),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.85),
+              width: 0.5,
             ),
-            indicatorSize: TabBarIndicatorSize.tab,
-            dividerColor: Colors.transparent,
-            labelColor: Colors.white,
-            unselectedLabelColor: const Color(0xFF8E8E93),
-            labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-            unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            padding: const EdgeInsets.all(4),
-            tabs: const [
-              Tab(text: 'Docs'),
-              Tab(text: 'Tickets'),
+          ),
+          child: Stack(
+            children: [
+              // Spring-animated indicator pill
+              AnimatedAlign(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment(t * 2 - 1, 0),
+                child: FractionallySizedBox(
+                  widthFactor: 0.5,
+                  child: Padding(
+                    padding: const EdgeInsets.all(3),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1C1C1E),
+                        borderRadius: BorderRadius.circular(19),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // Labels
+              Row(
+                children: [
+                  _TabLabel(label: 'Docs', index: 0, controller: widget.controller, t: t),
+                  _TabLabel(label: 'Tickets', index: 1, controller: widget.controller, t: t),
+                ],
+              ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TabLabel extends StatelessWidget {
+  const _TabLabel({
+    required this.label,
+    required this.index,
+    required this.controller,
+    required this.t,
+  });
+  final String label;
+  final int index;
+  final TabController controller;
+  final double t;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool selected = index == 0 ? t < 0.5 : t >= 0.5;
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          controller.animateTo(index);
+        },
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.1,
+              color: selected ? Colors.white : const Color(0xFF8E8E93),
+            ),
           ),
         ),
       ),
@@ -411,7 +487,7 @@ class _PillTabBar extends StatelessWidget {
 
 // ─── DOCS TAB (passports + IDs combined) ─────────────────────────────────────
 
-class _DocsTab extends StatelessWidget {
+class _DocsTab extends StatefulWidget {
   const _DocsTab({
     required this.passports,
     required this.idDocs,
@@ -425,12 +501,37 @@ class _DocsTab extends StatelessWidget {
   final void Function(IdDocument) onDeleteId;
 
   @override
+  State<_DocsTab> createState() => _DocsTabState();
+}
+
+class _DocsTabState extends State<_DocsTab> {
+  late final PageController _pageCtrl;
+  double _page = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageCtrl = PageController();
+    _pageCtrl.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _pageCtrl.removeListener(_onScroll);
+    _pageCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() => setState(() => _page = _pageCtrl.page ?? 0);
+
+  @override
   Widget build(BuildContext context) {
-    final items = <Object>[...passports, ...idDocs];
+    final double fabClearance = MediaQuery.of(context).padding.bottom + 16 + 52 + 20;
+    final items = <Object>[...widget.passports, ...widget.idDocs];
     if (items.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(32, 0, 32, 100),
+          padding: EdgeInsets.fromLTRB(32, 0, 32, fabClearance),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -446,7 +547,8 @@ class _DocsTab extends StatelessWidget {
               const SizedBox(height: 20),
               const Text('No Documents Yet',
                   style: TextStyle(color: Color(0xFF1C1C1E),
-                      fontSize: 22, fontWeight: FontWeight.w800)),
+                      fontSize: 20, fontWeight: FontWeight.w600,
+                      letterSpacing: -0.3)),
               const SizedBox(height: 8),
               const Text('Tap + to add a passport or ID card.',
                   textAlign: TextAlign.center,
@@ -456,36 +558,167 @@ class _DocsTab extends StatelessWidget {
         ),
       );
     }
-    return PageView.builder(
-      physics: const BouncingScrollPhysics(),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-          child: Center(
-            child: item is PassportProfile
-                ? WalletPassportCard(
-                    profile: item,
-                    onLongPress: () => onDeletePassport(item),
-                  )
-                : WalletIdCard(
-                    document: item as IdDocument,
-                    onLongPress: () => onDeleteId(item),
-                  ),
+    return Stack(
+      children: [
+        PageView.builder(
+          controller: _pageCtrl,
+          scrollDirection: Axis.vertical,
+          physics: const BouncingScrollPhysics(),
+          itemCount: items.length,
+          itemBuilder: (context, index) {
+            final item = items[index];
+            final double delta = (_page - index).clamp(-1.0, 1.0);
+            return _RollPage(
+              delta: delta,
+              padding: EdgeInsets.fromLTRB(20, 8, 44, fabClearance),
+              child: item is PassportProfile
+                  ? WalletPassportCard(
+                      profile: item,
+                      onLongPress: () => widget.onDeletePassport(item),
+                    )
+                  : WalletIdCard(
+                      document: item as IdDocument,
+                      onLongPress: () => widget.onDeleteId(item),
+                    ),
+            );
+          },
+        ),
+        if (items.length > 1)
+          Positioned(
+            right: 14,
+            top: 0,
+            bottom: fabClearance,
+            child: Center(
+              child: _DotIndicator(count: items.length, page: _page),
+            ),
           ),
-        );
-      },
+      ],
     );
   }
 }
 
 // ─── EMPTY TICKETS STATE ──────────────────────────────────────────────────────
 
+// ─── ROLL PAGE TRANSFORM ──────────────────────────────────────────────────────
+
+class _RollPage extends StatelessWidget {
+  const _RollPage({
+    required this.delta,
+    required this.child,
+    required this.padding,
+  });
+
+  final double delta;   // -1 (above) to +1 (below), 0 = current
+  final Widget child;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    // delta < 0 → card is above (exiting upward): tilt top away, shrink
+    // delta > 0 → card is below (entering from below): tilt bottom away, shrink
+    final double tilt = delta * 0.38;          // radians of X-axis rotation
+    final double scale = 1.0 - delta.abs() * 0.08;
+    final double translateY = delta * 24;      // subtle Y nudge
+
+    final Matrix4 m = Matrix4.identity()
+      ..setEntry(3, 2, 0.001)                  // perspective
+      ..rotateX(tilt)
+      ..scale(scale)
+      ..translate(0.0, translateY);
+
+    return Padding(
+      padding: padding,
+      child: Center(
+        child: Transform(
+          transform: m,
+          alignment: delta < 0 ? Alignment.bottomCenter : Alignment.topCenter,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── DOT INDICATOR ───────────────────────────────────────────────────────────
+
+class _DotIndicator extends StatelessWidget {
+  const _DotIndicator({required this.count, required this.page});
+  final int count;
+  final double page;
+
+  static const int _dotThreshold = 5;
+  static const double _trackH = 48.0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (count <= _dotThreshold) {
+      // Individual animated dots
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(count, (i) {
+          final double distance = (page - i).abs().clamp(0.0, 1.0);
+          final double size = lerpDouble(10, 6, distance)!;
+          final double opacity = lerpDouble(1.0, 0.25, distance)!;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            width: size,
+            height: size,
+            margin: const EdgeInsets.symmetric(vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C1C1E).withValues(alpha: opacity),
+              shape: BoxShape.circle,
+            ),
+          );
+        }),
+      );
+    }
+
+    // Scrollbar pill for many items
+    final double pillH = (_trackH / count).clamp(6.0, _trackH * 0.5);
+    final double travel = _trackH - pillH;
+    final double offset = (page / (count - 1)).clamp(0.0, 1.0) * travel;
+
+    return SizedBox(
+      width: 4,
+      height: _trackH,
+      child: Stack(
+        children: [
+          // Track
+          Container(
+            width: 4,
+            height: _trackH,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C1C1E).withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Pill
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            top: offset,
+            child: Container(
+              width: 4,
+              height: pillH,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1C1C1E).withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── BACKDROP ────────────────────────────────────────────────────────────────
 
 class _WalletBackdrop extends StatefulWidget {
-  const _WalletBackdrop();
+  const _WalletBackdrop({this.tabIndex = 0});
+
+  final int tabIndex;
 
   @override
   State<_WalletBackdrop> createState() => _WalletBackdropState();
@@ -500,7 +733,7 @@ class _WalletBackdropState extends State<_WalletBackdrop>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 14),
+      duration: const Duration(seconds: 22),
     )..repeat();
   }
 
@@ -514,14 +747,16 @@ class _WalletBackdropState extends State<_WalletBackdrop>
   Widget build(BuildContext context) {
     return SizedBox.expand(
       child: DecoratedBox(
-        decoration: const BoxDecoration(color: Color(0xFFF9FAFB)),
-        child: AnimatedBuilder(
-          animation: _ctrl,
-          builder: (context, _) {
-            return CustomPaint(
-              painter: _AppleCardGradientPainter(_ctrl.value),
-            );
-          },
+        decoration: const BoxDecoration(color: Color(0xFFF2F2F7)),
+        child: RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _ctrl,
+            builder: (context, _) {
+              return CustomPaint(
+                painter: _AppleCardGradientPainter(_ctrl.value),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -545,10 +780,10 @@ class _AppleCardGradientPainter extends CustomPainter {
       canvas.drawCircle(Offset(cx, cy), radius, paint);
     }
 
-    // Soft pink/orange orb
+    // Soft amber orb
     final double t1 = progress * 2 * math.pi;
     drawOrb(
-      const Color(0xFFFFB347).withValues(alpha: 0.45),
+      const Color(0xFFFFB347).withValues(alpha: 0.13),
       w * 0.5 + math.cos(t1) * w * 0.35,
       h * 0.3 + math.sin(t1) * h * 0.15,
       w * 0.9,
@@ -557,7 +792,7 @@ class _AppleCardGradientPainter extends CustomPainter {
     // Soft purple orb
     final double t2 = progress * 2 * math.pi + (math.pi * 0.66);
     drawOrb(
-      const Color(0xFFCBA1F7).withValues(alpha: 0.35),
+      const Color(0xFFCBA1F7).withValues(alpha: 0.10),
       w * 0.3 + math.cos(t2) * w * 0.45,
       h * 0.6 + math.sin(t2) * h * 0.25,
       w * 1.0,
@@ -566,7 +801,7 @@ class _AppleCardGradientPainter extends CustomPainter {
     // Soft blue orb
     final double t3 = progress * 2 * math.pi + (math.pi * 1.33);
     drawOrb(
-      const Color(0xFF81D4FA).withValues(alpha: 0.45),
+      const Color(0xFF81D4FA).withValues(alpha: 0.13),
       w * 0.7 + math.cos(t3) * w * 0.3,
       h * 0.5 + math.sin(t3) * h * 0.35,
       w * 0.9,
@@ -603,46 +838,27 @@ class _GlassIconButtonState extends State<_GlassIconButton> {
       onTapUp: (_) => setState(() => _pressed = false),
       onTap: widget.onTap,
       child: AnimatedScale(
-        duration: const Duration(milliseconds: 160),
+        duration: const Duration(milliseconds: 120),
         curve: Curves.easeOutCubic,
-        scale: _pressed ? 0.90 : 1.0,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(17),
+        scale: _pressed ? 0.96 : 1.0,
+        child: ClipOval(
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Container(
-              width: 46,
-              height: 46,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.60),
                 shape: BoxShape.circle,
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(23),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        width: 0.5,
-                      ),
-                    ),
-                    child: Icon(
-                      widget.icon,
-                      color: const Color(0xFF1C1C1E).withValues(alpha: 0.85),
-                      size: 22,
-                    ),
-                  ),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.75),
+                  width: 0.5,
                 ),
+              ),
+              child: Icon(
+                widget.icon,
+                color: const Color(0xFF1C1C1E).withValues(alpha: 0.80),
+                size: 20,
               ),
             ),
           ),
@@ -701,24 +917,24 @@ class _AddFabState extends State<_AddFab> with SingleTickerProviderStateMixin {
       },
       onTap: widget.onTap,
       child: AnimatedScale(
-        duration: const Duration(milliseconds: 160),
+        duration: const Duration(milliseconds: 120),
         curve: Curves.easeOutCubic,
-        scale: _pressed ? 0.92 : 1.0,
+        scale: _pressed ? 0.96 : 1.0,
         child: Container(
-          width: 64,
-          height: 64,
+          width: 52,
+          height: 52,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             boxShadow: <BoxShadow>[
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(32),
+            borderRadius: BorderRadius.circular(26),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: Container(
@@ -734,7 +950,7 @@ class _AddFabState extends State<_AddFab> with SingleTickerProviderStateMixin {
                   turns: Tween<double>(begin: 0, end: 0.125).animate(_rotateAnim),
                   child: const Icon(
                     Icons.add_rounded,
-                    size: 32,
+                    size: 26,
                     color: Color(0xFF1C1C1E),
                   ),
                 ),

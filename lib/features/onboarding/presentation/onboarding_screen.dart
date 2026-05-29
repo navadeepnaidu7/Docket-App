@@ -89,20 +89,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(
-        transitionDuration: const Duration(milliseconds: 760),
-        reverseTransitionDuration: const Duration(milliseconds: 420),
+        transitionDuration: const Duration(milliseconds: 400),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
         pageBuilder: (_, _, _) => const DashboardScreen(),
         transitionsBuilder: (_, Animation<double> animation, _, Widget child) {
-          final Animation<double> curved = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-          );
           return FadeTransition(
-            opacity: curved,
-            child: ScaleTransition(
-              scale: Tween<double>(begin: 0.98, end: 1).animate(curved),
-              child: child,
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutQuint,
             ),
+            child: child,
           );
         },
       ),
