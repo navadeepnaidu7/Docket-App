@@ -189,7 +189,10 @@ class _DotIndicator extends StatelessWidget {
             height: size,
             margin: const EdgeInsets.symmetric(vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFF1C1C1E).withValues(alpha: opacity),
+              color: (Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : const Color(0xFF1C1C1E))
+                  .withValues(alpha: opacity),
               shape: BoxShape.circle,
             ),
           );
@@ -200,6 +203,9 @@ class _DotIndicator extends StatelessWidget {
     final double pillH = (_trackH / count).clamp(6.0, _trackH * 0.5);
     final double travel = _trackH - pillH;
     final double offset = (page / (count - 1)).clamp(0.0, 1.0) * travel;
+    final Color trackColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : const Color(0xFF1C1C1E);
 
     return SizedBox(
       width: 4,
@@ -210,7 +216,7 @@ class _DotIndicator extends StatelessWidget {
             width: 4,
             height: _trackH,
             decoration: BoxDecoration(
-              color: const Color(0xFF1C1C1E).withValues(alpha: 0.10),
+              color: trackColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -222,7 +228,7 @@ class _DotIndicator extends StatelessWidget {
               width: 4,
               height: pillH,
               decoration: BoxDecoration(
-                color: const Color(0xFF1C1C1E).withValues(alpha: 0.55),
+                color: trackColor.withValues(alpha: 0.60),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
