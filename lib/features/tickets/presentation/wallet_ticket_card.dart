@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 // ── Data model ────────────────────────────────────────────────────────────────
 
@@ -403,8 +404,8 @@ class _CardHeader extends StatelessWidget {
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 42,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -2,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -2.5,
                       height: 1,
                     ),
                   ),
@@ -479,8 +480,8 @@ class _CardHeader extends StatelessWidget {
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 42,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -2,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -2.5,
                       height: 1,
                     ),
                   ),

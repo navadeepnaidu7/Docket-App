@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -266,55 +267,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       // ── Header ──────────────────────────────────────────
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: <Widget>[
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    () {
-                                      final hour = DateTime.now().hour;
-                                      if (hour < 12) return 'Good morning';
-                                      if (hour < 17) return 'Good afternoon';
-                                      return 'Good evening';
-                                    }(),
-                                    style: TextStyle(
-                                      color: Theme.of(context).brightness == Brightness.dark
-                                          ? Colors.white.withValues(alpha: 0.45)
-                                          : const Color(0xFF8E8E93),
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      letterSpacing: -0.1,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 1),
-                                  Text(
-                                    currentName.isEmpty
-                                        ? 'Traveller'
-                                        : currentName.split(' ').first,
-                                    style: TextStyle(
-                                      color: Theme.of(context).brightness == Brightness.dark
-                                          ? const Color(0xFFF0F4FF)
-                                          : const Color(0xFF1C1C1E),
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: -1.2,
-                                      height: 1.1,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  _NextTripChip(tickets: mockTickets),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _AvatarButton(
-                              name: currentName,
-                              onTap: _showSettingsSheet,
-                            ),
-                          ],
+                        child: _DashboardHeader(
+                          name: currentName,
+                          tickets: mockTickets,
+                          onAvatarTap: _showSettingsSheet,
+                          onTripTap: () => _tabCtrl.animateTo(1),
                         ),
                       ),
 
@@ -681,12 +638,12 @@ class _PillTabBarState extends State<_PillTabBar> {
                     padding: const EdgeInsets.all(3),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1C1C1E),
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(19),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.12),
-                            blurRadius: 6,
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.35),
+                            blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
                         ],
@@ -1064,15 +1021,15 @@ class _AppleCardGradientPainter extends CustomPainter {
   final double progress;
   final double colorT; // 0 = Docs (cool), 1 = Tickets (warm)
 
-  // Docs palette — cool blue/indigo
-  static const _d1 = Color(0xFF5B8DEF); // blue
-  static const _d2 = Color(0xFF9B7FE8); // indigo
-  static const _d3 = Color(0xFF64B5F6); // sky
+  // Docs palette — rich indigo/violet/teal (matches new navy theme)
+  static const _d1 = Color(0xFF3D6FD4); // rich indigo
+  static const _d2 = Color(0xFF7C5CBF); // deep violet
+  static const _d3 = Color(0xFF2A9D8F); // teal
 
-  // Tickets palette — warm amber/coral
-  static const _t1 = Color(0xFFFFB347); // amber
-  static const _t2 = Color(0xFFFF6B6B); // coral
-  static const _t3 = Color(0xFFFFD166); // gold
+  // Tickets palette — warm amber/coral/gold
+  static const _t1 = Color(0xFFE8A020); // deep amber
+  static const _t2 = Color(0xFFE05C5C); // warm coral
+  static const _t3 = Color(0xFFD4A853); // gold
 
   Color _lerp(Color a, Color b) => Color.lerp(a, b, colorT)!;
 
@@ -1091,7 +1048,7 @@ class _AppleCardGradientPainter extends CustomPainter {
 
     final double t1 = progress * 2 * math.pi;
     drawOrb(
-      _lerp(_d1, _t1).withValues(alpha: 0.13),
+      _lerp(_d1, _t1).withValues(alpha: 0.18),
       w * 0.5 + math.cos(t1) * w * 0.35,
       h * 0.3 + math.sin(t1) * h * 0.15,
       w * 0.9,
@@ -1099,7 +1056,7 @@ class _AppleCardGradientPainter extends CustomPainter {
 
     final double t2 = progress * 2 * math.pi + (math.pi * 0.66);
     drawOrb(
-      _lerp(_d2, _t2).withValues(alpha: 0.10),
+      _lerp(_d2, _t2).withValues(alpha: 0.14),
       w * 0.3 + math.cos(t2) * w * 0.45,
       h * 0.6 + math.sin(t2) * h * 0.25,
       w * 1.0,
@@ -1107,7 +1064,7 @@ class _AppleCardGradientPainter extends CustomPainter {
 
     final double t3 = progress * 2 * math.pi + (math.pi * 1.33);
     drawOrb(
-      _lerp(_d3, _t3).withValues(alpha: 0.13),
+      _lerp(_d3, _t3).withValues(alpha: 0.16),
       w * 0.7 + math.cos(t3) * w * 0.3,
       h * 0.5 + math.sin(t3) * h * 0.35,
       w * 0.9,
@@ -1171,6 +1128,143 @@ class _GlassIconButtonState extends State<_GlassIconButton> {
       ),
     );
   }
+}
+
+// ─── DASHBOARD HEADER ────────────────────────────────────────────────────────
+
+class _DashboardHeader extends StatefulWidget {
+  const _DashboardHeader({required this.name, required this.tickets, required this.onAvatarTap, required this.onTripTap});
+  final String name;
+  final List<MockTicket> tickets;
+  final VoidCallback onAvatarTap;
+  final VoidCallback onTripTap;
+
+  @override
+  State<_DashboardHeader> createState() => _DashboardHeaderState();
+}
+
+class _DashboardHeaderState extends State<_DashboardHeader> {
+  bool _showTrip = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted && _nextTrip != null) setState(() => _showTrip = !_showTrip);
+    });
+  }
+
+  @override
+  void dispose() { _timer?.cancel(); super.dispose(); }
+
+  MockTicket? get _nextTrip =>
+      widget.tickets.where((t) => t.status == TicketStatus.active).firstOrNull;
+
+  String get _greeting {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  String _daysLabel(MockTicket t) {
+    try {
+      final parts = t.date.split(' ');
+      if (parts.length != 3) return '';
+      const months = {'Jan':1,'Feb':2,'Mar':3,'Apr':4,'May':5,'Jun':6,'Jul':7,'Aug':8,'Sep':9,'Oct':10,'Nov':11,'Dec':12};
+      final d = DateTime(int.parse(parts[2]), months[parts[1]] ?? 1, int.parse(parts[0]));
+      final diff = d.difference(DateTime.now()).inDays;
+      if (diff <= 0) return 'Today';
+      if (diff == 1) return 'Tomorrow';
+      return 'In $diff days';
+    } catch (_) { return ''; }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color ink = isDark ? const Color(0xFFE8EEFF) : const Color(0xFF0D1B2A);
+    final Color muted = isDark ? Colors.white.withValues(alpha: 0.38) : const Color(0xFF6B7280);
+    final trip = _nextTrip;
+    final firstName = widget.name.isEmpty ? 'Traveller' : widget.name.split(' ').first;
+    final showTrip = _showTrip && trip != null;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 460),
+            switchInCurve: Curves.easeOutQuint,
+            switchOutCurve: Curves.easeInCubic,
+            layoutBuilder: (current, previous) => Stack(
+              alignment: Alignment.topLeft,
+              children: [...previous, if (current != null) current],
+            ),
+            transitionBuilder: (child, anim) {
+              // Outgoing: slide up + fade out. Incoming: slide up from below + fade in.
+              final isIncoming = child.key == (showTrip ? const ValueKey('t') : const ValueKey('g'));
+              return FadeTransition(
+                opacity: anim,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: Offset(0, isIncoming ? 0.15 : -0.15),
+                    end: Offset.zero,
+                  ).animate(anim),
+                  child: child,
+                ),
+              );
+            },
+            child: showTrip
+                ? _TripContent(key: const ValueKey('t'), trip: trip!, ink: ink, muted: muted, onTap: widget.onTripTap)
+                : _GreetingContent(key: const ValueKey('g'), greeting: _greeting, name: firstName, ink: ink, muted: muted),
+          ),
+        ),
+        const SizedBox(width: 12),
+        _AvatarButton(name: widget.name, onTap: widget.onAvatarTap),
+      ],
+    );
+  }
+}
+
+class _GreetingContent extends StatelessWidget {
+  const _GreetingContent({super.key, required this.greeting, required this.name, required this.ink, required this.muted});
+  final String greeting; final String name; final Color ink; final Color muted;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text('$greeting,', style: TextStyle(color: muted, fontSize: 14, fontWeight: FontWeight.w300, letterSpacing: 0.1)),
+      const SizedBox(height: 1),
+      Text(name, style: TextStyle(color: ink, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1.2, height: 1.1)),
+    ],
+  );
+}
+
+class _TripContent extends StatelessWidget {
+  const _TripContent({super.key, required this.trip, required this.ink, required this.muted, required this.onTap});
+  final MockTicket trip; final Color ink; final Color muted; final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          Text(trip.fromCode, style: TextStyle(color: ink, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1.2, height: 1.1)),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Icon(Icons.arrow_forward_rounded, size: 16, color: muted)),
+          Text(trip.toCode, style: TextStyle(color: ink, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1.2, height: 1.1)),
+        ]),
+        const SizedBox(height: 2),
+        Text('${trip.date}  ·  ${trip.departTime} – ${trip.arriveTime}', style: TextStyle(color: muted, fontSize: 12)),
+      ],
+    ),
+  );
 }
 
 // ─── NEXT TRIP CHIP ───────────────────────────────────────────────────────────

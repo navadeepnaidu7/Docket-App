@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/sound/sound_service.dart';
 
@@ -158,205 +159,85 @@ class _CardFront extends StatelessWidget {
   final IdDocument document;
   final double tiltY;
 
+  String _formatDate(String d) {
+    if (d.contains('-')) {
+      final p = d.split('-');
+      if (p.length == 3) return '${p[2]}/${p[1]}/${p[0]}';
+    }
+    return d;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isPan = document.type == IdDocumentType.pan;
-    final colors = isPan
-        ? const [Color(0xFF1C3252), Color(0xFF0D1F36)]
-        : const [Color(0xFF003F87), Color(0xFF002255)];
-    final accent =
-        isPan ? const Color(0xFFC6973F) : const Color(0xFFFF6B00);
+    if (!isPan) return _AadhaarFront(document: document, tiltY: tiltY);
 
+    // PAN — dark navy
+    const accent = Color(0xFFC6973F);
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: colors),
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1C3252), Color(0xFF0D1F36)]),
         boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.30),
-              blurRadius: 32,
-              spreadRadius: -4,
-              offset: const Offset(0, 16)),
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 12,
-              offset: const Offset(0, 6)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.30), blurRadius: 32, spreadRadius: -4, offset: const Offset(0, 16)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 12, offset: const Offset(0, 6)),
         ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
-        child: Stack(
-          children: [
-            // Security pattern
-            Positioned.fill(
-                child: CustomPaint(
-                    painter: _SecurityPainter(
-                        isPan: isPan,
-                        color: Colors.white.withValues(alpha: 0.04)))),
-            // Shimmer
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: const [
-                      Colors.transparent,
-                      Color(0x14FFFFFF),
-                      Colors.transparent,
-                    ],
-                    transform: _SlideGradient(tiltY * 800),
-                  ),
-                ),
-              ),
-            ),
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header row
-                  Row(
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          isPan
-                              ? Icons.account_balance_rounded
-                              : Icons.fingerprint_rounded,
-                          color: accent,
-                          size: 18,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isPan
-                                ? 'INCOME TAX INDIA'
-                                : 'UNIQUE IDENTIFICATION AUTHORITY',
-                            style: TextStyle(
-                                color: accent,
-                                fontSize: 7.5,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.0),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            isPan ? 'PERMANENT ACCOUNT NUMBER' : 'आधार  AADHAAR',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.2),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  // Document number
-                  Text(
-                    document.documentNumber.isEmpty
-                        ? (isPan ? 'XXXXX0000X' : 'XXXX XXXX XXXX')
-                        : document.documentNumber,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: isPan ? 22 : 26,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: isPan ? 3.0 : 4.0,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Name row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'NAME',
-                              style: TextStyle(
-                                  color: accent.withValues(alpha: 0.8),
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.5),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              document.holderName.isEmpty
-                                  ? 'HOLDER NAME'
-                                  : document.holderName.toUpperCase(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (!isPan && document.dateOfBirth.isNotEmpty) ...[
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text('DOB',
-                                style: TextStyle(
-                                    color: accent.withValues(alpha: 0.8),
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1.5)),
-                            const SizedBox(height: 3),
-                            Text(
-                              _formatDate(document.dateOfBirth),
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Tap to view details',
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.28),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500),
-                      ),
-                      Icon(Icons.credit_card_rounded,
-                          color: Colors.white.withValues(alpha: 0.28), size: 14),
-                    ],
-                  ),
+        child: Stack(children: [
+          Positioned.fill(child: CustomPaint(painter: _SecurityPainter(isPan: true, color: Colors.white.withValues(alpha: 0.04)))),
+          Positioned.fill(child: Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: const [Colors.transparent, Color(0x14FFFFFF), Colors.transparent], transform: _SlideGradient(tiltY * 800))))),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Container(width: 32, height: 32, decoration: BoxDecoration(color: accent.withValues(alpha: 0.2), shape: BoxShape.circle), child: const Icon(Icons.account_balance_rounded, color: accent, size: 18)),
+                const SizedBox(width: 10),
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('INCOME TAX INDIA', style: TextStyle(color: accent, fontSize: 7.5, fontWeight: FontWeight.w800, letterSpacing: 1.0)),
+                  const Text('PERMANENT ACCOUNT NUMBER', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+                ]),
+              ]),
+              const Spacer(),
+              Text(document.documentNumber.isEmpty ? 'XXXXX0000X' : document.documentNumber,
+                  style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: 3.0, fontFamily: 'RobotoMono')),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('NAME', style: TextStyle(color: accent.withValues(alpha: 0.8), fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
+                  const SizedBox(height: 3),
+                  Text(document.holderName.isEmpty ? 'HOLDER NAME' : document.holderName.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                ])),
+                if (document.dateOfBirth.isNotEmpty) ...[
+                  const SizedBox(width: 12),
+                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    Text('DOB', style: TextStyle(color: accent.withValues(alpha: 0.8), fontSize: 8, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
+                    const SizedBox(height: 3),
+                    Text(_formatDate(document.dateOfBirth), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                  ]),
                 ],
-              ),
-            ),
-          ],
-        ),
+              ]),
+              const SizedBox(height: 6),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text('Tap to view details', style: TextStyle(color: Colors.white.withValues(alpha: 0.28), fontSize: 10)),
+                Icon(Icons.credit_card_rounded, color: Colors.white.withValues(alpha: 0.28), size: 14),
+              ]),
+            ]),
+          ),
+        ]),
       ),
     );
   }
+}
+
+// ── Aadhaar front — light card matching UIDAI design ─────────────────────────
+
+class _AadhaarFront extends StatelessWidget {
+  const _AadhaarFront({required this.document, required this.tiltY});
+  final IdDocument document;
+  final double tiltY;
 
   String _formatDate(String d) {
     if (d.contains('-')) {
@@ -365,9 +246,129 @@ class _CardFront extends StatelessWidget {
     }
     return d;
   }
-}
 
-// ── Back ──────────────────────────────────────────────────────────────────────
+  String get _formattedNumber {
+    final n = document.documentNumber.replaceAll(' ', '');
+    if (n.length == 12) return '${n.substring(0,4)} ${n.substring(4,8)} ${n.substring(8,12)}';
+    return document.documentNumber.isEmpty ? 'XXXX XXXX XXXX' : document.documentNumber;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const Color bg       = Color(0xFFFAF8F5);
+    const Color ink      = Color(0xFF0D1B2A);
+    const Color uidaiRed = Color(0xFFD32F2F);
+    const Color subInk   = Color(0xFF4A5568);
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: bg,
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.14), blurRadius: 28, spreadRadius: -4, offset: const Offset(0, 12)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(children: [
+          // Fingerprint watermark
+          Positioned(
+            right: -20, bottom: -20,
+            child: Opacity(
+              opacity: 0.045,
+              child: Icon(Icons.fingerprint_rounded, size: 200, color: uidaiRed),
+            ),
+          ),
+          // Shimmer tilt
+          Positioned.fill(child: Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.transparent, Colors.white.withValues(alpha: 0.18), Colors.transparent], transform: _SlideGradient(tiltY * 800))))),
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+              // ── Header ──────────────────────────────────────────────────
+              Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                // Emblem placeholder (fingerprint icon styled as emblem)
+                Container(
+                  width: 34, height: 34,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: const Color(0xFFCBD5E0), width: 0.5),
+                    borderRadius: BorderRadius.circular(4),
+                    color: Colors.white,
+                  ),
+                  child: const Icon(Icons.account_balance_rounded, size: 20, color: Color(0xFF2D3748)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text('UNIQUE IDENTIFICATION AUTHORITY OF INDIA',
+                        style: TextStyle(color: uidaiRed, fontSize: 7, fontWeight: FontWeight.w800, letterSpacing: 0.4)),
+                    const SizedBox(height: 1),
+                    Text('भारत सरकार   GOVERNMENT OF INDIA',
+                        style: TextStyle(color: subInk, fontSize: 7.5, fontWeight: FontWeight.w500, letterSpacing: 0.2)),
+                  ]),
+                ),
+                // Aadhaar logo area
+                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: uidaiRed.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: uidaiRed.withValues(alpha: 0.20), width: 0.5),
+                    ),
+                    child: const Text('AADHAAR', style: TextStyle(color: uidaiRed, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                  ),
+                ]),
+              ]),
+
+              const SizedBox(height: 16),
+
+              // ── Aadhaar number — hero ────────────────────────────────────
+              Text(
+                _formattedNumber,
+                style: GoogleFonts.robotoMono(
+                  color: ink,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 2.0,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // ── Name ────────────────────────────────────────────────────
+              Text(
+                document.holderName.isEmpty ? 'Holder Name' : document.holderName,
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: ink, fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: -0.2),
+              ),
+
+              const SizedBox(height: 4),
+
+              // ── DOB · Gender ─────────────────────────────────────────────
+              Row(children: [
+                if (document.dateOfBirth.isNotEmpty) ...[
+                  Text(_formatDate(document.dateOfBirth), style: TextStyle(color: subInk, fontSize: 13, fontWeight: FontWeight.w400)),
+                  if (document.gender.isNotEmpty) ...[
+                    Text('  ·  ', style: TextStyle(color: subInk.withValues(alpha: 0.5), fontSize: 13)),
+                    Text(document.gender, style: TextStyle(color: subInk, fontSize: 13, fontWeight: FontWeight.w400)),
+                  ],
+                ],
+              ]),
+
+              const Spacer(),
+
+              // ── Footer ───────────────────────────────────────────────────
+              Text('Tap to view details', style: TextStyle(color: ink.withValues(alpha: 0.25), fontSize: 10, fontWeight: FontWeight.w400)),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+}
 
 class _CardBack extends StatelessWidget {
   const _CardBack({required this.document});

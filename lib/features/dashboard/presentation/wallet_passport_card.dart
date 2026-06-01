@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/sound/sound_service.dart';
 
@@ -381,45 +382,25 @@ class _CardFront extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
                             Text(
-                              'NAME',
-                              style: TextStyle(
-                                color: const Color(0xFFD4A843).withValues(alpha: 0.95),
-                                fontSize: 9.0,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 2.2,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
                               name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 26,
+                                fontSize: 20,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0.5,
                               ),
                             ),
-                            const SizedBox(height: 22),
-                            Text(
-                              'PASSPORT NO.',
-                              style: TextStyle(
-                                color: const Color(0xFFD4A843).withValues(alpha: 0.95),
-                                fontSize: 9.0,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 2.2,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 8),
                             Text(
                               number,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.60),
+                                fontSize: 17,
+                                fontWeight: FontWeight.w500,
                                 letterSpacing: 2.5,
-                                fontFamily: 'monospace',
+                                fontFamily: 'RobotoMono',
                               ),
                             ),
                           ],
@@ -752,11 +733,10 @@ class _CardBack extends StatelessWidget {
                                 children: [
                                   Text(
                                     passNum,
-                                    style: const TextStyle(
+                                    style: GoogleFonts.robotoMono(
                                       color: Colors.white,
                                       fontSize: 22,
                                       fontWeight: FontWeight.w800,
-                                      fontFamily: 'monospace',
                                       letterSpacing: 3.0,
                                     ),
                                   ),
@@ -880,10 +860,9 @@ class _CardBack extends StatelessWidget {
                           mrz,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: GoogleFonts.robotoMono(
                             color: Colors.white,
                             fontSize: 11.5,
-                            fontFamily: 'monospace',
                             fontWeight: FontWeight.w600,
                             letterSpacing: 1.4,
                             height: 1.8,
