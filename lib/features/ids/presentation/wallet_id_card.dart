@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/sound/sound_service.dart';
@@ -30,11 +29,21 @@ class _WalletIdCardState extends State<WalletIdCard>
   late final AnimationController _flipCtrl;
   late final Animation<double> _flipAnim;
   bool _showBack = false;
-
-  double _tiltX = 0;
-  double _tiltY = 0;
-  bool _touching = false;
   bool _dragging = false;
+
+  // ValueNotifiers for tilt — updating them does NOT call setState, so the
+  // card content widgets are never rebuilt during drag. Only the tiny tilt
+  // AnimatedBuilder layer listens and repaints.
+  final _tiltX = ValueNotifier<double>(0);
+  final _tiltY = ValueNotifier<double>(0);
+
+  // Combined notifier for the tilt AnimatedBuilder to listen to both axes.
+  late final _tiltNotifier = Listenable.merge([_tiltX, _tiltY]);
+
+  // Stable card faces — built once in initState so their RepaintBoundary
+  // raster caches are never evicted by a rebuild of the parent.
+  late final Widget _frontCard;
+  late final Widget _backCard;
 
   @override
   void initState() {
@@ -43,11 +52,20 @@ class _WalletIdCardState extends State<WalletIdCard>
         vsync: this, duration: const Duration(milliseconds: 500));
     _flipAnim =
         CurvedAnimation(parent: _flipCtrl, curve: Curves.easeInOutCubic);
+
+    _frontCard = RepaintBoundary(
+      child: _CardFront(document: widget.document),
+    );
+    _backCard = RepaintBoundary(
+      child: _CardBack(document: widget.document),
+    );
   }
 
   @override
   void dispose() {
     _flipCtrl.dispose();
+    _tiltX.dispose();
+    _tiltY.dispose();
     super.dispose();
   }
 
@@ -63,42 +81,37 @@ class _WalletIdCardState extends State<WalletIdCard>
     _showBack = !_showBack;
   }
 
-  void _onPanStart(DragStartDetails _) =>
-      setState(() { _touching = true; _dragging = false; });
+  void _onPanStart(DragStartDetails _) {
+    _dragging = false;
+  }
 
   void _onPanUpdate(DragUpdateDetails d) {
     final box = context.findRenderObject() as RenderBox?;
     if (box == null) return;
     final size = box.size;
-    setState(() {
-      _dragging = true;
-      _tiltX = ((d.localPosition.dy / size.height) - 0.5).clamp(-0.5, 0.5);
-      _tiltY = -((d.localPosition.dx / size.width) - 0.5).clamp(-0.5, 0.5);
-    });
+    _dragging = true;
+    // Write directly to notifiers — zero setState, zero widget rebuild.
+    _tiltX.value = ((d.localPosition.dy / size.height) - 0.5).clamp(-0.5, 0.5);
+    _tiltY.value = -((d.localPosition.dx / size.width) - 0.5).clamp(-0.5, 0.5);
   }
 
   void _onPanEnd(DragEndDetails _) {
-    setState(() { _touching = false; _tiltX = 0; _tiltY = 0; });
+    _tiltX.value = 0;
+    _tiltY.value = 0;
     Future<void>.delayed(const Duration(milliseconds: 50), () {
-      if (mounted) setState(() => _dragging = false);
+      _dragging = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // Credit-card ratio: width fills parent, height = width / 1.586
+    // Credit-card ratio: width fills parent, height = width / 1.586.
+    // build() is now only called on flip (AnimationController tick) —
+    // tilt no longer triggers setState at all.
     return LayoutBuilder(
       builder: (context, constraints) {
         final cardW = constraints.maxWidth;
         final cardH = cardW / 1.586;
-
-        // Instantiate card faces outside AnimatedBuilder so they are cached and not rebuilt on every flip frame
-        final Widget frontCard = RepaintBoundary(
-          child: _CardFront(document: widget.document, tiltY: _tiltY),
-        );
-        final Widget backCard = RepaintBoundary(
-          child: _CardBack(document: widget.document),
-        );
 
         return SizedBox(
           width: cardW,
@@ -112,44 +125,91 @@ class _WalletIdCardState extends State<WalletIdCard>
             onPanStart: _onPanStart,
             onPanUpdate: _onPanUpdate,
             onPanEnd: _onPanEnd,
+            // ── Outer AnimatedBuilder: driven by flip animation only ──────────
             child: AnimatedBuilder(
               animation: _flipAnim,
-              builder: (context, child) {
+              builder: (context, _) {
                 final angle = _flipAnim.value * math.pi;
                 final isBack = angle > math.pi / 2;
                 final scale = 1.0 - 0.08 * math.sin(_flipAnim.value * math.pi);
+
+                // Card faces: both kept alive in the tree so RepaintBoundary
+                // caches survive. SizedBox.expand ensures both fill the slot
+                // regardless of intrinsic size (fixes Aadhaar back shrink).
+                final facesStack = Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    SizedBox.expand(
+                      child: Visibility(
+                        visible: isBack,
+                        maintainState: true,
+                        maintainAnimation: true,
+                        maintainSize: true,
+                        child: Transform(
+                          alignment: Alignment.center,
+                          transform: Matrix4.rotationY(math.pi),
+                          child: _backCard,
+                        ),
+                      ),
+                    ),
+                    SizedBox.expand(
+                      child: Visibility(
+                        visible: !isBack,
+                        maintainState: true,
+                        maintainAnimation: true,
+                        maintainSize: true,
+                        child: _frontCard,
+                      ),
+                    ),
+                  ],
+                );
+
                 return Transform(
                   alignment: Alignment.center,
                   transform: Matrix4.identity()
                     ..setEntry(3, 2, 0.001)
                     ..scaleByDouble(scale, scale, 1.0, 1.0)
                     ..rotateY(angle),
-                  child: AnimatedContainer(
-                    duration: _touching
-                        ? const Duration(milliseconds: 60)
-                        : const Duration(milliseconds: 500),
-                    curve: _touching ? Curves.linear : Curves.easeOutCubic,
-                    transformAlignment: Alignment.center,
-                    transform: Matrix4.identity()
-                      ..rotateX(_tiltX * 0.14)
-                      ..rotateY(_tiltY * 0.14),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Opacity(
-                          opacity: isBack ? 1.0 : 0.0,
-                          child: Transform(
-                            alignment: Alignment.center,
-                            transform: Matrix4.rotationY(math.pi),
-                            child: backCard,
-                          ),
+                  // ── Inner AnimatedBuilder: driven by tilt notifiers only ───
+                  // Only this Transform + shimmer overlay rebuilds on drag.
+                  child: AnimatedBuilder(
+                    animation: _tiltNotifier,
+                    builder: (context, child) {
+                      return Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.identity()
+                          ..setEntry(3, 2, 0.001)
+                          ..rotateX(_tiltX.value * 0.14)
+                          ..rotateY(_tiltY.value * 0.14),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            child!, // card faces — never rebuilt on tilt
+                            // Shimmer overlay — the ONLY thing that repaints
+                            Positioned.fill(
+                              child: IgnorePointer(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(24),
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: const [
+                                        Colors.transparent,
+                                        Color(0x14FFFFFF),
+                                        Colors.transparent,
+                                      ],
+                                      transform: _SlideGradient(_tiltY.value * 800),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        Opacity(
-                          opacity: isBack ? 0.0 : 1.0,
-                          child: frontCard,
-                        ),
-                      ],
-                    ),
+                      );
+                    },
+                    child: facesStack,
                   ),
                 );
               },
@@ -164,9 +224,8 @@ class _WalletIdCardState extends State<WalletIdCard>
 // ── Front ─────────────────────────────────────────────────────────────────────
 
 class _CardFront extends StatelessWidget {
-  const _CardFront({required this.document, required this.tiltY});
+  const _CardFront({required this.document});
   final IdDocument document;
-  final double tiltY;
 
   String _formatDate(String d) {
     if (d.contains('-')) {
@@ -179,7 +238,7 @@ class _CardFront extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPan = document.type == IdDocumentType.pan;
-    if (!isPan) return _AadhaarFront(document: document, tiltY: tiltY);
+    if (!isPan) return _AadhaarFront(document: document);
 
     final String docNum = document.documentNumber.isEmpty
         ? 'ABCDE1234F'
@@ -231,35 +290,14 @@ class _CardFront extends StatelessWidget {
                 child: Opacity(
                   opacity: 0.09,
                   child: RepaintBoundary(
-                    child: SvgPicture.asset(
-                      'assets/identity/Emblem_of_India.svg',
-                      height: 120,
-                      colorFilter: const ColorFilter.mode(
-                        primaryText,
-                        BlendMode.srcIn,
-                      ),
-                    ),
+                    child: _EmblemPng(size: _EmblemSize.watermark, color: primaryText),
                   ),
                 ),
               ),
             ),
-            // Holographic reflection overlay
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: const [
-                      Colors.transparent,
-                      Color(0x18FFFFFF),
-                      Colors.transparent,
-                    ],
-                    transform: _SlideGradient(tiltY * 800),
-                  ),
-                ),
-              ),
-            ),
+            // Holographic reflection overlay removed from here —
+            // it is now a single shared layer in the parent Stack so that
+            // SVG card content is never invalidated by tilt changes.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
@@ -298,14 +336,7 @@ class _CardFront extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           RepaintBoundary(
-                            child: SvgPicture.asset(
-                              'assets/identity/Emblem_of_India.svg',
-                              height: 34,
-                              colorFilter: const ColorFilter.mode(
-                                primaryText,
-                                BlendMode.srcIn,
-                              ),
-                            ),
+                            child: _EmblemPng(size: _EmblemSize.header, color: primaryText),
                           ),
                           const SizedBox(height: 1),
                           const Text(
@@ -458,13 +489,9 @@ class _CardFront extends StatelessWidget {
                                 ),
                                 child: Center(
                                   child: RepaintBoundary(
-                                    child: SvgPicture.asset(
-                                      'assets/identity/Emblem_of_India.svg',
-                                      height: 28,
-                                      colorFilter: const ColorFilter.mode(
-                                        Color(0xCC0F2C59),
-                                        BlendMode.srcIn,
-                                      ),
+                                    child: _EmblemPng(
+                                      size: _EmblemSize.hologram,
+                                      color: const Color(0xCC0F2C59),
                                     ),
                                   ),
                                 ),
@@ -503,9 +530,8 @@ class _CardFront extends StatelessWidget {
 // ── Aadhaar front — light card matching UIDAI design ─────────────────────────
 
 class _AadhaarFront extends StatelessWidget {
-  const _AadhaarFront({required this.document, required this.tiltY});
+  const _AadhaarFront({required this.document});
   final IdDocument document;
-  final double tiltY;
 
   String _formatDate(String d) {
     if (d.contains('-')) {
@@ -551,8 +577,9 @@ class _AadhaarFront extends StatelessWidget {
               child: Icon(Icons.fingerprint_rounded, size: 200, color: uidaiRed),
             ),
           ),
-          // Shimmer tilt
-          Positioned.fill(child: Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Colors.transparent, Colors.white.withValues(alpha: 0.18), Colors.transparent], transform: _SlideGradient(tiltY * 800))))),
+          // Shimmer tilt overlay removed from here — now a shared layer
+          // in the parent Stack so Aadhaar card content is never repainted
+          // by tilt changes.
 
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
@@ -1120,6 +1147,41 @@ class _SecurityPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _SecurityPainter old) =>
       old.color != color || old.isPan != isPan;
+}
+
+// ── Shared emblem widget ───────────────────────────────────────────────────────
+// Uses pre-rasterized PNGs instead of the 437 KB SVG so there is zero
+// parse cost. ColorFiltered applies the tint at GPU composition time.
+enum _EmblemSize { watermark, header, hologram }
+
+class _EmblemPng extends StatelessWidget {
+  const _EmblemPng({required this.size, required this.color});
+  final _EmblemSize size;
+  final Color color;
+
+  String get _asset {
+    switch (size) {
+      case _EmblemSize.watermark: return 'assets/identity/emblem_120.png';
+      case _EmblemSize.header:    return 'assets/identity/emblem_34.png';
+      case _EmblemSize.hologram:  return 'assets/identity/emblem_28.png';
+    }
+  }
+
+  double get _height {
+    switch (size) {
+      case _EmblemSize.watermark: return 120;
+      case _EmblemSize.header:    return 34;
+      case _EmblemSize.hologram:  return 28;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ColorFiltered(
+      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+      child: Image.asset(_asset, height: _height, fit: BoxFit.contain),
+    );
+  }
 }
 
 class _SlideGradient extends GradientTransform {

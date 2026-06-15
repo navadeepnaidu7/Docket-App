@@ -325,12 +325,12 @@ class _CardFront extends StatelessWidget {
                       SizedBox(
                         width: 32,
                         height: 32,
-                        child: SvgPicture.asset(
-                          'assets/identity/Emblem_of_India.svg',
+                        child: ColorFiltered(
                           colorFilter: const ColorFilter.mode(
                             Color(0xFFD4A843),
                             BlendMode.srcIn,
                           ),
+                          child: Image.asset('assets/identity/emblem_32.png', fit: BoxFit.contain),
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -658,14 +658,12 @@ class _CardBack extends StatelessWidget {
                       padding: const EdgeInsets.only(bottom: 16),
                       child: Row(
                         children: [
-                          SvgPicture.asset(
-                            'assets/identity/Emblem_of_India.svg',
-                            width: 22,
-                            height: 22,
+                          ColorFiltered(
                             colorFilter: const ColorFilter.mode(
                               Color(0xFFD4A843),
                               BlendMode.srcIn,
                             ),
+                            child: Image.asset('assets/identity/emblem_22.png', width: 22, height: 22, fit: BoxFit.contain),
                           ),
                           const SizedBox(width: 8),
                           const Text(
@@ -888,13 +886,16 @@ class _EmblemOval extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: SvgPicture.asset(
-        'assets/identity/Emblem_of_India.svg',
-        width: 140,
-        height: 140,
+      child: ColorFiltered(
         colorFilter: const ColorFilter.mode(
           Color(0xFFD4A843),
           BlendMode.srcIn,
+        ),
+        child: Image.asset(
+          'assets/identity/emblem_140.png',
+          width: 140,
+          height: 140,
+          fit: BoxFit.contain,
         ),
       ),
     );
