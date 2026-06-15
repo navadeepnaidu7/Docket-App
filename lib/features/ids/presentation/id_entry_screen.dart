@@ -10,6 +10,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/motion/entry_reveal.dart';
 import '../../../core/sound/sound_service.dart';
+import '../../../shared/widgets/bounce_tap.dart';
+import '../../../shared/widgets/apple_sheet.dart';
+import '../../../shared/widgets/studio_field.dart';
 import '../application/id_draft_controller.dart';
 import '../application/id_list_provider.dart';
 import '../application/id_scanner_service.dart';
@@ -161,39 +164,26 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
     }
     await showModalBottomSheet<void>(
       context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        height: 300,
-        margin: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(24)),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Select Date',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF1C1C1E))),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF007AFF),
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(50, 30),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                    child: const Text('Done',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 16)),
+      builder: (_) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return AppleSheet(
+          title: 'Select Date',
+          showDragHandle: true,
+          child: SizedBox(
+            height: 200,
+            child: CupertinoTheme(
+              data: CupertinoThemeData(
+                brightness: isDark ? Brightness.dark : Brightness.light,
+                textTheme: CupertinoTextThemeData(
+                  dateTimePickerTextStyle: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                    fontSize: 20,
                   ),
-                ],
+                ),
               ),
-            ),
-            Expanded(
               child: CupertinoDatePicker(
                 mode: CupertinoDatePickerMode.date,
                 initialDateTime: init,
@@ -206,9 +196,9 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
                 },
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -251,12 +241,12 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
                             label: 'Scan $label',
                             onTap: _openScanner),
                         const _OrDivider(),
-                        _StudioField(
+                        StudioField(
                             controller: _nameCtrl,
                             label: 'Full Name',
                             icon: Icons.person_rounded,
                             onChanged: _syncDraft),
-                        _StudioField(
+                        StudioField(
                             controller: _numberCtrl,
                             label: isPan ? 'PAN Number' : 'Aadhaar Number',
                             icon: Icons.badge_rounded,
@@ -264,7 +254,7 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
                             textCapitalization: isPan
                                 ? TextCapitalization.characters
                                 : TextCapitalization.none),
-                        _StudioField(
+                        StudioField(
                             controller: _dobCtrl,
                             label: 'Date of Birth',
                             icon: Icons.cake_rounded,
@@ -272,18 +262,18 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
                             readOnly: true,
                             onTap: () => _selectDate(_dobCtrl)),
                         if (isPan)
-                          _StudioField(
+                          StudioField(
                               controller: _fatherCtrl,
                               label: "Father's Name",
                               icon: Icons.people_rounded,
                               onChanged: _syncDraft),
                         if (!isPan) ...[
-                          _StudioField(
+                          StudioField(
                               controller: _genderCtrl,
                               label: 'Gender',
                               icon: Icons.person_outline_rounded,
                               onChanged: _syncDraft),
-                          _StudioField(
+                          StudioField(
                               controller: _addressCtrl,
                               label: 'Address',
                               icon: Icons.location_on_rounded,
@@ -315,17 +305,65 @@ class _StudioBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const DecoratedBox(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final List<Color> colors = isDark
+        ? const <Color>[
+            Color(0xFF080E1A),
+            Color(0xFF0F1829),
+            Color(0xFF0A0F1D),
+          ]
+        : const <Color>[
+            Color(0xFFEFF4F9),
+            Color(0xFFF8FAFC),
+            Color(0xFFEDE7DD),
+          ];
+
+    final Color lineColor = isDark
+        ? Colors.white.withValues(alpha: 0.04)
+        : const Color(0x1207111F);
+
+    return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFEFF4F9), Color(0xFFF8FAFC), Color(0xFFEDE7DD)],
+          colors: colors,
         ),
       ),
-      child: SizedBox.expand(),
+      child: SizedBox.expand(child: CustomPaint(painter: _StudioPainter(lineColor: lineColor))),
     );
   }
+}
+
+class _StudioPainter extends CustomPainter {
+  const _StudioPainter({required this.lineColor});
+  final Color lineColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = lineColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    for (int i = 0; i < 12; i++) {
+      final double top = 86 + i * 34;
+      final Rect rect = Rect.fromLTWH(
+        18 + i * 3,
+        top,
+        size.width - 36 - i * 6,
+        22,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, const Radius.circular(18)),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _StudioPainter oldDelegate) => oldDelegate.lineColor != lineColor;
 }
 
 // ── Shared widgets ────────────────────────────────────────────────────────────
@@ -336,6 +374,7 @@ class _GlassPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ClipRRect(
       borderRadius: BorderRadius.circular(30),
       child: BackdropFilter(
@@ -343,9 +382,15 @@ class _GlassPanel extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.74),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.white.withValues(alpha: 0.74),
             borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: Colors.white),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.40),
+            ),
           ),
           child: child,
         ),
@@ -361,20 +406,38 @@ class _ScanButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TapScale(
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final Gradient gradient = isDark
+        ? LinearGradient(
+            colors: <Color>[
+              theme.colorScheme.primary.withValues(alpha: 0.9),
+              theme.colorScheme.primary.withValues(alpha: 0.7),
+            ],
+          )
+        : const LinearGradient(
+            colors: <Color>[Color(0xFF1A1A2E), Color(0xFF16213E)],
+          );
+
+    final Color shadowColor = isDark
+        ? theme.colorScheme.primary.withValues(alpha: 0.20)
+        : const Color(0xFF1A1A2E).withValues(alpha: 0.25);
+
+    return BounceTap(
       onTap: onTap,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-              colors: [Color(0xFF1A1A2E), Color(0xFF16213E)]),
+          gradient: gradient,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-                color: const Color(0xFF1A1A2E).withValues(alpha: 0.25),
-                blurRadius: 12,
-                offset: const Offset(0, 6)),
+              color: shadowColor,
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
           ],
         ),
         child: Row(
@@ -385,13 +448,18 @@ class _ScanButton extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15)),
-                const Text('Auto-fill from camera',
-                    style: TextStyle(color: Colors.white54, fontSize: 11)),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
+                const Text(
+                  'Auto-fill from camera',
+                  style: TextStyle(color: Colors.white54, fontSize: 11),
+                ),
               ],
             ),
           ],
@@ -406,115 +474,27 @@ class _OrDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color lineColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1);
+    final Color textColor = isDark ? Colors.white.withValues(alpha: 0.35) : Colors.black.withValues(alpha: 0.35);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 14),
       child: Row(
         children: [
-          Expanded(
-              child: Divider(
-                  color: Colors.black.withValues(alpha: 0.1), thickness: 1)),
+          Expanded(child: Divider(color: lineColor, thickness: 1)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text('or enter manually',
-                style: TextStyle(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600)),
-          ),
-          Expanded(
-              child: Divider(
-                  color: Colors.black.withValues(alpha: 0.1), thickness: 1)),
-        ],
-      ),
-    );
-  }
-}
-
-class _StudioField extends StatefulWidget {
-  const _StudioField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    required this.onChanged,
-    this.maxLines = 1,
-    this.readOnly = false,
-    this.onTap,
-    this.textCapitalization = TextCapitalization.words,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final VoidCallback onChanged;
-  final int maxLines;
-  final bool readOnly;
-  final VoidCallback? onTap;
-  final TextCapitalization textCapitalization;
-
-  @override
-  State<_StudioField> createState() => _StudioFieldState();
-}
-
-class _StudioFieldState extends State<_StudioField> {
-  late final FocusNode _focus;
-
-  @override
-  void initState() {
-    super.initState();
-    _focus = FocusNode()..addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _focus.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final focused = _focus.hasFocus;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: focused ? Colors.white : Colors.white.withValues(alpha: 0.62),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-            color: focused
-                ? const Color(0xFF4C7CFF)
-                : Colors.white.withValues(alpha: 0.72)),
-      ),
-      child: Row(
-        crossAxisAlignment: widget.maxLines > 1
-            ? CrossAxisAlignment.start
-            : CrossAxisAlignment.center,
-        children: [
-          Padding(
-            padding: EdgeInsets.only(top: widget.maxLines > 1 ? 16 : 0),
-            child: Icon(widget.icon,
-                color: focused
-                    ? const Color(0xFF4C7CFF)
-                    : const Color(0xFF64748B)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              focusNode: _focus,
-              controller: widget.controller,
-              maxLines: widget.maxLines,
-              readOnly: widget.readOnly,
-              onTap: widget.onTap,
-              textCapitalization: widget.textCapitalization,
-              onChanged: (_) => widget.onChanged(),
-              decoration: InputDecoration(
-                  labelText: widget.label,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none),
+            child: Text(
+              'or enter manually',
+              style: TextStyle(
+                color: textColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
+          Expanded(child: Divider(color: lineColor, thickness: 1)),
         ],
       ),
     );
@@ -527,18 +507,24 @@ class _SaveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TapScale(
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final Color buttonColor = isDark ? theme.colorScheme.primary : const Color(0xFF07111F);
+    final Color shadowColor = isDark ? theme.colorScheme.primary.withValues(alpha: 0.22) : const Color(0xFF07111F).withValues(alpha: 0.22);
+
+    return BounceTap(
       onTap: onTap,
       child: Container(
         height: 58,
         decoration: BoxDecoration(
-          color: const Color(0xFF07111F),
+          color: buttonColor,
           borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-                color: const Color(0xFF07111F).withValues(alpha: 0.22),
-                blurRadius: 18,
-                offset: const Offset(0, 14)),
+              color: shadowColor,
+              blurRadius: 18,
+              offset: const Offset(0, 14),
+            ),
           ],
         ),
         child: const Row(
@@ -546,11 +532,14 @@ class _SaveButton extends StatelessWidget {
           children: [
             Icon(Icons.save_rounded, color: Colors.white),
             SizedBox(width: 10),
-            Text('Save',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800)),
+            Text(
+              'Save',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ],
         ),
       ),
@@ -565,7 +554,8 @@ class _CircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TapScale(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return BounceTap(
       onTap: onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
@@ -575,11 +565,20 @@ class _CircleButton extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.7),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.10)
+                  : Colors.white.withValues(alpha: 0.70),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.white),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.white,
+              ),
             ),
-            child: Icon(icon, color: const Color(0xFF07111F)),
+            child: Icon(
+              icon,
+              color: isDark ? Colors.white : const Color(0xFF07111F),
+            ),
           ),
         ),
       ),
@@ -605,60 +604,33 @@ class _SuccessOverlay extends StatelessWidget {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle),
-              child: const Icon(Icons.check_rounded,
-                  color: Colors.white, size: 60),
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_rounded, color: Colors.white, size: 60),
             ),
             const SizedBox(height: 32),
             Text(
               isPan ? 'PAN Card Saved!' : 'Aadhaar Card Saved!',
               style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5),
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
               'Securely added to your wallet.',
               style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500),
+                color: Colors.white.withValues(alpha: 0.9),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _TapScale extends StatefulWidget {
-  const _TapScale({required this.child, required this.onTap});
-  final Widget child;
-  final VoidCallback onTap;
-
-  @override
-  State<_TapScale> createState() => _TapScaleState();
-}
-
-class _TapScaleState extends State<_TapScale> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTap: widget.onTap,
-      child: AnimatedScale(
-          scale: _pressed ? 0.96 : 1,
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOutCubic,
-          child: widget.child),
     );
   }
 }

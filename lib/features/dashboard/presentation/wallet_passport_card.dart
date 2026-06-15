@@ -956,10 +956,10 @@ class _EPassportSymbolPainter extends CustomPainter {
 }
 
 class _Badge extends StatelessWidget {
-  const _Badge({required this.icon, required this.text, this.darkTheme = true});
+  const _Badge({required this.icon, required this.text});
   final IconData icon;
   final String text;
-  final bool darkTheme;
+  static const bool darkTheme = true;
 
   @override
   Widget build(BuildContext context) {
@@ -990,10 +990,10 @@ class _Badge extends StatelessWidget {
 }
 
 class _DetailBlock extends StatelessWidget {
-  const _DetailBlock({required this.label, required this.value, this.darkTheme = true});
+  const _DetailBlock({required this.label, required this.value});
   final String label;
   final String value;
-  final bool darkTheme;
+  static const bool darkTheme = true;
 
   @override
   Widget build(BuildContext context) {

@@ -8,6 +8,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/theme_provider.dart';
+import '../../../shared/widgets/bounce_tap.dart';
+import '../../../shared/widgets/apple_sheet.dart';
+import '../../../shared/widgets/roll_page_stack.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
 import '../../ids/presentation/add_id_sheet.dart';
@@ -34,10 +37,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   late final Animation<double> _entryFade;
   late final Animation<Offset> _entrySlide;
   late final TabController _tabCtrl;
+  late final ValueNotifier<double> _docPage;
 
   @override
   void initState() {
     super.initState();
+    _docPage = ValueNotifier(0.0);
     _entryCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 560),
@@ -46,15 +51,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       parent: _entryCtrl,
       curve: const Interval(0.0, 0.65, curve: Curves.easeOut),
     );
-    _entrySlide = Tween<Offset>(
-      begin: const Offset(0, 0.04),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _entryCtrl,
-      curve: const Interval(0.0, 1.0, curve: Curves.easeOutQuint),
-    ));
+    _entrySlide = Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _entryCtrl,
+            curve: const Interval(0.0, 1.0, curve: Curves.easeOutQuint),
+          ),
+        );
     _tabCtrl = TabController(length: 2, vsync: this);
-    _tabCtrl.addListener(() { if (!_tabCtrl.indexIsChanging) setState(() {}); });
+    _tabCtrl.addListener(() {
+      if (!_tabCtrl.indexIsChanging) setState(() {});
+    });
     _entryCtrl.forward();
   }
 
@@ -62,6 +69,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   void dispose() {
     _entryCtrl.dispose();
     _tabCtrl.dispose();
+    _docPage.dispose();
     super.dispose();
   }
 
@@ -201,7 +209,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           CupertinoActionSheetAction(
             isDestructiveAction: true,
             onPressed: () {
-              ref.read(passportListProvider.notifier).removePassport(profile.id);
+              ref
+                  .read(passportListProvider.notifier)
+                  .removePassport(profile.id);
               Navigator.of(ctx).pop();
             },
             child: const Text('Remove'),
@@ -217,8 +227,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   void _showDeleteIdDialog(IdDocument doc) {
     HapticFeedback.heavyImpact();
-    final String label = doc.holderName.isEmpty ? 'this card' : "${doc.holderName}'s";
-    final String type = doc.type == IdDocumentType.pan ? 'PAN Card' : 'Aadhaar Card';
+    final String label = doc.holderName.isEmpty
+        ? 'this card'
+        : "${doc.holderName}'s";
+    final String type = doc.type == IdDocumentType.pan
+        ? 'PAN Card'
+        : 'Aadhaar Card';
     showCupertinoModalPopup<void>(
       context: context,
       builder: (BuildContext ctx) => CupertinoActionSheet(
@@ -246,6 +260,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   Widget build(BuildContext context) {
     final List<PassportProfile> passports = ref.watch(passportListProvider);
     final List<IdDocument> idDocs = ref.watch(idListProvider);
+    final List<Object> items = <Object>[...passports, ...idDocs];
 
     final String currentName = passports.isNotEmpty ? passports.first.name : '';
 
@@ -256,7 +271,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         extendBody: true,
         body: Stack(
           children: <Widget>[
-            RepaintBoundary(child: _WalletBackdrop(tabIndex: _tabCtrl.index)),
+            RepaintBoundary(
+              child: _WalletBackdrop(
+                tabIndex: _tabCtrl.index,
+                items: items,
+                pageNotifier: _docPage,
+              ),
+            ),
             SafeArea(
               child: FadeTransition(
                 opacity: _entryFade,
@@ -290,6 +311,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                               idDocs: idDocs,
                               onDeletePassport: _showDeleteDialog,
                               onDeleteId: _showDeleteIdDialog,
+                              pageNotifier: _docPage,
                             ),
 
                             // Tab 1: Tickets
@@ -397,7 +419,9 @@ class _IslandBarState extends State<_IslandBar> {
                         widthFactor: 0.5,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 7),
+                            horizontal: 6,
+                            vertical: 7,
+                          ),
                           child: Container(
                             decoration: BoxDecoration(
                               color: const Color(0xFF1C1C1E),
@@ -484,9 +508,7 @@ class _IslandTab extends StatelessWidget {
             Icon(
               icon,
               size: 18,
-              color: active
-                  ? Colors.white
-                  : const Color(0xFF8E8E93),
+              color: active ? Colors.white : const Color(0xFF8E8E93),
             ),
             const SizedBox(height: 2),
             Text(
@@ -494,9 +516,7 @@ class _IslandTab extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: active ? FontWeight.w700 : FontWeight.w400,
-                color: active
-                    ? Colors.white
-                    : const Color(0xFF8E8E93),
+                color: active ? Colors.white : const Color(0xFF8E8E93),
                 letterSpacing: -0.1,
               ),
             ),
@@ -606,60 +626,68 @@ class _PillTabBarState extends State<_PillTabBar> {
   Widget build(BuildContext context) {
     final double t = (widget.controller.animation!.value).clamp(0.0, 1.0);
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          height: 58,
-          constraints: const BoxConstraints(maxWidth: 280),
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.10)
-                : Colors.white.withValues(alpha: 0.60),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.12)
-                  : Colors.white.withValues(alpha: 0.85),
-              width: 0.5,
-            ),
+    return Container(
+      height: 62,
+      constraints: const BoxConstraints(maxWidth: 280),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          child: Stack(
+        ],
+      ),
+      child: Stack(
             children: [
-              // Spring-animated indicator pill
-              AnimatedAlign(
-                duration: const Duration(milliseconds: 260),
-                curve: Curves.easeOutCubic,
-                alignment: Alignment(t * 2 - 1, 0),
-                child: FractionallySizedBox(
-                  widthFactor: 0.5,
-                  child: Padding(
-                    padding: const EdgeInsets.all(3),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        borderRadius: BorderRadius.circular(19),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.35),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              _LiquidTabHighlight(t: t),
               // Labels
               Row(
                 children: [
-                  _TabLabel(label: 'Docs', icon: Icons.wallet_rounded, index: 0, controller: widget.controller, t: t),
-                  _TabLabel(label: 'Tickets', icon: Icons.confirmation_number_rounded, index: 1, controller: widget.controller, t: t),
+                  _TabLabel(
+                    label: 'Docs',
+                    icon: Icons.wallet_rounded,
+                    index: 0,
+                    controller: widget.controller,
+                    t: t,
+                  ),
+                  _TabLabel(
+                    label: 'Tickets',
+                    icon: Icons.confirmation_number_rounded,
+                    index: 1,
+                    controller: widget.controller,
+                    t: t,
+                  ),
                 ],
               ),
             ],
+          ),
+    );
+  }
+}
+
+class _LiquidTabHighlight extends StatelessWidget {
+  const _LiquidTabHighlight({required this.t});
+
+  final double t;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color cool = Theme.of(context).colorScheme.primary;
+    final Color warm = const Color(0xFFE8A020);
+    final Color color = Color.lerp(cool, warm, t)!;
+
+    return Align(
+      alignment: Alignment(lerpDouble(-1.0, 1.0, t)!, 0),
+      child: FractionallySizedBox(
+        widthFactor: 0.5,
+        heightFactor: 1.0,
+        child: Padding(
+          padding: const EdgeInsets.all(3.0),
+          child: CustomPaint(
+            painter: _LiquidTabHighlightPainter(color: color, t: t),
           ),
         ),
       ),
@@ -667,7 +695,70 @@ class _PillTabBarState extends State<_PillTabBar> {
   }
 }
 
-class _TabLabel extends StatelessWidget {
+class _LiquidTabHighlightPainter extends CustomPainter {
+  const _LiquidTabHighlightPainter({required this.color, required this.t});
+
+  final Color color;
+  final double t;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Rect rect = Offset.zero & size;
+    final RRect body = RRect.fromRectAndRadius(rect, const Radius.circular(20));
+    final Paint fill = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.white.withValues(alpha: 0.42),
+          color.withValues(alpha: 0.95),
+          color.withValues(alpha: 0.78),
+        ],
+        stops: const [0.0, 0.36, 1.0],
+      ).createShader(rect);
+
+    final Paint glow = Paint()
+      ..color = color.withValues(alpha: 0.28)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
+    canvas.drawRRect(body.shift(const Offset(0, 5)), glow);
+    canvas.drawRRect(body, fill);
+
+    final Paint glass = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Colors.white.withValues(alpha: 0.38),
+          Colors.white.withValues(alpha: 0.04),
+        ],
+      ).createShader(rect.deflate(1));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect.deflate(1), const Radius.circular(19)),
+      glass,
+    );
+
+    final double pulse = math.sin(t * math.pi);
+    final Paint lobe = Paint()
+      ..color = Colors.white.withValues(alpha: 0.16 + pulse * 0.08)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+    canvas.drawCircle(
+      Offset(size.width * 0.28, size.height * 0.34),
+      15 + pulse * 4,
+      lobe,
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.72, size.height * 0.68),
+      18 - pulse * 3,
+      lobe,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _LiquidTabHighlightPainter old) =>
+      old.color != color || old.t != t;
+}
+
+class _TabLabel extends StatefulWidget {
   const _TabLabel({
     required this.label,
     required this.icon,
@@ -682,33 +773,125 @@ class _TabLabel extends StatelessWidget {
   final double t;
 
   @override
+  State<_TabLabel> createState() => _TabLabelState();
+}
+
+class _TabLabelState extends State<_TabLabel>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _bounce;
+  late final Animation<double> _scale;
+  bool _wasSelected = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _bounce = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _scale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 1.0,
+          end: 1.16,
+        ).chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 34,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 1.16,
+          end: 0.96,
+        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+        weight: 28,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.96,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 38,
+      ),
+    ]).animate(_bounce);
+  }
+
+  @override
+  void didUpdateWidget(_TabLabel old) {
+    super.didUpdateWidget(old);
+    final selected = widget.index == 0 ? widget.t < 0.5 : widget.t >= 0.5;
+    if (selected && !_wasSelected) {
+      _bounce.forward(from: 0);
+    }
+    _wasSelected = selected;
+  }
+
+  @override
+  void dispose() {
+    _bounce.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final bool selected = index == 0 ? t < 0.5 : t >= 0.5;
+    final bool selected = widget.index == 0 ? widget.t < 0.5 : widget.t >= 0.5;
+    final Color iconColor = selected ? Colors.white : const Color(0xFF8E8E93);
+
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () {
           HapticFeedback.selectionClick();
-          controller.animateTo(index);
+          widget.controller.animateTo(widget.index);
         },
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                size: 17,
-                color: selected ? Colors.white : const Color(0xFF8E8E93),
+              AnimatedBuilder(
+                animation: _scale,
+                builder: (context, child) {
+                  final double scale = selected ? _scale.value : 1.0;
+                  return Transform.translate(
+                    offset: Offset(0, selected ? -1.5 : 0),
+                    child: Transform.scale(
+                      scale: scale,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 240),
+                        curve: Curves.easeOutCubic,
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: selected
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.white.withValues(alpha: 0.28),
+                                    blurRadius: 12,
+                                    spreadRadius: -2,
+                                  ),
+                                ]
+                              : const [],
+                        ),
+                        child: Icon(
+                          widget.icon,
+                          size: selected ? 22 : 18,
+                          color: iconColor,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-              const SizedBox(height: 2),
-              Text(
-                label,
+              const SizedBox(height: 3),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: selected ? 11.5 : 10.5,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   letterSpacing: -0.1,
-                  color: selected ? Colors.white : const Color(0xFF8E8E93),
+                  color: iconColor,
                 ),
+                child: Text(widget.label),
               ),
             ],
           ),
@@ -726,12 +909,14 @@ class _DocsTab extends StatefulWidget {
     required this.idDocs,
     required this.onDeletePassport,
     required this.onDeleteId,
+    required this.pageNotifier,
   });
 
   final List<PassportProfile> passports;
   final List<IdDocument> idDocs;
   final void Function(PassportProfile) onDeletePassport;
   final void Function(IdDocument) onDeleteId;
+  final ValueNotifier<double> pageNotifier;
 
   @override
   State<_DocsTab> createState() => _DocsTabState();
@@ -755,11 +940,15 @@ class _DocsTabState extends State<_DocsTab> {
     super.dispose();
   }
 
-  void _onScroll() => setState(() => _page = _pageCtrl.page ?? 0);
+  void _onScroll() {
+    setState(() => _page = _pageCtrl.page ?? 0);
+    widget.pageNotifier.value = _page;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final double fabClearance = MediaQuery.of(context).padding.bottom + 16 + 58 + 20;
+    final double fabClearance =
+        MediaQuery.of(context).padding.bottom + 16 + 58 + 20;
     final items = <Object>[...widget.passports, ...widget.idDocs];
     if (items.isEmpty) {
       return Center(
@@ -768,24 +957,26 @@ class _DocsTabState extends State<_DocsTab> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 72, height: 72,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4C7CFF).withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
+              const _EmptyDocsPreview(),
+              const SizedBox(height: 28),
+              Text(
+                'No Documents Yet',
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF1C1C1E),
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
                 ),
-                child: const Icon(Icons.folder_open_rounded,
-                    color: Color(0xFF4C7CFF), size: 36),
               ),
-              const SizedBox(height: 20),
-              const Text('No Documents Yet',
-                  style: TextStyle(color: Color(0xFF1C1C1E),
-                      fontSize: 20, fontWeight: FontWeight.w600,
-                      letterSpacing: -0.3)),
               const SizedBox(height: 8),
-              const Text('Tap + to add a passport or ID card.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF8E8E93), fontSize: 15)),
+              Text(
+                'Tap + to add a passport or ID card.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF8E8E93) : const Color(0xFF64748B),
+                  fontSize: 15,
+                ),
+              ),
             ],
           ),
         ),
@@ -801,7 +992,7 @@ class _DocsTabState extends State<_DocsTab> {
           itemBuilder: (context, index) {
             final item = items[index];
             final double delta = (_page - index).clamp(-1.0, 1.0);
-            return _RollPage(
+            return RollPageStack(
               delta: delta,
               padding: EdgeInsets.fromLTRB(20, 8, 44, fabClearance),
               child: item is PassportProfile
@@ -830,47 +1021,192 @@ class _DocsTabState extends State<_DocsTab> {
   }
 }
 
-// ─── EMPTY TICKETS STATE ──────────────────────────────────────────────────────
+class _EmptyDocsPreview extends StatefulWidget {
+  const _EmptyDocsPreview();
 
-// ─── ROLL PAGE TRANSFORM ──────────────────────────────────────────────────────
+  @override
+  State<_EmptyDocsPreview> createState() => _EmptyDocsPreviewState();
+}
 
-class _RollPage extends StatelessWidget {
-  const _RollPage({
-    required this.delta,
-    required this.child,
-    required this.padding,
-  });
+class _EmptyDocsPreviewState extends State<_EmptyDocsPreview>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _shimmerCtrl;
 
-  final double delta;   // -1 (above) to +1 (below), 0 = current
-  final Widget child;
-  final EdgeInsets padding;
+  @override
+  void initState() {
+    super.initState();
+    _shimmerCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _shimmerCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    // delta < 0 → card is above (exiting upward): tilt top away, shrink
-    // delta > 0 → card is below (entering from below): tilt bottom away, shrink
-    final double tilt = delta * 0.38;          // radians of X-axis rotation
-    final double scale = 1.0 - delta.abs() * 0.08;
-    final double translateY = delta * 24;      // subtle Y nudge
+    return AnimatedBuilder(
+      animation: _shimmerCtrl,
+      builder: (context, _) {
+        final double shimmerX = lerpDouble(-130, 130, _shimmerCtrl.value)!;
+        return SizedBox(
+          width: 220,
+          height: 164,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              _GhostDocCard(
+                offset: const Offset(-18, 14),
+                rotation: -0.13,
+                scale: 0.90,
+                color: const Color(0xFF2A9D8F),
+                shimmerX: shimmerX - 28,
+                alpha: 0.48,
+              ),
+              _GhostDocCard(
+                offset: const Offset(16, 4),
+                rotation: 0.10,
+                scale: 0.95,
+                color: const Color(0xFF7C5CBF),
+                shimmerX: shimmerX + 18,
+                alpha: 0.56,
+              ),
+              _GhostDocCard(
+                offset: Offset.zero,
+                rotation: -0.02,
+                scale: 1.0,
+                color: const Color(0xFF4C7CFF),
+                shimmerX: shimmerX,
+                alpha: 0.70,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
 
-    final Matrix4 m = Matrix4.identity()
-      ..setEntry(3, 2, 0.001)                  // perspective
-      ..rotateX(tilt)
-      ..scale(scale)
-      ..translate(0.0, translateY);
+class _GhostDocCard extends StatelessWidget {
+  const _GhostDocCard({
+    required this.offset,
+    required this.rotation,
+    required this.scale,
+    required this.color,
+    required this.shimmerX,
+    required this.alpha,
+  });
 
-    return Padding(
-      padding: padding,
-      child: Center(
-        child: Transform(
-          transform: m,
-          alignment: delta < 0 ? Alignment.bottomCenter : Alignment.topCenter,
-          child: child,
+  final Offset offset;
+  final double rotation;
+  final double scale;
+  final Color color;
+  final double shimmerX;
+  final double alpha;
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.translate(
+      offset: offset,
+      child: Transform.rotate(
+        angle: rotation,
+        child: Transform.scale(
+          scale: scale,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Container(
+              width: 168,
+              height: 108,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                color: Colors.white.withValues(alpha: 0.52),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.78)),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.16 * alpha),
+                    blurRadius: 28,
+                    offset: const Offset(0, 14),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            color.withValues(alpha: 0.16 * alpha),
+                            Colors.white.withValues(alpha: 0.34),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 18,
+                    top: 20,
+                    child: Container(
+                      width: 42,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.18 * alpha),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                    ),
+                  ),
+                  for (int i = 0; i < 3; i++)
+                    Positioned(
+                      left: 18,
+                      right: 22 + i * 18,
+                      bottom: 22 + i * 15,
+                      child: Container(
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.16 * alpha),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    ),
+                  Positioned(
+                    left: shimmerX,
+                    top: -26,
+                    bottom: -26,
+                    child: Transform.rotate(
+                      angle: -0.45,
+                      child: Container(
+                        width: 34,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withValues(alpha: 0),
+                              Colors.white.withValues(alpha: 0.38 * alpha),
+                              Colors.white.withValues(alpha: 0),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 }
+
+// ─── EMPTY TICKETS STATE ──────────────────────────────────────────────────────
+
+
 
 // ─── DOT INDICATOR ───────────────────────────────────────────────────────────
 
@@ -952,9 +1288,15 @@ class _DotIndicator extends StatelessWidget {
 // ─── BACKDROP ────────────────────────────────────────────────────────────────
 
 class _WalletBackdrop extends StatefulWidget {
-  const _WalletBackdrop({this.tabIndex = 0});
+  const _WalletBackdrop({
+    this.tabIndex = 0,
+    required this.items,
+    required this.pageNotifier,
+  });
 
   final int tabIndex;
+  final List<Object> items;
+  final ValueNotifier<double> pageNotifier;
 
   @override
   State<_WalletBackdrop> createState() => _WalletBackdropState();
@@ -1000,13 +1342,20 @@ class _WalletBackdropState extends State<_WalletBackdrop>
   Widget build(BuildContext context) {
     return SizedBox.expand(
       child: DecoratedBox(
-        decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+        ),
         child: RepaintBoundary(
           child: AnimatedBuilder(
-            animation: Listenable.merge([_ctrl, _colorCtrl]),
+            animation: Listenable.merge([_ctrl, _colorCtrl, widget.pageNotifier]),
             builder: (context, _) {
               return CustomPaint(
-                painter: _AppleCardGradientPainter(_ctrl.value, _colorCtrl.value),
+                painter: _AppleCardGradientPainter(
+                  progress: _ctrl.value,
+                  colorT: _colorCtrl.value,
+                  items: widget.items,
+                  page: widget.pageNotifier.value,
+                ),
               );
             },
           ),
@@ -1017,63 +1366,95 @@ class _WalletBackdropState extends State<_WalletBackdrop>
 }
 
 class _AppleCardGradientPainter extends CustomPainter {
-  _AppleCardGradientPainter(this.progress, this.colorT);
+  _AppleCardGradientPainter({
+    required this.progress,
+    required this.colorT,
+    required this.items,
+    required this.page,
+  });
   final double progress;
   final double colorT; // 0 = Docs (cool), 1 = Tickets (warm)
+  final List<Object> items;
+  final double page;
 
-  // Docs palette — rich indigo/violet/teal (matches new navy theme)
-  static const _d1 = Color(0xFF3D6FD4); // rich indigo
-  static const _d2 = Color(0xFF7C5CBF); // deep violet
-  static const _d3 = Color(0xFF2A9D8F); // teal
+  Color _getThemeColor(Object? item) {
+    if (item is PassportProfile) return const Color(0xFF007AFF); // Apple Blue
+    if (item is IdDocument) {
+      if (item.type == IdDocumentType.pan) return const Color(0xFFE8A020); // Orange
+      return const Color(0xFF34C759); // Green
+    }
+    return const Color(0xFF8E8E93); // Gray default
+  }
 
-  // Tickets palette — warm amber/coral/gold
-  static const _t1 = Color(0xFFE8A020); // deep amber
-  static const _t2 = Color(0xFFE05C5C); // warm coral
-  static const _t3 = Color(0xFFD4A853); // gold
-
-  Color _lerp(Color a, Color b) => Color.lerp(a, b, colorT)!;
+  Color _getDocsColor() {
+    if (items.isEmpty) return const Color(0xFF007AFF); // Default to Blue
+    final int idx1 = page.floor().clamp(0, items.length - 1);
+    final int idx2 = page.ceil().clamp(0, items.length - 1);
+    final double t = page - page.floor();
+    final Color c1 = _getThemeColor(items[idx1]);
+    final Color c2 = _getThemeColor(items[idx2]);
+    return Color.lerp(c1, c2, t) ?? c1;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
     final double w = size.width;
     final double h = size.height;
 
-    void drawOrb(Color color, double cx, double cy, double radius) {
+    // Base background
+    final Color baseDocBg = const Color(0xFFF2F2F7); // Apple standard light gray
+    final Color baseTicketBg = const Color(0xFFFFF8E8);
+    final Paint base = Paint()
+      ..color = Color.lerp(baseDocBg, baseTicketBg, colorT)!;
+    canvas.drawRect(Offset.zero & size, base);
+
+    final Color docsColor = _getDocsColor();
+    final Color ticketsColor = const Color(0xFFFF3B30); // Ticket Red
+    final Color activeColor = Color.lerp(docsColor, ticketsColor, colorT)!;
+
+    void drawOrb(Color c, double cx, double cy, double radius) {
       final Paint paint = Paint()
-        ..shader = RadialGradient(
-          colors: [color, color.withValues(alpha: 0)],
-        ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: radius));
+        ..color = c
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, radius * 0.8);
       canvas.drawCircle(Offset(cx, cy), radius, paint);
     }
 
+    // Convert activeColor to HSL for generating matching analogous/triadic colors
+    final HSLColor hslActive = HSLColor.fromColor(activeColor);
+
+    // Orb 1 - Primary
     final double t1 = progress * 2 * math.pi;
     drawOrb(
-      _lerp(_d1, _t1).withValues(alpha: 0.18),
-      w * 0.5 + math.cos(t1) * w * 0.35,
-      h * 0.3 + math.sin(t1) * h * 0.15,
-      w * 0.9,
+      activeColor.withValues(alpha: 0.24),
+      w * 0.5 + math.cos(t1) * w * 0.12,
+      h * 0.45 + math.sin(t1) * h * 0.06,
+      w * 0.6,
     );
 
+    // Orb 2 - Analogous (Hue + 40)
     final double t2 = progress * 2 * math.pi + (math.pi * 0.66);
+    final Color c2 = hslActive.withHue((hslActive.hue + 40) % 360).toColor();
     drawOrb(
-      _lerp(_d2, _t2).withValues(alpha: 0.14),
-      w * 0.3 + math.cos(t2) * w * 0.45,
-      h * 0.6 + math.sin(t2) * h * 0.25,
-      w * 1.0,
+      c2.withValues(alpha: 0.18),
+      w * 0.45 + math.cos(t2) * w * 0.15,
+      h * 0.52 + math.sin(t2) * h * 0.08,
+      w * 0.65,
     );
 
+    // Orb 3 - Analogous (Hue - 40)
     final double t3 = progress * 2 * math.pi + (math.pi * 1.33);
+    final Color c3 = hslActive.withHue((hslActive.hue - 40 + 360) % 360).toColor();
     drawOrb(
-      _lerp(_d3, _t3).withValues(alpha: 0.16),
-      w * 0.7 + math.cos(t3) * w * 0.3,
-      h * 0.5 + math.sin(t3) * h * 0.35,
-      w * 0.9,
+      c3.withValues(alpha: 0.24),
+      w * 0.55 + math.cos(t3) * w * 0.1,
+      h * 0.4 + math.sin(t3) * h * 0.05,
+      w * 0.6,
     );
   }
 
   @override
   bool shouldRepaint(covariant _AppleCardGradientPainter old) =>
-      old.progress != progress || old.colorT != colorT;
+      old.progress != progress || old.colorT != colorT || old.page != page || old.items.length != items.length;
 }
 
 // ─── HEADER WIDGETS ───────────────────────────────────────────────────────────
@@ -1133,7 +1514,12 @@ class _GlassIconButtonState extends State<_GlassIconButton> {
 // ─── DASHBOARD HEADER ────────────────────────────────────────────────────────
 
 class _DashboardHeader extends StatefulWidget {
-  const _DashboardHeader({required this.name, required this.tickets, required this.onAvatarTap, required this.onTripTap});
+  const _DashboardHeader({
+    required this.name,
+    required this.tickets,
+    required this.onAvatarTap,
+    required this.onTripTap,
+  });
   final String name;
   final List<MockTicket> tickets;
   final VoidCallback onAvatarTap;
@@ -1156,7 +1542,10 @@ class _DashboardHeaderState extends State<_DashboardHeader> {
   }
 
   @override
-  void dispose() { _timer?.cancel(); super.dispose(); }
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   MockTicket? get _nextTrip =>
       widget.tickets.where((t) => t.status == TicketStatus.active).firstOrNull;
@@ -1168,26 +1557,19 @@ class _DashboardHeaderState extends State<_DashboardHeader> {
     return 'Good evening';
   }
 
-  String _daysLabel(MockTicket t) {
-    try {
-      final parts = t.date.split(' ');
-      if (parts.length != 3) return '';
-      const months = {'Jan':1,'Feb':2,'Mar':3,'Apr':4,'May':5,'Jun':6,'Jul':7,'Aug':8,'Sep':9,'Oct':10,'Nov':11,'Dec':12};
-      final d = DateTime(int.parse(parts[2]), months[parts[1]] ?? 1, int.parse(parts[0]));
-      final diff = d.difference(DateTime.now()).inDays;
-      if (diff <= 0) return 'Today';
-      if (diff == 1) return 'Tomorrow';
-      return 'In $diff days';
-    } catch (_) { return ''; }
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color ink = isDark ? const Color(0xFFE8EEFF) : const Color(0xFF0D1B2A);
-    final Color muted = isDark ? Colors.white.withValues(alpha: 0.38) : const Color(0xFF6B7280);
+    final Color ink = isDark
+        ? const Color(0xFFE8EEFF)
+        : const Color(0xFF0D1B2A);
+    final Color muted = isDark
+        ? Colors.white.withValues(alpha: 0.38)
+        : const Color(0xFF6B7280);
     final trip = _nextTrip;
-    final firstName = widget.name.isEmpty ? 'Traveller' : widget.name.split(' ').first;
+    final firstName = widget.name.isEmpty
+        ? 'Traveller'
+        : widget.name.split(' ').first;
     final showTrip = _showTrip && trip != null;
 
     return Row(
@@ -1200,11 +1582,13 @@ class _DashboardHeaderState extends State<_DashboardHeader> {
             switchOutCurve: Curves.easeInCubic,
             layoutBuilder: (current, previous) => Stack(
               alignment: Alignment.topLeft,
-              children: [...previous, if (current != null) current],
+              children: [...previous, ?current],
             ),
             transitionBuilder: (child, anim) {
               // Outgoing: slide up + fade out. Incoming: slide up from below + fade in.
-              final isIncoming = child.key == (showTrip ? const ValueKey('t') : const ValueKey('g'));
+              final isIncoming =
+                  child.key ==
+                  (showTrip ? const ValueKey('t') : const ValueKey('g'));
               return FadeTransition(
                 opacity: anim,
                 child: SlideTransition(
@@ -1217,8 +1601,20 @@ class _DashboardHeaderState extends State<_DashboardHeader> {
               );
             },
             child: showTrip
-                ? _TripContent(key: const ValueKey('t'), trip: trip!, ink: ink, muted: muted, onTap: widget.onTripTap)
-                : _GreetingContent(key: const ValueKey('g'), greeting: _greeting, name: firstName, ink: ink, muted: muted),
+                ? _TripContent(
+                    key: const ValueKey('t'),
+                    trip: trip,
+                    ink: ink,
+                    muted: muted,
+                    onTap: widget.onTripTap,
+                  )
+                : _GreetingContent(
+                    key: const ValueKey('g'),
+                    greeting: _greeting,
+                    name: firstName,
+                    ink: ink,
+                    muted: muted,
+                  ),
           ),
         ),
         const SizedBox(width: 12),
@@ -1229,24 +1625,59 @@ class _DashboardHeaderState extends State<_DashboardHeader> {
 }
 
 class _GreetingContent extends StatelessWidget {
-  const _GreetingContent({super.key, required this.greeting, required this.name, required this.ink, required this.muted});
-  final String greeting; final String name; final Color ink; final Color muted;
+  const _GreetingContent({
+    super.key,
+    required this.greeting,
+    required this.name,
+    required this.ink,
+    required this.muted,
+  });
+  final String greeting;
+  final String name;
+  final Color ink;
+  final Color muted;
 
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     mainAxisSize: MainAxisSize.min,
     children: [
-      Text('$greeting,', style: TextStyle(color: muted, fontSize: 14, fontWeight: FontWeight.w300, letterSpacing: 0.1)),
+      Text(
+        '$greeting,',
+        style: TextStyle(
+          color: muted,
+          fontSize: 14,
+          fontWeight: FontWeight.w300,
+          letterSpacing: 0.1,
+        ),
+      ),
       const SizedBox(height: 1),
-      Text(name, style: TextStyle(color: ink, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1.2, height: 1.1)),
+      Text(
+        name,
+        style: TextStyle(
+          color: ink,
+          fontSize: 28,
+          fontWeight: FontWeight.w900,
+          letterSpacing: -1.2,
+          height: 1.1,
+        ),
+      ),
     ],
   );
 }
 
 class _TripContent extends StatelessWidget {
-  const _TripContent({super.key, required this.trip, required this.ink, required this.muted, required this.onTap});
-  final MockTicket trip; final Color ink; final Color muted; final VoidCallback onTap;
+  const _TripContent({
+    super.key,
+    required this.trip,
+    required this.ink,
+    required this.muted,
+    required this.onTap,
+  });
+  final MockTicket trip;
+  final Color ink;
+  final Color muted;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => GestureDetector(
@@ -1255,107 +1686,46 @@ class _TripContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-          Text(trip.fromCode, style: TextStyle(color: ink, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1.2, height: 1.1)),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Icon(Icons.arrow_forward_rounded, size: 16, color: muted)),
-          Text(trip.toCode, style: TextStyle(color: ink, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1.2, height: 1.1)),
-        ]),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              trip.fromCode,
+              style: TextStyle(
+                color: ink,
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -1.2,
+                height: 1.1,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Icon(Icons.arrow_forward_rounded, size: 16, color: muted),
+            ),
+            Text(
+              trip.toCode,
+              style: TextStyle(
+                color: ink,
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -1.2,
+                height: 1.1,
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 2),
-        Text('${trip.date}  ·  ${trip.departTime} – ${trip.arriveTime}', style: TextStyle(color: muted, fontSize: 12)),
+        Text(
+          '${trip.date}  ·  ${trip.departTime} – ${trip.arriveTime}',
+          style: TextStyle(color: muted, fontSize: 12),
+        ),
       ],
     ),
   );
 }
 
 // ─── NEXT TRIP CHIP ───────────────────────────────────────────────────────────
-
-class _NextTripChip extends StatelessWidget {
-  const _NextTripChip({required this.tickets});
-  final List<MockTicket> tickets;
-
-  MockTicket? get _next {
-    final active = tickets.where((t) => t.status == TicketStatus.active).toList();
-    if (active.isEmpty) return null;
-    return active.first;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = _next;
-    if (t == null) {
-      return const SizedBox.shrink();
-    }
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-      child: GestureDetector(
-        onTap: () {
-          // Switch to tickets tab
-          DefaultTabController.maybeOf(context)?.animateTo(1);
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white.withValues(alpha: 0.08)
-                : const Color(0xFF1C1C1E).withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white.withValues(alpha: 0.10)
-                  : const Color(0xFF1C1C1E).withValues(alpha: 0.08),
-              width: 0.5,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF30D158),
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Next  ${t.fromCode} → ${t.toCode}',
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? const Color(0xFFF0F4FF)
-                      : const Color(0xFF1C1C1E),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.2,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                '· ${t.date}',
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white.withValues(alpha: 0.45)
-                      : const Color(0xFF8E8E93),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 14,
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white.withValues(alpha: 0.35)
-                    : const Color(0xFF8E8E93),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // ─── AVATAR BUTTON ────────────────────────────────────────────────────────────
 
@@ -1446,7 +1816,10 @@ class _AddFabState extends State<_AddFab> with SingleTickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
-    _rotateAnim = CurvedAnimation(parent: _rotateCtrl, curve: Curves.easeOutBack);
+    _rotateAnim = CurvedAnimation(
+      parent: _rotateCtrl,
+      curve: Curves.easeOutBack,
+    );
   }
 
   @override
@@ -1457,6 +1830,7 @@ class _AddFabState extends State<_AddFab> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) {
@@ -1481,36 +1855,24 @@ class _AddFabState extends State<_AddFab> with SingleTickerProviderStateMixin {
           height: 58,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
+            color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
             boxShadow: <BoxShadow>[
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
+                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.08),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(26),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.65),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    width: 0.5,
-                  ),
-                ),
-                child: RotationTransition(
-                  turns: Tween<double>(begin: 0, end: 0.125).animate(_rotateAnim),
-                  child: const Icon(
-                    Icons.add_rounded,
-                    size: 26,
-                    color: Color(0xFF1C1C1E),
-                  ),
-                ),
-              ),
+          child: RotationTransition(
+            turns: Tween<double>(
+              begin: 0,
+              end: 0.125,
+            ).animate(_rotateAnim),
+            child: Icon(
+              Icons.add_rounded,
+              size: 26,
+              color: isDark ? Colors.white : const Color(0xFF1C1C1E),
             ),
           ),
         ),
@@ -1529,71 +1891,29 @@ class _AddItemSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(36),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.98),
-              borderRadius: BorderRadius.circular(36),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 30,
-                  offset: const Offset(0, -10),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Center(
-                  child: Container(
-                    width: 40, height: 5,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE5E5EA),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Add Document',
-                    style: TextStyle(color: Color(0xFF1C1C1E),
-                        fontSize: 26, fontWeight: FontWeight.w800,
-                        letterSpacing: -0.3)),
-                ),
-                const SizedBox(height: 6),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text("Choose what you'd like to add",
-                    style: TextStyle(color: Color(0xFF8E8E93), fontSize: 15)),
-                ),
-                const SizedBox(height: 24),
-                _AddOption(
-                  icon: Icons.book_rounded,
-                  iconColor: const Color(0xFF4C7CFF),
-                  title: 'Passport',
-                  subtitle: 'Indian passport or travel document',
-                  onTap: onAddPassport,
-                ),
-                const SizedBox(height: 12),
-                _AddOption(
-                  icon: Icons.badge_rounded,
-                  iconColor: const Color(0xFF1C3252),
-                  title: 'ID Card',
-                  subtitle: 'PAN Card, Aadhaar or national ID',
-                  onTap: onAddId,
-                ),
-              ],
-            ),
+    return AppleSheet(
+      title: 'Add Document',
+      subtitle: "Choose what you'd like to add",
+      showDragHandle: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _AddOption(
+            icon: Icons.book_rounded,
+            iconColor: const Color(0xFF4C7CFF),
+            title: 'Passport',
+            subtitle: 'Indian passport or travel document',
+            onTap: onAddPassport,
           ),
-        ),
+          const SizedBox(height: 12),
+          _AddOption(
+            icon: Icons.badge_rounded,
+            iconColor: const Color(0xFF1C3252),
+            title: 'ID Card',
+            subtitle: 'PAN Card, Aadhaar or national ID',
+            onTap: onAddId,
+          ),
+        ],
       ),
     );
   }
@@ -1604,55 +1924,45 @@ class _TicketsComingSoonSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(36),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(24, 14, 24, 32),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return AppleSheet(
+      showDragHandle: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.98),
-              borderRadius: BorderRadius.circular(36),
+              color: const Color(0xFF19D3C5).withValues(alpha: 0.12),
+              shape: BoxShape.circle,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40, height: 5,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE5E5EA),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                Container(
-                  width: 64, height: 64,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF19D3C5).withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.confirmation_number_rounded,
-                      color: Color(0xFF19D3C5), size: 32),
-                ),
-                const SizedBox(height: 20),
-                const Text('Tickets Coming Soon',
-                    style: TextStyle(color: Color(0xFF1C1C1E),
-                        fontSize: 22, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 8),
-                const Text(
-                  'Flight, train, bus and event tickets\nwill be available in a future update.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF8E8E93),
-                      fontSize: 15, height: 1.5),
-                ),
-              ],
+            child: const Icon(
+              Icons.confirmation_number_rounded,
+              color: Color(0xFF19D3C5),
+              size: 32,
             ),
           ),
-        ),
+          const SizedBox(height: 20),
+          Text(
+            'Tickets Coming Soon',
+            style: TextStyle(
+              color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Flight, train, bus and event tickets\nwill be available in a future update.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF8E8E93),
+              fontSize: 15,
+              height: 1.5,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1669,83 +1979,29 @@ class _PassportTypeSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(36),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.98),
-              borderRadius: BorderRadius.circular(36),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 30,
-                  offset: const Offset(0, -10),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                // drag handle
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE5E5EA),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Passport Type',
-                    style: TextStyle(
-                      color: Color(0xFF1C1C1E),
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    "Which kind of passport are you adding?",
-                    style: TextStyle(
-                      color: Color(0xFF8E8E93),
-                      fontSize: 15,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                _AddOption(
-                  icon: Icons.nfc_rounded,
-                  iconColor: const Color(0xFF4C7CFF),
-                  title: 'E-Passport',
-                  subtitle: 'Biometric passport with an NFC chip',
-                  onTap: onSelectEPassport,
-                ),
-                const SizedBox(height: 12),
-                _AddOption(
-                  icon: Icons.menu_book_rounded,
-                  iconColor: const Color(0xFF19D3C5),
-                  title: 'Regular Passport',
-                  subtitle: 'Standard passport without NFC',
-                  onTap: onSelectRegularPassport,
-                ),
-              ],
-            ),
+    return AppleSheet(
+      title: 'Passport Type',
+      subtitle: "Which kind of passport are you adding?",
+      showDragHandle: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          _AddOption(
+            icon: Icons.nfc_rounded,
+            iconColor: const Color(0xFF4C7CFF),
+            title: 'E-Passport',
+            subtitle: 'Biometric passport with an NFC chip',
+            onTap: onSelectEPassport,
           ),
-        ),
+          const SizedBox(height: 12),
+          _AddOption(
+            icon: Icons.menu_book_rounded,
+            iconColor: const Color(0xFF19D3C5),
+            title: 'Regular Passport',
+            subtitle: 'Standard passport without NFC',
+            onTap: onSelectRegularPassport,
+          ),
+        ],
       ),
     );
   }
@@ -1771,77 +2027,252 @@ class _AddOption extends StatefulWidget {
 }
 
 class _AddOptionState extends State<_AddOption> {
-  bool _pressed = false;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final Color bgColor = isDark
+        ? Colors.white.withValues(alpha: 0.05)
+        : Colors.white.withValues(alpha: 0.74);
+
+    final Color borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.04)
+        : Colors.white.withValues(alpha: 0.92);
+
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF1C1C1E);
+    final Color subtitleColor = isDark ? const Color(0xFF8E8E93) : const Color(0xFF64748B);
+
+    return BounceTap(
+      onTap: widget.onTap,
+      scaleFactor: 0.98,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: borderColor),
+          boxShadow: [
+            if (!isDark)
+              BoxShadow(
+                color: widget.iconColor.withValues(
+                  alpha: 0.06,
+                ),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+          ],
+        ),
+        child: Row(
+          children: <Widget>[
+            _AddOptionPreview(
+              icon: widget.icon,
+              color: widget.iconColor,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    widget.title,
+                    style: TextStyle(
+                      color: titleColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    widget.subtitle,
+                    style: TextStyle(
+                      color: subtitleColor,
+                      fontSize: 13,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: widget.iconColor.withValues(alpha: 0.10),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                color: widget.iconColor.withValues(alpha: 0.72),
+                size: 21,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AddOptionPreview extends StatelessWidget {
+  const _AddOptionPreview({
+    required this.icon,
+    required this.color,
+  });
+
+  final IconData icon;
+  final Color color;
+
+  bool get _isId =>
+      icon == Icons.badge_rounded || icon == Icons.credit_card_rounded;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTap: () {
-        HapticFeedback.selectionClick();
-        widget.onTap();
-      },
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOutCubic,
-        scale: _pressed ? 0.97 : 1.0,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF2F2F7),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            children: <Widget>[
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: widget.iconColor.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(widget.icon, color: widget.iconColor, size: 24),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Text(
-                          widget.title,
-                          style: const TextStyle(
-                            color: Color(0xFF1C1C1E),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color endColor = isDark
+        ? Colors.white.withValues(alpha: 0.06)
+        : Colors.white.withValues(alpha: 0.74);
 
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      widget.subtitle,
-                      style: const TextStyle(
-                        color: Color(0xFF8E8E93),
-                        fontSize: 13,
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(19),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withValues(alpha: 0.18),
+            endColor,
+          ],
+        ),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (_isId)
+            Transform.rotate(
+              angle: -0.08,
+              child: Container(
+                width: 48,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : color.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: 7,
+                      top: 8,
+                      child: CircleAvatar(
+                        radius: 5,
+                        backgroundColor: color.withValues(alpha: 0.28),
                       ),
+                    ),
+                    Positioned(
+                      left: 19,
+                      right: 7,
+                      top: 8,
+                      child: _PreviewLine(color: color, alpha: 0.24),
+                    ),
+                    Positioned(
+                      left: 7,
+                      right: 12,
+                      bottom: 8,
+                      child: _PreviewLine(color: color, alpha: 0.18),
                     ),
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xFFC7C7CC),
-                size: 22,
+            )
+          else
+            Transform.rotate(
+              angle: 0.08,
+              child: Container(
+                width: 38,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : color.withValues(alpha: 0.20),
+                  ),
+                  boxShadow: [
+                    if (!isDark)
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.12),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: 8,
+                      right: 8,
+                      top: 10,
+                      child: Container(
+                        height: 13,
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 8,
+                      right: 10,
+                      bottom: 14,
+                      child: _PreviewLine(color: color, alpha: 0.22),
+                    ),
+                    Positioned(
+                      left: 8,
+                      right: 16,
+                      bottom: 9,
+                      child: _PreviewLine(color: color, alpha: 0.16),
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
+          Positioned(
+            right: 8,
+            bottom: 8,
+            child: Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              child: Icon(icon, color: Colors.white, size: 13),
+            ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PreviewLine extends StatelessWidget {
+  const _PreviewLine({required this.color, required this.alpha});
+
+  final Color color;
+  final double alpha;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 3,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: alpha),
+        borderRadius: BorderRadius.circular(99),
       ),
     );
   }
@@ -1855,11 +2286,12 @@ class _SettingsSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
-    final cs = Theme.of(context).colorScheme;
     final sheetBg = isDark
         ? const Color(0xFF111827).withValues(alpha: 0.98)
         : Colors.white.withValues(alpha: 0.98);
-    final titleColor = isDark ? const Color(0xFFF0F4FF) : const Color(0xFF1C1C1E);
+    final titleColor = isDark
+        ? const Color(0xFFF0F4FF)
+        : const Color(0xFF1C1C1E);
     final handleColor = isDark
         ? Colors.white.withValues(alpha: 0.12)
         : const Color(0xFFE5E5EA);
@@ -1888,7 +2320,8 @@ class _SettingsSheet extends ConsumerWidget {
               children: <Widget>[
                 Center(
                   child: Container(
-                    width: 40, height: 5,
+                    width: 40,
+                    height: 5,
                     decoration: BoxDecoration(
                       color: handleColor,
                       borderRadius: BorderRadius.circular(99),
@@ -1924,10 +2357,13 @@ class _SettingsSheet extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 // ── Dark mode toggle ──────────────────────────────────
-                _DarkModeRow(isDark: isDark, onToggle: () {
-                  HapticFeedback.selectionClick();
-                  ref.read(themeModeProvider.notifier).toggle();
-                }),
+                _DarkModeRow(
+                  isDark: isDark,
+                  onToggle: () {
+                    HapticFeedback.selectionClick();
+                    ref.read(themeModeProvider.notifier).toggle();
+                  },
+                ),
                 const SizedBox(height: 12),
                 _SettingsRow(
                   icon: Icons.info_outline_rounded,
@@ -1954,7 +2390,9 @@ class _DarkModeRow extends StatelessWidget {
     final rowBg = isDark
         ? Colors.white.withValues(alpha: 0.06)
         : const Color(0xFFF2F2F7);
-    final titleColor = isDark ? const Color(0xFFF0F4FF) : const Color(0xFF1C1C1E);
+    final titleColor = isDark
+        ? const Color(0xFFF0F4FF)
+        : const Color(0xFF1C1C1E);
     final subtitleColor = isDark
         ? Colors.white.withValues(alpha: 0.45)
         : const Color(0xFF8E8E93);
@@ -1971,7 +2409,8 @@ class _DarkModeRow extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 44, height: 44,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: const Color(0xFF6E40C9).withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(13),
@@ -1987,14 +2426,21 @@ class _DarkModeRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Dark Mode',
-                      style: TextStyle(
-                          color: titleColor,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700)),
+                  Text(
+                    'Dark Mode',
+                    style: TextStyle(
+                      color: titleColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(isDark ? 'On — tap to switch to light' : 'Off — tap to switch to dark',
-                      style: TextStyle(color: subtitleColor, fontSize: 13)),
+                  Text(
+                    isDark
+                        ? 'On — tap to switch to light'
+                        : 'Off — tap to switch to dark',
+                    style: TextStyle(color: subtitleColor, fontSize: 13),
+                  ),
                 ],
               ),
             ),
@@ -2005,17 +2451,22 @@ class _DarkModeRow extends StatelessWidget {
               width: 48,
               height: 28,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF6E40C9) : const Color(0xFFE5E5EA),
+                color: isDark
+                    ? const Color(0xFF6E40C9)
+                    : const Color(0xFFE5E5EA),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: AnimatedAlign(
                 duration: const Duration(milliseconds: 260),
                 curve: Curves.easeOutCubic,
-                alignment: isDark ? Alignment.centerRight : Alignment.centerLeft,
+                alignment: isDark
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
                 child: Padding(
                   padding: const EdgeInsets.all(3),
                   child: Container(
-                    width: 22, height: 22,
+                    width: 22,
+                    height: 22,
                     decoration: const BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
@@ -2091,7 +2542,9 @@ class _SettingsRowState extends State<_SettingsRow> {
                     Text(
                       widget.title,
                       style: TextStyle(
-                        color: isDark ? const Color(0xFFF0F4FF) : const Color(0xFF1C1C1E),
+                        color: isDark
+                            ? const Color(0xFFF0F4FF)
+                            : const Color(0xFF1C1C1E),
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),

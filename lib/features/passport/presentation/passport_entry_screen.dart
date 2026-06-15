@@ -8,6 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/motion/entry_reveal.dart';
 import '../../../core/sound/sound_service.dart';
+import '../../../shared/widgets/bounce_tap.dart';
+import '../../../shared/widgets/apple_sheet.dart';
+import '../../../shared/widgets/studio_field.dart';
 import '../../mrz_scanner/domain/mrz_result.dart';
 import '../../mrz_scanner/presentation/mrz_scanner_screen.dart';
 import '../../nfc/presentation/nfc_scanner_sheet.dart' as import_nfc_sheet;
@@ -322,30 +325,45 @@ class _StudioBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const DecoratedBox(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final List<Color> colors = isDark
+        ? const <Color>[
+            Color(0xFF080E1A),
+            Color(0xFF0F1829),
+            Color(0xFF0A0F1D),
+          ]
+        : const <Color>[
+            Color(0xFFEFF4F9),
+            Color(0xFFF8FAFC),
+            Color(0xFFEDE7DD),
+          ];
+
+    final Color lineColor = isDark
+        ? Colors.white.withValues(alpha: 0.04)
+        : const Color(0x1207111F);
+
+    return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: <Color>[
-            Color(0xFFEFF4F9),
-            Color(0xFFF8FAFC),
-            Color(0xFFEDE7DD),
-          ],
+          colors: colors,
         ),
       ),
-      child: SizedBox.expand(child: CustomPaint(painter: _StudioPainter())),
+      child: SizedBox.expand(child: CustomPaint(painter: _StudioPainter(lineColor: lineColor))),
     );
   }
 }
 
 class _StudioPainter extends CustomPainter {
-  const _StudioPainter();
+  const _StudioPainter({required this.lineColor});
+  final Color lineColor;
 
   @override
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()
-      ..color = const Color(0x1207111F)
+      ..color = lineColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 
@@ -365,293 +383,7 @@ class _StudioPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _LivePassportPreview extends StatelessWidget {
-  const _LivePassportPreview({required this.profile});
-
-  final PassportProfile profile;
-
-  @override
-  Widget build(BuildContext context) {
-    final String name = profile.name.trim().isEmpty
-        ? 'Add a passport profile'
-        : profile.name;
-
-    return Container(
-      height: 238,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(34),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: const Color(0xFF07111F).withValues(alpha: 0.18),
-            blurRadius: 24,
-            offset: const Offset(0, 22),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(34),
-        child: Stack(
-          children: <Widget>[
-            const Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: <Color>[
-                      Color(0xFF07111F),
-                      Color(0xFF315CFF),
-                      Color(0xFF19D3C5),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned.fill(child: CustomPaint(painter: _PreviewPainter())),
-            Positioned(
-              left: 20,
-              top: 20,
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: const Text(
-                        'LIVE PREVIEW',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    if (profile.isEPassport) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: const Icon(
-                          Icons.nfc_rounded,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            Positioned(
-              left: 20,
-              right: 20,
-              bottom: 20,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 25,
-                      height: 1,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: _PreviewField(
-                          label: 'Passport',
-                          value: profile.passportNumber.isEmpty
-                              ? 'Pending'
-                              : profile.passportNumber,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _PreviewField(
-                          label: 'Nationality',
-                          value: profile.nationality.isEmpty
-                              ? '--'
-                              : profile.nationality,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PreviewPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.12)
-      ..strokeWidth = 1.1
-      ..style = PaintingStyle.stroke;
-
-    for (int i = 0; i < 7; i++) {
-      final Path path = Path();
-      final double y = 58 + i * 19;
-      path.moveTo(-20, y);
-      path.cubicTo(
-        size.width * 0.24,
-        y + 24,
-        size.width * 0.62,
-        y - 28,
-        size.width + 18,
-        y + 8,
-      );
-      canvas.drawPath(path, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _PreviewField extends StatelessWidget {
-  const _PreviewField({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.13),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white60, fontSize: 11),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ModeSwitch extends StatelessWidget {
-  const _ModeSwitch({required this.selectedIndex, required this.onChanged});
-
-  final int selectedIndex;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.74),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white),
-      ),
-      child: Row(
-        children: <Widget>[
-          _ModeOption(
-            label: 'E-Passport',
-            icon: Icons.nfc_rounded,
-            selected: selectedIndex == 0,
-            onTap: () => onChanged(0),
-          ),
-          _ModeOption(
-            label: 'Regular',
-            icon: Icons.menu_book_rounded,
-            selected: selectedIndex == 1,
-            onTap: () => onChanged(1),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ModeOption extends StatelessWidget {
-  const _ModeOption({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: _TapScale(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 260),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xFF07111F) : Colors.transparent,
-            borderRadius: BorderRadius.circular(19),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Icon(
-                icon,
-                color: selected ? Colors.white : const Color(0xFF64748B),
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: selected ? Colors.white : const Color(0xFF64748B),
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  bool shouldRepaint(covariant _StudioPainter oldDelegate) => oldDelegate.lineColor != lineColor;
 }
 
 class _EPassportPanel extends StatelessWidget {
@@ -686,56 +418,37 @@ class _EPassportPanel extends StatelessWidget {
 
     await showModalBottomSheet<void>(
       context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext builder) {
-        return Container(
-          height: 300,
-          margin: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Select Date',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1C1C1E),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF007AFF),
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(50, 30),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                    ),
-                  ],
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return AppleSheet(
+          title: 'Select Date',
+          showDragHandle: true,
+          child: SizedBox(
+            height: 200,
+            child: CupertinoTheme(
+              data: CupertinoThemeData(
+                brightness: isDark ? Brightness.dark : Brightness.light,
+                textTheme: CupertinoTextThemeData(
+                  dateTimePickerTextStyle: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                    fontSize: 20,
+                  ),
                 ),
               ),
-              Expanded(
-                child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.date,
-                  initialDateTime: initDate,
-                  minimumDate: DateTime(1900),
-                  maximumDate: DateTime(2100),
-                  onDateTimeChanged: (DateTime newDate) {
-                    controller.text = "${newDate.year}-${newDate.month.toString().padLeft(2, '0')}-${newDate.day.toString().padLeft(2, '0')}";
-                    onChanged();
-                  },
-                ),
+              child: CupertinoDatePicker(
+                mode: CupertinoDatePickerMode.date,
+                initialDateTime: initDate,
+                minimumDate: DateTime(1900),
+                maximumDate: DateTime(2100),
+                onDateTimeChanged: (DateTime newDate) {
+                  controller.text = "${newDate.year}-${newDate.month.toString().padLeft(2, '0')}-${newDate.day.toString().padLeft(2, '0')}";
+                  onChanged();
+                },
               ),
-            ],
+            ),
           ),
         );
       },
@@ -758,7 +471,7 @@ class _EPassportPanel extends StatelessWidget {
               style: TextStyle(color: Color(0xFF64748B), height: 1.4),
             ),
           ),
-          _StudioField(
+          StudioField(
             controller: nameController,
             label: 'Full name',
             icon: Icons.person_rounded,
@@ -767,7 +480,7 @@ class _EPassportPanel extends StatelessWidget {
           Row(
             children: <Widget>[
               Expanded(
-                child: _StudioField(
+                child: StudioField(
                   controller: nationalityController,
                   label: 'Nationality',
                   icon: Icons.flag_rounded,
@@ -776,7 +489,7 @@ class _EPassportPanel extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _StudioField(
+                child: StudioField(
                   controller: passportNumberController,
                   label: 'Passport No.',
                   icon: Icons.confirmation_number_rounded,
@@ -788,7 +501,7 @@ class _EPassportPanel extends StatelessWidget {
           Row(
             children: <Widget>[
               Expanded(
-                child: _StudioField(
+                child: StudioField(
                   controller: dateOfBirthController,
                   label: 'Date of birth',
                   hintText: 'YYYY-MM-DD',
@@ -800,7 +513,7 @@ class _EPassportPanel extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _StudioField(
+                child: StudioField(
                   controller: expiryDateController,
                   label: 'Expiry date',
                   hintText: 'YYYY-MM-DD',
@@ -874,56 +587,37 @@ class _RegularPassportPanel extends StatelessWidget {
 
     await showModalBottomSheet<void>(
       context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext builder) {
-        return Container(
-          height: 300,
-          margin: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Select Date',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1C1C1E),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF007AFF),
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(50, 30),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                    ),
-                  ],
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return AppleSheet(
+          title: 'Select Date',
+          showDragHandle: true,
+          child: SizedBox(
+            height: 200,
+            child: CupertinoTheme(
+              data: CupertinoThemeData(
+                brightness: isDark ? Brightness.dark : Brightness.light,
+                textTheme: CupertinoTextThemeData(
+                  dateTimePickerTextStyle: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                    fontSize: 20,
+                  ),
                 ),
               ),
-              Expanded(
-                child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.date,
-                  initialDateTime: initDate,
-                  minimumDate: DateTime(1900),
-                  maximumDate: DateTime(2100),
-                  onDateTimeChanged: (DateTime newDate) {
-                    controller.text = "${newDate.year}-${newDate.month.toString().padLeft(2, '0')}-${newDate.day.toString().padLeft(2, '0')}";
-                    onChanged();
-                  },
-                ),
+              child: CupertinoDatePicker(
+                mode: CupertinoDatePickerMode.date,
+                initialDateTime: initDate,
+                minimumDate: DateTime(1900),
+                maximumDate: DateTime(2100),
+                onDateTimeChanged: (DateTime newDate) {
+                  controller.text = "${newDate.year}-${newDate.month.toString().padLeft(2, '0')}-${newDate.day.toString().padLeft(2, '0')}";
+                  onChanged();
+                },
               ),
-            ],
+            ),
           ),
         );
       },
@@ -937,13 +631,13 @@ class _RegularPassportPanel extends StatelessWidget {
         children: <Widget>[
           _ScanPassportButton(onTap: onScanCamera),
           const _OrDivider(),
-          _StudioField(
+          StudioField(
             controller: nameController,
             label: 'Full name',
             icon: Icons.person_rounded,
             onChanged: onChanged,
           ),
-          _StudioField(
+          StudioField(
             controller: passportNumberController,
             label: 'Passport number',
             icon: Icons.confirmation_number_rounded,
@@ -952,7 +646,7 @@ class _RegularPassportPanel extends StatelessWidget {
           Row(
             children: <Widget>[
               Expanded(
-                child: _StudioField(
+                child: StudioField(
                   controller: nationalityController,
                   label: 'Nationality',
                   icon: Icons.flag_rounded,
@@ -961,7 +655,7 @@ class _RegularPassportPanel extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _StudioField(
+                child: StudioField(
                   controller: dateOfBirthController,
                   label: 'Date of birth',
                   hintText: 'YYYY-MM-DD',
@@ -973,7 +667,7 @@ class _RegularPassportPanel extends StatelessWidget {
               ),
             ],
           ),
-          _StudioField(
+          StudioField(
             controller: expiryDateController,
             label: 'Expiry date',
             hintText: 'YYYY-MM-DD',
@@ -982,7 +676,7 @@ class _RegularPassportPanel extends StatelessWidget {
             onTap: () => _selectDate(context, expiryDateController),
             onChanged: onChanged,
           ),
-          _StudioField(
+          StudioField(
             controller: mrzController,
             label: 'MRZ raw text',
             icon: Icons.subject_rounded,
@@ -996,30 +690,6 @@ class _RegularPassportPanel extends StatelessWidget {
   }
 }
 
-class _ScannerFrame extends StatelessWidget {
-  const _ScannerFrame();
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(painter: _ScannerPainter());
-  }
-}
-
-class _ScannerPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint grid = Paint()
-      ..color = Colors.white.withValues(alpha: 0.08)
-      ..strokeWidth = 1;
-    for (double y = 22; y < size.height; y += 24) {
-      canvas.drawLine(Offset(18, y), Offset(size.width - 18, y), grid);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
 class _GlassPanel extends StatelessWidget {
   const _GlassPanel({required this.child});
 
@@ -1027,6 +697,7 @@ class _GlassPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ClipRRect(
       borderRadius: BorderRadius.circular(30),
       child: BackdropFilter(
@@ -1034,111 +705,18 @@ class _GlassPanel extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.74),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.white.withValues(alpha: 0.74),
             borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: Colors.white),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.40),
+            ),
           ),
           child: child,
         ),
-      ),
-    );
-  }
-}
-
-class _StudioField extends StatefulWidget {
-  const _StudioField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    required this.onChanged,
-    this.hintText,
-    this.maxLines = 1,
-    this.textInputAction,
-    this.readOnly = false,
-    this.onTap,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final VoidCallback onChanged;
-  final String? hintText;
-  final int maxLines;
-  final TextInputAction? textInputAction;
-  final bool readOnly;
-  final VoidCallback? onTap;
-
-  @override
-  State<_StudioField> createState() => _StudioFieldState();
-}
-
-class _StudioFieldState extends State<_StudioField> {
-  late final FocusNode _focusNode;
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode = FocusNode()..addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bool focused = _focusNode.hasFocus;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: focused ? Colors.white : Colors.white.withValues(alpha: 0.62),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: focused
-              ? const Color(0xFF4C7CFF)
-              : Colors.white.withValues(alpha: 0.72),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: widget.maxLines > 1
-            ? CrossAxisAlignment.start
-            : CrossAxisAlignment.center,
-        children: <Widget>[
-          Padding(
-            padding: EdgeInsets.only(top: widget.maxLines > 1 ? 16 : 0),
-            child: Icon(
-              widget.icon,
-              color: focused
-                  ? const Color(0xFF4C7CFF)
-                  : const Color(0xFF64748B),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              focusNode: _focusNode,
-              controller: widget.controller,
-              maxLines: widget.maxLines,
-              textInputAction: widget.textInputAction,
-              readOnly: widget.readOnly,
-              onTap: widget.onTap,
-              onChanged: (_) => widget.onChanged(),
-              decoration: InputDecoration(
-                labelText: widget.label,
-                hintText: widget.hintText,
-                filled: false,
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1151,16 +729,21 @@ class _SaveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TapScale(
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final Color buttonColor = isDark ? theme.colorScheme.primary : const Color(0xFF07111F);
+    final Color shadowColor = isDark ? theme.colorScheme.primary.withValues(alpha: 0.22) : const Color(0xFF07111F).withValues(alpha: 0.22);
+
+    return BounceTap(
       onTap: onTap,
       child: Container(
         height: 58,
         decoration: BoxDecoration(
-          color: const Color(0xFF07111F),
+          color: buttonColor,
           borderRadius: BorderRadius.circular(22),
           boxShadow: <BoxShadow>[
             BoxShadow(
-              color: const Color(0xFF07111F).withValues(alpha: 0.22),
+              color: shadowColor,
               blurRadius: 18,
               offset: const Offset(0, 14),
             ),
@@ -1194,7 +777,8 @@ class _CircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TapScale(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return BounceTap(
       onTap: onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
@@ -1204,11 +788,20 @@ class _CircleButton extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.7),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.10)
+                  : Colors.white.withValues(alpha: 0.70),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.white),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.white,
+              ),
             ),
-            child: Icon(icon, color: const Color(0xFF07111F)),
+            child: Icon(
+              icon,
+              color: isDark ? Colors.white : const Color(0xFF07111F),
+            ),
           ),
         ),
       ),
@@ -1266,37 +859,6 @@ class _SuccessOverlay extends StatelessWidget {
   }
 }
 
-class _TapScale extends StatefulWidget {
-  const _TapScale({required this.child, required this.onTap});
-
-  final Widget child;
-  final VoidCallback onTap;
-
-  @override
-  State<_TapScale> createState() => _TapScaleState();
-}
-
-class _TapScaleState extends State<_TapScale> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTap: widget.onTap,
-      child: AnimatedScale(
-        scale: _pressed ? 0.96 : 1,
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOutCubic,
-        child: widget.child,
-      ),
-    );
-  }
-}
-
 // ── Camera Scan Button ────────────────────────────────────────────────────────
 
 class _ScanPassportButton extends StatelessWidget {
@@ -1305,19 +867,35 @@ class _ScanPassportButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TapScale(
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final Gradient gradient = isDark
+        ? LinearGradient(
+            colors: <Color>[
+              theme.colorScheme.primary.withValues(alpha: 0.9),
+              theme.colorScheme.primary.withValues(alpha: 0.7),
+            ],
+          )
+        : const LinearGradient(
+            colors: <Color>[Color(0xFF1A1A2E), Color(0xFF16213E)],
+          );
+
+    final Color shadowColor = isDark
+        ? theme.colorScheme.primary.withValues(alpha: 0.20)
+        : const Color(0xFF1A1A2E).withValues(alpha: 0.25);
+
+    return BounceTap(
       onTap: onTap,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: <Color>[Color(0xFF1A1A2E), Color(0xFF16213E)],
-          ),
+          gradient: gradient,
           borderRadius: BorderRadius.circular(18),
           boxShadow: <BoxShadow>[
             BoxShadow(
-              color: const Color(0xFF1A1A2E).withValues(alpha: 0.25),
+              color: shadowColor,
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -1355,19 +933,23 @@ class _OrDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color lineColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1);
+    final Color textColor = isDark ? Colors.white.withValues(alpha: 0.35) : Colors.black.withValues(alpha: 0.35);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 14),
       child: Row(
         children: <Widget>[
-          Expanded(child: Divider(color: Colors.black.withValues(alpha: 0.1), thickness: 1)),
+          Expanded(child: Divider(color: lineColor, thickness: 1)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               'or enter manually',
-              style: TextStyle(color: Colors.black.withValues(alpha: 0.35), fontSize: 12, fontWeight: FontWeight.w600),
+              style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ),
-          Expanded(child: Divider(color: Colors.black.withValues(alpha: 0.1), thickness: 1)),
+          Expanded(child: Divider(color: lineColor, thickness: 1)),
         ],
       ),
     );

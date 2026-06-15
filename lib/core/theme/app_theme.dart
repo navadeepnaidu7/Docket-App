@@ -45,12 +45,18 @@ class AppTheme {
     );
 
     final TextTheme text = GoogleFonts.interTextTheme().copyWith(
-      displaySmall: GoogleFonts.inter(fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -1.5, color: ink),
-      titleLarge:   GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: ink),
-      titleMedium:  GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.3, color: ink),
-      bodyLarge:    GoogleFonts.inter(fontSize: 17, height: 1.5,  letterSpacing: -0.2,  color: ink),
-      bodyMedium:   GoogleFonts.inter(fontSize: 15, height: 1.45, letterSpacing: -0.15, color: ink.withValues(alpha: 0.72)),
-      labelSmall:   GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.2, color: ink.withValues(alpha: 0.40)),
+      displayLarge: GoogleFonts.inter(fontSize: 40, fontWeight: FontWeight.w800, letterSpacing: -0.50, color: ink),
+      displayMedium: GoogleFonts.inter(fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.40, color: ink),
+      displaySmall: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.40, color: ink),
+      titleLarge:   GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.30, color: ink),
+      titleMedium:  GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: -0.20, color: ink),
+      titleSmall:   GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.20, color: ink),
+      bodyLarge:    GoogleFonts.inter(fontSize: 17, height: 1.35, letterSpacing: -0.20, color: ink),
+      bodyMedium:   GoogleFonts.inter(fontSize: 15, height: 1.35, letterSpacing: -0.15, color: ink.withValues(alpha: 0.72)),
+      bodySmall:    GoogleFonts.inter(fontSize: 13, height: 1.30, letterSpacing: -0.08, color: ink.withValues(alpha: 0.60)),
+      labelLarge:   GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -0.16, color: ink),
+      labelMedium:  GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.00, color: ink.withValues(alpha: 0.50)),
+      labelSmall:   GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 0.07, color: ink.withValues(alpha: 0.40)),
     );
 
     return ThemeData(

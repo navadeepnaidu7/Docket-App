@@ -3,6 +3,8 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../shared/widgets/bounce_tap.dart';
+import '../../../shared/widgets/roll_page_stack.dart';
 import 'wallet_ticket_card.dart';
 
 class TicketsTab extends StatefulWidget {
@@ -97,7 +99,7 @@ class _TicketsTabState extends State<TicketsTab> {
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         final double delta = (_page - index).clamp(-1.0, 1.0);
-                        return _RollPage(
+                        return RollPageStack(
                           delta: delta,
                           padding: EdgeInsets.fromLTRB(20, 0, 44, fabClearance),
                           child: WalletTicketCard(ticket: filtered[index]),
@@ -121,44 +123,6 @@ class _TicketsTabState extends State<TicketsTab> {
                 ),
         ),
       ],
-    );
-  }
-}
-
-// ── Roll page transform ───────────────────────────────────────────────────────
-
-class _RollPage extends StatelessWidget {
-  const _RollPage({
-    required this.delta,
-    required this.child,
-    required this.padding,
-  });
-
-  final double delta;
-  final Widget child;
-  final EdgeInsets padding;
-
-  @override
-  Widget build(BuildContext context) {
-    final double tilt = delta * 0.38;
-    final double scale = 1.0 - delta.abs() * 0.08;
-    final double translateY = delta * 24;
-
-    final Matrix4 m = Matrix4.identity()
-      ..setEntry(3, 2, 0.001)
-      ..rotateX(tilt)
-      ..scale(scale)
-      ..translate(0.0, translateY);
-
-    return Padding(
-      padding: padding,
-      child: Center(
-        child: Transform(
-          transform: m,
-          alignment: delta < 0 ? Alignment.bottomCenter : Alignment.topCenter,
-          child: child,
-        ),
-      ),
     );
   }
 }
@@ -254,26 +218,31 @@ class _FilterPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final Color activeColor = isDark ? theme.colorScheme.primary : const Color(0xFF1F3A60);
+    final Color inactiveBorderColor = isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.15);
+
+    return BounceTap(
       onTap: onTap,
+      scaleFactor: 0.94,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF1F3A60) : Colors.transparent,
+          color: selected ? activeColor : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected
-                ? const Color(0xFF1F3A60)
-                : Colors.black.withValues(alpha: 0.15),
+            color: selected ? activeColor : inactiveBorderColor,
             width: 1.5,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : const Color(0xFF8E8E93),
+            color: selected ? Colors.white : (isDark ? const Color(0xFF8E8E93) : const Color(0xFF64748B)),
             fontSize: 13,
             fontWeight: FontWeight.w600,
           ),
@@ -291,6 +260,9 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color contentColor = isDark ? Colors.white.withValues(alpha: 0.35) : Colors.black.withValues(alpha: 0.35);
+
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -298,7 +270,7 @@ class _EmptyState extends StatelessWidget {
           Icon(
             Icons.confirmation_number_outlined,
             size: 44,
-            color: Colors.black.withValues(alpha: 0.2),
+            color: contentColor.withValues(alpha: 0.58),
           ),
           const SizedBox(height: 12),
           Text(
@@ -306,7 +278,7 @@ class _EmptyState extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Colors.black.withValues(alpha: 0.35),
+              color: contentColor,
             ),
           ),
         ],

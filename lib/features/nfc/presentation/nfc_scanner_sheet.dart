@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../shared/widgets/apple_sheet.dart';
 import '../application/nfc_service.dart';
 
 class NfcScannerSheet extends StatefulWidget {
@@ -75,26 +76,15 @@ class _NfcScannerSheetState extends State<NfcScannerSheet> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-      ),
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return AppleSheet(
+      title: _isSuccess ? "Verified successfully" : _isError ? "Scan failed" : "Ready to Scan",
+      showDragHandle: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle
-          Container(
-            width: 40,
-            height: 5,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE5E5EA),
-              borderRadius: BorderRadius.circular(99),
-            ),
-          ),
-          const SizedBox(height: 40),
-          
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 600),
             switchInCurve: Curves.easeOutBack,
@@ -106,24 +96,7 @@ class _NfcScannerSheetState extends State<NfcScannerSheet> with SingleTickerProv
                     : _buildScanningAnimation(),
           ),
           
-          const SizedBox(height: 32),
-          
-          // Title
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 400),
-            child: Text(
-              _isSuccess ? "Verified successfully" : _isError ? "Scan failed" : "Ready to Scan",
-              key: ValueKey(_isSuccess ? 1 : _isError ? 2 : 3),
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF1C1C1E),
-                letterSpacing: 0.3,
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 12),
+          const SizedBox(height: 24),
           
           // Status Message
           AnimatedSwitcher(
@@ -132,16 +105,16 @@ class _NfcScannerSheetState extends State<NfcScannerSheet> with SingleTickerProv
               _statusMessage,
               key: ValueKey(_statusMessage),
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
-                color: Color(0xFF8E8E93),
+                color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF64748B),
                 height: 1.5,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
           
-          const SizedBox(height: 40),
+          const SizedBox(height: 32),
           
           if (_isError)
             SizedBox(
@@ -156,7 +129,7 @@ class _NfcScannerSheetState extends State<NfcScannerSheet> with SingleTickerProv
                   _startScanning();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF007AFF),
+                  backgroundColor: theme.colorScheme.primary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -172,8 +145,6 @@ class _NfcScannerSheetState extends State<NfcScannerSheet> with SingleTickerProv
                 ),
               ),
             ),
-            
-          const SizedBox(height: 16),
         ],
       ),
     );
