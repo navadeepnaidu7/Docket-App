@@ -33,14 +33,13 @@ class _WalletPassportCardState extends State<WalletPassportCard>
   bool _showBack = false;
 
   // -- tilt --
-  double _tiltX = 0;
-  double _tiltY = 0;
-  bool _touching = false;
+  final _tiltX = ValueNotifier<double>(0);
+  final _tiltY = ValueNotifier<double>(0);
+  late final Listenable _tiltNotifier = Listenable.merge([_tiltX, _tiltY]);
   bool _dragging = false;
 
-
-  // -- tap glow pulse --
-  late final AnimationController _pulseCtrl;
+  late Widget _frontCard;
+  late Widget _backCard;
 
   @override
   void initState() {
@@ -55,17 +54,32 @@ class _WalletPassportCardState extends State<WalletPassportCard>
     );
 
 
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
+    _frontCard = RepaintBoundary(
+      child: _CardFront(profile: widget.profile),
     );
+    _backCard = RepaintBoundary(
+      child: _CardBack(profile: widget.profile),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant WalletPassportCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profile != widget.profile) {
+      _frontCard = RepaintBoundary(
+        child: _CardFront(profile: widget.profile),
+      );
+      _backCard = RepaintBoundary(
+        child: _CardBack(profile: widget.profile),
+      );
+    }
   }
 
   @override
   void dispose() {
     _flipCtrl.dispose();
-
-    _pulseCtrl.dispose();
+    _tiltX.dispose();
+    _tiltY.dispose();
     super.dispose();
   }
 
@@ -73,7 +87,6 @@ class _WalletPassportCardState extends State<WalletPassportCard>
     if (_dragging) return;
     HapticFeedback.mediumImpact();
     SoundService.flip();
-    _pulseCtrl.forward(from: 0);
     if (_showBack) {
       _flipCtrl.reverse();
     } else {
@@ -83,31 +96,25 @@ class _WalletPassportCardState extends State<WalletPassportCard>
   }
 
   void _onPanStart(DragStartDetails d) {
-    setState(() {
-      _touching = true;
-      _dragging = false;
-    });
+    _dragging = false;
   }
 
   void _onPanUpdate(DragUpdateDetails d) {
     final RenderBox? box = context.findRenderObject() as RenderBox?;
     if (box == null) return;
     final Size size = box.size;
-    setState(() {
-      _dragging = true;
-      _tiltX = ((d.localPosition.dy / size.height) - 0.5).clamp(-0.5, 0.5);
-      _tiltY = -((d.localPosition.dx / size.width) - 0.5).clamp(-0.5, 0.5);
-    });
+    _dragging = true;
+    _tiltX.value =
+        ((d.localPosition.dy / size.height) - 0.5).clamp(-0.5, 0.5);
+    _tiltY.value =
+        -((d.localPosition.dx / size.width) - 0.5).clamp(-0.5, 0.5);
   }
 
   void _onPanEnd(DragEndDetails d) {
-    setState(() {
-      _touching = false;
-      _tiltX = 0;
-      _tiltY = 0;
-    });
+    _tiltX.value = 0;
+    _tiltY.value = 0;
     Future<void>.delayed(const Duration(milliseconds: 50), () {
-      if (mounted) setState(() => _dragging = false);
+      _dragging = false;
     });
   }
 
@@ -145,43 +152,52 @@ class _WalletPassportCardState extends State<WalletPassportCard>
                     ..setEntry(3, 2, 0.001)
                     ..scaleByDouble(scale, scale, 1.0, 1.0)
                     ..rotateY(angle),
-                  child: AnimatedContainer(
-                    duration: _touching
-                        ? const Duration(milliseconds: 60)
-                        : const Duration(milliseconds: 500),
-                    curve: _touching ? Curves.linear : Curves.easeOutCubic,
-                    transformAlignment: Alignment.center,
-                    transform: Matrix4.identity()
-                      ..rotateX(_tiltX * 0.14)
-                      ..rotateY(_tiltY * 0.14),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        // Back (rotated to face away)
-                        Opacity(
-                          opacity: isBack ? 1.0 : 0.0,
-                          child: Transform(
-                            alignment: Alignment.center,
-                            transform: Matrix4.rotationY(math.pi),
-                            child: RepaintBoundary(
-                              child: _CardBack(
-                                profile: widget.profile,
-                                tiltY: _tiltY,
+                  child: AnimatedBuilder(
+                    animation: _tiltNotifier,
+                    builder: (context, child) => Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()
+                        ..setEntry(3, 2, 0.001)
+                        ..rotateX(_tiltX.value * 0.14)
+                        ..rotateY(_tiltY.value * 0.14),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          child!,
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(24),
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: const <Color>[
+                                      Colors.transparent,
+                                      Color(0x18FFFFFF),
+                                      Colors.transparent,
+                                    ],
+                                    transform: _SlideGradient(
+                                      _tiltY.value * 1200,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
+                        ],
+                      ),
+                    ),
+                    child: IndexedStack(
+                      index: isBack ? 0 : 1,
+                      sizing: StackFit.expand,
+                      children: [
+                        Transform(
+                          alignment: Alignment.center,
+                          transform: Matrix4.rotationY(math.pi),
+                          child: _backCard,
                         ),
-                        // Front
-                        Opacity(
-                          opacity: isBack ? 0.0 : 1.0,
-                          child: RepaintBoundary(
-                            child: _CardFront(
-                              profile: widget.profile,
-                              tiltY: _tiltY,
-                              pulseCtrl: _pulseCtrl,
-                            ),
-                          ),
-                        ),
+                        _frontCard,
                       ],
                     ),
                   ),
@@ -196,15 +212,9 @@ class _WalletPassportCardState extends State<WalletPassportCard>
 // ─── FRONT SIDE ──────────────────────────────────────────────────────────────
 
 class _CardFront extends StatelessWidget {
-  const _CardFront({
-    required this.profile,
-    required this.tiltY,
-    required this.pulseCtrl,
-  });
+  const _CardFront({required this.profile});
 
   final PassportProfile profile;
-  final double tiltY;
-  final AnimationController pulseCtrl;
 
   @override
   Widget build(BuildContext context) {
@@ -274,26 +284,6 @@ class _CardFront extends StatelessWidget {
 
             // — subtle security pattern lines —
             const Positioned.fill(child: CustomPaint(painter: _SecurityLinePainter())),
-
-            // — shimmer overlay —
-            // — dynamic interactive shimmer —
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: const <Color>[
-                      Colors.transparent,
-                      Color(0x18FFFFFF),
-                      Colors.transparent,
-                    ],
-                    stops: const <double>[0.0, 0.5, 1.0],
-                    transform: _SlideGradient(tiltY * 1200),
-                  ),
-                ),
-              ),
-            ),
 
             // — tricolor top strip —
             Positioned(
@@ -446,10 +436,9 @@ class _CardFront extends StatelessWidget {
 // ─── BACK SIDE ───────────────────────────────────────────────────────────────
 
 class _CardBack extends StatelessWidget {
-  const _CardBack({required this.profile, required this.tiltY});
+  const _CardBack({required this.profile});
 
   final PassportProfile profile;
-  final double tiltY;
 
   String _generateMRZ(PassportProfile profile) {
     if (profile.mrzRaw.trim().isNotEmpty) return profile.mrzRaw;

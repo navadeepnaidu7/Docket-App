@@ -133,33 +133,22 @@ class _WalletIdCardState extends State<WalletIdCard>
                 final isBack = angle > math.pi / 2;
                 final scale = 1.0 - 0.08 * math.sin(_flipAnim.value * math.pi);
 
-                // Card faces: both kept alive in the tree so RepaintBoundary
-                // caches survive. SizedBox.expand ensures both fill the slot
-                // regardless of intrinsic size (fixes Aadhaar back shrink).
-                final facesStack = Stack(
-                  fit: StackFit.expand,
+                // Keep both faces laid out, but paint only the visible one.
+                // This preserves their raster caches without compositing an
+                // invisible, potentially expensive PAN face on every frame.
+                final facesStack = IndexedStack(
+                  index: isBack ? 0 : 1,
+                  sizing: StackFit.expand,
                   children: [
                     SizedBox.expand(
-                      child: Visibility(
-                        visible: isBack,
-                        maintainState: true,
-                        maintainAnimation: true,
-                        maintainSize: true,
-                        child: Transform(
-                          alignment: Alignment.center,
-                          transform: Matrix4.rotationY(math.pi),
-                          child: _backCard,
-                        ),
+                      child: Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.rotationY(math.pi),
+                        child: _backCard,
                       ),
                     ),
                     SizedBox.expand(
-                      child: Visibility(
-                        visible: !isBack,
-                        maintainState: true,
-                        maintainAnimation: true,
-                        maintainSize: true,
-                        child: _frontCard,
-                      ),
+                      child: _frontCard,
                     ),
                   ],
                 );
