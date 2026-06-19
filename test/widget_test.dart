@@ -32,7 +32,7 @@ void main() {
     }
 
     expect(find.text('No Documents Yet'), findsOneWidget);
-    expect(find.text('Docs'), findsOneWidget);
-    expect(find.text('Tickets'), findsOneWidget);
+    expect(find.text('IDs'), findsOneWidget);
+    expect(find.text('Passes'), findsOneWidget);
   });
 }

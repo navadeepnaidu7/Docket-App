@@ -101,7 +101,7 @@ class _TicketsTabState extends State<TicketsTab> {
                         final double delta = (_page - index).clamp(-1.0, 1.0);
                         return RollPageStack(
                           delta: delta,
-                          padding: EdgeInsets.fromLTRB(20, 0, 44, fabClearance),
+                          padding: EdgeInsets.fromLTRB(20, 0, 28, fabClearance),
                           child: WalletTicketCard(ticket: filtered[index]),
                         );
                       },
@@ -109,7 +109,7 @@ class _TicketsTabState extends State<TicketsTab> {
                     // Right-side dot indicator
                     if (filtered.length > 1)
                       Positioned(
-                        right: 14,
+                        right: 12,
                         top: 0,
                         bottom: fabClearance,
                         child: Center(

@@ -1,6 +1,6 @@
-import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
+
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +24,15 @@ import '../../passport/presentation/passport_entry_screen.dart';
 import '../../tickets/presentation/tickets_tab.dart';
 import '../../tickets/presentation/wallet_ticket_card.dart';
 import 'wallet_passport_card.dart';
+import '../application/trash_provider.dart';
+import '../application/wallet_order_provider.dart';
+import '../application/nav_labels_provider.dart';
+
+enum DashboardViewMode {
+  home,
+  manage,
+  trash,
+}
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -41,12 +50,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   late final ValueNotifier<double> _docPage;
   late final AnimationController _easterEggCtrl;
   final ValueNotifier<double> _easterEggOffset = ValueNotifier(0.0);
+  final ValueNotifier<bool> _showHomeMenu = ValueNotifier(false);
+  final ValueNotifier<DashboardViewMode> _viewMode = ValueNotifier(DashboardViewMode.home);
   double _dragOffset = 0.0;
   bool _isDragging = false;
+
+  final LayerLink _headerTitleLink = LayerLink();
+  DashboardViewMode _openedMode = DashboardViewMode.home;
+
+  void _onMenuToggle() {
+    if (_showHomeMenu.value) {
+      setState(() {
+        _openedMode = _viewMode.value;
+      });
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _showHomeMenu.addListener(_onMenuToggle);
     _docPage = ValueNotifier(0.0);
     _entryCtrl = AnimationController(
       vsync: this,
@@ -82,11 +105,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   @override
   void dispose() {
+    _showHomeMenu.removeListener(_onMenuToggle);
     _entryCtrl.dispose();
     _tabCtrl.dispose();
     _docPage.dispose();
     _easterEggCtrl.dispose();
     _easterEggOffset.dispose();
+    _showHomeMenu.dispose();
+    _viewMode.dispose();
     super.dispose();
   }
 
@@ -178,6 +204,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
+
   void _showAddSheet() {
     HapticFeedback.mediumImpact();
     if (_tabCtrl.index == 0) {
@@ -247,6 +274,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
+
   void _showDeleteDialog(PassportProfile profile) {
     HapticFeedback.heavyImpact();
     showCupertinoModalPopup<void>(
@@ -260,9 +288,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           CupertinoActionSheetAction(
             isDestructiveAction: true,
             onPressed: () {
-              ref
-                  .read(passportListProvider.notifier)
-                  .removePassport(profile.id);
+              ref.read(passportListProvider.notifier).removePassport(profile.id);
+              ref.read(trashProvider.notifier).moveToTrash(profile);
+              ref.read(walletOrderProvider.notifier).updateOrderOnItemRemoved(profile.id);
               Navigator.of(ctx).pop();
             },
             child: const Text('Remove'),
@@ -294,6 +322,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             isDestructiveAction: true,
             onPressed: () {
               ref.read(idListProvider.notifier).removeDocument(doc.id);
+              ref.read(trashProvider.notifier).moveToTrash(doc);
+              ref.read(walletOrderProvider.notifier).updateOrderOnItemRemoved(doc.id);
               Navigator.of(ctx).pop();
             },
             child: const Text('Remove'),
@@ -311,7 +341,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   Widget build(BuildContext context) {
     final List<PassportProfile> passports = ref.watch(passportListProvider);
     final List<IdDocument> idDocs = ref.watch(idListProvider);
+    final List<String> order = ref.watch(walletOrderProvider);
+
+    // Self-healing sync of sorting order
+    final activeIds = [...passports.map((p) => p.id), ...idDocs.map((d) => d.id)];
+    final missingFromOrder = activeIds.where((id) => !order.contains(id)).toList();
+    final noLongerActive = order.where((id) => !activeIds.contains(id)).toList();
+    if (missingFromOrder.isNotEmpty || noLongerActive.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final newOrder = [...order];
+        newOrder.removeWhere((id) => noLongerActive.contains(id));
+        newOrder.insertAll(0, missingFromOrder);
+        ref.read(walletOrderProvider.notifier).saveOrder(newOrder);
+      });
+    }
+
+    // Combine and sort
     final List<Object> items = <Object>[...passports, ...idDocs];
+    items.sort((a, b) {
+      final String idA = a is PassportProfile ? a.id : (a as IdDocument).id;
+      final String idB = b is PassportProfile ? b.id : (b as IdDocument).id;
+      int idxA = order.indexOf(idA);
+      int idxB = order.indexOf(idB);
+      if (idxA == -1) idxA = 9999;
+      if (idxB == -1) idxB = 9999;
+      return idxA.compareTo(idxB);
+    });
 
     final String currentName = passports.isNotEmpty ? passports.first.name : '';
 
@@ -386,37 +442,136 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                           onVerticalDragEnd: _handleDragEnd,
                                           child: Padding(
                                             padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                                            child: _DashboardHeader(
-                                              name: currentName,
-                                              tickets: mockTickets,
-                                              onAvatarTap: _showSettingsSheet,
-                                              onTripTap: () => _tabCtrl.animateTo(1),
+                                            child: ValueListenableBuilder<bool>(
+                                              valueListenable: _showHomeMenu,
+                                              builder: (context, isMenuOpen, _) {
+                                                return ValueListenableBuilder<DashboardViewMode>(
+                                                  valueListenable: _viewMode,
+                                                  builder: (context, currentMode, _) {
+                                                    return _DashboardHeader(
+                                                      name: currentName,
+                                                      isMenuOpen: isMenuOpen,
+                                                      currentMode: currentMode,
+                                                      onHomeTap: () {
+                                                        _showHomeMenu.value = !_showHomeMenu.value;
+                                                      },
+                                                      onAvatarTap: _showSettingsSheet,
+                                                      headerTitleLink: _headerTitleLink,
+                                                    );
+                                                  },
+                                                );
+                                              },
                                             ),
                                           ),
                                         ),
                                         const SizedBox(height: 12),
                                         // Tab content
-                                        Expanded(
-                                          child: TabBarView(
-                                            controller: _tabCtrl,
-                                            clipBehavior: Clip.none,
-                                            physics: const NeverScrollableScrollPhysics(),
-                                            children: [
-                                              _DocsTab(
-                                                passports: passports,
-                                                idDocs: idDocs,
-                                                onDeletePassport: _showDeleteDialog,
-                                                onDeleteId: _showDeleteIdDialog,
-                                                pageNotifier: _docPage,
+                                        ValueListenableBuilder<DashboardViewMode>(
+                                          valueListenable: _viewMode,
+                                          builder: (context, mode, _) {
+                                            Widget viewChild;
+                                            switch (mode) {
+                                              case DashboardViewMode.home:
+                                                viewChild = TabBarView(
+                                                  key: const ValueKey('home_view'),
+                                                  controller: _tabCtrl,
+                                                  clipBehavior: Clip.none,
+                                                  physics: const NeverScrollableScrollPhysics(),
+                                                  children: [
+                                                    _IdsTab(
+                                                      passports: passports,
+                                                      idDocs: idDocs,
+                                                      onDeletePassport: _showDeleteDialog,
+                                                      onDeleteId: _showDeleteIdDialog,
+                                                      pageNotifier: _docPage,
+                                                    ),
+                                                    const TicketsTab(),
+                                                  ],
+                                                );
+                                                break;
+                                              case DashboardViewMode.manage:
+                                                viewChild = _ManageCardsView(
+                                                  key: const ValueKey('manage_view'),
+                                                  items: items,
+                                                );
+                                                break;
+                                              case DashboardViewMode.trash:
+                                                viewChild = const _TrashView(
+                                                  key: ValueKey('trash_view'),
+                                                );
+                                                break;
+                                            }
+
+                                            return Expanded(
+                                              child: AnimatedSwitcher(
+                                                duration: const Duration(milliseconds: 350),
+                                                switchInCurve: Curves.easeOutCubic,
+                                                switchOutCurve: Curves.easeInCubic,
+                                                transitionBuilder: (child, animation) {
+                                                  return FadeTransition(
+                                                    opacity: animation,
+                                                    child: SlideTransition(
+                                                      position: Tween<Offset>(
+                                                        begin: const Offset(0, 0.04),
+                                                        end: Offset.zero,
+                                                      ).animate(animation),
+                                                      child: child,
+                                                    ),
+                                                  );
+                                                },
+                                                child: viewChild,
                                               ),
-                                              const TicketsTab(),
-                                            ],
-                                          ),
+                                            );
+                                          },
                                         ),
                                       ],
                                     ),
                                   ),
                                 ),
+                              ),
+                              // Tap Barrier to dismiss menu
+                              ValueListenableBuilder<bool>(
+                                valueListenable: _showHomeMenu,
+                                builder: (context, show, child) {
+                                  if (!show) return const SizedBox.shrink();
+                                  return Positioned.fill(
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () => _showHomeMenu.value = false,
+                                      child: Container(
+                                        color: Colors.transparent,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              // Custom iOS-style expanded view picker
+                              ValueListenableBuilder<bool>(
+                                valueListenable: _showHomeMenu,
+                                builder: (context, show, child) {
+                                  return ValueListenableBuilder<DashboardViewMode>(
+                                    valueListenable: _viewMode,
+                                    builder: (context, currentMode, _) {
+                                      return _IosMenuPickerExpanded(
+                                        link: _headerTitleLink,
+                                        visible: show,
+                                        currentMode: currentMode,
+                                        openedMode: _openedMode,
+                                        onSelectMode: (mode) {
+                                          _viewMode.value = mode;
+                                          Future.delayed(const Duration(milliseconds: 280), () {
+                                            if (mounted) {
+                                              _showHomeMenu.value = false;
+                                            }
+                                          });
+                                        },
+                                        onClose: () {
+                                          _showHomeMenu.value = false;
+                                        },
+                                      );
+                                    },
+                                  );
+                                },
                               ),
                             ],
                           ),
@@ -440,10 +595,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             ),
 
             // ── Bottom island bar ────────────────────────────────────────
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
+            ValueListenableBuilder<DashboardViewMode>(
+              valueListenable: _viewMode,
+              builder: (context, mode, child) {
+                final bool isHome = mode == DashboardViewMode.home;
+                return AnimatedPositioned(
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeInOutCubic,
+                  bottom: isHome ? 0 : -100,
+                  left: 0,
+                  right: 0,
+                  child: child!,
+                );
+              },
               child: Padding(
                 padding: EdgeInsets.only(
                   bottom: MediaQuery.of(context).padding.bottom + 16,
@@ -557,14 +721,14 @@ class _IslandBarState extends State<_IslandBar> {
                       children: [
                         _IslandTab(
                           icon: Icons.wallet_rounded,
-                          label: 'Docs',
+                          label: 'IDs',
                           index: 0,
                           t: t,
                           controller: widget.controller,
                         ),
                         _IslandTab(
                           icon: Icons.confirmation_number_rounded,
-                          label: 'Tickets',
+                          label: 'Passes',
                           index: 1,
                           t: t,
                           controller: widget.controller,
@@ -711,17 +875,140 @@ class _IslandAddButtonState extends State<_IslandAddButton>
   }
 }
 
-// ─── FROSTED PILL TAB BAR (kept for reference, replaced by _IslandBar) ────────
+// ─── CUSTOM ID CARD VECTOR ICON ──────────────────────────────────────────────
 
-class _PillTabBar extends StatefulWidget {
+class _CustomIdCardIcon extends StatelessWidget {
+  const _CustomIdCardIcon({
+    required this.color,
+    required this.width,
+    required this.height,
+  });
+  final Color color;
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: CustomPaint(
+        painter: _CustomIdCardPainter(color: color),
+      ),
+    );
+  }
+}
+
+class _CustomIdCardPainter extends CustomPainter {
+  _CustomIdCardPainter({required this.color});
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+
+    // Draw card background (filled rounded rect) matching the given size
+    final double cardW = w;
+    final double cardH = h;
+    final double cardX = 0;
+    final double cardY = 0;
+
+    // Use saveLayer to allow BlendMode.clear cutouts
+    canvas.saveLayer(Rect.fromLTWH(0, 0, w, h), Paint());
+
+    final Paint cardPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final RRect cardRRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(cardX, cardY, cardW, cardH),
+      Radius.circular(cardH * 0.20),
+    );
+    canvas.drawRRect(cardRRect, cardPaint);
+
+    // 2. Setup clear paint for cutouts
+    final Paint clearPaint = Paint()
+      ..blendMode = BlendMode.clear
+      ..style = PaintingStyle.fill;
+
+    // 3. Cutout the avatar circle on the left
+    final double avatarRadius = cardH * 0.28;
+    final double avatarCenterX = cardX + cardW * 0.28;
+    final double avatarCenterY = cardY + cardH * 0.44;
+    canvas.drawCircle(Offset(avatarCenterX, avatarCenterY), avatarRadius, clearPaint);
+
+    // 4. Draw avatar silhouette inside the cutout circle (using original color)
+    // Head: circle
+    final double headRadius = avatarRadius * 0.38;
+    final double headCenterX = avatarCenterX;
+    final double headCenterY = avatarCenterY - avatarRadius * 0.2;
+    canvas.drawCircle(Offset(headCenterX, headCenterY), headRadius, cardPaint);
+
+    // Shoulders: bottom circle cutout
+    final double shoulderRadius = avatarRadius * 0.75;
+    final double shoulderCenterX = avatarCenterX;
+    final double shoulderCenterY = avatarCenterY + avatarRadius * 1.05;
+    canvas.drawCircle(Offset(shoulderCenterX, shoulderCenterY), shoulderRadius, cardPaint);
+
+    // 5. Cutout lines
+    final double lineThickness = cardH * 0.09;
+    final double lineRadius = lineThickness / 2;
+
+    // Line 1: top right short
+    final RRect line1 = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        cardX + cardW * 0.54,
+        cardY + cardH * 0.26,
+        cardW * 0.34,
+        lineThickness,
+      ),
+      Radius.circular(lineRadius),
+    );
+    canvas.drawRRect(line1, clearPaint);
+
+    // Line 2: middle right short
+    final RRect line2 = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        cardX + cardW * 0.54,
+        cardY + cardH * 0.52,
+        cardW * 0.34,
+        lineThickness,
+      ),
+      Radius.circular(lineRadius),
+    );
+    canvas.drawRRect(line2, clearPaint);
+
+    // Line 3: bottom long line
+    final RRect line3 = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        cardX + cardW * 0.12,
+        cardY + cardH * 0.78,
+        cardW * 0.76,
+        lineThickness,
+      ),
+      Radius.circular(lineRadius),
+    );
+    canvas.drawRRect(line3, clearPaint);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _CustomIdCardPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
+// ─── REDESIGNED PILL TAB BAR ──────────────────────────────────────────────────
+
+class _PillTabBar extends ConsumerStatefulWidget {
   const _PillTabBar({required this.controller});
   final TabController controller;
 
   @override
-  State<_PillTabBar> createState() => _PillTabBarState();
+  ConsumerState<_PillTabBar> createState() => _PillTabBarState();
 }
 
-class _PillTabBarState extends State<_PillTabBar> {
+class _PillTabBarState extends ConsumerState<_PillTabBar> {
   @override
   void initState() {
     super.initState();
@@ -740,68 +1027,96 @@ class _PillTabBarState extends State<_PillTabBar> {
   Widget build(BuildContext context) {
     final double t = (widget.controller.animation!.value).clamp(0.0, 1.0);
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      height: 62,
-      constraints: const BoxConstraints(maxWidth: 280),
+      width: 250,
+      height: 82,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        color: isDark ? const Color(0xFF141416) : Colors.white,
+        borderRadius: BorderRadius.circular(99),
+        border: isDark
+            ? Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5)
+            : Border.all(color: Colors.black.withValues(alpha: 0.06), width: 0.5),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.08),
-            blurRadius: 12,
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Stack(
+        children: [
+          _ActiveTabHighlight(t: t),
+          // Labels
+          Row(
             children: [
-              _LiquidTabHighlight(t: t),
-              // Labels
-              Row(
-                children: [
-                  _TabLabel(
-                    label: 'Docs',
-                    icon: Icons.wallet_rounded,
-                    index: 0,
-                    controller: widget.controller,
-                    t: t,
-                  ),
-                  _TabLabel(
-                    label: 'Tickets',
-                    icon: Icons.confirmation_number_rounded,
-                    index: 1,
-                    controller: widget.controller,
-                    t: t,
-                  ),
-                ],
+              _TabLabel(
+                label: 'IDs',
+                iconBuilder: (context, color, selected, showLabels) {
+                  final double w = showLabels
+                      ? (selected ? 32.0 : 28.0)
+                      : (selected ? 42.0 : 38.0);
+                  final double h = showLabels
+                      ? (selected ? 23.0 : 20.0)
+                      : (selected ? 30.0 : 27.0);
+                  return _CustomIdCardIcon(
+                    color: color,
+                    width: w,
+                    height: h,
+                  );
+                },
+                index: 0,
+                controller: widget.controller,
+                t: t,
+              ),
+              _TabLabel(
+                label: 'Passes',
+                iconBuilder: (context, color, selected, showLabels) {
+                  final double s = showLabels
+                      ? (selected ? 26.0 : 24.0)
+                      : (selected ? 34.0 : 32.0);
+                  return Icon(
+                    selected ? Icons.airplane_ticket_rounded : Icons.airplane_ticket_outlined,
+                    color: color,
+                    size: s,
+                  );
+                },
+                index: 1,
+                controller: widget.controller,
+                t: t,
               ),
             ],
           ),
+        ],
+      ),
     );
   }
 }
 
-class _LiquidTabHighlight extends StatelessWidget {
-  const _LiquidTabHighlight({required this.t});
-
+class _ActiveTabHighlight extends StatelessWidget {
+  const _ActiveTabHighlight({required this.t});
   final double t;
 
   @override
   Widget build(BuildContext context) {
-    final Color cool = Theme.of(context).colorScheme.primary;
-    final Color warm = const Color(0xFFE8A020);
-    final Color color = Color.lerp(cool, warm, t)!;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color pillColor = isDark
+        ? const Color(0xFF242426)
+        : const Color(0xFFEEF0FF);
 
     return Align(
-      alignment: Alignment(lerpDouble(-1.0, 1.0, t)!, 0),
+      alignment: Alignment(t * 2 - 1, 0),
       child: FractionallySizedBox(
         widthFactor: 0.5,
         heightFactor: 1.0,
         child: Padding(
-          padding: const EdgeInsets.all(3.0),
-          child: CustomPaint(
-            painter: _LiquidTabHighlightPainter(color: color, t: t),
+          padding: const EdgeInsets.all(5.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: pillColor,
+              borderRadius: BorderRadius.circular(99),
+            ),
           ),
         ),
       ),
@@ -809,88 +1124,25 @@ class _LiquidTabHighlight extends StatelessWidget {
   }
 }
 
-class _LiquidTabHighlightPainter extends CustomPainter {
-  const _LiquidTabHighlightPainter({required this.color, required this.t});
-
-  final Color color;
-  final double t;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Rect rect = Offset.zero & size;
-    final RRect body = RRect.fromRectAndRadius(rect, const Radius.circular(20));
-    final Paint fill = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Colors.white.withValues(alpha: 0.42),
-          color.withValues(alpha: 0.95),
-          color.withValues(alpha: 0.78),
-        ],
-        stops: const [0.0, 0.36, 1.0],
-      ).createShader(rect);
-
-    final Paint glow = Paint()
-      ..color = color.withValues(alpha: 0.28)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
-    canvas.drawRRect(body.shift(const Offset(0, 5)), glow);
-    canvas.drawRRect(body, fill);
-
-    final Paint glass = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Colors.white.withValues(alpha: 0.38),
-          Colors.white.withValues(alpha: 0.04),
-        ],
-      ).createShader(rect.deflate(1));
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect.deflate(1), const Radius.circular(19)),
-      glass,
-    );
-
-    final double pulse = math.sin(t * math.pi);
-    final Paint lobe = Paint()
-      ..color = Colors.white.withValues(alpha: 0.16 + pulse * 0.08)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
-    canvas.drawCircle(
-      Offset(size.width * 0.28, size.height * 0.34),
-      15 + pulse * 4,
-      lobe,
-    );
-    canvas.drawCircle(
-      Offset(size.width * 0.72, size.height * 0.68),
-      18 - pulse * 3,
-      lobe,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _LiquidTabHighlightPainter old) =>
-      old.color != color || old.t != t;
-}
-
-class _TabLabel extends StatefulWidget {
+class _TabLabel extends ConsumerStatefulWidget {
   const _TabLabel({
     required this.label,
-    required this.icon,
+    required this.iconBuilder,
     required this.index,
     required this.controller,
     required this.t,
   });
   final String label;
-  final IconData icon;
+  final Widget Function(BuildContext context, Color color, bool selected, bool showLabels) iconBuilder;
   final int index;
   final TabController controller;
   final double t;
 
   @override
-  State<_TabLabel> createState() => _TabLabelState();
+  ConsumerState<_TabLabel> createState() => _TabLabelState();
 }
 
-class _TabLabelState extends State<_TabLabel>
+class _TabLabelState extends ConsumerState<_TabLabel>
     with SingleTickerProviderStateMixin {
   late final AnimationController _bounce;
   late final Animation<double> _scale;
@@ -947,7 +1199,13 @@ class _TabLabelState extends State<_TabLabel>
   @override
   Widget build(BuildContext context) {
     final bool selected = widget.index == 0 ? widget.t < 0.5 : widget.t >= 0.5;
-    final Color iconColor = selected ? Colors.white : const Color(0xFF8E8E93);
+    final bool showLabels = ref.watch(showNavLabelsProvider);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final Color activeIconColor = isDark ? const Color(0xFFC0B3FF) : const Color(0xFF4C3AFF);
+    final Color inactiveIconColor = const Color(0xFF8E8E93);
+    final Color activeTextColor = isDark ? Colors.white : const Color(0xFF1C1C1E);
+    final Color inactiveTextColor = const Color(0xFF8E8E93);
 
     return Expanded(
       child: GestureDetector(
@@ -959,53 +1217,45 @@ class _TabLabelState extends State<_TabLabel>
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               AnimatedBuilder(
                 animation: _scale,
                 builder: (context, child) {
                   final double scale = selected ? _scale.value : 1.0;
-                  return Transform.translate(
-                    offset: Offset(0, selected ? -1.5 : 0),
-                    child: Transform.scale(
-                      scale: scale,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 240),
-                        curve: Curves.easeOutCubic,
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: selected
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.white.withValues(alpha: 0.28),
-                                    blurRadius: 12,
-                                    spreadRadius: -2,
-                                  ),
-                                ]
-                              : const [],
-                        ),
-                        child: Icon(
-                          widget.icon,
-                          size: selected ? 22 : 18,
-                          color: iconColor,
-                        ),
-                      ),
+                  final Color iconColor = selected ? activeIconColor : inactiveIconColor;
+                  return Transform.scale(
+                    scale: scale,
+                    child: AnimatedSize(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOutCubic,
+                      child: widget.iconBuilder(context, iconColor, selected, showLabels),
                     ),
                   );
                 },
               ),
-              const SizedBox(height: 3),
-              AnimatedDefaultTextStyle(
+              // Conditional Label with animated opacity transition
+              AnimatedOpacity(
                 duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                style: TextStyle(
-                  fontSize: selected ? 11.5 : 10.5,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  letterSpacing: -0.1,
-                  color: iconColor,
-                ),
-                child: Text(widget.label),
+                opacity: showLabels ? 1.0 : 0.0,
+                curve: Curves.easeInOutCubic,
+                child: showLabels
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 6),
+                          Text(
+                            widget.label,
+                            style: TextStyle(
+                              fontSize: selected ? 12.5 : 11.5,
+                              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                              letterSpacing: -0.1,
+                              color: selected ? activeTextColor : inactiveTextColor,
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
               ),
             ],
           ),
@@ -1015,10 +1265,10 @@ class _TabLabelState extends State<_TabLabel>
   }
 }
 
-// ─── DOCS TAB (passports + IDs combined) ─────────────────────────────────────
+// ─── IDS TAB (passports + IDs combined) ──────────────────────────────────────
 
-class _DocsTab extends StatefulWidget {
-  const _DocsTab({
+class _IdsTab extends StatefulWidget {
+  const _IdsTab({
     required this.passports,
     required this.idDocs,
     required this.onDeletePassport,
@@ -1033,10 +1283,10 @@ class _DocsTab extends StatefulWidget {
   final ValueNotifier<double> pageNotifier;
 
   @override
-  State<_DocsTab> createState() => _DocsTabState();
+  State<_IdsTab> createState() => _IdsTabState();
 }
 
-class _DocsTabState extends State<_DocsTab> {
+class _IdsTabState extends State<_IdsTab> {
   late final PageController _pageCtrl;
   double _page = 0;
 
@@ -1108,7 +1358,7 @@ class _DocsTabState extends State<_DocsTab> {
             final double delta = (_page - index).clamp(-1.0, 1.0);
             return RollPageStack(
               delta: delta,
-              padding: EdgeInsets.fromLTRB(20, 8, 44, fabClearance),
+              padding: EdgeInsets.fromLTRB(20, 8, 28, fabClearance),
               child: item is PassportProfile
                   ? WalletPassportCard(
                       profile: item,
@@ -1123,7 +1373,7 @@ class _DocsTabState extends State<_DocsTab> {
         ),
         if (items.length > 1)
           Positioned(
-            right: 14,
+            right: 12,
             top: 0,
             bottom: fabClearance,
             child: Center(
@@ -1635,49 +1885,22 @@ class _GlassIconButtonState extends State<_GlassIconButton> {
 
 // ─── DASHBOARD HEADER ────────────────────────────────────────────────────────
 
-class _DashboardHeader extends StatefulWidget {
+class _DashboardHeader extends StatelessWidget {
   const _DashboardHeader({
     required this.name,
-    required this.tickets,
+    required this.isMenuOpen,
+    required this.currentMode,
+    required this.onHomeTap,
     required this.onAvatarTap,
-    required this.onTripTap,
+    required this.headerTitleLink,
   });
+
   final String name;
-  final List<MockTicket> tickets;
+  final bool isMenuOpen;
+  final DashboardViewMode currentMode;
+  final VoidCallback onHomeTap;
   final VoidCallback onAvatarTap;
-  final VoidCallback onTripTap;
-
-  @override
-  State<_DashboardHeader> createState() => _DashboardHeaderState();
-}
-
-class _DashboardHeaderState extends State<_DashboardHeader> {
-  bool _showTrip = false;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (mounted && _nextTrip != null) setState(() => _showTrip = !_showTrip);
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  MockTicket? get _nextTrip =>
-      widget.tickets.where((t) => t.status == TicketStatus.active).firstOrNull;
-
-  String get _greeting {
-    final h = DateTime.now().hour;
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
-  }
+  final LayerLink headerTitleLink;
 
   @override
   Widget build(BuildContext context) {
@@ -1688,163 +1911,65 @@ class _DashboardHeaderState extends State<_DashboardHeader> {
     final Color muted = isDark
         ? Colors.white.withValues(alpha: 0.38)
         : const Color(0xFF6B7280);
-    final trip = _nextTrip;
-    final firstName = widget.name.isEmpty
-        ? 'Traveller'
-        : widget.name.split(' ').first;
-    final showTrip = _showTrip && trip != null;
+
+    final String titleText;
+    switch (currentMode) {
+      case DashboardViewMode.home:
+        titleText = 'Home';
+        break;
+      case DashboardViewMode.manage:
+        titleText = 'Manage';
+        break;
+      case DashboardViewMode.trash:
+        titleText = 'Trash';
+        break;
+    }
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Expanded(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 460),
-            switchInCurve: Curves.easeOutQuint,
-            switchOutCurve: Curves.easeInCubic,
-            layoutBuilder: (current, previous) => Stack(
-              alignment: Alignment.topLeft,
-              children: [...previous, ?current],
-            ),
-            transitionBuilder: (child, anim) {
-              // Outgoing: slide up + fade out. Incoming: slide up from below + fade in.
-              final isIncoming =
-                  child.key ==
-                  (showTrip ? const ValueKey('t') : const ValueKey('g'));
-              return FadeTransition(
-                opacity: anim,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: Offset(0, isIncoming ? 0.15 : -0.15),
-                    end: Offset.zero,
-                  ).animate(anim),
-                  child: child,
+        BounceTap(
+          onTap: isMenuOpen ? null : onHomeTap,
+          child: CompositedTransformTarget(
+            link: headerTitleLink,
+            child: IgnorePointer(
+              ignoring: isMenuOpen,
+              child: Opacity(
+                opacity: isMenuOpen ? 0.0 : 1.0,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      titleText,
+                      style: GoogleFonts.inter(
+                        color: ink,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -1.2,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    AnimatedRotation(
+                      turns: isMenuOpen ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOutCubic,
+                      child: Icon(
+                        CupertinoIcons.chevron_down,
+                        size: 20,
+                        color: muted,
+                      ),
+                    ),
+                  ],
                 ),
-              );
-            },
-            child: showTrip
-                ? _TripContent(
-                    key: const ValueKey('t'),
-                    trip: trip,
-                    ink: ink,
-                    muted: muted,
-                    onTap: widget.onTripTap,
-                  )
-                : _GreetingContent(
-                    key: const ValueKey('g'),
-                    greeting: _greeting,
-                    name: firstName,
-                    ink: ink,
-                    muted: muted,
-                  ),
+              ),
+            ),
           ),
         ),
-        const SizedBox(width: 12),
-        _AvatarButton(name: widget.name, onTap: widget.onAvatarTap),
+        const Spacer(),
+        _AvatarButton(name: name, onTap: onAvatarTap),
       ],
     );
   }
-}
-
-class _GreetingContent extends StatelessWidget {
-  const _GreetingContent({
-    super.key,
-    required this.greeting,
-    required this.name,
-    required this.ink,
-    required this.muted,
-  });
-  final String greeting;
-  final String name;
-  final Color ink;
-  final Color muted;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Text(
-        '$greeting,',
-        style: TextStyle(
-          color: muted,
-          fontSize: 14,
-          fontWeight: FontWeight.w300,
-          letterSpacing: 0.1,
-        ),
-      ),
-      const SizedBox(height: 1),
-      Text(
-        name,
-        style: TextStyle(
-          color: ink,
-          fontSize: 28,
-          fontWeight: FontWeight.w900,
-          letterSpacing: -1.2,
-          height: 1.1,
-        ),
-      ),
-    ],
-  );
-}
-
-class _TripContent extends StatelessWidget {
-  const _TripContent({
-    super.key,
-    required this.trip,
-    required this.ink,
-    required this.muted,
-    required this.onTap,
-  });
-  final MockTicket trip;
-  final Color ink;
-  final Color muted;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              trip.fromCode,
-              style: TextStyle(
-                color: ink,
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -1.2,
-                height: 1.1,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Icon(Icons.arrow_forward_rounded, size: 16, color: muted),
-            ),
-            Text(
-              trip.toCode,
-              style: TextStyle(
-                color: ink,
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -1.2,
-                height: 1.1,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          '${trip.date}  ·  ${trip.departTime} – ${trip.arriveTime}',
-          style: TextStyle(color: muted, fontSize: 12),
-        ),
-      ],
-    ),
-  );
 }
 
 // ─── NEXT TRIP CHIP ───────────────────────────────────────────────────────────
@@ -1977,11 +2102,14 @@ class _AddFabState extends State<_AddFab> with SingleTickerProviderStateMixin {
           height: 58,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+            color: isDark ? const Color(0xFF141416) : Colors.white,
+            border: isDark
+                ? Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5)
+                : Border.all(color: Colors.black.withValues(alpha: 0.05), width: 0.5),
             boxShadow: <BoxShadow>[
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.08),
-                blurRadius: 12,
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
             ],
@@ -1994,7 +2122,7 @@ class _AddFabState extends State<_AddFab> with SingleTickerProviderStateMixin {
             child: Icon(
               Icons.add_rounded,
               size: 26,
-              color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+              color: isDark ? const Color(0xFFC0B3FF) : const Color(0xFF4C3AFF),
             ),
           ),
         ),
@@ -2487,11 +2615,24 @@ class _SettingsSheet extends ConsumerWidget {
                   },
                 ),
                 const SizedBox(height: 12),
+                // ── Navigation labels toggle ─────────────────────────
+                const _NavLabelsToggleRow(),
+                const SizedBox(height: 12),
                 _SettingsRow(
                   icon: Icons.info_outline_rounded,
                   iconColor: const Color(0xFF8E8E93),
                   title: 'About SlickPort',
                   subtitle: 'Version, legal, open source',
+                  onTap: () {
+                    Navigator.of(context).pop(); // Dismiss Settings sheet
+                    showModalBottomSheet<void>(
+                      context: context,
+                      useSafeArea: true,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => const _AboutSlickPortSheet(),
+                    );
+                  },
                 ),
               ],
             ),
@@ -2604,18 +2745,217 @@ class _DarkModeRow extends StatelessWidget {
   }
 }
 
+class _NavLabelsToggleRow extends ConsumerWidget {
+  const _NavLabelsToggleRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final showLabels = ref.watch(showNavLabelsProvider);
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    
+    final rowBg = isDark
+        ? Colors.white.withValues(alpha: 0.06)
+        : const Color(0xFFF2F2F7);
+    final titleColor = isDark
+        ? const Color(0xFFF0F4FF)
+        : const Color(0xFF1C1C1E);
+    final subtitleColor = isDark
+        ? Colors.white.withValues(alpha: 0.45)
+        : const Color(0xFF8E8E93);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        ref.read(showNavLabelsProvider.notifier).toggle();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: rowBg,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFF007AFF).withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: const Icon(
+                CupertinoIcons.textformat_abc,
+                color: Color(0xFF007AFF),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Navigation Labels',
+                    style: TextStyle(
+                      color: titleColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    showLabels
+                        ? 'On — tap to hide text labels'
+                        : 'Off — tap to show text labels',
+                    style: TextStyle(color: subtitleColor, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            // Animated toggle pill
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              width: 48,
+              height: 28,
+              decoration: BoxDecoration(
+                color: showLabels
+                    ? const Color(0xFF007AFF)
+                    : const Color(0xFFE5E5EA),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                alignment: showLabels
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.all(3),
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AboutSlickPortSheet extends StatelessWidget {
+  const _AboutSlickPortSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDark ? const Color(0xFFF0F4FF) : const Color(0xFF1C1C1E);
+    final subtitleColor = isDark ? Colors.white.withValues(alpha: 0.45) : const Color(0xFF8E8E93);
+
+    return AppleSheet(
+      title: 'About SlickPort',
+      subtitle: 'Version 1.0.0',
+      showDragHandle: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Attributions & Licenses',
+            style: TextStyle(
+              color: titleColor,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : const Color(0xFFF2F2F7),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  color: titleColor,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+                children: [
+                  const TextSpan(
+                    text: '• "id card" icon created by ',
+                  ),
+                  TextSpan(
+                    text: 'haritselarif',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? const Color(0xFFC0B3FF) : const Color(0xFF4C3AFF),
+                    ),
+                  ),
+                  const TextSpan(
+                    text: ' from the ',
+                  ),
+                  TextSpan(
+                    text: 'Noun Project',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? const Color(0xFFC0B3FF) : const Color(0xFF4C3AFF),
+                    ),
+                  ),
+                  const TextSpan(
+                    text: ' (licensed under CC BY 3.0).\n\n',
+                  ),
+                  const TextSpan(
+                    text: '• Built with Flutter & Riverpod.\n',
+                  ),
+                  const TextSpan(
+                    text: '• Beautiful Apple-style animations and widgets.',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Center(
+            child: Text(
+              '© 2026 SlickPort Project. All rights reserved.',
+              style: TextStyle(
+                color: subtitleColor,
+                fontSize: 11,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SettingsRow extends StatefulWidget {
   const _SettingsRow({
     required this.icon,
     required this.iconColor,
     required this.title,
     required this.subtitle,
+    this.onTap,
   });
 
   final IconData icon;
   final Color iconColor;
   final String title;
   final String subtitle;
+  final VoidCallback? onTap;
 
   @override
   State<_SettingsRow> createState() => _SettingsRowState();
@@ -2632,7 +2972,12 @@ class _SettingsRowState extends State<_SettingsRow> {
       onTapDown: (_) => setState(() => _pressed = true),
       onTapCancel: () => setState(() => _pressed = false),
       onTapUp: (_) => setState(() => _pressed = false),
-      onTap: () => HapticFeedback.selectionClick(),
+      onTap: () {
+        HapticFeedback.selectionClick();
+        if (widget.onTap != null) {
+          widget.onTap!();
+        }
+      },
       child: AnimatedScale(
         duration: const Duration(milliseconds: 140),
         curve: Curves.easeOutCubic,
@@ -2928,6 +3273,619 @@ class _EasterEggDrawer extends StatelessWidget {
               },
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── IOS CONTEXT MENU ────────────────────────────────────────────────────────
+
+class _IosMenuPickerExpanded extends StatefulWidget {
+  const _IosMenuPickerExpanded({
+    required this.link,
+    required this.visible,
+    required this.currentMode,
+    required this.openedMode,
+    required this.onSelectMode,
+    required this.onClose,
+  });
+
+  final LayerLink link;
+  final bool visible;
+  final DashboardViewMode currentMode;
+  final DashboardViewMode openedMode;
+  final ValueChanged<DashboardViewMode> onSelectMode;
+  final VoidCallback onClose;
+
+  @override
+  State<_IosMenuPickerExpanded> createState() => _IosMenuPickerExpandedState();
+}
+
+class _IosMenuPickerExpandedState extends State<_IosMenuPickerExpanded>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<double> _scaleAnimation;
+  bool _shouldRender = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 240),
+    );
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOut,
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
+    if (widget.visible) {
+      _shouldRender = true;
+      _controller.forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _IosMenuPickerExpanded oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.visible != oldWidget.visible) {
+      if (widget.visible) {
+        setState(() {
+          _shouldRender = true;
+        });
+        _controller.forward();
+      } else {
+        _controller.reverse().then((_) {
+          if (mounted && !widget.visible) {
+            setState(() {
+              _shouldRender = false;
+            });
+          }
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_shouldRender) return const SizedBox.shrink();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color menuBg = isDark
+        ? const Color(0xFF1C1C1E).withValues(alpha: 0.75)
+        : Colors.white.withValues(alpha: 0.82);
+
+    final Color textColor = isDark
+        ? const Color(0xFFF0F4FF)
+        : const Color(0xFF1C1C1E);
+
+    // List of modes
+    const modes = [
+      DashboardViewMode.manage,
+      DashboardViewMode.home,
+      DashboardViewMode.trash,
+    ];
+
+    // Find current index
+    final int selectedIndex = modes.indexOf(widget.currentMode);
+
+    return CompositedTransformFollower(
+      link: widget.link,
+      showWhenUnlinked: false,
+      offset: const Offset(-16.0, -14.0),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Opacity(
+            opacity: _fadeAnimation.value,
+            child: Transform.scale(
+              scale: _scaleAnimation.value,
+              alignment: Alignment.topLeft,
+              child: child,
+            ),
+          );
+        },
+        child: Container(
+          width: 190,
+          height: 190,
+          decoration: BoxDecoration(
+            color: menuBg,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.3),
+              width: 0.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+                blurRadius: 36,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Stack(
+                children: [
+                  // Sliding highlight pill background
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 280),
+                    curve: Curves.easeInOutCubic,
+                    top: 8.0 + selectedIndex * 56.0 + 2.0,
+                    left: 8.0,
+                    right: 8.0,
+                    height: 52,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B82F6).withValues(alpha: isDark ? 0.20 : 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ),
+                  // List items
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Column(
+                      children: modes.map((mode) {
+                        final bool isActive = widget.currentMode == mode;
+                        final String title;
+                        switch (mode) {
+                          case DashboardViewMode.home:
+                            title = 'Home';
+                            break;
+                          case DashboardViewMode.manage:
+                            title = 'Manage';
+                            break;
+                          case DashboardViewMode.trash:
+                            title = 'Trash';
+                            break;
+                        }
+
+                        return GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            widget.onSelectMode(mode);
+                          },
+                          child: Container(
+                            height: 56,
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 200),
+                              style: GoogleFonts.inter(
+                                color: isActive
+                                    ? textColor
+                                    : textColor.withValues(alpha: 0.35),
+                                fontSize: 28,
+                                fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
+                                letterSpacing: -1.0,
+                              ),
+                              child: Text(title),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+// ─── MANAGE CARDS VIEW ───────────────────────────────────────────────────────
+
+class _ManageCardsView extends ConsumerWidget {
+  const _ManageCardsView({
+    super.key,
+    required this.items,
+  });
+
+  final List<Object> items;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (items.isEmpty) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              CupertinoIcons.creditcard,
+              size: 48,
+              color: isDark ? Colors.white24 : Colors.black26,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No Cards in Wallet',
+              style: GoogleFonts.inter(
+                color: isDark ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF1C1C1E),
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Theme(
+      data: Theme.of(context).copyWith(
+        canvasColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+      ),
+      child: ReorderableListView.builder(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 24),
+        itemCount: items.length,
+        onReorder: (oldIndex, newIndex) {
+          HapticFeedback.lightImpact();
+          if (oldIndex < newIndex) {
+            newIndex -= 1;
+          }
+          final List<String> currentIds = items.map((item) {
+            return item is PassportProfile ? item.id : (item as IdDocument).id;
+          }).toList();
+
+          final String movedId = currentIds.removeAt(oldIndex);
+          currentIds.insert(newIndex, movedId);
+          ref.read(walletOrderProvider.notifier).saveOrder(currentIds);
+        },
+        itemBuilder: (context, index) {
+          final item = items[index];
+          final String id = item is PassportProfile ? item.id : (item as IdDocument).id;
+
+          return _ManageCardTile(
+            key: ValueKey(id),
+            item: item,
+            index: index,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ManageCardTile extends StatelessWidget {
+  const _ManageCardTile({
+    super.key,
+    required this.item,
+    required this.index,
+  });
+
+  final Object item;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final String title;
+    final String subtitle;
+    final IconData icon;
+    final Color iconColor;
+
+    if (item is PassportProfile) {
+      final p = item as PassportProfile;
+      title = p.name.isEmpty ? 'Passport' : "${p.name.split(' ').first}'s Passport";
+      subtitle = p.passportNumber.isEmpty ? 'Passport' : p.passportNumber;
+      icon = CupertinoIcons.book;
+      iconColor = const Color(0xFF4C7CFF);
+    } else {
+      final d = item as IdDocument;
+      title = d.holderName.isEmpty
+          ? (d.type == IdDocumentType.pan ? 'PAN Card' : 'Aadhaar Card')
+          : "${d.holderName.split(' ').first}'s ID";
+      subtitle = d.documentNumber;
+      icon = CupertinoIcons.creditcard;
+      iconColor = const Color(0xFF19D3C5);
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : const Color(0xFF1C1C1E).withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : const Color(0xFF1C1C1E).withValues(alpha: 0.08),
+          width: 0.5,
+        ),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: iconColor, size: 20),
+        ),
+        title: Text(
+          title,
+          style: GoogleFonts.inter(
+            color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: GoogleFonts.inter(
+            color: isDark ? Colors.white.withValues(alpha: 0.45) : const Color(0xFF8E8E93),
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+        trailing: ReorderableDragStartListener(
+          index: index,
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Icon(
+              CupertinoIcons.bars,
+              color: isDark ? Colors.white30 : Colors.black26,
+              size: 20,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── TRASH VIEW ──────────────────────────────────────────────────────────────
+
+class _TrashView extends ConsumerWidget {
+  const _TrashView({super.key});
+
+  void _showConfirmDeleteDialog(BuildContext context, WidgetRef ref, Object item) {
+    showCupertinoDialog<void>(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Delete Permanently?'),
+        content: const Text(
+          'This card will be permanently deleted from your offline wallet and cannot be restored.',
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.of(ctx).pop(),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            child: const Text('Delete'),
+            onPressed: () {
+              ref.read(trashProvider.notifier).permanentlyDeleteItem(item);
+              Navigator.of(ctx).pop();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final trashState = ref.watch(trashProvider);
+    final List<Object> items = [...trashState.passports, ...trashState.idDocs];
+
+    if (items.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                CupertinoIcons.trash,
+                size: 36,
+                color: isDark ? Colors.white24 : Colors.black26,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Trash is Empty',
+              style: GoogleFonts.inter(
+                color: isDark ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF1C1C1E),
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                'Items removed from your wallet are stored here until restored or deleted permanently.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  color: isDark ? Colors.white.withValues(alpha: 0.45) : const Color(0xFF8E8E93),
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 24),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return _TrashCardTile(
+          item: item,
+          onRestore: () {
+            ref.read(trashProvider.notifier).restoreItem(item, ref);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  item is PassportProfile ? 'Passport restored to wallet' : 'ID Document restored to wallet',
+                ),
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          },
+          onDelete: () => _showConfirmDeleteDialog(context, ref, item),
+        );
+      },
+    );
+  }
+}
+
+class _TrashCardTile extends StatelessWidget {
+  const _TrashCardTile({
+    required this.item,
+    required this.onRestore,
+    required this.onDelete,
+  });
+
+  final Object item;
+  final VoidCallback onRestore;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final String title;
+    final String subtitle;
+    final IconData icon;
+    final Color iconColor;
+
+    if (item is PassportProfile) {
+      final p = item as PassportProfile;
+      title = p.name.isEmpty ? 'Passport' : "${p.name.split(' ').first}'s Passport";
+      subtitle = p.passportNumber.isEmpty ? 'Passport' : p.passportNumber;
+      icon = CupertinoIcons.book;
+      iconColor = const Color(0xFF4C7CFF);
+    } else {
+      final d = item as IdDocument;
+      title = d.holderName.isEmpty
+          ? (d.type == IdDocumentType.pan ? 'PAN Card' : 'Aadhaar Card')
+          : "${d.holderName.split(' ').first}'s ID";
+      subtitle = d.documentNumber;
+      icon = CupertinoIcons.creditcard;
+      iconColor = const Color(0xFF19D3C5);
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : const Color(0xFF1C1C1E).withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : const Color(0xFF1C1C1E).withValues(alpha: 0.08),
+          width: 0.5,
+        ),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: iconColor, size: 20),
+        ),
+        title: Text(
+          title,
+          style: GoogleFonts.inter(
+            color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: GoogleFonts.inter(
+            color: isDark ? Colors.white.withValues(alpha: 0.45) : const Color(0xFF8E8E93),
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            BounceTap(
+              onTap: onRestore,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4C7CFF).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  CupertinoIcons.arrow_counterclockwise,
+                  size: 18,
+                  color: Color(0xFF4C7CFF),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            BounceTap(
+              onTap: onDelete,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF453A).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  CupertinoIcons.trash,
+                  size: 18,
+                  color: Color(0xFFFF453A),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
