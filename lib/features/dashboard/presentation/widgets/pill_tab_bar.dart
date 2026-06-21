@@ -59,16 +59,13 @@ class _PillTabBarState extends ConsumerState<PillTabBar> {
               TabLabel(
                 label: 'IDs',
                 iconBuilder: (context, color, selected, showLabels) {
-                  final double w = showLabels
-                      ? (selected ? 32.0 : 28.0)
-                      : (selected ? 42.0 : 38.0);
-                  final double h = showLabels
-                      ? (selected ? 23.0 : 20.0)
-                      : (selected ? 30.0 : 27.0);
+                  final double w = showLabels ? 32.0 : 44.0;
+                  final double h = showLabels ? 23.0 : 31.0;
                   return CustomIdCardIcon(
                     color: color,
                     width: w,
                     height: h,
+                    selected: selected,
                   );
                 },
                 index: 0,
@@ -78,9 +75,7 @@ class _PillTabBarState extends ConsumerState<PillTabBar> {
               TabLabel(
                 label: 'Passes',
                 iconBuilder: (context, color, selected, showLabels) {
-                  final double s = showLabels
-                      ? (selected ? 26.0 : 24.0)
-                      : (selected ? 34.0 : 32.0);
+                  final double s = showLabels ? 28.0 : 37.0;
                   return Icon(
                     selected ? Icons.airplane_ticket_rounded : Icons.airplane_ticket_outlined,
                     color: color,
@@ -107,8 +102,8 @@ class ActiveTabHighlight extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color pillColor = isDark
-        ? const Color(0xFF242426)
-        : const Color(0xFFEEF0FF);
+        ? const Color(0xFF2C2C2E)
+        : const Color(0xFFE5E5EA);
 
     return Align(
       alignment: Alignment(t * 2 - 1, 0),
@@ -129,7 +124,7 @@ class ActiveTabHighlight extends StatelessWidget {
   }
 }
 
-class TabLabel extends ConsumerStatefulWidget {
+class TabLabel extends ConsumerWidget {
   const TabLabel({
     super.key,
     required this.label,
@@ -138,6 +133,7 @@ class TabLabel extends ConsumerStatefulWidget {
     required this.controller,
     required this.t,
   });
+
   final String label;
   final Widget Function(BuildContext context, Color color, bool selected, bool showLabels) iconBuilder;
   final int index;
@@ -145,70 +141,12 @@ class TabLabel extends ConsumerStatefulWidget {
   final double t;
 
   @override
-  ConsumerState<TabLabel> createState() => _TabLabelState();
-}
-
-class _TabLabelState extends ConsumerState<TabLabel>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _bounce;
-  late final Animation<double> _scale;
-  bool _wasSelected = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _bounce = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _scale = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 1.0,
-          end: 1.16,
-        ).chain(CurveTween(curve: Curves.easeOutCubic)),
-        weight: 34,
-      ),
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 1.16,
-          end: 0.96,
-        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
-        weight: 28,
-      ),
-      TweenSequenceItem(
-        tween: Tween(
-          begin: 0.96,
-          end: 1.0,
-        ).chain(CurveTween(curve: Curves.easeOutBack)),
-        weight: 38,
-      ),
-    ]).animate(_bounce);
-  }
-
-  @override
-  void didUpdateWidget(TabLabel old) {
-    super.didUpdateWidget(old);
-    final selected = widget.index == 0 ? widget.t < 0.5 : widget.t >= 0.5;
-    if (selected && !_wasSelected) {
-      _bounce.forward(from: 0);
-    }
-    _wasSelected = selected;
-  }
-
-  @override
-  void dispose() {
-    _bounce.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bool selected = widget.index == 0 ? widget.t < 0.5 : widget.t >= 0.5;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool selected = index == 0 ? t < 0.5 : t >= 0.5;
     final bool showLabels = ref.watch(showNavLabelsProvider);
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final Color activeIconColor = isDark ? const Color(0xFFC0B3FF) : const Color(0xFF4C3AFF);
+    final Color activeIconColor = isDark ? Colors.white : const Color(0xFF1C1C1E);
     final Color inactiveIconColor = const Color(0xFF8E8E93);
     final Color activeTextColor = isDark ? Colors.white : const Color(0xFF1C1C1E);
     final Color inactiveTextColor = const Color(0xFF8E8E93);
@@ -218,27 +156,17 @@ class _TabLabelState extends ConsumerState<TabLabel>
         behavior: HitTestBehavior.opaque,
         onTap: () {
           HapticFeedback.selectionClick();
-          widget.controller.animateTo(widget.index);
+          controller.animateTo(index);
         },
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedBuilder(
-                animation: _scale,
-                builder: (context, child) {
-                  final double scale = selected ? _scale.value : 1.0;
-                  final Color iconColor = selected ? activeIconColor : inactiveIconColor;
-                  return Transform.scale(
-                    scale: scale,
-                    child: AnimatedSize(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeInOutCubic,
-                      child: widget.iconBuilder(context, iconColor, selected, showLabels),
-                    ),
-                  );
-                },
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOutCubic,
+                child: iconBuilder(context, selected ? activeIconColor : inactiveIconColor, selected, showLabels),
               ),
               // Conditional Label with animated opacity transition
               AnimatedOpacity(
@@ -251,9 +179,9 @@ class _TabLabelState extends ConsumerState<TabLabel>
                         children: [
                           const SizedBox(height: 6),
                           Text(
-                            widget.label,
+                            label,
                             style: TextStyle(
-                              fontSize: selected ? 12.5 : 11.5,
+                              fontSize: 11.5,
                               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                               letterSpacing: -0.1,
                               color: selected ? activeTextColor : inactiveTextColor,

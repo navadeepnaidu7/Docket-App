@@ -78,8 +78,8 @@ class _AddFabState extends State<AddFab> with SingleTickerProviderStateMixin {
             ).animate(_rotateAnim),
             child: Icon(
               Icons.add_rounded,
-              size: 26,
-              color: isDark ? const Color(0xFFC0B3FF) : const Color(0xFF4C3AFF),
+              size: 30,
+              color: isDark ? Colors.white : const Color(0xFF1C1C1E),
             ),
           ),
         ),

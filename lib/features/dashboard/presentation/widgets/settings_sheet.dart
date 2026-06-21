@@ -376,9 +376,9 @@ class AboutSlickPortSheet extends StatelessWidget {
                   ),
                   TextSpan(
                     text: 'haritselarif',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: isDark ? const Color(0xFFC0B3FF) : const Color(0xFF4C3AFF),
+                      color: Color(0xFF007AFF),
                     ),
                   ),
                   const TextSpan(
@@ -386,9 +386,9 @@ class AboutSlickPortSheet extends StatelessWidget {
                   ),
                   TextSpan(
                     text: 'Noun Project',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: isDark ? const Color(0xFFC0B3FF) : const Color(0xFF4C3AFF),
+                      color: Color(0xFF007AFF),
                     ),
                   ),
                   const TextSpan(
