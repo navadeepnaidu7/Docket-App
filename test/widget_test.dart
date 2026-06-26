@@ -1,10 +1,4 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,20 +10,27 @@ void main() {
     WidgetTester tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
-    // Build our app and trigger a frame.
     await tester.pumpWidget(const ProviderScope(child: SlickPortApp(hasSeenOnboarding: false)));
 
-    expect(find.text('SlickPort'), findsWidgets);
     expect(find.text('Continue'), findsOneWidget);
 
     await tester.tap(find.text('Continue'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Continue'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Enter SlickPort'));
-    for (int i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 1500));
+
+    for (int i = 0; i < 4; i++) {
+      for (int attempt = 0; attempt < 25; attempt++) {
+        await tester.pump(const Duration(milliseconds: 100));
+        if (find.byKey(ValueKey<String>('got-it-$i')).evaluate().isNotEmpty) break;
+      }
+      await tester.tap(find.byKey(ValueKey<String>('got-it-$i')));
+      await tester.pump(const Duration(milliseconds: 900));
     }
+
+    await tester.pump(const Duration(milliseconds: 1600));
+    expect(find.text('Enter SlickPort'), findsOneWidget);
+    await tester.tap(find.text('Enter SlickPort'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('No Documents Yet'), findsOneWidget);
     expect(find.text('IDs'), findsOneWidget);
