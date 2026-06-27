@@ -26,6 +26,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 900));
     }
 
+    // New onboarding step: Skip authorization
+    final Finder skipFinder = find.text('Skip, I will login later');
+    expect(skipFinder, findsOneWidget);
+    await tester.ensureVisible(skipFinder);
+    await tester.tap(skipFinder);
+    await tester.pump(const Duration(milliseconds: 900));
+
     await tester.pump(const Duration(milliseconds: 1600));
     expect(find.text('Enter SlickPort'), findsOneWidget);
     await tester.tap(find.text('Enter SlickPort'));

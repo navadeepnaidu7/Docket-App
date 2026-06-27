@@ -32,7 +32,6 @@ class AccordionStep extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
-            // Smoothly animate the icon container's size, background color, and border radius
             AnimatedContainer(
               duration: stepAdvanceDuration,
               curve: smoothCurve,
@@ -45,32 +44,42 @@ class AccordionStep extends StatelessWidget {
                 borderRadius: BorderRadius.circular(isExpanded ? 10 : 0),
               ),
               child: Center(
-                child: Icon(
-                  step.icon,
-                  size: isExpanded ? 18 : 20,
-                  color: isExpanded ? step.accent : tone,
+                child: AnimatedScale(
+                  scale: isExpanded ? 1.0 : 20 / 18,
+                  duration: stepAdvanceDuration,
+                  curve: smoothCurve,
+                  child: Icon(
+                    step.icon,
+                    size: 18,
+                    color: isExpanded ? step.accent : tone,
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
-            // Smoothly animate the text size, color, height, and weight using AnimatedDefaultTextStyle
             Expanded(
-              child: AnimatedDefaultTextStyle(
+              child: AnimatedSlide(
                 duration: stepAdvanceDuration,
                 curve: smoothCurve,
-                style: TextStyle(
-                  color: isExpanded ? Colors.black : tone,
-                  fontSize: isExpanded ? 32 : 22,
-                  height: isExpanded ? 1.02 : 1.2,
-                  fontWeight: isExpanded ? FontWeight.w800 : FontWeight.w600,
-                  letterSpacing: isExpanded ? -0.5 : -0.2,
+                offset: isExpanded ? Offset.zero : const Offset(0, 0.06),
+                child: AnimatedDefaultTextStyle(
+                  duration: stepAdvanceDuration,
+                  curve: smoothCurve,
+                  style: TextStyle(
+                    color: isExpanded ? Colors.black : tone,
+                    fontSize: isExpanded ? 32 : 22,
+                    height: isExpanded ? 1.02 : 1.2,
+                    fontWeight: isExpanded ? FontWeight.w800 : FontWeight.w600,
+                    letterSpacing: isExpanded ? -0.5 : -0.2,
+                  ),
+                  child: Text(step.title),
                 ),
-                child: Text(step.title),
               ),
             ),
             AnimatedOpacity(
               opacity: (!isExpanded && isPast && step.state == FeatureStepState.success) ? 1.0 : 0.0,
               duration: stepAdvanceDuration,
+              curve: smoothCurve,
               child: Padding(
                 padding: const EdgeInsets.only(left: 10),
                 child: Icon(Icons.check_circle_rounded, size: 20, color: step.accent),
@@ -78,46 +87,100 @@ class AccordionStep extends StatelessWidget {
             ),
           ],
         ),
-        // AnimatedAlign & ClipRect smoothly shrinks/expands the description height without layout reflows or unmounting issues
-        ClipRect(
-          child: AnimatedAlign(
-            duration: stepAdvanceDuration,
-            curve: smoothCurve,
-            alignment: Alignment.topCenter,
-            heightFactor: isExpanded ? 1.0 : 0.0,
-            child: AnimatedOpacity(
-              duration: stepAdvanceDuration,
-              curve: smoothCurve,
-              opacity: isExpanded ? 1.0 : 0.0,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const SizedBox(height: 16),
-                  _StepDescription(description: step.description),
-                ],
-              ),
-            ),
-          ),
+        _RevealDescription(
+          isExpanded: isExpanded,
+          description: step.description,
         ),
       ],
     );
   }
 }
 
-class _StepDescription extends StatelessWidget {
-  const _StepDescription({required this.description});
+class _RevealDescription extends StatefulWidget {
+  const _RevealDescription({
+    required this.isExpanded,
+    required this.description,
+  });
 
+  final bool isExpanded;
   final String description;
 
   @override
+  State<_RevealDescription> createState() => _RevealDescriptionState();
+}
+
+class _RevealDescriptionState extends State<_RevealDescription>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: stepAdvanceDuration,
+    );
+    _fade = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.2, 1.0, curve: smoothCurve),
+    );
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.22),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: smoothCurve));
+
+    if (widget.isExpanded) {
+      _controller.value = 1.0;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _RevealDescription oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isExpanded && !oldWidget.isExpanded) {
+      _controller.forward(from: 0);
+    } else if (!widget.isExpanded && oldWidget.isExpanded) {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Text(
-      description,
-      style: TextStyle(
-        color: Colors.black.withValues(alpha: 0.55),
-        fontSize: 16,
-        height: 1.45,
-        fontWeight: FontWeight.w500,
+    return ClipRect(
+      child: AnimatedAlign(
+        duration: stepAdvanceDuration,
+        curve: smoothCurve,
+        alignment: Alignment.topCenter,
+        heightFactor: widget.isExpanded ? 1.0 : 0.0,
+        child: FadeTransition(
+          opacity: _fade,
+          child: SlideTransition(
+            position: _slide,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const SizedBox(height: 16),
+                Text(
+                  widget.description,
+                  style: TextStyle(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    fontSize: 16,
+                    height: 1.45,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
