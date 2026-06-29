@@ -6,6 +6,7 @@ import '../../../core/haptics/haptic_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../shared/widgets/scanner_capture_button.dart';
+import '../../../core/validation/document_validators.dart';
 import '../application/id_scanner_service.dart';
 import '../domain/id_document.dart';
 
@@ -314,8 +315,33 @@ class _IdScannerScreenState extends State<IdScannerScreen> {
                 ],
                 const SizedBox(height: 24),
                 GestureDetector(
-                  onTap: () =>
-                      Navigator.of(context).pop(_buildResultFromControllers()),
+                  onTap: () {
+                    final result = _buildResultFromControllers();
+                    final typeForVal = widget.type == IdDocumentType.pan
+                        ? IdDocumentTypeForValidation.pan
+                        : IdDocumentTypeForValidation.aadhaar;
+
+                    final err = DocumentValidators.validateIdForSave(
+                      dateOfBirth: result.dateOfBirth,
+                      documentNumber: result.documentNumber,
+                      type: typeForVal,
+                    );
+                    if (err != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Row(children: [
+                          const Icon(Icons.warning_rounded, color: Colors.white),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text(err)),
+                        ]),
+                        backgroundColor: const Color(0xFFFF3B30),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        duration: const Duration(seconds: 4),
+                      ));
+                      return;
+                    }
+                    Navigator.of(context).pop(result);
+                  },
                   child: Container(
                     height: 56,
                     decoration: BoxDecoration(

@@ -437,12 +437,24 @@ class _EPassportPanel extends StatelessWidget {
   final VoidCallback onScanNfc;
   final VoidCallback onScanCamera;
 
-  Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
+  Future<void> _selectDate(BuildContext context, TextEditingController controller, {bool isDob = false, bool isExpiry = false}) async {
     DateTime initDate = DateTime(2000);
     if (controller.text.isNotEmpty) {
       try {
         initDate = DateTime.parse(controller.text);
       } catch (_) {}
+    }
+
+    final now = DateTime.now();
+    DateTime minDate = DateTime(1900);
+    DateTime maxDate = DateTime(2100);
+
+    if (isDob) {
+      minDate = DateTime(1900);
+      maxDate = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 1));
+    } else if (isExpiry) {
+      minDate = DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+      maxDate = DateTime(now.year + 20, now.month, now.day);
     }
 
     await showModalBottomSheet<void>(
@@ -470,8 +482,8 @@ class _EPassportPanel extends StatelessWidget {
               child: CupertinoDatePicker(
                 mode: CupertinoDatePickerMode.date,
                 initialDateTime: initDate,
-                minimumDate: DateTime(1900),
-                maximumDate: DateTime(2100),
+                minimumDate: minDate,
+                maximumDate: maxDate,
                 onDateTimeChanged: (DateTime newDate) {
                   controller.text = "${newDate.year}-${newDate.month.toString().padLeft(2, '0')}-${newDate.day.toString().padLeft(2, '0')}";
                   onChanged();
@@ -536,7 +548,7 @@ class _EPassportPanel extends StatelessWidget {
                   hintText: 'YYYY-MM-DD',
                   icon: Icons.cake_rounded,
                   readOnly: true,
-                  onTap: () => _selectDate(context, dateOfBirthController),
+                  onTap: () => _selectDate(context, dateOfBirthController, isDob: true),
                   onChanged: onChanged,
                 ),
               ),
@@ -548,7 +560,7 @@ class _EPassportPanel extends StatelessWidget {
                   hintText: 'YYYY-MM-DD',
                   icon: Icons.event_available_rounded,
                   readOnly: true,
-                  onTap: () => _selectDate(context, expiryDateController),
+                  onTap: () => _selectDate(context, expiryDateController, isExpiry: true),
                   onChanged: onChanged,
                 ),
               ),
@@ -606,12 +618,24 @@ class _RegularPassportPanel extends StatelessWidget {
   final VoidCallback onChanged;
   final VoidCallback onScanCamera;
 
-  Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
+  Future<void> _selectDate(BuildContext context, TextEditingController controller, {bool isDob = false, bool isExpiry = false}) async {
     DateTime initDate = DateTime(2000);
     if (controller.text.isNotEmpty) {
       try {
         initDate = DateTime.parse(controller.text);
       } catch (_) {}
+    }
+
+    final now = DateTime.now();
+    DateTime minDate = DateTime(1900);
+    DateTime maxDate = DateTime(2100);
+
+    if (isDob) {
+      minDate = DateTime(1900);
+      maxDate = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 1));
+    } else if (isExpiry) {
+      minDate = DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+      maxDate = DateTime(now.year + 20, now.month, now.day);
     }
 
     await showModalBottomSheet<void>(
@@ -639,8 +663,8 @@ class _RegularPassportPanel extends StatelessWidget {
               child: CupertinoDatePicker(
                 mode: CupertinoDatePickerMode.date,
                 initialDateTime: initDate,
-                minimumDate: DateTime(1900),
-                maximumDate: DateTime(2100),
+                minimumDate: minDate,
+                maximumDate: maxDate,
                 onDateTimeChanged: (DateTime newDate) {
                   controller.text = "${newDate.year}-${newDate.month.toString().padLeft(2, '0')}-${newDate.day.toString().padLeft(2, '0')}";
                   onChanged();
@@ -690,7 +714,7 @@ class _RegularPassportPanel extends StatelessWidget {
                   hintText: 'YYYY-MM-DD',
                   icon: Icons.cake_rounded,
                   readOnly: true,
-                  onTap: () => _selectDate(context, dateOfBirthController),
+                  onTap: () => _selectDate(context, dateOfBirthController, isDob: true),
                   onChanged: onChanged,
                 ),
               ),
@@ -702,7 +726,7 @@ class _RegularPassportPanel extends StatelessWidget {
             hintText: 'YYYY-MM-DD',
             icon: Icons.event_available_rounded,
             readOnly: true,
-            onTap: () => _selectDate(context, expiryDateController),
+            onTap: () => _selectDate(context, expiryDateController, isExpiry: true),
             onChanged: onChanged,
           ),
           StudioField(

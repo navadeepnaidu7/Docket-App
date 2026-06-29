@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/haptics/haptic_service.dart';
 import '../../../shared/widgets/scanner_capture_button.dart';
+import '../../../core/validation/document_validators.dart';
 import '../application/mrz_scanner_service.dart';
 import '../domain/mrz_result.dart';
 
@@ -326,7 +327,28 @@ class _MrzScannerScreenState extends State<MrzScannerScreen> {
                 const SizedBox(height: 24),
                 // Confirm
                 GestureDetector(
-                  onTap: () => Navigator.of(context).pop(_buildResultFromControllers()),
+                  onTap: () {
+                    final result = _buildResultFromControllers();
+                    final err = DocumentValidators.validatePassportDates(
+                      dateOfBirth: result.dateOfBirth,
+                      expiryDate: result.expiryDate,
+                    );
+                    if (err != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Row(children: [
+                          const Icon(Icons.warning_rounded, color: Colors.white),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text(err)),
+                        ]),
+                        backgroundColor: const Color(0xFFFF3B30),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        duration: const Duration(seconds: 4),
+                      ));
+                      return;
+                    }
+                    Navigator.of(context).pop(result);
+                  },
                   child: Container(
                     height: 56,
                     decoration: BoxDecoration(
