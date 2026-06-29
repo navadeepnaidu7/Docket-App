@@ -1,43 +1,71 @@
 import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/wallet/wallet_backdrop_tilt.dart';
+import '../../../../core/wallet/wallet_filter.dart';
+import '../../../../core/wallet/wallet_items.dart';
+import '../../application/card_shine_border_provider.dart';
+import '../../application/wallet_filter_provider.dart';
 import '../../../../shared/widgets/rolling_card_page.dart';
+import '../../../../shared/widgets/wallet_card_shine_border.dart';
 import '../../../ids/domain/id_document.dart';
 import '../../../ids/presentation/wallet_id_card.dart';
 import '../../../passport/domain/passport_profile.dart';
 import '../wallet_passport_card.dart';
 import 'dot_indicator.dart';
+import 'wallet_filter_controls.dart';
 
-class IdsTab extends StatefulWidget {
+class IdsTab extends ConsumerStatefulWidget {
   const IdsTab({
     super.key,
     required this.items,
+    required this.allItems,
     required this.onDeletePassport,
     required this.onDeleteId,
     required this.pageNotifier,
     this.backdropTilt,
   });
 
-  /// Wallet items in user-defined order (passports and ID documents mixed).
+  /// Visible wallet items (may be filtered).
   final List<Object> items;
+
+  /// Full wallet list used to build filter chips.
+  final List<Object> allItems;
   final void Function(PassportProfile) onDeletePassport;
   final void Function(IdDocument) onDeleteId;
   final ValueNotifier<double> pageNotifier;
   final WalletBackdropTilt? backdropTilt;
 
   @override
-  State<IdsTab> createState() => _IdsTabState();
+  ConsumerState<IdsTab> createState() => _IdsTabState();
 }
 
-class _IdsTabState extends State<IdsTab> {
+class _IdsTabState extends ConsumerState<IdsTab> {
   late final PageController _pageCtrl;
-
+  List<String> _lastVisibleIds = const [];
   @override
   void initState() {
     super.initState();
     _pageCtrl = PageController();
     _pageCtrl.addListener(_onScroll);
+    _lastVisibleIds = _idsFor(widget.items);
+  }
+
+  @override
+  void didUpdateWidget(IdsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final List<String> nextIds = _idsFor(widget.items);
+    if (!_listEquals(_lastVisibleIds, nextIds)) {
+      _lastVisibleIds = nextIds;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_pageCtrl.hasClients) {
+          _pageCtrl.jumpToPage(0);
+        }
+        widget.pageNotifier.value = 0;
+      });
+    }
   }
 
   @override
@@ -45,6 +73,17 @@ class _IdsTabState extends State<IdsTab> {
     _pageCtrl.removeListener(_onScroll);
     _pageCtrl.dispose();
     super.dispose();
+  }
+
+  List<String> _idsFor(List<Object> items) =>
+      items.map(walletItemId).toList(growable: false);
+
+  bool _listEquals(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   void _onScroll() {
@@ -56,7 +95,13 @@ class _IdsTabState extends State<IdsTab> {
     final double fabClearance =
         MediaQuery.of(context).padding.bottom + 16 + 58 + 20;
     final items = widget.items;
-    if (items.isEmpty) {
+    final bool shineEnabled = ref.watch(cardShineBorderProvider);
+    final bool filterEnabled = ref.watch(walletFilterEnabledProvider);
+    final WalletFilterCategory filterCategory =
+        ref.watch(walletFilterCategoryProvider);
+    final List<WalletFilterCategory> filterOptions =
+        walletFilterOptionsFor(widget.allItems);
+    if (widget.allItems.isEmpty) {
       return Center(
         child: Padding(
           padding: EdgeInsets.fromLTRB(32, 0, 32, fabClearance),
@@ -68,7 +113,9 @@ class _IdsTabState extends State<IdsTab> {
               Text(
                 'No Documents Yet',
                 style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF1C1C1E),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white
+                      : const Color(0xFF1C1C1E),
                   fontSize: 21,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.3,
@@ -79,7 +126,9 @@ class _IdsTabState extends State<IdsTab> {
                 'Tap + to add a passport or ID card.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF8E8E93) : const Color(0xFF64748B),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF8E8E93)
+                      : const Color(0xFF64748B),
                   fontSize: 15,
                 ),
               ),
@@ -88,55 +137,160 @@ class _IdsTabState extends State<IdsTab> {
         ),
       );
     }
+
+    final WalletFilterCategory activeFilter = filterOptions.contains(filterCategory)
+        ? filterCategory
+        : WalletFilterCategory.all;
+    final bool showFilterButton =
+        filterEnabled && filterOptions.length > 1;
+
     return Stack(
       children: [
-        PageView.builder(
-          controller: _pageCtrl,
-          scrollDirection: Axis.vertical,
-          physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
-          ),
-          itemCount: items.length,
-          itemBuilder: (context, index) {
-            final item = items[index];
-            return RollingCardPage(
-              controller: _pageCtrl,
-              index: index,
-              padding: EdgeInsets.fromLTRB(20, 8, 28, fabClearance),
-              child: switch (item) {
-                PassportProfile profile => WalletPassportCard(
-                    key: ValueKey<String>('passport-${profile.id}'),
-                    profile: profile,
-                    backdropTilt: widget.backdropTilt,
-                    onLongPress: () => widget.onDeletePassport(profile),
-                  ),
-                IdDocument document => WalletIdCard(
-                    key: ValueKey<String>('id-${document.id}-${document.type.name}'),
-                    document: document,
-                    backdropTilt: widget.backdropTilt,
-                    onLongPress: () => widget.onDeleteId(document),
-                  ),
-                _ => const SizedBox.shrink(),
-              },
-            );
-          },
-        ),
-        if (items.length > 1)
-          Positioned(
-            right: 12,
-            top: 0,
-            bottom: fabClearance,
-            child: Center(
-              child: AnimatedBuilder(
-                animation: _pageCtrl,
-                builder: (context, _) {
-                  final double page = _pageCtrl.page ?? 0;
-                  return DotIndicator(count: items.length, page: page);
+        items.isEmpty
+            ? _FilteredEmptyState(
+                message: walletFilterEmptyMessage(filterCategory),
+                fabClearance: fabClearance,
+                onShowAll: () {
+                  ref.read(walletFilterCategoryProvider.notifier).resetToAll();
                 },
+              )
+            : Stack(
+                children: [
+                  PageView.builder(
+                      controller: _pageCtrl,
+                      scrollDirection: Axis.vertical,
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        final Widget card = switch (item) {
+                          PassportProfile profile => WalletPassportCard(
+                              key: ValueKey<String>('passport-${profile.id}'),
+                              profile: profile,
+                              backdropTilt: widget.backdropTilt,
+                              onLongPress: () =>
+                                  widget.onDeletePassport(profile),
+                            ),
+                          IdDocument document => WalletIdCard(
+                              key: ValueKey<String>(
+                                'id-${document.id}-${document.type.name}',
+                              ),
+                              document: document,
+                              backdropTilt: widget.backdropTilt,
+                              onLongPress: () => widget.onDeleteId(document),
+                            ),
+                          _ => const SizedBox.shrink(),
+                        };
+
+                        return RollingCardPage(
+                          controller: _pageCtrl,
+                          index: index,
+                          padding:
+                              EdgeInsets.fromLTRB(20, 8, 28, fabClearance),
+                          child: item is IdDocument
+                              ? AnimatedBuilder(
+                                  animation: _pageCtrl,
+                                  builder: (context, _) {
+                                    final double page = _pageCtrl.page ?? 0;
+                                    final int activeIndex = page
+                                        .round()
+                                        .clamp(0, items.length - 1);
+                                    return WalletCardShineBorder(
+                                      enabled: shineEnabled,
+                                      isActive: activeIndex == index,
+                                      borderRadius: 24,
+                                      child: card,
+                                    );
+                                  },
+                                )
+                              : card,
+                        );
+                      },
+                    ),
+                  if (items.length > 1)
+                    Positioned(
+                      right: 12,
+                      top: 0,
+                      bottom: fabClearance,
+                      child: Center(
+                        child: AnimatedBuilder(
+                          animation: _pageCtrl,
+                          builder: (context, _) {
+                            final double page = _pageCtrl.page ?? 0;
+                            return DotIndicator(
+                              count: items.length,
+                              page: page,
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                ],
               ),
+        if (showFilterButton)
+          Positioned(
+            left: 20,
+            top: 12,
+            child: WalletFilterControls(
+              options: filterOptions,
+              selected: activeFilter,
             ),
           ),
       ],
+    );
+  }
+}
+
+class _FilteredEmptyState extends StatelessWidget {
+  const _FilteredEmptyState({
+    required this.message,
+    required this.fabClearance,
+    required this.onShowAll,
+  });
+
+  final String message;
+  final double fabClearance;
+  final VoidCallback onShowAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color ink =
+        isDark ? Colors.white : const Color(0xFF1C1C1E);
+    final Color muted =
+        isDark ? const Color(0xFF8E8E93) : const Color(0xFF64748B);
+
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(32, 0, 32, fabClearance),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.filter_list_off_rounded,
+              size: 40,
+              color: muted,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: ink,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: onShowAll,
+              child: const Text('Show all cards'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

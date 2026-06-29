@@ -14,6 +14,8 @@ import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
+import '../application/card_shine_border_provider.dart';
+import '../application/wallet_filter_provider.dart';
 import '../application/nav_icon_style_provider.dart';
 import '../application/nav_labels_provider.dart';
 
@@ -164,6 +166,44 @@ class SettingsScreen extends ConsumerWidget {
                                               ? NavIconStyle.vertical
                                               : NavIconStyle.classic,
                                         );
+                                  },
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            _SettingsSection(
+                              title: 'Experimental',
+                              surface: surface,
+                              borderColor: borderColor,
+                              isDark: isDark,
+                              children: [
+                                _SettingsToggleRow(
+                                  icon: Icons.auto_awesome_rounded,
+                                  iconColor: const Color(0xFF5E5CE6),
+                                  title: 'Card shine border',
+                                  subtitle:
+                                      'After 3.5s on ID cards, a soft iridescent border appears',
+                                  value: ref.watch(cardShineBorderProvider),
+                                  onChanged: (_) {
+                                    HapticService.select();
+                                    ref
+                                        .read(cardShineBorderProvider.notifier)
+                                        .toggle();
+                                  },
+                                ),
+                                const _SettingsDivider(),
+                                _SettingsToggleRow(
+                                  icon: Icons.filter_list_rounded,
+                                  iconColor: const Color(0xFF2F6FED),
+                                  title: 'Card category filter',
+                                  subtitle:
+                                      'Filter menu on Home — pick a type or clear with ×',
+                                  value: ref.watch(walletFilterEnabledProvider),
+                                  onChanged: (_) {
+                                    HapticService.select();
+                                    ref
+                                        .read(walletFilterEnabledProvider.notifier)
+                                        .toggle();
                                   },
                                 ),
                               ],
@@ -670,20 +710,24 @@ class _SettingsToggleRow extends StatelessWidget {
     required this.title,
     required this.value,
     required this.onChanged,
+    this.subtitle,
   });
 
   final IconData icon;
   final Color iconColor;
   final String title;
+  final String? subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final Color ink = Theme.of(context).colorScheme.onSurface;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color muted = ink.withValues(alpha: isDark ? 0.45 : 0.55);
 
     return SizedBox(
-      height: 54,
+      height: subtitle == null ? 54 : 68,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(
@@ -691,14 +735,34 @@ class _SettingsToggleRow extends StatelessWidget {
             _SettingsRowIcon(icon: icon, color: iconColor),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                title,
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: -0.2,
-                  color: ink,
-                ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: -0.2,
+                      color: ink,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        height: 1.25,
+                        color: muted,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             Transform.scale(

@@ -16,7 +16,9 @@ import '../../passport/presentation/passport_entry_screen.dart';
 import '../../tickets/presentation/tickets_tab.dart';
 import '../../tickets/presentation/wallet_ticket_card.dart';
 import '../../../core/wallet/wallet_backdrop_tilt.dart';
+import '../../../core/wallet/wallet_filter.dart';
 import '../../../core/wallet/wallet_items.dart';
+import '../application/wallet_filter_provider.dart';
 import '../application/trash_provider.dart';
 import '../application/wallet_order_provider.dart';
 
@@ -381,6 +383,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       order: reconciledOrder,
     );
 
+    final bool filterEnabled = ref.watch(walletFilterEnabledProvider);
+    WalletFilterCategory filterCategory =
+        ref.watch(walletFilterCategoryProvider);
+    final List<WalletFilterCategory> filterOptions =
+        walletFilterOptionsFor(items);
+    if (filterEnabled &&
+        !filterOptions.contains(filterCategory)) {
+      filterCategory = WalletFilterCategory.all;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(walletFilterCategoryProvider.notifier).resetToAll();
+      });
+    }
+
+    final List<Object> displayItems = filterEnabled
+        ? filterWalletItems(items: items, category: filterCategory)
+        : items;
+
     final String currentName = passports.isNotEmpty ? passports.first.name : '';
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -473,7 +493,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                             key: const ValueKey('gradient_backdrop'),
                                             child: WalletBackdrop(
                                               tabIndex: _tabCtrl.index,
-                                              items: items,
+                                              items: displayItems,
                                               pageNotifier: _docPage,
                                               tiltNotifier: _backdropTilt,
                                             ),
@@ -537,7 +557,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                                   physics: const NeverScrollableScrollPhysics(),
                                                   children: [
                                                     IdsTab(
-                                                      items: items,
+                                                      items: displayItems,
+                                                      allItems: items,
                                                       onDeletePassport: _showDeleteDialog,
                                                       onDeleteId: _showDeleteIdDialog,
                                                       pageNotifier: _docPage,
