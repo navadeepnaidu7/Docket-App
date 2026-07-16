@@ -22,6 +22,7 @@ class MrzScannerScreen extends StatefulWidget {
 
 class _MrzScannerScreenState extends State<MrzScannerScreen> {
   CameraController? _controller;
+  bool _isCapturing = false;
   _ScanState _state = _ScanState.scanning;
   MrzResult? _result;
   String? _capturedImagePath;
@@ -66,6 +67,7 @@ class _MrzScannerScreenState extends State<MrzScannerScreen> {
 
   Future<void> _requestPermissionAndInit() async {
     final status = await Permission.camera.request();
+    if (!mounted) return;
     if (status.isGranted) {
       await _initCamera();
     } else {
@@ -75,6 +77,7 @@ class _MrzScannerScreenState extends State<MrzScannerScreen> {
 
   Future<void> _initCamera() async {
     final cameras = await availableCameras();
+    if (!mounted) return;
     if (cameras.isEmpty) {
       setState(() {
         _state = _ScanState.error;
@@ -103,13 +106,15 @@ class _MrzScannerScreenState extends State<MrzScannerScreen> {
   // ── Capture ────────────────────────────────────────────────────────────────
 
   Future<void> _capture() async {
-    if (_controller == null || !_controller!.value.isInitialized) return;
+    if (_isCapturing || _controller == null || !_controller!.value.isInitialized) return;
+    _isCapturing = true;
     HapticService.impact();
     setState(() => _state = _ScanState.processing);
     try {
       final xFile = await _controller!.takePicture();
       _capturedImagePath = xFile.path;
       final result = await MrzScannerService.processImage(xFile.path);
+      if (!mounted) return;
       if (result != null) {
         _populateControllers(result);
         setState(() {
@@ -122,14 +127,17 @@ class _MrzScannerScreenState extends State<MrzScannerScreen> {
           _errorMessage = 'Could not detect passport data.\nEnsure the passport is flat, well-lit, and fully visible.';
         });
       }
-    } catch (e) {
-      setState(() {
-        _state = _ScanState.error;
-        _errorMessage = 'Capture failed: $e';
-      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _state = _ScanState.error;
+          _errorMessage = 'Capture failed. Please try again.';
+        });
+      }
+    } finally {
+      _isCapturing = false;
     }
   }
-
   void _populateControllers(MrzResult r) {
     _nameCtrl.text = r.displayName;
     _passportNumCtrl.text = r.passportNumber;

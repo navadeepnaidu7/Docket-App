@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/storage/secure_document_store.dart';
 
 class WalletOrderController extends StateNotifier<List<String>> {
   WalletOrderController() : super([]);
@@ -7,14 +7,12 @@ class WalletOrderController extends StateNotifier<List<String>> {
   static const _storageKey = 'wallet_items_order';
 
   Future<void> loadOrder() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = prefs.getStringList(_storageKey) ?? [];
+    state = await SecureDocumentStore.readList(_storageKey);
   }
 
   Future<void> saveOrder(List<String> order) async {
-    final prefs = await SharedPreferences.getInstance();
     state = order;
-    await prefs.setStringList(_storageKey, order);
+    await SecureDocumentStore.writeList(_storageKey, order);
   }
 
   void updateOrderOnItemAdded(String id) {

@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/passport_profile.dart';
+import '../../../core/storage/secure_document_store.dart';
 
 final passportListProvider =
     StateNotifierProvider<PassportListController, List<PassportProfile>>((Ref ref) {
@@ -13,29 +13,27 @@ class PassportListController extends StateNotifier<List<PassportProfile>> {
   PassportListController() : super([]);
 
   static const _storageKey = 'saved_passports';
+  Future<void> _saveQueue = Future<void>.value();
 
   Future<void> loadPassports() async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<String>? savedData = prefs.getStringList(_storageKey);
-
-    if (savedData != null && savedData.isNotEmpty) {
-      state = savedData.map((str) => PassportProfile.fromJson(str)).toList();
-    } else {
-      state = [];
-    }
+    final savedData = await SecureDocumentStore.readList(_storageKey);
+    state = savedData.map(_tryParse).whereType<PassportProfile>().toList();
   }
 
   Future<void> _savePassports(List<PassportProfile> passports) async {
-    final prefs = await SharedPreferences.getInstance();
     final List<String> encodedList = passports.map((p) => p.toJson()).toList();
-    await prefs.setStringList(_storageKey, encodedList);
+    await SecureDocumentStore.writeList(_storageKey, encodedList);
+  }
+
+  void _queueSave(List<PassportProfile> passports) {
+    _saveQueue = _saveQueue.then((_) => _savePassports(passports));
   }
 
   void addPassport(PassportProfile profile) {
     // Add to the front so it appears immediately on the dashboard fluidly
     final newState = [profile, ...state];
     state = newState;
-    _savePassports(newState);
+    _queueSave(newState);
   }
 
   /// Removes a passport by its unique [id] — NOT by passport number,
@@ -43,13 +41,22 @@ class PassportListController extends StateNotifier<List<PassportProfile>> {
   void removePassport(String id) {
     final newState = state.where((p) => p.id != id).toList();
     state = newState;
-    _savePassports(newState);
+    _queueSave(newState);
   }
 
   void updatePassport(int index, PassportProfile profile) {
+    if (index < 0 || index >= state.length) return;
     final newState = [...state];
     newState[index] = profile;
     state = newState;
-    _savePassports(newState);
+    _queueSave(newState);
+  }
+
+  PassportProfile? _tryParse(String source) {
+    try {
+      return PassportProfile.fromJson(source);
+    } catch (_) {
+      return null;
+    }
   }
 }

@@ -206,5 +206,5 @@ class IdScannerService {
       .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
       .join(' ');
 
-  static Future<void> dispose() => _recognizer.close();
+  static Future<void> dispose() async {}
 }

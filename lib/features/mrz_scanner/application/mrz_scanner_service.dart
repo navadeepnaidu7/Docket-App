@@ -111,5 +111,5 @@ class MrzScannerService {
   }
 
   /// Call this when the scanner is disposed to release ML Kit resources.
-  static Future<void> dispose() => _recognizer.close();
+  static Future<void> dispose() async {}
 }

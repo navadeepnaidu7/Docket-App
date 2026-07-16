@@ -23,6 +23,7 @@ class IdScannerScreen extends StatefulWidget {
 
 class _IdScannerScreenState extends State<IdScannerScreen> {
   CameraController? _controller;
+  bool _isCapturing = false;
   _ScanState _state = _ScanState.scanning;
   String? _capturedImagePath;
   String _errorMessage = '';
@@ -64,6 +65,7 @@ class _IdScannerScreenState extends State<IdScannerScreen> {
 
   Future<void> _requestPermissionAndInit() async {
     final status = await Permission.camera.request();
+    if (!mounted) return;
     if (status.isGranted) {
       await _initCamera();
     } else {
@@ -73,6 +75,7 @@ class _IdScannerScreenState extends State<IdScannerScreen> {
 
   Future<void> _initCamera() async {
     final cameras = await availableCameras();
+    if (!mounted) return;
     if (cameras.isEmpty) {
       setState(() {
         _state = _ScanState.error;
@@ -100,34 +103,35 @@ class _IdScannerScreenState extends State<IdScannerScreen> {
   }
 
   Future<void> _capture() async {
-    if (_controller == null || !_controller!.value.isInitialized) return;
+    if (_isCapturing || _controller == null || !_controller!.value.isInitialized) return;
+    _isCapturing = true;
     HapticService.impact();
     setState(() => _state = _ScanState.processing);
     try {
       final xFile = await _controller!.takePicture();
       _capturedImagePath = xFile.path;
-      final result =
-          await IdScannerService.processImage(xFile.path, widget.type);
+      final result = await IdScannerService.processImage(xFile.path, widget.type);
+      if (!mounted) return;
       if (result != null) {
         _populateControllers(result);
-        setState(() {
-          _state = _ScanState.preview;
-        });
+        setState(() => _state = _ScanState.preview);
       } else {
         setState(() {
           _state = _ScanState.error;
-          _errorMessage =
-              'Could not detect ${_docLabel(widget.type)} data.\nEnsure the card is flat, well-lit, and fully visible.';
+          _errorMessage = 'Could not detect ${_docLabel(widget.type)} data.\nEnsure the card is flat, well-lit, and fully visible.';
         });
       }
-    } catch (e) {
-      setState(() {
-        _state = _ScanState.error;
-        _errorMessage = 'Capture failed: $e';
-      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _state = _ScanState.error;
+          _errorMessage = 'Capture failed. Please try again.';
+        });
+      }
+    } finally {
+      _isCapturing = false;
     }
   }
-
   void _populateControllers(IdScanResult r) {
     _nameCtrl.text = r.holderName;
     _numberCtrl.text = r.documentNumber;
