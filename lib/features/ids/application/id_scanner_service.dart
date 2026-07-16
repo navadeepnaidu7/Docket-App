@@ -28,11 +28,14 @@ class IdScanResult {
 class IdScannerService {
   IdScannerService._();
 
-  static final _recognizer =
-      TextRecognizer(script: TextRecognitionScript.latin);
+  static final _recognizer = TextRecognizer(
+    script: TextRecognitionScript.latin,
+  );
 
   static Future<IdScanResult?> processImage(
-      String imagePath, IdDocumentType type) async {
+    String imagePath,
+    IdDocumentType type,
+  ) async {
     try {
       final input = InputImage.fromFilePath(imagePath);
       final recognized = await _recognizer.processImage(input);
@@ -73,7 +76,9 @@ class IdScannerService {
     int fatherIdx = -1;
     for (int i = 0; i < lines.length; i++) {
       final lower = lines[i].toLowerCase().trim();
-      if (fatherIdx == -1 && nameIdx == -1 && (lower == 'name' || lower == 'नाम')) {
+      if (fatherIdx == -1 &&
+          nameIdx == -1 &&
+          (lower == 'name' || lower == 'नाम')) {
         nameIdx = i;
       }
       if (lower.contains('father') ||
@@ -100,8 +105,9 @@ class IdScannerService {
             line.length > 3 &&
             RegExp(r'^[A-Z ]+$').hasMatch(line) &&
             !panRegex.hasMatch(line) &&
-            !RegExp(r'INCOME|TAX|INDIA|PERMANENT|ACCOUNT|NUMBER|GOVT|DEPARTMENT|PAN')
-                .hasMatch(line)) {
+            !RegExp(
+              r'INCOME|TAX|INDIA|PERMANENT|ACCOUNT|NUMBER|GOVT|DEPARTMENT|PAN',
+            ).hasMatch(line)) {
           capsLines.add(line);
         }
       }

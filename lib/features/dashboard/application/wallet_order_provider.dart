@@ -30,8 +30,9 @@ class WalletOrderController extends StateNotifier<List<String>> {
   }
 }
 
-final walletOrderProvider = StateNotifierProvider<WalletOrderController, List<String>>((ref) {
-  final controller = WalletOrderController();
-  controller.loadOrder();
-  return controller;
-});
+final walletOrderProvider =
+    StateNotifierProvider<WalletOrderController, List<String>>((ref) {
+      final controller = WalletOrderController();
+      controller.loadOrder();
+      return controller;
+    });

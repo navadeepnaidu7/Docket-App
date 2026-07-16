@@ -17,7 +17,9 @@ import 'mrz_parser.dart';
 class MrzScannerService {
   MrzScannerService._();
 
-  static final _recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+  static final _recognizer = TextRecognizer(
+    script: TextRecognitionScript.latin,
+  );
 
   /// Main entry point. Returns null if no passport data could be extracted.
   static Future<MrzResult?> processImage(String imagePath) async {
@@ -89,19 +91,27 @@ class MrzScannerService {
       // Draw only the bottom portion
       canvas.drawImageRect(
         image,
-        ui.Rect.fromLTWH(0, cropTop.toDouble(), imgWidth.toDouble(), cropHeight.toDouble()),
+        ui.Rect.fromLTWH(
+          0,
+          cropTop.toDouble(),
+          imgWidth.toDouble(),
+          cropHeight.toDouble(),
+        ),
         ui.Rect.fromLTWH(0, 0, imgWidth.toDouble(), cropHeight.toDouble()),
         ui.Paint(),
       );
 
       final picture = recorder.endRecording();
       final croppedImg = await picture.toImage(imgWidth, cropHeight);
-      final byteData = await croppedImg.toByteData(format: ui.ImageByteFormat.png);
+      final byteData = await croppedImg.toByteData(
+        format: ui.ImageByteFormat.png,
+      );
 
       if (byteData == null) return null;
 
       final tempDir = Directory.systemTemp;
-      final tempPath = '${tempDir.path}/mrz_crop_${DateTime.now().millisecondsSinceEpoch}.png';
+      final tempPath =
+          '${tempDir.path}/mrz_crop_${DateTime.now().millisecondsSinceEpoch}.png';
       await File(tempPath).writeAsBytes(byteData.buffer.asUint8List());
       return tempPath;
     } catch (e) {

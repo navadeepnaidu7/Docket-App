@@ -20,9 +20,11 @@ class NfcScannerSheet extends StatefulWidget {
   State<NfcScannerSheet> createState() => _NfcScannerSheetState();
 }
 
-class _NfcScannerSheetState extends State<NfcScannerSheet> with SingleTickerProviderStateMixin {
+class _NfcScannerSheetState extends State<NfcScannerSheet>
+    with SingleTickerProviderStateMixin {
   final NfcService _nfcService = NfcService();
-  String _statusMessage = "Hold your phone near the biometric chip (usually the back cover).";
+  String _statusMessage =
+      "Hold your phone near the biometric chip (usually the back cover).";
   bool _isError = false;
   bool _isSuccess = false;
 
@@ -65,11 +67,16 @@ class _NfcScannerSheetState extends State<NfcScannerSheet> with SingleTickerProv
           Navigator.of(context).pop(result);
         }
       }
-    } catch (e) {
+    } on NfcException catch (e) {
       if (mounted) {
+        final message = e.code == 'NFC_UNAVAILABLE'
+            ? 'NFC is not available or enabled on this phone.'
+            : e.code == 'BUSY'
+            ? 'Another NFC scan is already in progress.'
+            : 'Failed to read NFC chip. Please try again.';
         setState(() {
           _isError = true;
-          _statusMessage = "Failed to read NFC chip. Please try again.\n\nError: $e";
+          _statusMessage = message;
         });
         HapticService.error();
       }
@@ -82,7 +89,11 @@ class _NfcScannerSheetState extends State<NfcScannerSheet> with SingleTickerProv
     final isDark = theme.brightness == Brightness.dark;
 
     return AppleSheet(
-      title: _isSuccess ? "Verified successfully" : _isError ? "Scan failed" : "Ready to Scan",
+      title: _isSuccess
+          ? "Verified successfully"
+          : _isError
+          ? "Scan failed"
+          : "Ready to Scan",
       showDragHandle: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -94,12 +105,12 @@ class _NfcScannerSheetState extends State<NfcScannerSheet> with SingleTickerProv
             child: _isSuccess
                 ? _buildSuccessIcon()
                 : _isError
-                    ? _buildErrorIcon()
-                    : _buildScanningAnimation(),
+                ? _buildErrorIcon()
+                : _buildScanningAnimation(),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Status Message
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 400),
@@ -109,15 +120,17 @@ class _NfcScannerSheetState extends State<NfcScannerSheet> with SingleTickerProv
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 15,
-                color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF64748B),
+                color: isDark
+                    ? const Color(0xFF8E8E93)
+                    : const Color(0xFF64748B),
                 height: 1.5,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
-          
+
           const SizedBox(height: 32),
-          
+
           if (_isError)
             SizedBox(
               width: double.infinity,
@@ -126,7 +139,8 @@ class _NfcScannerSheetState extends State<NfcScannerSheet> with SingleTickerProv
                 onPressed: () {
                   setState(() {
                     _isError = false;
-                    _statusMessage = "Hold your phone near the biometric chip (usually the back cover).";
+                    _statusMessage =
+                        "Hold your phone near the biometric chip (usually the back cover).";
                   });
                   _startScanning();
                 },
@@ -166,7 +180,9 @@ class _NfcScannerSheetState extends State<NfcScannerSheet> with SingleTickerProv
               height: 140 + (_pulseCtrl.value * 40),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF007AFF).withValues(alpha: 0.1 * (1 - _pulseCtrl.value)),
+                color: const Color(
+                  0xFF007AFF,
+                ).withValues(alpha: 0.1 * (1 - _pulseCtrl.value)),
               ),
             ),
             // Inner pulse
@@ -175,7 +191,9 @@ class _NfcScannerSheetState extends State<NfcScannerSheet> with SingleTickerProv
               height: 110 + (_pulseCtrl.value * 20),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF007AFF).withValues(alpha: 0.15 * (1 - _pulseCtrl.value)),
+                color: const Color(
+                  0xFF007AFF,
+                ).withValues(alpha: 0.15 * (1 - _pulseCtrl.value)),
               ),
             ),
             // Core circle
@@ -221,11 +239,7 @@ class _NfcScannerSheetState extends State<NfcScannerSheet> with SingleTickerProv
         shape: BoxShape.circle,
       ),
       child: const Center(
-        child: Icon(
-          Icons.check_rounded,
-          size: 54,
-          color: Color(0xFF34C759),
-        ),
+        child: Icon(Icons.check_rounded, size: 54, color: Color(0xFF34C759)),
       ),
     );
   }
@@ -240,11 +254,7 @@ class _NfcScannerSheetState extends State<NfcScannerSheet> with SingleTickerProv
         shape: BoxShape.circle,
       ),
       child: const Center(
-        child: Icon(
-          Icons.close_rounded,
-          size: 54,
-          color: Color(0xFFFF3B30),
-        ),
+        child: Icon(Icons.close_rounded, size: 54, color: Color(0xFFFF3B30)),
       ),
     );
   }

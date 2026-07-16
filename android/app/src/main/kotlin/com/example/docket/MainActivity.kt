@@ -54,8 +54,10 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                     return@setMethodCallHandler
                 }
 
-                // Prepare for scan
-                bacKey = BACKey(passportNumber, dateOfBirth, expiryDate)
+                if (isScanning) {
+                    result.error("BUSY", "An NFC scan is already in progress", null)
+                    return@setMethodCallHandler
+                }
                 scanResult = result
                 isScanning = true
 
@@ -78,9 +80,15 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
     }
 
     private fun stopNfcScanning() {
+        if (!isScanning) return
         isScanning = false
         bacKey = null
         nfcAdapter?.disableReaderMode(this)
+    }
+
+    override fun onPause() {
+        stopNfcScanning()
+        super.onPause()
     }
 
     override fun onTagDiscovered(tag: Tag?) {

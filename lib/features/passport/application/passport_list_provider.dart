@@ -3,11 +3,13 @@ import '../domain/passport_profile.dart';
 import '../../../core/storage/secure_document_store.dart';
 
 final passportListProvider =
-    StateNotifierProvider<PassportListController, List<PassportProfile>>((Ref ref) {
-  final controller = PassportListController();
-  controller.loadPassports(); // async load
-  return controller;
-});
+    StateNotifierProvider<PassportListController, List<PassportProfile>>((
+      Ref ref,
+    ) {
+      final controller = PassportListController();
+      controller.loadPassports(); // async load
+      return controller;
+    });
 
 class PassportListController extends StateNotifier<List<PassportProfile>> {
   PassportListController() : super([]);

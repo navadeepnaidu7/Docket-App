@@ -40,22 +40,36 @@ class TrashController extends StateNotifier<TrashState> {
   }
 
   PassportProfile? _tryPassport(String source) {
-    try { return PassportProfile.fromJson(source); } catch (_) { return null; }
+    try {
+      return PassportProfile.fromJson(source);
+    } catch (_) {
+      return null;
+    }
   }
 
   IdDocument? _tryId(String source) {
-    try { return IdDocument.fromJson(source); } catch (_) { return null; }
+    try {
+      return IdDocument.fromJson(source);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> moveToTrash(Object item) async {
     if (item is PassportProfile) {
       final updated = [...state.passports, item];
       state = state.copyWith(passports: updated);
-      await SecureDocumentStore.writeList(_passportsKey, updated.map((p) => p.toJson()).toList());
+      await SecureDocumentStore.writeList(
+        _passportsKey,
+        updated.map((p) => p.toJson()).toList(),
+      );
     } else if (item is IdDocument) {
       final updated = [...state.idDocs, item];
       state = state.copyWith(idDocs: updated);
-      await SecureDocumentStore.writeList(_idsKey, updated.map((d) => d.toJson()).toList());
+      await SecureDocumentStore.writeList(
+        _idsKey,
+        updated.map((d) => d.toJson()).toList(),
+      );
     }
   }
 
@@ -64,7 +78,10 @@ class TrashController extends StateNotifier<TrashState> {
       // 1. Remove from trash
       final updated = state.passports.where((p) => p.id != item.id).toList();
       state = state.copyWith(passports: updated);
-      await SecureDocumentStore.writeList(_passportsKey, updated.map((p) => p.toJson()).toList());
+      await SecureDocumentStore.writeList(
+        _passportsKey,
+        updated.map((p) => p.toJson()).toList(),
+      );
       // 2. Add back to active passports
       ref.read(passportListProvider.notifier).addPassport(item);
       // 3. Add to order
@@ -73,7 +90,10 @@ class TrashController extends StateNotifier<TrashState> {
       // 1. Remove from trash
       final updated = state.idDocs.where((d) => d.id != item.id).toList();
       state = state.copyWith(idDocs: updated);
-      await SecureDocumentStore.writeList(_idsKey, updated.map((d) => d.toJson()).toList());
+      await SecureDocumentStore.writeList(
+        _idsKey,
+        updated.map((d) => d.toJson()).toList(),
+      );
       // 2. Add back to active IDs
       ref.read(idListProvider.notifier).addDocument(item);
       // 3. Add to order
@@ -85,11 +105,17 @@ class TrashController extends StateNotifier<TrashState> {
     if (item is PassportProfile) {
       final updated = state.passports.where((p) => p.id != item.id).toList();
       state = state.copyWith(passports: updated);
-      await SecureDocumentStore.writeList(_passportsKey, updated.map((p) => p.toJson()).toList());
+      await SecureDocumentStore.writeList(
+        _passportsKey,
+        updated.map((p) => p.toJson()).toList(),
+      );
     } else if (item is IdDocument) {
       final updated = state.idDocs.where((d) => d.id != item.id).toList();
       state = state.copyWith(idDocs: updated);
-      await SecureDocumentStore.writeList(_idsKey, updated.map((d) => d.toJson()).toList());
+      await SecureDocumentStore.writeList(
+        _idsKey,
+        updated.map((d) => d.toJson()).toList(),
+      );
     }
   }
 }

@@ -4,10 +4,10 @@ import '../../../core/storage/secure_document_store.dart';
 
 final idListProvider =
     StateNotifierProvider<IdListController, List<IdDocument>>((ref) {
-  final controller = IdListController();
-  controller.loadDocuments();
-  return controller;
-});
+      final controller = IdListController();
+      controller.loadDocuments();
+      return controller;
+    });
 
 class IdListController extends StateNotifier<List<IdDocument>> {
   IdListController() : super([]);
@@ -21,7 +21,10 @@ class IdListController extends StateNotifier<List<IdDocument>> {
   }
 
   Future<void> _save(List<IdDocument> docs) async {
-    await SecureDocumentStore.writeList(_storageKey, docs.map((d) => d.toJson()).toList());
+    await SecureDocumentStore.writeList(
+      _storageKey,
+      docs.map((d) => d.toJson()).toList(),
+    );
   }
 
   void _queueSave(List<IdDocument> docs) {

@@ -21,7 +21,8 @@ class IdScannerScreen extends StatefulWidget {
   State<IdScannerScreen> createState() => _IdScannerScreenState();
 }
 
-class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingObserver {
+class _IdScannerScreenState extends State<IdScannerScreen>
+    with WidgetsBindingObserver {
   CameraController? _controller;
   bool _isCapturing = false;
   _ScanState _state = _ScanState.scanning;
@@ -69,12 +70,14 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
-    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
       controller.pausePreview();
     } else if (state == AppLifecycleState.resumed) {
       controller.resumePreview();
     }
   }
+
   Future<void> _requestPermissionAndInit() async {
     final status = await Permission.camera.request();
     if (!mounted) return;
@@ -99,8 +102,11 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
       (c) => c.lensDirection == CameraLensDirection.back,
       orElse: () => cameras.first,
     );
-    _controller =
-        CameraController(back, ResolutionPreset.high, enableAudio: false);
+    _controller = CameraController(
+      back,
+      ResolutionPreset.high,
+      enableAudio: false,
+    );
     try {
       await _controller!.initialize();
       if (mounted) setState(() => _state = _ScanState.scanning);
@@ -115,14 +121,20 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
   }
 
   Future<void> _capture() async {
-    if (_isCapturing || _controller == null || !_controller!.value.isInitialized) return;
+    if (_isCapturing ||
+        _controller == null ||
+        !_controller!.value.isInitialized)
+      return;
     _isCapturing = true;
     HapticService.impact();
     setState(() => _state = _ScanState.processing);
     try {
       final xFile = await _controller!.takePicture();
       _capturedImagePath = xFile.path;
-      final result = await IdScannerService.processImage(xFile.path, widget.type);
+      final result = await IdScannerService.processImage(
+        xFile.path,
+        widget.type,
+      );
       if (!mounted) return;
       if (result != null) {
         _populateControllers(result);
@@ -130,7 +142,8 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
       } else {
         setState(() {
           _state = _ScanState.error;
-          _errorMessage = 'Could not detect ${_docLabel(widget.type)} data.\nEnsure the card is flat, well-lit, and fully visible.';
+          _errorMessage =
+              'Could not detect ${_docLabel(widget.type)} data.\nEnsure the card is flat, well-lit, and fully visible.';
         });
       }
     } catch (_) {
@@ -144,6 +157,7 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
       _isCapturing = false;
     }
   }
+
   void _populateControllers(IdScanResult r) {
     _nameCtrl.text = r.holderName;
     _numberCtrl.text = r.documentNumber;
@@ -154,21 +168,21 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
   }
 
   IdScanResult _buildResultFromControllers() => IdScanResult(
-        type: widget.type,
-        holderName: _nameCtrl.text,
-        documentNumber: _numberCtrl.text,
-        dateOfBirth: _dobCtrl.text,
-        fatherName: _fatherCtrl.text,
-        address: _addressCtrl.text,
-        gender: _genderCtrl.text,
-        capturedImagePath: _capturedImagePath ?? '',
-      );
+    type: widget.type,
+    holderName: _nameCtrl.text,
+    documentNumber: _numberCtrl.text,
+    dateOfBirth: _dobCtrl.text,
+    fatherName: _fatherCtrl.text,
+    address: _addressCtrl.text,
+    gender: _genderCtrl.text,
+    capturedImagePath: _capturedImagePath ?? '',
+  );
 
   void _retake() => setState(() {
-        _state = _ScanState.scanning;
-        _capturedImagePath = null;
-        _errorMessage = '';
-      });
+    _state = _ScanState.scanning;
+    _capturedImagePath = null;
+    _errorMessage = '';
+  });
 
   String _docLabel(IdDocumentType t) =>
       t == IdDocumentType.pan ? 'PAN Card' : 'Aadhaar Card';
@@ -190,23 +204,23 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
   Widget _buildScanning() {
     if (_controller == null || !_controller!.value.isInitialized) {
       return const Center(
-          child: CircularProgressIndicator(color: Colors.white));
+        child: CircularProgressIndicator(color: Colors.white),
+      );
     }
     return Stack(
       fit: StackFit.expand,
       children: [
         CameraPreview(_controller!),
-        const CustomPaint(
-          painter: _CardOverlayPainter(),
-        ),
+        const CustomPaint(painter: _CardOverlayPainter()),
         SafeArea(
           child: Align(
             alignment: Alignment.topLeft,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: _GlassButton(
-                  icon: Icons.arrow_back_rounded,
-                  onTap: () => Navigator.of(context).pop()),
+                icon: Icons.arrow_back_rounded,
+                onTap: () => Navigator.of(context).pop(),
+              ),
             ),
           ),
         ),
@@ -220,10 +234,13 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(20)),
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                     child: Text(
                       'Align ${_docLabel(widget.type)} inside the frame',
                       style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -247,14 +264,19 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
         children: [
           const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
           const SizedBox(height: 24),
-          Text('Reading ${_docLabel(widget.type)}…',
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600)),
+          Text(
+            'Reading ${_docLabel(widget.type)}…',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 8),
-          const Text('This may take a few seconds',
-              style: TextStyle(color: Colors.white54, fontSize: 14)),
+          const Text(
+            'This may take a few seconds',
+            style: TextStyle(color: Colors.white54, fontSize: 14),
+          ),
         ],
       ),
     );
@@ -270,16 +292,20 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
             child: Row(
               children: [
                 _GlassButton(
-                    icon: Icons.arrow_back_rounded,
-                    onTap: _retake,
-                    dark: true),
+                  icon: Icons.arrow_back_rounded,
+                  onTap: _retake,
+                  dark: true,
+                ),
                 const SizedBox(width: 12),
                 const Expanded(
-                  child: Text('Review Details',
-                      style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800)),
+                  child: Text(
+                    'Review Details',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -291,43 +317,55 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
                 if (_capturedImagePath != null)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(20),
-                    child: Image.file(File(_capturedImagePath!),
-                        height: 160, fit: BoxFit.cover),
+                    child: Image.file(
+                      File(_capturedImagePath!),
+                      height: 160,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 const SizedBox(height: 20),
-                const Text('Extracted Details',
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1C1C1E))),
+                const Text(
+                  'Extracted Details',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1C1C1E),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 _PreviewField(
-                    label: 'Full Name',
-                    controller: _nameCtrl,
-                    icon: Icons.person_rounded),
+                  label: 'Full Name',
+                  controller: _nameCtrl,
+                  icon: Icons.person_rounded,
+                ),
                 _PreviewField(
-                    label: isPan ? 'PAN Number' : 'Aadhaar Number',
-                    controller: _numberCtrl,
-                    icon: Icons.badge_rounded),
+                  label: isPan ? 'PAN Number' : 'Aadhaar Number',
+                  controller: _numberCtrl,
+                  icon: Icons.badge_rounded,
+                ),
                 _PreviewField(
-                    label: 'Date of Birth',
-                    controller: _dobCtrl,
-                    icon: Icons.cake_rounded),
+                  label: 'Date of Birth',
+                  controller: _dobCtrl,
+                  icon: Icons.cake_rounded,
+                ),
                 if (isPan)
                   _PreviewField(
-                      label: "Father's Name",
-                      controller: _fatherCtrl,
-                      icon: Icons.people_rounded),
+                    label: "Father's Name",
+                    controller: _fatherCtrl,
+                    icon: Icons.people_rounded,
+                  ),
                 if (!isPan) ...[
                   _PreviewField(
-                      label: 'Gender',
-                      controller: _genderCtrl,
-                      icon: Icons.person_outline_rounded),
+                    label: 'Gender',
+                    controller: _genderCtrl,
+                    icon: Icons.person_outline_rounded,
+                  ),
                   _PreviewField(
-                      label: 'Address',
-                      controller: _addressCtrl,
-                      icon: Icons.location_on_rounded,
-                      maxLines: 3),
+                    label: 'Address',
+                    controller: _addressCtrl,
+                    icon: Icons.location_on_rounded,
+                    maxLines: 3,
+                  ),
                 ],
                 const SizedBox(height: 24),
                 GestureDetector(
@@ -343,17 +381,26 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
                       type: typeForVal,
                     );
                     if (err != null) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Row(children: [
-                          const Icon(Icons.warning_rounded, color: Colors.white),
-                          const SizedBox(width: 10),
-                          Expanded(child: Text(err)),
-                        ]),
-                        backgroundColor: const Color(0xFFFF3B30),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        duration: const Duration(seconds: 4),
-                      ));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              const Icon(
+                                Icons.warning_rounded,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(child: Text(err)),
+                            ],
+                          ),
+                          backgroundColor: const Color(0xFFFF3B30),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          duration: const Duration(seconds: 4),
+                        ),
+                      );
                       return;
                     }
                     Navigator.of(context).pop(result);
@@ -361,18 +408,22 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
                   child: Container(
                     height: 56,
                     decoration: BoxDecoration(
-                        color: const Color(0xFF07111F),
-                        borderRadius: BorderRadius.circular(18)),
+                      color: const Color(0xFF07111F),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.check_rounded, color: Colors.white),
                         SizedBox(width: 10),
-                        Text('Confirm & Use',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 16)),
+                        Text(
+                          'Confirm & Use',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -383,20 +434,28 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
                   child: Container(
                     height: 52,
                     decoration: BoxDecoration(
-                        border: Border.all(
-                            color: const Color(0xFFE5E5EA), width: 1.5),
-                        borderRadius: BorderRadius.circular(18)),
+                      border: Border.all(
+                        color: const Color(0xFFE5E5EA),
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.camera_alt_outlined,
-                            color: Color(0xFF1C1C1E)),
+                        Icon(
+                          Icons.camera_alt_outlined,
+                          color: Color(0xFF1C1C1E),
+                        ),
                         SizedBox(width: 10),
-                        Text('Retake',
-                            style: TextStyle(
-                                color: Color(0xFF1C1C1E),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16)),
+                        Text(
+                          'Retake',
+                          style: TextStyle(
+                            color: Color(0xFF1C1C1E),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -420,28 +479,41 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                  color: const Color(0xFFFF3B30).withValues(alpha: 0.15),
-                  shape: BoxShape.circle),
-              child: const Icon(Icons.close_rounded,
-                  color: Color(0xFFFF3B30), size: 44),
+                color: const Color(0xFFFF3B30).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.close_rounded,
+                color: Color(0xFFFF3B30),
+                size: 44,
+              ),
             ),
             const SizedBox(height: 24),
-            const Text('Scan Failed',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800)),
+            const Text(
+              'Scan Failed',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 12),
-            Text(_errorMessage,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: Colors.white60, fontSize: 15, height: 1.5)),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 15,
+                height: 1.5,
+              ),
+            ),
             const SizedBox(height: 32),
             _OutlineButton(label: 'Try Again', onTap: _retake),
             const SizedBox(height: 12),
             _OutlineButton(
-                label: 'Enter Manually',
-                onTap: () => Navigator.of(context).pop()),
+              label: 'Enter Manually',
+              onTap: () => Navigator.of(context).pop(),
+            ),
           ],
         ),
       ),
@@ -455,25 +527,34 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.camera_alt_outlined,
-                color: Colors.white54, size: 64),
+            const Icon(
+              Icons.camera_alt_outlined,
+              color: Colors.white54,
+              size: 64,
+            ),
             const SizedBox(height: 24),
-            const Text('Camera Permission Required',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800)),
+            const Text(
+              'Camera Permission Required',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 12),
-            const Text('Please grant camera access to scan your ID.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white60, fontSize: 15)),
+            const Text(
+              'Please grant camera access to scan your ID.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white60, fontSize: 15),
+            ),
             const SizedBox(height: 32),
             _OutlineButton(label: 'Open Settings', onTap: openAppSettings),
             const SizedBox(height: 12),
             _OutlineButton(
-                label: 'Enter Manually',
-                onTap: () => Navigator.of(context).pop()),
+              label: 'Enter Manually',
+              onTap: () => Navigator.of(context).pop(),
+            ),
           ],
         ),
       ),
@@ -524,8 +605,11 @@ class _CardOverlayPainter extends CustomPainter {
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 class _GlassButton extends StatelessWidget {
-  const _GlassButton(
-      {required this.icon, required this.onTap, this.dark = false});
+  const _GlassButton({
+    required this.icon,
+    required this.onTap,
+    this.dark = false,
+  });
   final IconData icon;
   final VoidCallback onTap;
   final bool dark;
@@ -561,25 +645,31 @@ class _OutlineButton extends StatelessWidget {
         width: double.infinity,
         height: 52,
         decoration: BoxDecoration(
-            border: Border.all(color: Colors.white30),
-            borderRadius: BorderRadius.circular(18)),
+          border: Border.all(color: Colors.white30),
+          borderRadius: BorderRadius.circular(18),
+        ),
         child: Center(
-            child: Text(label,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16))),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
 class _PreviewField extends StatelessWidget {
-  const _PreviewField(
-      {required this.label,
-      required this.controller,
-      required this.icon,
-      this.maxLines = 1});
+  const _PreviewField({
+    required this.label,
+    required this.controller,
+    required this.icon,
+    this.maxLines = 1,
+  });
   final String label;
   final TextEditingController controller;
   final IconData icon;
@@ -591,11 +681,13 @@ class _PreviewField extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
-          color: const Color(0xFFF2F2F7),
-          borderRadius: BorderRadius.circular(16)),
+        color: const Color(0xFFF2F2F7),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Row(
-        crossAxisAlignment:
-            maxLines > 1 ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        crossAxisAlignment: maxLines > 1
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.center,
         children: [
           Padding(
             padding: EdgeInsets.only(top: maxLines > 1 ? 14 : 0),
@@ -607,10 +699,11 @@ class _PreviewField extends StatelessWidget {
               controller: controller,
               maxLines: maxLines,
               decoration: InputDecoration(
-                  labelText: label,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none),
+                labelText: label,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+              ),
             ),
           ),
         ],
