@@ -53,7 +53,8 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);`n    _controller?.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _controller?.dispose();
     _nameCtrl.dispose();
     _numberCtrl.dispose();
     _dobCtrl.dispose();
@@ -64,6 +65,16 @@ class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingOb
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      controller.pausePreview();
+    } else if (state == AppLifecycleState.resumed) {
+      controller.resumePreview();
+    }
+  }
   Future<void> _requestPermissionAndInit() async {
     final status = await Permission.camera.request();
     if (!mounted) return;

@@ -53,7 +53,8 @@ class _MrzScannerScreenState extends State<MrzScannerScreen> with WidgetsBinding
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);`n    _controller?.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _controller?.dispose();
     _nameCtrl.dispose();
     _passportNumCtrl.dispose();
     _dobCtrl.dispose();
