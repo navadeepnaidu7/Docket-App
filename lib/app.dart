@@ -6,16 +6,16 @@ import 'core/theme/theme_provider.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
 
-class SlickPortApp extends ConsumerWidget {
+class DocketApp extends ConsumerWidget {
   final bool hasSeenOnboarding;
-  const SlickPortApp({super.key, required this.hasSeenOnboarding});
+  const DocketApp({super.key, required this.hasSeenOnboarding});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'SlickPort',
+      title: 'Docket',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,

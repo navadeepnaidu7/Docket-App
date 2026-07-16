@@ -15,7 +15,7 @@ class CompletionStep extends StatelessWidget {
       loadingDescription: OnboardingContent.completionLoadingDescription,
       successTitle: OnboardingContent.completionSuccessTitle,
       successDescription: OnboardingContent.completionSuccessDescription,
-      actionLabel: 'Enter SlickPort',
+      actionLabel: 'Enter Docket',
       onComplete: onComplete,
     );
   }

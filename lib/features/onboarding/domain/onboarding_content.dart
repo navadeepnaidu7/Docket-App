@@ -45,7 +45,7 @@ class OnboardingContent {
       icon: Icons.account_balance_wallet_rounded,
       title: 'Your Wallet',
       description:
-          'SlickPort holds IDs — passports, PAN, and Aadhaar — alongside travel passes in one secure local wallet. Everything stays on your device.',
+          'Docket holds IDs — passports, PAN, and Aadhaar — alongside travel passes in one secure local wallet. Everything stays on your device.',
       accent: fuseBlue,
     ),
     FeatureStep(
@@ -76,5 +76,5 @@ class OnboardingContent {
       'Staging your documents and passes workspace.';
   static const String completionSuccessTitle = "You're ready";
   static const String completionSuccessDescription =
-      'Enter SlickPort and tap + to add your first document.';
+      'Enter Docket and tap + to add your first document.';
 }

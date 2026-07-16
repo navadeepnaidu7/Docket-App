@@ -223,7 +223,7 @@ class SettingsScreen extends ConsumerWidget {
                                     Navigator.of(context).push(
                                       MaterialPageRoute<void>(
                                         builder: (_) =>
-                                            const AboutSlickPortScreen(),
+                                            const AboutDocketScreen(),
                                       ),
                                     );
                                   },
@@ -904,8 +904,8 @@ class _SettingsLinkRow extends StatelessWidget {
   }
 }
 
-class AboutSlickPortScreen extends StatelessWidget {
-  const AboutSlickPortScreen({super.key});
+class AboutDocketScreen extends StatelessWidget {
+  const AboutDocketScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -934,7 +934,7 @@ class AboutSlickPortScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                 children: [
                   Text(
-                    'SlickPort',
+                    'Docket',
                     style: GoogleFonts.inter(
                       fontSize: 28,
                       fontWeight: FontWeight.w700,
@@ -965,7 +965,7 @@ class AboutSlickPortScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                   Center(
                     child: Text(
-                      '© 2026 SlickPort',
+                      '© 2026 Docket',
                       style: theme.textTheme.labelSmall?.copyWith(color: muted),
                     ),
                   ),

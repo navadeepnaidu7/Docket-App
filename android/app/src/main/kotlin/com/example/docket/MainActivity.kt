@@ -1,4 +1,4 @@
-package com.example.slickport
+package com.example.docket
 
 import android.graphics.Bitmap
 import android.nfc.NfcAdapter
@@ -25,7 +25,7 @@ import com.gemalto.jp2.JP2Decoder
 
 class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
 
-    private val CHANNEL = "com.slickport/nfc_passport"
+    private val CHANNEL = "com.docket/nfc_passport"
     private var nfcAdapter: NfcAdapter? = null
     
     private var isScanning = false

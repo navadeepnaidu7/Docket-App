@@ -9,5 +9,5 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final bool hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
 
-  runApp(ProviderScope(child: SlickPortApp(hasSeenOnboarding: hasSeenOnboarding)));
+  runApp(ProviderScope(child: DocketApp(hasSeenOnboarding: hasSeenOnboarding)));
 }

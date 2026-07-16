@@ -7,7 +7,7 @@
 
 
     <application
-        android:label="SlickPort"
+        android:label="Docket"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -3,14 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:slickport/app.dart';
+import 'package:docket/app.dart';
 
 void main() {
   testWidgets('App boots through onboarding into the dashboard shell', (
     WidgetTester tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
-    await tester.pumpWidget(const ProviderScope(child: SlickPortApp(hasSeenOnboarding: false)));
+    await tester.pumpWidget(const ProviderScope(child: DocketApp(hasSeenOnboarding: false)));
 
     expect(find.text('Continue'), findsOneWidget);
 
@@ -34,8 +34,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 900));
 
     await tester.pump(const Duration(milliseconds: 1600));
-    expect(find.text('Enter SlickPort'), findsOneWidget);
-    await tester.tap(find.text('Enter SlickPort'));
+    expect(find.text('Enter Docket'), findsOneWidget);
+    await tester.tap(find.text('Enter Docket'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 

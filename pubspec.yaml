@@ -1,5 +1,5 @@
-name: slickport
-description: "SlickPort mobile application."
+name: docket
+description: "Docket mobile application."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -66,6 +66,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/branding/
     - assets/auth/google/
     - assets/navbar/
     - assets/navbar/alt/ids_filled.svg

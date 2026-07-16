@@ -1,6 +1,6 @@
-# SlickPort
+# Docket
 
-A Flutter project for the SlickPort Android app.
+A Flutter project for the Docket Android app.
 
 ## Getting Started
 

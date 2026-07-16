@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 
 class NfcService {
-  static const MethodChannel _channel = MethodChannel('com.slickport/nfc_passport');
+  static const MethodChannel _channel = MethodChannel('com.docket/nfc_passport');
 
   Future<Map<String, dynamic>?> startNfcRead({
     required String passportNumber,
