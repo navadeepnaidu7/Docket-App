@@ -20,7 +20,7 @@ class MrzScannerScreen extends StatefulWidget {
   State<MrzScannerScreen> createState() => _MrzScannerScreenState();
 }
 
-class _MrzScannerScreenState extends State<MrzScannerScreen> {
+class _MrzScannerScreenState extends State<MrzScannerScreen> with WidgetsBindingObserver {
   CameraController? _controller;
   bool _isCapturing = false;
   _ScanState _state = _ScanState.scanning;
@@ -39,6 +39,7 @@ class _MrzScannerScreenState extends State<MrzScannerScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _nameCtrl = TextEditingController();
     _passportNumCtrl = TextEditingController();
@@ -52,7 +53,7 @@ class _MrzScannerScreenState extends State<MrzScannerScreen> {
 
   @override
   void dispose() {
-    _controller?.dispose();
+    WidgetsBinding.instance.removeObserver(this);`n    _controller?.dispose();
     _nameCtrl.dispose();
     _passportNumCtrl.dispose();
     _dobCtrl.dispose();
@@ -63,6 +64,16 @@ class _MrzScannerScreenState extends State<MrzScannerScreen> {
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      controller.pausePreview();
+    } else if (state == AppLifecycleState.resumed) {
+      controller.resumePreview();
+    }
+  }
   // ── Permission ─────────────────────────────────────────────────────────────
 
   Future<void> _requestPermissionAndInit() async {

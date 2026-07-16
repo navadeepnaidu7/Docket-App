@@ -21,7 +21,7 @@ class IdScannerScreen extends StatefulWidget {
   State<IdScannerScreen> createState() => _IdScannerScreenState();
 }
 
-class _IdScannerScreenState extends State<IdScannerScreen> {
+class _IdScannerScreenState extends State<IdScannerScreen> with WidgetsBindingObserver {
   CameraController? _controller;
   bool _isCapturing = false;
   _ScanState _state = _ScanState.scanning;
@@ -39,6 +39,7 @@ class _IdScannerScreenState extends State<IdScannerScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _nameCtrl = TextEditingController();
     _numberCtrl = TextEditingController();
@@ -52,7 +53,7 @@ class _IdScannerScreenState extends State<IdScannerScreen> {
 
   @override
   void dispose() {
-    _controller?.dispose();
+    WidgetsBinding.instance.removeObserver(this);`n    _controller?.dispose();
     _nameCtrl.dispose();
     _numberCtrl.dispose();
     _dobCtrl.dispose();
