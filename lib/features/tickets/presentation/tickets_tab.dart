@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../shared/widgets/bounce_tap.dart';
 import '../../../shared/widgets/rolling_card_page.dart';
+import '../domain/pass_catalog.dart';
+import 'wallet_movie_card.dart';
 import 'wallet_ticket_card.dart';
 
 class TicketsTab extends StatefulWidget {
@@ -29,15 +31,17 @@ class _TicketsTabState extends State<TicketsTab> {
     super.dispose();
   }
 
-  List<MockTicket> get _filtered => mockTickets
-      .where((t) => _filterIndex == 0
-          ? t.status == TicketStatus.active
-          : t.status == TicketStatus.expired)
+  List<WalletPassItem> get _filtered => mockWalletPasses
+      .where(
+        (WalletPassItem p) => _filterIndex == 0
+            ? p.status == TicketStatus.active
+            : p.status == TicketStatus.expired,
+      )
       .toList();
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filtered;
+    final List<WalletPassItem> filtered = _filtered;
     final double fabClearance =
         MediaQuery.of(context).padding.bottom + 16 + 58 + 20;
 
@@ -92,15 +96,21 @@ class _TicketsTabState extends State<TicketsTab> {
                       ),
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
-                        final ticket = filtered[index];
+                        final WalletPassItem item = filtered[index];
                         return RollingCardPage(
                           controller: _pageCtrl,
                           index: index,
                           padding: EdgeInsets.fromLTRB(20, 0, 28, fabClearance),
-                          child: WalletTicketCard(
-                            key: ValueKey<String>(ticket.id),
-                            ticket: ticket,
-                          ),
+                          child: switch (item) {
+                            TrainPassItem(:final ticket) => WalletTicketCard(
+                                key: ValueKey<String>(ticket.id),
+                                ticket: ticket,
+                              ),
+                            MoviePassItem(:final pass) => WalletMovieCard(
+                                key: ValueKey<String>(pass.id),
+                                pass: pass,
+                              ),
+                          },
                         );
                       },
                     ),
@@ -225,8 +235,11 @@ class _FilterPill extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final Color activeColor = isDark ? theme.colorScheme.primary : const Color(0xFF1F3A60);
-    final Color inactiveBorderColor = isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.15);
+    final Color activeColor =
+        isDark ? theme.colorScheme.primary : const Color(0xFF1F3A60);
+    final Color inactiveBorderColor = isDark
+        ? Colors.white.withValues(alpha: 0.15)
+        : Colors.black.withValues(alpha: 0.15);
 
     return BounceTap(
       onTap: onTap,
@@ -246,7 +259,9 @@ class _FilterPill extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : (isDark ? const Color(0xFF8E8E93) : const Color(0xFF64748B)),
+            color: selected
+                ? Colors.white
+                : (isDark ? const Color(0xFF8E8E93) : const Color(0xFF64748B)),
             fontSize: 13,
             fontWeight: FontWeight.w600,
           ),
@@ -265,7 +280,9 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color contentColor = isDark ? Colors.white.withValues(alpha: 0.35) : Colors.black.withValues(alpha: 0.35);
+    final Color contentColor = isDark
+        ? Colors.white.withValues(alpha: 0.35)
+        : Colors.black.withValues(alpha: 0.35);
 
     return Center(
       child: Column(
@@ -278,7 +295,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            isActive ? 'No active tickets' : 'No expired tickets',
+            isActive ? 'No active passes' : 'No expired passes',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,

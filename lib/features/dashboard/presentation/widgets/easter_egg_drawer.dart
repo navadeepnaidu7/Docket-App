@@ -3,7 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../ids/domain/id_document.dart';
 import '../../../passport/domain/passport_profile.dart';
-import '../../../tickets/presentation/wallet_ticket_card.dart';
+import '../../../tickets/domain/pass_catalog.dart';
+import '../../../tickets/domain/ticket_models.dart';
 import 'blur_place_reveal.dart';
 import 'easter_egg_constants.dart';
 import 'travel_weather_glance.dart';
@@ -101,8 +102,8 @@ class _EasterEggDrawerState extends State<EasterEggDrawer>
         widget.passports.isNotEmpty ? widget.passports.first.name : '';
     final String firstName =
         currentName.isEmpty ? 'Traveller' : currentName.split(' ').first;
-    final int activeTrips = widget.tickets
-        .where((MockTicket t) => t.status == TicketStatus.active)
+    final int activeTrips = mockWalletPasses
+        .where((WalletPassItem p) => p.status == TicketStatus.active)
         .length;
     final int itemCount = widget.passports.length + widget.idDocs.length;
 

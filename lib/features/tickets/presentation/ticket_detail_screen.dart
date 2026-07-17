@@ -5,7 +5,7 @@ import '../../../core/haptics/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/ticket_models.dart';
 
-/// Fullscreen train pass detail — Details | Live status (reference-inspired).
+/// Fullscreen train pass detail ΓÇö Details | Live status (reference-inspired).
 class TicketDetailScreen extends StatefulWidget {
   const TicketDetailScreen({super.key, required this.ticket});
 
@@ -110,7 +110,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 }
 
-// ── Segmented control ─────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Segmented control ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 class _SegmentedTabs extends StatelessWidget {
   const _SegmentedTabs({
@@ -217,7 +217,7 @@ class _SegButton extends StatelessWidget {
   }
 }
 
-// ── Details tab ───────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Details tab ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 class _DetailsTab extends StatelessWidget {
   const _DetailsTab({
@@ -362,7 +362,7 @@ class _DetailsTab extends StatelessWidget {
 
         const SizedBox(height: 16),
 
-        // Info rows
+        // Journey info
         _SurfaceCard(
           surface: cardSurface,
           border: border,
@@ -379,13 +379,6 @@ class _DetailsTab extends StatelessWidget {
                 icon: Icons.schedule_rounded,
                 label: 'Boarding time',
                 value: t.departTime,
-                ink: ink,
-                muted: muted,
-              ),
-              _InfoRow(
-                icon: Icons.person_outline_rounded,
-                label: 'Passenger',
-                value: t.passengerName,
                 ink: ink,
                 muted: muted,
               ),
@@ -414,20 +407,6 @@ class _DetailsTab extends StatelessWidget {
                 muted: muted,
               ),
               _InfoRow(
-                icon: Icons.airline_seat_recline_normal_outlined,
-                label: 'Coach & Seat',
-                value: t.coachSeatLabel,
-                ink: ink,
-                muted: muted,
-              ),
-              _InfoRow(
-                icon: Icons.bed_outlined,
-                label: 'Berth type',
-                value: t.berth,
-                ink: ink,
-                muted: muted,
-              ),
-              _InfoRow(
                 icon: Icons.list_alt_rounded,
                 label: 'Chart status',
                 value: t.chartStatus,
@@ -449,6 +428,51 @@ class _DetailsTab extends StatelessWidget {
                 muted: muted,
                 showDivider: false,
               ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Passengers (1–6) — same card style as before
+        _SurfaceCard(
+          surface: cardSurface,
+          border: border,
+          child: Column(
+            children: <Widget>[
+              if (t.passengerCount == 1) ...<Widget>[
+                _InfoRow(
+                  icon: Icons.person_outline_rounded,
+                  label: 'Passenger',
+                  value: t.passengerName,
+                  ink: ink,
+                  muted: muted,
+                ),
+                _InfoRow(
+                  icon: Icons.airline_seat_recline_normal_outlined,
+                  label: 'Coach & Seat',
+                  value: t.coachSeatLabel,
+                  ink: ink,
+                  muted: muted,
+                ),
+                _InfoRow(
+                  icon: Icons.bed_outlined,
+                  label: 'Berth type',
+                  value: t.berth,
+                  ink: ink,
+                  muted: muted,
+                  showDivider: false,
+                ),
+              ] else ...<Widget>[
+                for (int i = 0; i < t.passengers.length; i++)
+                  _PassengerInfoRow(
+                    index: i + 1,
+                    passenger: t.passengers[i],
+                    ink: ink,
+                    muted: muted,
+                    showDivider: i < t.passengers.length - 1,
+                  ),
+              ],
             ],
           ),
         ),
@@ -583,13 +607,13 @@ class _DetailsTab extends StatelessWidget {
   }
 }
 
-// ── Live status tab ───────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Live status tab ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 //
 // Transit-line rail: rounded vertical capsule + evenly spaced markers.
-// 6px white dots · 8px current with ring · soft flat route colors.
+// 6px white dots ┬╖ 8px current with ring ┬╖ soft flat route colors.
 
 const double _kRailWidth = 20;
-/// Vertical space per station — enough for name + subtitle without overflow.
+/// Vertical space per station ΓÇö enough for name + subtitle without overflow.
 const double _kStationPitch = 56;
 const double _kDotSize = 6;
 const double _kCurrentDotSize = 8;
@@ -888,7 +912,7 @@ class _TransitRailMapState extends State<_TransitRailMap>
             ),
           ),
           const SizedBox(width: 14),
-          // Labels — fixed pitch, single-line safe layout
+          // Labels ΓÇö fixed pitch, single-line safe layout
           Expanded(
             child: Column(
               children: <Widget>[
@@ -937,7 +961,7 @@ class _StationLabel extends StatelessWidget {
       HaltState.upcoming => muted,
     };
 
-    // Reference-style: station + subtitle left, time right — no vertical overflow.
+    // Reference-style: station + subtitle left, time right ΓÇö no vertical overflow.
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -1104,7 +1128,7 @@ class _TransitCapsulePainter extends CustomPainter {
   }
 }
 
-// ── Shared chrome ─────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Shared chrome ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 class _SurfaceCard extends StatelessWidget {
   const _SurfaceCard({
@@ -1129,6 +1153,81 @@ class _SurfaceCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: child,
       ),
+    );
+  }
+}
+
+class _PassengerInfoRow extends StatelessWidget {
+  const _PassengerInfoRow({
+    required this.index,
+    required this.passenger,
+    required this.ink,
+    required this.muted,
+    this.showDivider = true,
+  });
+
+  final int index;
+  final TicketPassenger passenger;
+  final Color ink;
+  final Color muted;
+  final bool showDivider;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: <Widget>[
+              Icon(Icons.person_outline_rounded, size: 18, color: muted),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'Passenger $index',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: muted,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      passenger.name,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: ink,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                passenger.seatLabel,
+                textAlign: TextAlign.right,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: ink,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (showDivider)
+          Padding(
+            padding: const EdgeInsets.only(left: 44),
+            child: Divider(
+              height: 0.5,
+              thickness: 0.5,
+              color: muted.withValues(alpha: 0.18),
+            ),
+          ),
+      ],
     );
   }
 }

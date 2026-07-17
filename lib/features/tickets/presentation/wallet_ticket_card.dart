@@ -7,7 +7,7 @@ import 'ticket_detail_screen.dart';
 
 export '../domain/ticket_models.dart';
 
-// ── Pass face palette ─────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Pass face palette ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 const Color _kActiveTop = Color(0xFF1B3A6B);
 const Color _kActiveBot = Color(0xFF0A1F3D);
@@ -16,7 +16,7 @@ const Color _kActiveAccent = Color(0xFF5BA3E8);
 const Color _kExpiredTop = Color(0xFF3A3A3C);
 const Color _kExpiredBot = Color(0xFF1C1C1E);
 
-// ── Wallet card ───────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Wallet card ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 class WalletTicketCard extends StatefulWidget {
   const WalletTicketCard({super.key, required this.ticket});
@@ -50,6 +50,7 @@ class _WalletTicketCardState extends State<WalletTicketCard>
     super.dispose();
   }
 
+  /// Fullscreen dialog transition (modal rise) — keep as-is.
   void _openDetail() {
     HapticService.confirm();
     Navigator.of(context).push(
@@ -214,7 +215,7 @@ class _WalletTicketCardState extends State<WalletTicketCard>
                             children: <Widget>[
                               Expanded(
                                 child: Text(
-                                  t.passengerName,
+                                  t.passengerSummary,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.inter(
@@ -226,7 +227,7 @@ class _WalletTicketCardState extends State<WalletTicketCard>
                                 ),
                               ),
                               Text(
-                                '${t.coach} · ${t.seat} · ${t.berth}',
+                                t.seatSummary,
                                 style: GoogleFonts.inter(
                                   color: Colors.white.withValues(alpha: 0.92),
                                   fontSize: 14,

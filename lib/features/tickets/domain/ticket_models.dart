@@ -22,6 +22,27 @@ class TicketHalt {
   final String dateLabel;
 }
 
+/// One traveller on a booking (max 6).
+class TicketPassenger {
+  const TicketPassenger({
+    required this.name,
+    required this.coach,
+    required this.seat,
+    required this.berth,
+    this.age,
+    this.gender,
+  });
+
+  final String name;
+  final String coach;
+  final String seat;
+  final String berth;
+  final int? age;
+  final String? gender;
+
+  String get seatLabel => '$coach · $seat · $berth';
+}
+
 class MockTicket {
   const MockTicket({
     required this.id,
@@ -38,10 +59,7 @@ class MockTicket {
     required this.arrivalDate,
     required this.duration,
     required this.ticketClass,
-    required this.coach,
-    required this.seat,
-    required this.berth,
-    required this.passengerName,
+    required this.passengers,
     required this.pnr,
     required this.bookingId,
     required this.status,
@@ -50,7 +68,7 @@ class MockTicket {
     this.liveStatusLabel = 'Running on time',
     this.progressFraction = 0.45,
     this.halts = const <TicketHalt>[],
-  });
+  }) : assert(passengers.length >= 1 && passengers.length <= 6);
 
   final String id;
   final String operator;
@@ -66,10 +84,7 @@ class MockTicket {
   final String arrivalDate;
   final String duration;
   final String ticketClass;
-  final String coach;
-  final String seat;
-  final String berth;
-  final String passengerName;
+  final List<TicketPassenger> passengers;
   final String pnr;
   final String bookingId;
   final TicketStatus status;
@@ -81,7 +96,25 @@ class MockTicket {
 
   String get trainTitle => '$trainNumber · $trainName';
 
-  String get coachSeatLabel => '$coach · $seat ($berth)';
+  TicketPassenger get primaryPassenger => passengers.first;
+
+  String get passengerName => primaryPassenger.name;
+  String get coach => primaryPassenger.coach;
+  String get seat => primaryPassenger.seat;
+  String get berth => primaryPassenger.berth;
+  String get coachSeatLabel => primaryPassenger.seatLabel;
+  int get passengerCount => passengers.length;
+
+  String get passengerSummary {
+    if (passengers.length == 1) return passengers.first.name;
+    final String first = passengers.first.name.split(' ').first;
+    return '$first +${passengers.length - 1}';
+  }
+
+  String get seatSummary {
+    if (passengers.length == 1) return passengers.first.seatLabel;
+    return '${passengers.length} seats';
+  }
 
   TicketHalt? get nextHalt {
     for (final TicketHalt h in halts) {
@@ -111,10 +144,32 @@ final List<MockTicket> mockTickets = <MockTicket>[
     arrivalDate: '23 Mar 2024',
     duration: '4h 30m',
     ticketClass: 'AC 2 Tier',
-    coach: 'B2',
-    seat: '23',
-    berth: 'Lower',
-    passengerName: 'Navadeep Naidu',
+    passengers: const <TicketPassenger>[
+      TicketPassenger(
+        name: 'Navadeep Naidu',
+        coach: 'B2',
+        seat: '23',
+        berth: 'Lower',
+        age: 28,
+        gender: 'M',
+      ),
+      TicketPassenger(
+        name: 'Ananya Rao',
+        coach: 'B2',
+        seat: '24',
+        berth: 'Upper',
+        age: 26,
+        gender: 'F',
+      ),
+      TicketPassenger(
+        name: 'Vikram Rao',
+        coach: 'B2',
+        seat: '25',
+        berth: 'Middle',
+        age: 54,
+        gender: 'M',
+      ),
+    ],
     pnr: '2432587612',
     bookingId: 'E12345678',
     status: TicketStatus.active,
@@ -174,10 +229,16 @@ final List<MockTicket> mockTickets = <MockTicket>[
     arrivalDate: '04 Jun 2024',
     duration: '34h 00m',
     ticketClass: 'AC 1 Tier',
-    coach: 'H1',
-    seat: '04',
-    berth: 'Lower',
-    passengerName: 'Navadeep Naidu',
+    passengers: const <TicketPassenger>[
+      TicketPassenger(
+        name: 'Navadeep Naidu',
+        coach: 'H1',
+        seat: '04',
+        berth: 'Lower',
+        age: 28,
+        gender: 'M',
+      ),
+    ],
     pnr: '4109823761',
     bookingId: 'E23456789',
     status: TicketStatus.active,
@@ -215,7 +276,7 @@ final List<MockTicket> mockTickets = <MockTicket>[
       ),
     ],
   ),
-  const MockTicket(
+  MockTicket(
     id: 'mock_t4',
     operator: 'IRCTC',
     trainNumber: '12163',
@@ -230,10 +291,44 @@ final List<MockTicket> mockTickets = <MockTicket>[
     arrivalDate: '16 Jun 2024',
     duration: '21h 15m',
     ticketClass: 'AC 2 Tier',
-    coach: 'A2',
-    seat: '12',
-    berth: 'Side Upper',
-    passengerName: 'Navadeep Naidu',
+    passengers: const <TicketPassenger>[
+      TicketPassenger(
+        name: 'Navadeep Naidu',
+        coach: 'A2',
+        seat: '12',
+        berth: 'Side Upper',
+      ),
+      TicketPassenger(
+        name: 'Priya Sharma',
+        coach: 'A2',
+        seat: '13',
+        berth: 'Side Lower',
+      ),
+      TicketPassenger(
+        name: 'Arjun Sharma',
+        coach: 'A2',
+        seat: '14',
+        berth: 'Lower',
+      ),
+      TicketPassenger(
+        name: 'Meera Sharma',
+        coach: 'A2',
+        seat: '15',
+        berth: 'Upper',
+      ),
+      TicketPassenger(
+        name: 'Kabir Mehta',
+        coach: 'A3',
+        seat: '01',
+        berth: 'Lower',
+      ),
+      TicketPassenger(
+        name: 'Saanvi Mehta',
+        coach: 'A3',
+        seat: '02',
+        berth: 'Upper',
+      ),
+    ],
     pnr: '6637291048',
     bookingId: 'E34567890',
     status: TicketStatus.active,
@@ -241,7 +336,7 @@ final List<MockTicket> mockTickets = <MockTicket>[
     liveStatusLabel: 'Scheduled',
     chartStatus: 'Chart not prepared',
     bookingStatus: 'Confirmed',
-    halts: <TicketHalt>[
+    halts: const <TicketHalt>[
       TicketHalt(
         time: '22:30',
         station: 'New Delhi (NDLS)',
@@ -273,10 +368,20 @@ final List<MockTicket> mockTickets = <MockTicket>[
     arrivalDate: '11 Jan 2024',
     duration: '15h 20m',
     ticketClass: 'AC 3 Tier',
-    coach: 'A1',
-    seat: '45',
-    berth: 'Upper',
-    passengerName: 'Navadeep Naidu',
+    passengers: const <TicketPassenger>[
+      TicketPassenger(
+        name: 'Navadeep Naidu',
+        coach: 'A1',
+        seat: '45',
+        berth: 'Upper',
+      ),
+      TicketPassenger(
+        name: 'Rohan Iyer',
+        coach: 'A1',
+        seat: '46',
+        berth: 'Middle',
+      ),
+    ],
     pnr: '8821456730',
     bookingId: 'E98765432',
     status: TicketStatus.expired,
@@ -300,7 +405,7 @@ final List<MockTicket> mockTickets = <MockTicket>[
       ),
     ],
   ),
-  const MockTicket(
+  MockTicket(
     id: 'mock_t5',
     operator: 'IRCTC',
     trainNumber: '12650',
@@ -315,10 +420,14 @@ final List<MockTicket> mockTickets = <MockTicket>[
     arrivalDate: '16 Nov 2023',
     duration: '34h 45m',
     ticketClass: 'AC 3 Tier',
-    coach: 'B4',
-    seat: '32',
-    berth: 'Middle',
-    passengerName: 'Navadeep Naidu',
+    passengers: const <TicketPassenger>[
+      TicketPassenger(
+        name: 'Navadeep Naidu',
+        coach: 'B4',
+        seat: '32',
+        berth: 'Middle',
+      ),
+    ],
     pnr: '3312984756',
     bookingId: 'E87654321',
     status: TicketStatus.expired,
@@ -326,7 +435,7 @@ final List<MockTicket> mockTickets = <MockTicket>[
     liveStatusLabel: 'Journey completed',
     progressFraction: 1.0,
   ),
-  const MockTicket(
+  MockTicket(
     id: 'mock_t6',
     operator: 'IRCTC',
     trainNumber: '12028',
@@ -341,10 +450,14 @@ final List<MockTicket> mockTickets = <MockTicket>[
     arrivalDate: '03 Sep 2023',
     duration: '5h 00m',
     ticketClass: 'CC Chair Car',
-    coach: 'C3',
-    seat: '67',
-    berth: 'Seat',
-    passengerName: 'Navadeep Naidu',
+    passengers: const <TicketPassenger>[
+      TicketPassenger(
+        name: 'Navadeep Naidu',
+        coach: 'C3',
+        seat: '67',
+        berth: 'Seat',
+      ),
+    ],
     pnr: '9901234567',
     bookingId: 'E76543210',
     status: TicketStatus.expired,
