@@ -8,6 +8,11 @@ import 'package:flutter/foundation.dart';
 abstract final class AppAssets {
   AppAssets._();
 
+  // ── Branding ─────────────────────────────────────────────────────────────────
+
+  /// Docket wordmark / app icon SVG (rounded square + monogram).
+  static const String docketLogo = 'assets/branding/docket_logo.svg';
+
   // ── Auth ─────────────────────────────────────────────────────────────────────
 
   /// Google Sign-In button assets (dark, rounded). Names follow Google branding.

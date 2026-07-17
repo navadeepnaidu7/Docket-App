@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
+
 class StudioField extends StatefulWidget {
   const StudioField({
     super.key,
@@ -50,24 +52,18 @@ class _StudioFieldState extends State<StudioField> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final bool isDark = theme.brightness == Brightness.dark;
     final bool focused = _focusNode.hasFocus;
 
-    // Adaptive color palette
-    final Color inputColor = isDark ? Colors.white : const Color(0xFF1C1C1E);
-    final Color focusColor = theme.brightness == Brightness.dark 
-        ? theme.colorScheme.primary 
-        : const Color(0xFF1A3A6B); // rich primary indigo-navy
-    final Color iconColor = focused ? focusColor : (isDark ? const Color(0xFF8E8E93) : const Color(0xFF64748B));
-    final Color labelColor = focused ? focusColor : (isDark ? const Color(0xFF8E8E93) : const Color(0xFF64748B));
+    final Color inputColor = scheme.onSurface;
+    final Color focusColor = scheme.primary;
+    final Color muted = AppTokens.secondaryLabel(scheme);
+    final Color iconColor = focused ? focusColor : muted;
+    final Color labelColor = focused ? focusColor : muted;
 
-    final Color bgColor = isDark
-        ? (focused ? Colors.white.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.06))
-        : (focused ? Colors.white : Colors.white.withValues(alpha: 0.62));
-
-    final Color borderColor = isDark
-        ? (focused ? focusColor : Colors.white.withValues(alpha: 0.08))
-        : (focused ? focusColor : Colors.white.withValues(alpha: 0.72));
+    final Color bgColor = AppTokens.fieldFill(scheme, focused: focused);
+    final Color borderColor = AppTokens.fieldBorder(scheme, focused: focused);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
@@ -120,9 +116,15 @@ class _StudioFieldState extends State<StudioField> {
               ),
               decoration: InputDecoration(
                 labelText: widget.label,
-                labelStyle: TextStyle(color: labelColor, fontSize: 14, fontWeight: FontWeight.w500),
+                labelStyle: TextStyle(
+                  color: labelColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
                 hintText: widget.hintText,
-                hintStyle: TextStyle(color: isDark ? const Color(0xFF48484A) : const Color(0xFF9AA3B0)),
+                hintStyle: TextStyle(
+                  color: AppTokens.tertiaryLabel(scheme),
+                ),
                 filled: false,
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,

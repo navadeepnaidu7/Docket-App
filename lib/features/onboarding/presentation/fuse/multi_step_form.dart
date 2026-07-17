@@ -267,7 +267,10 @@ class _MultiStepFormState extends State<MultiStepForm> {
                             child: Text(
                               'Skip, I will login later',
                               style: TextStyle(
-                                color: Colors.black.withValues(alpha: 0.45),
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.50),
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
                               ),

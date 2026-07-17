@@ -11,6 +11,10 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final Color ink = scheme.onSurface;
+    final bool isDark = scheme.brightness == Brightness.dark;
+
     return SafeArea(
       child: CustomScrollView(
         physics: const BouncingScrollPhysics(),
@@ -33,19 +37,21 @@ class WelcomeScreen extends StatelessWidget {
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark
+                          ? scheme.onSurface.withValues(alpha: 0.10)
+                          : scheme.surface,
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: <BoxShadow>[
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
+                          color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
                           blurRadius: 18,
                           offset: const Offset(0, 8),
                         ),
                       ],
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.account_balance_wallet_rounded,
-                      color: Color(0xFF007AFF),
+                      color: scheme.primary,
                       size: 28,
                     ),
                   ),
@@ -53,8 +59,8 @@ class WelcomeScreen extends StatelessWidget {
                   // Welcome Title
                   Text(
                     OnboardingContent.welcomeTitle,
-                    style: const TextStyle(
-                      color: Colors.black,
+                    style: TextStyle(
+                      color: ink,
                       fontSize: 34,
                       height: 1.06,
                       fontWeight: FontWeight.w800,
@@ -66,7 +72,7 @@ class WelcomeScreen extends StatelessWidget {
                   Text(
                     OnboardingContent.welcomeDescription,
                     style: TextStyle(
-                      color: Colors.black.withValues(alpha: 0.55),
+                      color: ink.withValues(alpha: 0.62),
                       fontSize: 16,
                       height: 1.45,
                       fontWeight: FontWeight.w500,

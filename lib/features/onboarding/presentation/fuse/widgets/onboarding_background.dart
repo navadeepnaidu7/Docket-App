@@ -72,10 +72,15 @@ class _OnboardingBackgroundState extends State<OnboardingBackground>
           child: AnimatedBuilder(
             animation: _morphController,
             builder: (BuildContext context, Widget? child) {
+              final bool isDark =
+                  Theme.of(context).brightness == Brightness.dark;
+              final Color base = Theme.of(context).scaffoldBackgroundColor;
               return CustomPaint(
                 painter: _OnboardingBackgroundPainter(
                   morph: _morphController.value,
                   accent: animatedAccent ?? widget.accent,
+                  baseColor: base,
+                  isDark: isDark,
                 ),
                 child: const SizedBox.expand(),
               );
@@ -91,10 +96,14 @@ class _OnboardingBackgroundPainter extends CustomPainter {
   _OnboardingBackgroundPainter({
     required this.morph,
     required this.accent,
+    required this.baseColor,
+    required this.isDark,
   });
 
   final double morph;
   final Color accent;
+  final Color baseColor;
+  final bool isDark;
 
   static const Color _cyan = Color(0xFF00D4FF);
   static const Color _blue = Color(0xFF007AFF);
@@ -102,8 +111,7 @@ class _OnboardingBackgroundPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Solid white base
-    canvas.drawRect(Offset.zero & size, Paint()..color = Colors.white);
+    canvas.drawRect(Offset.zero & size, Paint()..color = baseColor);
 
     // Staggered easing curves using Interval for overlapping delays
     final double t1 = Curves.easeInOutCubic.transform(morph);
@@ -111,6 +119,8 @@ class _OnboardingBackgroundPainter extends CustomPainter {
     final double t3 = const Interval(0.24, 1.0, curve: Curves.easeInOutCubic).transform(morph);
 
     final Rect rect = Offset.zero & size;
+    final double bloom = isDark ? 0.55 : 1.0;
+    final Color transparentEdge = baseColor.withValues(alpha: 0);
 
     // Tint background colors slightly towards current active accent color
     final Color colorCyan = Color.lerp(_cyan, accent, 0.12)!;
@@ -130,9 +140,9 @@ class _OnboardingBackgroundPainter extends CustomPainter {
           center: c1,
           radius: r1,
           colors: <Color>[
-            colorCyan.withValues(alpha: 0.90),
-            colorBlue.withValues(alpha: 0.55),
-            Colors.white.withValues(alpha: 0),
+            colorCyan.withValues(alpha: 0.90 * bloom),
+            colorBlue.withValues(alpha: 0.55 * bloom),
+            transparentEdge,
           ],
           stops: const <double>[0, 0.55, 1],
         ).createShader(rect),
@@ -151,9 +161,9 @@ class _OnboardingBackgroundPainter extends CustomPainter {
           center: c2,
           radius: r2,
           colors: <Color>[
-            colorBlue.withValues(alpha: 0.80),
-            colorSky.withValues(alpha: 0.45),
-            Colors.white.withValues(alpha: 0),
+            colorBlue.withValues(alpha: 0.80 * bloom),
+            colorSky.withValues(alpha: 0.45 * bloom),
+            transparentEdge,
           ],
           stops: const <double>[0, 0.62, 1],
         ).createShader(rect),
@@ -172,9 +182,9 @@ class _OnboardingBackgroundPainter extends CustomPainter {
           center: c3,
           radius: r3,
           colors: <Color>[
-            colorSky.withValues(alpha: 0.75),
-            colorBlue.withValues(alpha: 0.32),
-            Colors.white.withValues(alpha: 0),
+            colorSky.withValues(alpha: 0.75 * bloom),
+            colorBlue.withValues(alpha: 0.32 * bloom),
+            transparentEdge,
           ],
           stops: const <double>[0, 0.45, 1],
         ).createShader(rect),
@@ -183,6 +193,9 @@ class _OnboardingBackgroundPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _OnboardingBackgroundPainter old) {
-    return old.morph != morph || old.accent != accent;
+    return old.morph != morph ||
+        old.accent != accent ||
+        old.baseColor != baseColor ||
+        old.isDark != isDark;
   }
 }

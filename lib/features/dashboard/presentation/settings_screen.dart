@@ -1,15 +1,19 @@
-import 'dart:convert';
-import 'dart:ui' show ImageFilter;
+import 'dart:math' as math;
+import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/assets/app_assets.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/haptics/haptics_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_provider.dart';
+import '../../../core/wallet/wallet_palette.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
 import '../../passport/application/passport_list_provider.dart';
@@ -19,8 +23,9 @@ import '../application/wallet_filter_provider.dart';
 import '../application/nav_icon_style_provider.dart';
 import '../application/nav_labels_provider.dart';
 
-/// Fraction of the available body height reserved for the profile hero.
-const double kSettingsProfileHeightFraction = 0.20;
+/// Apple Card–like hero dimensions (scrolls with the settings list).
+const double kSettingsHeroHeight = 200.0;
+const double kSettingsHeroRadius = 22.0;
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -28,7 +33,8 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
-    final bool isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    // Effective brightness (respects ThemeMode.system), not just stored mode.
+    final bool isDark = theme.brightness == Brightness.dark;
     final Color ink = theme.colorScheme.onSurface;
     final Color surface = theme.colorScheme.surface;
     final Color borderColor = ink.withValues(alpha: isDark ? 0.08 : 0.06);
@@ -50,192 +56,169 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final double profileHeight =
-                      constraints.maxHeight * kSettingsProfileHeightFraction;
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+              // Single scroll: card is a normal list item (not sticky).
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                children: [
+                  SizedBox(
+                    height: kSettingsHeroHeight,
+                    child: _WalletMembershipCard(
+                      passports: passports,
+                      idDocs: idDocs,
+                      isDark: isDark,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _SettingsSection(
+                    title: 'Appearance',
+                    surface: surface,
+                    borderColor: borderColor,
+                    isDark: isDark,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                        child: SizedBox(
-                          height: profileHeight,
-                          child: _ProfileHeroCard(
-                            passports: passports,
-                            idDocs: idDocs,
-                            isDark: isDark,
-                            gradient: settingsProfileGradient(isDark: isDark),
-                          ),
-                        ),
+                      _SettingsToggleRow(
+                        icon: isDark
+                            ? Icons.dark_mode_rounded
+                            : Icons.light_mode_rounded,
+                        iconColor: const Color(0xFF6E40C9),
+                        title: 'Dark mode',
+                        value: isDark,
+                        onChanged: (bool enableDark) {
+                          HapticService.select();
+                          ref.read(themeModeProvider.notifier).setMode(
+                                enableDark
+                                    ? ThemeMode.dark
+                                    : ThemeMode.light,
+                              );
+                        },
                       ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: ListView(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                          children: [
-                            _SettingsSection(
-                              title: 'Appearance',
-                              surface: surface,
-                              borderColor: borderColor,
-                              isDark: isDark,
-                              children: [
-                                _SettingsToggleRow(
-                                  icon: isDark
-                                      ? Icons.dark_mode_rounded
-                                      : Icons.light_mode_rounded,
-                                  iconColor: const Color(0xFF6E40C9),
-                                  title: 'Dark mode',
-                                  value: isDark,
-                                  onChanged: (_) {
-                                    HapticService.select();
-                                    ref.read(themeModeProvider.notifier).toggle();
-                                  },
-                                ),
-                                const _SettingsDivider(),
-                                _SettingsToggleRow(
-                                  icon: Icons.vibration_rounded,
-                                  iconColor: const Color(0xFFE07A2F),
-                                  title: 'Haptics',
-                                  value: ref.watch(hapticsEnabledProvider),
-                                  onChanged: (_) {
-                                    final bool enabled =
-                                        ref.read(hapticsEnabledProvider);
-                                    if (enabled) HapticService.select();
-                                    ref
-                                        .read(hapticsEnabledProvider.notifier)
-                                        .toggle();
-                                  },
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            _SettingsSection(
-                              title: 'Navigation',
-                              surface: surface,
-                              borderColor: borderColor,
-                              isDark: isDark,
-                              children: [
-                                _SettingsToggleRow(
-                                  icon: CupertinoIcons.textformat_abc,
-                                  iconColor: const Color(0xFF2F6FED),
-                                  title: 'Labels',
-                                  value: ref.watch(showNavLabelsProvider),
-                                  onChanged: (_) {
-                                    HapticService.select();
-                                    ref
-                                        .read(showNavLabelsProvider.notifier)
-                                        .toggle();
-                                  },
-                                ),
-                                const _SettingsDivider(),
-                                _NavIconStyleRow(
-                                  icon: CupertinoIcons.creditcard_fill,
-                                  iconColor: const Color(0xFF2A9D6B),
-                                  title: 'IDs icons',
-                                  style: ref.watch(navIconStylesProvider).ids,
-                                  onTap: () {
-                                    HapticService.select();
-                                    final NavIconStyle current =
-                                        ref.read(navIconStylesProvider).ids;
-                                    ref
-                                        .read(navIconStylesProvider.notifier)
-                                        .setIdsStyle(
-                                          current == NavIconStyle.classic
-                                              ? NavIconStyle.vertical
-                                              : NavIconStyle.classic,
-                                        );
-                                  },
-                                ),
-                                const _SettingsDivider(),
-                                _NavIconStyleRow(
-                                  icon: CupertinoIcons.ticket_fill,
-                                  iconColor: const Color(0xFF1A9BB5),
-                                  title: 'Passes icons',
-                                  style:
-                                      ref.watch(navIconStylesProvider).passes,
-                                  onTap: () {
-                                    HapticService.select();
-                                    final NavIconStyle current =
-                                        ref.read(navIconStylesProvider).passes;
-                                    ref
-                                        .read(navIconStylesProvider.notifier)
-                                        .setPassesStyle(
-                                          current == NavIconStyle.classic
-                                              ? NavIconStyle.vertical
-                                              : NavIconStyle.classic,
-                                        );
-                                  },
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            _SettingsSection(
-                              title: 'Experimental',
-                              surface: surface,
-                              borderColor: borderColor,
-                              isDark: isDark,
-                              children: [
-                                _SettingsToggleRow(
-                                  icon: Icons.auto_awesome_rounded,
-                                  iconColor: const Color(0xFF5E5CE6),
-                                  title: 'Card shine border',
-                                  subtitle:
-                                      'After 3.5s on ID cards, a soft iridescent border appears',
-                                  value: ref.watch(cardShineBorderProvider),
-                                  onChanged: (_) {
-                                    HapticService.select();
-                                    ref
-                                        .read(cardShineBorderProvider.notifier)
-                                        .toggle();
-                                  },
-                                ),
-                                const _SettingsDivider(),
-                                _SettingsToggleRow(
-                                  icon: Icons.filter_list_rounded,
-                                  iconColor: const Color(0xFF2F6FED),
-                                  title: 'Card category filter',
-                                  subtitle:
-                                      'Filter menu on Home — pick a type or clear with ×',
-                                  value: ref.watch(walletFilterEnabledProvider),
-                                  onChanged: (_) {
-                                    HapticService.select();
-                                    ref
-                                        .read(walletFilterEnabledProvider.notifier)
-                                        .toggle();
-                                  },
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            _SettingsSection(
-                              title: 'General',
-                              surface: surface,
-                              borderColor: borderColor,
-                              isDark: isDark,
-                              children: [
-                                _SettingsLinkRow(
-                                  icon: Icons.info_outline_rounded,
-                                  iconColor: const Color(0xFF8E8E93),
-                                  title: 'About',
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) =>
-                                            const AboutDocketScreen(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                      const _SettingsDivider(),
+                      _SettingsToggleRow(
+                        icon: Icons.vibration_rounded,
+                        iconColor: const Color(0xFFE07A2F),
+                        title: 'Haptics',
+                        value: ref.watch(hapticsEnabledProvider),
+                        onChanged: (_) {
+                          final bool enabled =
+                              ref.read(hapticsEnabledProvider);
+                          if (enabled) HapticService.select();
+                          ref.read(hapticsEnabledProvider.notifier).toggle();
+                        },
                       ),
                     ],
-                  );
-                },
+                  ),
+                  const SizedBox(height: 20),
+                  _SettingsSection(
+                    title: 'Navigation',
+                    surface: surface,
+                    borderColor: borderColor,
+                    isDark: isDark,
+                    children: [
+                      _SettingsToggleRow(
+                        icon: CupertinoIcons.textformat_abc,
+                        iconColor: const Color(0xFF2F6FED),
+                        title: 'Labels',
+                        value: ref.watch(showNavLabelsProvider),
+                        onChanged: (_) {
+                          HapticService.select();
+                          ref.read(showNavLabelsProvider.notifier).toggle();
+                        },
+                      ),
+                      const _SettingsDivider(),
+                      _NavIconStyleRow(
+                        icon: CupertinoIcons.creditcard_fill,
+                        iconColor: const Color(0xFF2A9D6B),
+                        title: 'IDs icons',
+                        style: ref.watch(navIconStylesProvider).ids,
+                        onTap: () {
+                          HapticService.select();
+                          final NavIconStyle current =
+                              ref.read(navIconStylesProvider).ids;
+                          ref.read(navIconStylesProvider.notifier).setIdsStyle(
+                                current == NavIconStyle.classic
+                                    ? NavIconStyle.vertical
+                                    : NavIconStyle.classic,
+                              );
+                        },
+                      ),
+                      const _SettingsDivider(),
+                      _NavIconStyleRow(
+                        icon: CupertinoIcons.ticket_fill,
+                        iconColor: const Color(0xFF1A9BB5),
+                        title: 'Passes icons',
+                        style: ref.watch(navIconStylesProvider).passes,
+                        onTap: () {
+                          HapticService.select();
+                          final NavIconStyle current =
+                              ref.read(navIconStylesProvider).passes;
+                          ref
+                              .read(navIconStylesProvider.notifier)
+                              .setPassesStyle(
+                                current == NavIconStyle.classic
+                                    ? NavIconStyle.vertical
+                                    : NavIconStyle.classic,
+                              );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _SettingsSection(
+                    title: 'Experimental',
+                    surface: surface,
+                    borderColor: borderColor,
+                    isDark: isDark,
+                    children: [
+                      _SettingsToggleRow(
+                        icon: Icons.auto_awesome_rounded,
+                        iconColor: const Color(0xFF5E5CE6),
+                        title: 'Card shine border',
+                        subtitle:
+                            'After 3.5s on ID cards, a soft iridescent border appears',
+                        value: ref.watch(cardShineBorderProvider),
+                        onChanged: (_) {
+                          HapticService.select();
+                          ref.read(cardShineBorderProvider.notifier).toggle();
+                        },
+                      ),
+                      const _SettingsDivider(),
+                      _SettingsToggleRow(
+                        icon: Icons.filter_list_rounded,
+                        iconColor: const Color(0xFF2F6FED),
+                        title: 'Card category filter',
+                        subtitle:
+                            'Filter menu on Home — pick a type or clear with ×',
+                        value: ref.watch(walletFilterEnabledProvider),
+                        onChanged: (_) {
+                          HapticService.select();
+                          ref
+                              .read(walletFilterEnabledProvider.notifier)
+                              .toggle();
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _SettingsSection(
+                    title: 'General',
+                    surface: surface,
+                    borderColor: borderColor,
+                    isDark: isDark,
+                    children: [
+                      _SettingsLinkRow(
+                        icon: Icons.info_outline_rounded,
+                        iconColor: const Color(0xFF8E8E93),
+                        title: 'About',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const AboutDocketScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
@@ -245,156 +228,331 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-/// Default profile backdrop — swap or override [gradient] on [_ProfileHeroCard]
-/// for custom themes later.
-Gradient settingsProfileGradient({required bool isDark}) {
+// ── Apple Card–inspired wallet membership surface ────────────────────────────
+//
+// Light: white titanium + soft pastel washes.
+// Dark: deep slate titanium + richer luminous washes.
+// Motion: slow drifting gradient angle + orbiting color blooms.
+
+Color _toWashAccent(Color source, {required bool isDark}) {
+  final HSLColor hsl = HSLColor.fromColor(source);
   if (isDark) {
-    return const LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [
-        Color(0xFF142238),
-        Color(0xFF1A3055),
-        Color(0xFF243B6E),
-      ],
-      stops: [0.0, 0.55, 1.0],
-    );
+    return hsl
+        .withSaturation((hsl.saturation * 0.55).clamp(0.28, 0.62))
+        .withLightness(0.52)
+        .toColor();
   }
-  return const LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [
-      Color(0xFF1A3A6B),
-      Color(0xFF254E8C),
-      Color(0xFF3A6BB5),
-    ],
-    stops: [0.0, 0.5, 1.0],
-  );
+  return hsl
+      .withSaturation((hsl.saturation * 0.40).clamp(0.22, 0.52))
+      .withLightness(0.78)
+      .toColor();
 }
 
-class _ProfileHeroCard extends StatelessWidget {
-  const _ProfileHeroCard({
+List<Color> _walletWashColors({
+  required List<PassportProfile> passports,
+  required List<IdDocument> idDocs,
+  required bool isDark,
+}) {
+  final List<Object> items = <Object>[...passports, ...idDocs];
+  if (items.isEmpty) {
+    return isDark
+        ? const <Color>[Color(0xFF3A4A68), Color(0xFF2C3A55)]
+        : const <Color>[Color(0xFFE8E8ED), Color(0xFFD1D1D6)];
+  }
+
+  final List<Color> washes = <Color>[];
+  final Set<int> seenHueBuckets = <int>{};
+
+  for (final Object item in items) {
+    final Color raw = WalletPalette.forItem(item).primary;
+    final Color wash = _toWashAccent(raw, isDark: isDark);
+    final int bucket = (HSLColor.fromColor(wash).hue / 28).round();
+    if (seenHueBuckets.add(bucket) || washes.length < 2) {
+      washes.add(wash);
+    }
+    if (washes.length >= 5) break;
+  }
+
+  if (washes.length < 2 && items.length > 1) {
+    for (final Object item in items) {
+      washes.add(
+        _toWashAccent(WalletPalette.forItem(item).secondary, isDark: isDark),
+      );
+      if (washes.length >= 3) break;
+    }
+  }
+
+  return washes;
+}
+
+List<Color> _membershipBaseColors(List<Color> washes, {required bool isDark}) {
+  if (isDark) {
+    const Color deep = Color(0xFF141820);
+    const Color mid = Color(0xFF1A2230);
+    const Color lift = Color(0xFF243044);
+    if (washes.isEmpty) return const <Color>[deep, mid, lift];
+    return <Color>[
+      Color.lerp(deep, washes.first, 0.28)!,
+      Color.lerp(mid, washes.length > 1 ? washes[1] : washes.first, 0.24)!,
+      Color.lerp(lift, washes.length > 2 ? washes[2] : washes.first, 0.20)!,
+    ];
+  }
+
+  const Color a = Color(0xFFFFFFFF);
+  const Color b = Color(0xFFF7F7F8);
+  const Color c = Color(0xFFEEEEF0);
+  if (washes.isEmpty) return const <Color>[a, b, c];
+  return <Color>[
+    Color.lerp(a, washes.first, 0.30)!,
+    Color.lerp(b, washes.length > 1 ? washes[1] : washes.first, 0.24)!,
+    Color.lerp(c, washes.length > 2 ? washes[2] : washes.first, 0.18)!,
+  ];
+}
+
+class _WalletMembershipCard extends StatefulWidget {
+  const _WalletMembershipCard({
     required this.passports,
     required this.idDocs,
     required this.isDark,
-    required this.gradient,
   });
 
   final List<PassportProfile> passports;
   final List<IdDocument> idDocs;
   final bool isDark;
-  final Gradient gradient;
+
+  @override
+  State<_WalletMembershipCard> createState() => _WalletMembershipCardState();
+}
+
+const String _kWalletJoinedAtKey = 'wallet_joined_at';
+
+const List<String> _kShortMonths = <String>[
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+String _formatJoinedLabel(DateTime date) {
+  final String month = _kShortMonths[date.month - 1];
+  return 'Joined  $month ${date.year}';
+}
+
+/// Loads or stamps the wallet join date (first open for legacy installs).
+Future<DateTime> _ensureWalletJoinedAt() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  final String? raw = prefs.getString(_kWalletJoinedAtKey);
+  if (raw != null) {
+    return DateTime.tryParse(raw) ?? DateTime.now();
+  }
+  final DateTime now = DateTime.now();
+  await prefs.setString(_kWalletJoinedAtKey, now.toIso8601String());
+  return now;
+}
+
+class _WalletMembershipCardState extends State<_WalletMembershipCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _motion;
+  String? _joinedLabel;
+
+  @override
+  void initState() {
+    super.initState();
+    _motion = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 14),
+    )..repeat();
+    _loadJoinedDate();
+  }
+
+  Future<void> _loadJoinedDate() async {
+    final DateTime joined = await _ensureWalletJoinedAt();
+    if (!mounted) return;
+    setState(() => _joinedLabel = _formatJoinedLabel(joined));
+  }
+
+  @override
+  void dispose() {
+    _motion.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = widget.isDark;
     final PassportProfile? primaryPassport =
-        passports.isNotEmpty ? passports.first : null;
-    final IdDocument? primaryId = idDocs.isNotEmpty ? idDocs.first : null;
+        widget.passports.isNotEmpty ? widget.passports.first : null;
+    final IdDocument? primaryId =
+        widget.idDocs.isNotEmpty ? widget.idDocs.first : null;
 
     final String name = _resolveName(primaryPassport, primaryId);
-    final String? imageBase64 = _resolveImage(primaryPassport, primaryId);
-    final String detail = _resolveDetail(passports, idDocs);
-    final String? secondary = _resolveSecondary(primaryPassport, primaryId);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-          boxShadow: isDark
-              ? null
-              : [
-                  BoxShadow(
-                    color: const Color(0xFF1A3A6B).withValues(alpha: 0.18),
-                    blurRadius: 24,
-                    offset: const Offset(0, 10),
-                    spreadRadius: -6,
+    final String detail = _resolveDetail(widget.passports, widget.idDocs);
+    final List<Color> washes = _walletWashColors(
+      passports: widget.passports,
+      idDocs: widget.idDocs,
+      isDark: isDark,
+    );
+    final List<Color> baseColors =
+        _membershipBaseColors(washes, isDark: isDark);
+
+    final Color ink = isDark ? const Color(0xFFF2F2F7) : const Color(0xFF1C1C1E);
+    final Color inkMuted =
+        isDark ? const Color(0xFFAEAEB2) : const Color(0xFF636366);
+    final Color border = isDark
+        ? Colors.white.withValues(alpha: 0.10)
+        : Colors.black.withValues(alpha: 0.06);
+    final bool hasDocs =
+        widget.passports.isNotEmpty || widget.idDocs.isNotEmpty;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(kSettingsHeroRadius),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.10),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
+            spreadRadius: -6,
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(kSettingsHeroRadius),
+        child: AnimatedBuilder(
+          animation: _motion,
+          builder: (BuildContext context, Widget? child) {
+            final double t = _motion.value;
+            // Slow elliptical drift of the base gradient angle.
+            final double angle = t * 6.28318530718;
+            final Alignment begin = Alignment(
+              -0.95 + 0.18 * math.sin(angle),
+              -0.90 + 0.14 * math.cos(angle * 0.85),
+            );
+            final Alignment end = Alignment(
+              0.95 + 0.12 * math.cos(angle * 0.7),
+              1.05 + 0.10 * math.sin(angle * 0.9),
+            );
+
+            return Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: begin,
+                      end: end,
+                      colors: baseColors,
+                      stops: const <double>[0.0, 0.5, 1.0],
+                    ),
                   ),
-                ],
-        ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned(
-              top: -30,
-              right: -20,
-              child: Container(
-                width: 140,
-                height: 140,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.07),
                 ),
-              ),
-            ),
-            Positioned(
-              bottom: -40,
-              left: -30,
-              child: Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.05),
+                CustomPaint(
+                  painter: _MembershipWashPainter(
+                    washes: washes,
+                    phase: t,
+                    isDark: isDark,
+                    empty: !hasDocs,
+                  ),
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      _ProfileAvatar(
-                        name: name,
-                        imageBase64: imageBase64,
-                        size: 52,
+                // Specular sheen that drifts with motion
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment(
+                        -1.0 + 0.35 * math.sin(angle * 0.6),
+                        -1.0,
                       ),
-                      const SizedBox(width: 14),
+                      end: Alignment(
+                        0.5 + 0.25 * math.cos(angle * 0.5),
+                        0.6,
+                      ),
+                      colors: <Color>[
+                        Colors.white.withValues(alpha: isDark ? 0.10 : 0.45),
+                        Colors.white.withValues(alpha: 0),
+                      ],
+                      stops: const <double>[0.0, 0.55],
+                    ),
+                  ),
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(kSettingsHeroRadius),
+                    border: Border.all(color: border, width: 0.5),
+                  ),
+                ),
+                child!,
+              ],
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 18, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                // Join date left · logo right
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                    if (_joinedLabel != null)
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.4,
-                                color: Colors.white,
-                                height: 1.15,
-                              ),
-                            ),
-                            if (secondary != null &&
-                                secondary.isNotEmpty) ...[
-                              const SizedBox(height: 3),
-                              Text(
-                                secondary,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w400,
-                                  color: Colors.white.withValues(alpha: 0.72),
-                                ),
-                              ),
-                            ],
-                          ],
+                        child: Text(
+                          _joinedLabel!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.2,
+                            color: inkMuted,
+                          ),
                         ),
-                      ),
-                    ],
+                      )
+                    else
+                      const Spacer(),
+                    _DocketLogoMark(size: 34, isDark: isDark),
+                  ],
+                ),
+                const Spacer(),
+                Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.6,
+                    height: 1.12,
+                    color: ink,
                   ),
-                  const Spacer(),
-                  if (detail.isNotEmpty)
-                    _ProfileStatPill(label: detail),
-                ],
-              ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  detail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: -0.1,
+                    color: inkMuted,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -408,16 +566,6 @@ class _ProfileHeroCard extends StatelessWidget {
       return id.holderName.trim();
     }
     return 'Your wallet';
-  }
-
-  String? _resolveImage(PassportProfile? passport, IdDocument? id) {
-    if (passport != null && passport.imagePath.isNotEmpty) {
-      return passport.imagePath;
-    }
-    if (id != null && id.imagePath.isNotEmpty) {
-      return id.imagePath;
-    }
-    return null;
   }
 
   String _resolveDetail(
@@ -438,122 +586,112 @@ class _ProfileHeroCard extends StatelessWidget {
     }
     return parts.join('  ·  ');
   }
-
-  String? _resolveSecondary(PassportProfile? passport, IdDocument? id) {
-    if (passport != null && passport.nationality.trim().isNotEmpty) {
-      return passport.nationality.trim();
-    }
-    if (id != null) {
-      final String type =
-          id.type == IdDocumentType.pan ? 'PAN' : 'Aadhaar';
-      if (id.documentNumber.trim().isNotEmpty) {
-        return '$type · ${id.documentNumber.trim()}';
-      }
-      return type;
-    }
-    return null;
-  }
 }
 
-class _ProfileStatPill extends StatelessWidget {
-  const _ProfileStatPill({required this.label});
+/// Docket logo — solid on light; slightly lifted on dark for contrast.
+class _DocketLogoMark extends StatelessWidget {
+  const _DocketLogoMark({required this.size, required this.isDark});
 
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.18),
-              width: 0.5,
-            ),
-          ),
-          child: Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              letterSpacing: -0.1,
-              color: Colors.white.withValues(alpha: 0.92),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileAvatar extends StatelessWidget {
-  const _ProfileAvatar({
-    required this.name,
-    required this.imageBase64,
-    required this.size,
-  });
-
-  final String name;
-  final String? imageBase64;
   final double size;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
-    final String initial = name.isNotEmpty && name != 'Your wallet'
-        ? name.trim()[0].toUpperCase()
-        : '?';
-
-    Widget inner;
-    if (imageBase64 != null && _isBase64Image(imageBase64!)) {
-      inner = ClipOval(
-        child: Image.memory(
-          base64Decode(imageBase64!),
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-        ),
-      );
-    } else {
-      inner = Container(
+    return Opacity(
+      opacity: isDark ? 0.95 : 0.92,
+      child: SizedBox(
         width: size,
         height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: 0.16),
-        ),
-        child: Center(
-          child: Text(
-            initial,
-            style: GoogleFonts.inter(
-              fontSize: size * 0.38,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.3,
-              color: Colors.white,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.35),
-          width: 1.5,
+        child: SvgPicture.asset(
+          AppAssets.docketLogo,
+          fit: BoxFit.contain,
         ),
       ),
-      child: inner,
     );
   }
+}
 
-  bool _isBase64Image(String path) {
-    return !path.startsWith('/') && path.length > 100;
+/// Soft radial color washes with slow orbital motion.
+class _MembershipWashPainter extends CustomPainter {
+  _MembershipWashPainter({
+    required this.washes,
+    required this.phase,
+    required this.isDark,
+    required this.empty,
+  });
+
+  final List<Color> washes;
+  final double phase;
+  final bool isDark;
+  final bool empty;
+
+  static const List<Alignment> _anchors = <Alignment>[
+    Alignment(0.85, -0.40),
+    Alignment(-0.80, 0.70),
+    Alignment(0.65, 0.85),
+    Alignment(-0.45, -0.75),
+    Alignment(0.10, 0.15),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final List<Color> layers = washes.take(5).toList();
+    if (layers.isEmpty) return;
+
+    final double twoPi = 6.28318530718;
+    final double angle = phase * twoPi;
+
+    for (int i = 0; i < layers.length; i++) {
+      final Alignment base = _anchors[i % _anchors.length];
+      // Each bloom orbits at a slightly different rate/radius.
+      final double speed = 0.55 + i * 0.18;
+      final double orbit = 0.10 + i * 0.02;
+      final double ax =
+          (base.x + orbit * math.sin(angle * speed + i)).clamp(-1.15, 1.15);
+      final double ay =
+          (base.y + orbit * math.cos(angle * speed * 0.85 + i * 0.7))
+              .clamp(-1.15, 1.15);
+
+      final Offset center = Offset(
+        size.width * (ax * 0.5 + 0.5),
+        size.height * (ay * 0.5 + 0.5),
+      );
+
+      final double pulse =
+          0.92 + 0.08 * math.sin(angle * (0.9 + i * 0.15) + i);
+      final double richness = empty
+          ? (isDark ? 0.22 : 0.16)
+          : ((isDark ? 0.38 : 0.34) + layers.length * 0.04).clamp(0.30, 0.58);
+      final double radius = size.shortestSide *
+          lerpDouble(0.95, 0.52, i / layers.length.clamp(1, 5))! *
+          pulse;
+
+      final Paint paint = Paint()
+        ..shader = RadialGradient(
+          colors: <Color>[
+            layers[i].withValues(alpha: richness),
+            layers[i].withValues(alpha: richness * 0.42),
+            layers[i].withValues(alpha: 0),
+          ],
+          stops: const <double>[0.0, 0.48, 1.0],
+        ).createShader(Rect.fromCircle(center: center, radius: radius));
+
+      canvas.drawCircle(center, radius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MembershipWashPainter oldDelegate) {
+    if (oldDelegate.phase != phase ||
+        oldDelegate.isDark != isDark ||
+        oldDelegate.empty != empty ||
+        oldDelegate.washes.length != washes.length) {
+      return true;
+    }
+    for (int i = 0; i < washes.length; i++) {
+      if (oldDelegate.washes[i] != washes[i]) return true;
+    }
+    return false;
   }
 }
 

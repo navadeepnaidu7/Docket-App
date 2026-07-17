@@ -60,8 +60,19 @@ class WalletPalette {
       ambient: hsl.withHue((hsl.hue - 28 + 360) % 360).withSaturation(
         (hsl.saturation * 0.75).clamp(0.0, 1.0),
       ).toColor(),
+      // Light pastel for light mode; backdrop darkens this when isDark.
       baseTint: hsl.withLightness(0.92).withSaturation(0.35).toColor(),
     );
+  }
+
+  /// Dark-mode ambient tint: lower luminance so it won't wash out navy bg.
+  Color ambientTint({required bool isDark}) {
+    if (!isDark) return baseTint;
+    final HSLColor hsl = HSLColor.fromColor(baseTint);
+    return hsl
+        .withLightness((hsl.lightness * 0.22).clamp(0.08, 0.28))
+        .withSaturation((hsl.saturation * 0.85).clamp(0.0, 1.0))
+        .toColor();
   }
 
   /// Blends palettes across scroll position and tab selection.

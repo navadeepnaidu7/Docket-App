@@ -20,8 +20,13 @@ class OnboardingCta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color background = inverted ? Colors.black : Colors.white;
-    final Color foreground = inverted ? Colors.white : Colors.black;
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final Color ink = scheme.onSurface;
+    final Color surface = scheme.surface;
+
+    // inverted: filled primary-ink button; default: elevated surface button
+    final Color background = inverted ? ink : surface;
+    final Color foreground = inverted ? scheme.surface : ink;
 
     return BounceTap(
       onTap: isLoading ? null : onPressed,
@@ -32,6 +37,12 @@ class OnboardingCta extends StatelessWidget {
         decoration: BoxDecoration(
           color: background,
           borderRadius: BorderRadius.circular(999),
+          border: inverted
+              ? null
+              : Border.all(
+                  color: scheme.outline.withValues(alpha: 0.35),
+                  width: 0.5,
+                ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

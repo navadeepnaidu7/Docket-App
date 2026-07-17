@@ -1,24 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
+
 /// Subtle branded gradient background for capture studio screens.
 class StudioBackdrop extends StatelessWidget {
   const StudioBackdrop({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final List<Color> colors = isDark
-        ? const <Color>[
-            Color(0xFF080E1A),
-            Color(0xFF0F1829),
-            Color(0xFF0A0F1D),
-          ]
-        : const <Color>[
-            Color(0xFFEFF4F9),
-            Color(0xFFF8FAFC),
-            Color(0xFFEDE7DD),
-          ];
+    final Brightness brightness = Theme.of(context).brightness;
+    final List<Color> colors = AppTheme.studioGradient(brightness);
 
     return DecoratedBox(
       decoration: BoxDecoration(

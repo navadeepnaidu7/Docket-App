@@ -10,6 +10,13 @@ class OnboardingScreen extends StatelessWidget {
   Future<void> _completeOnboarding(BuildContext context) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_seen_onboarding', true);
+    // First successful onboarding stamps the wallet "Joined" date.
+    if (prefs.getString('wallet_joined_at') == null) {
+      await prefs.setString(
+        'wallet_joined_at',
+        DateTime.now().toIso8601String(),
+      );
+    }
 
     if (!context.mounted) return;
 

@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/motion/entry_reveal.dart';
 import '../../../core/sound/sound_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/bounce_tap.dart';
 import '../../../shared/widgets/apple_sheet.dart';
 import '../../../shared/widgets/completion_celebration.dart';
@@ -329,23 +330,10 @@ class _StudioBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final List<Color> colors = isDark
-        ? const <Color>[
-            Color(0xFF080E1A),
-            Color(0xFF0F1829),
-            Color(0xFF0A0F1D),
-          ]
-        : const <Color>[
-            Color(0xFFEFF4F9),
-            Color(0xFFF8FAFC),
-            Color(0xFFEDE7DD),
-          ];
-
-    final Color lineColor = isDark
-        ? Colors.white.withValues(alpha: 0.04)
-        : const Color(0x1207111F);
+    final ThemeData theme = Theme.of(context);
+    final Brightness brightness = theme.brightness;
+    final List<Color> colors = AppTheme.studioGradient(brightness);
+    final Color lineColor = AppTokens.hairline(theme.colorScheme);
 
     return DecoratedBox(
       decoration: BoxDecoration(

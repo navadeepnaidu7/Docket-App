@@ -26,8 +26,9 @@ Future<void> showWalletSaveCelebration(
     barrierColor: Colors.transparent,
     barrierDismissible: false,
     pageBuilder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) {
+      final Color bg = Theme.of(context).scaffoldBackgroundColor;
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: bg,
         body: CompletionCelebration(
           loadingTitle: SaveCompletionContent.loadingTitle,
           loadingDescription: SaveCompletionContent.loadingDescription,
@@ -131,6 +132,9 @@ class _CompletionCelebrationState extends State<CompletionCelebration>
   @override
   Widget build(BuildContext context) {
     final String? actionLabel = widget.actionLabel;
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final Color ink = scheme.onSurface;
+    final Color primary = scheme.primary;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(42, 80, 42, 32),
@@ -160,7 +164,7 @@ class _CompletionCelebrationState extends State<CompletionCelebration>
                       scale: CurvedAnimation(parent: _successController, curve: bouncyCurve),
                       child: const Icon(
                         Icons.check_circle_rounded,
-                        color: Color(0xFF22C55E),
+                        color: Color(0xFF30D158),
                         size: 72,
                       ),
                     )
@@ -170,7 +174,10 @@ class _CompletionCelebrationState extends State<CompletionCelebration>
                       builder: (context, _) {
                         return CustomPaint(
                           size: const Size(72, 72),
-                          painter: _DashedRingPainter(rotation: _spinController.value),
+                          painter: _DashedRingPainter(
+                            rotation: _spinController.value,
+                            color: ink.withValues(alpha: 0.40),
+                          ),
                         );
                       },
                     ),
@@ -183,8 +190,8 @@ class _CompletionCelebrationState extends State<CompletionCelebration>
               _isCompleted ? widget.successTitle : widget.loadingTitle,
               key: ValueKey<bool>(_isCompleted),
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.black,
+              style: TextStyle(
+                color: ink,
                 fontSize: 34,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.4,
@@ -199,7 +206,7 @@ class _CompletionCelebrationState extends State<CompletionCelebration>
               key: ValueKey<String>(_isCompleted ? 'success-desc' : 'loading-desc'),
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.black.withValues(alpha: 0.58),
+                color: ink.withValues(alpha: 0.62),
                 fontSize: 16,
                 height: 1.45,
               ),
@@ -214,7 +221,7 @@ class _CompletionCelebrationState extends State<CompletionCelebration>
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   decoration: BoxDecoration(
-                    color: Colors.black,
+                    color: primary,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
@@ -236,13 +243,14 @@ class _CompletionCelebrationState extends State<CompletionCelebration>
 }
 
 class _DashedRingPainter extends CustomPainter {
-  _DashedRingPainter({required this.rotation});
+  _DashedRingPainter({required this.rotation, required this.color});
   final double rotation;
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
     final Paint paint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.35)
+      ..color = color
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -272,5 +280,6 @@ class _DashedRingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _DashedRingPainter old) => old.rotation != rotation;
+  bool shouldRepaint(covariant _DashedRingPainter old) =>
+      old.rotation != rotation || old.color != color;
 }

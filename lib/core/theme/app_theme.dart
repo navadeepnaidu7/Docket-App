@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
@@ -7,20 +8,60 @@ class AppTheme {
   static const Color _lightSurface = Color(
     0xFFFBF8F2,
   ); // lighter cream for cards
+  static const Color _lightElevated = Color(0xFFFFFFFF);
   static const Color _lightInk = Color(0xFF0D1B2A); // deep navy — not black
   static const Color _lightPrimary = Color(0xFF1A3A6B); // rich indigo-navy
   static const Color _lightAccent = Color(0xFFD4A853); // warm gold
 
   // ── Dark palette — deep space navy, not generic dark ────────────────────────
   static const Color _darkBg = Color(0xFF080E1A); // deep space navy
-  static const Color _darkSurface = Color(0xFF0F1829); // slightly lighter navy
+  static const Color _darkSurface = Color(0xFF121C30); // elevated navy
+  static const Color _darkElevated = Color(0xFF1A2740); // cards / sheets
   static const Color _darkInk = Color(0xFFE8EEFF); // cool white with blue tint
   static const Color _darkPrimary = Color(0xFF4D8FE0); // electric blue
   static const Color _darkAccent = Color(0xFFE8B84B); // warm amber
 
+  static const Color success = Color(0xFF30D158);
+  static const Color danger = Color(0xFFFF453A);
+
   static const double radiusCard = 24.0;
   static const double radiusButton = 14.0;
   static const double radiusInput = 14.0;
+  static const double radiusSheet = 36.0;
+
+  /// Public palette accessors for shared chrome (backdrops, sheets).
+  static Color background(Brightness b) =>
+      b == Brightness.dark ? _darkBg : _lightBg;
+
+  static Color surface(Brightness b) =>
+      b == Brightness.dark ? _darkSurface : _lightSurface;
+
+  static Color elevated(Brightness b) =>
+      b == Brightness.dark ? _darkElevated : _lightElevated;
+
+  static Color ink(Brightness b) =>
+      b == Brightness.dark ? _darkInk : _lightInk;
+
+  static Color primaryOf(Brightness b) =>
+      b == Brightness.dark ? _darkPrimary : _lightPrimary;
+
+  static Color accentOf(Brightness b) =>
+      b == Brightness.dark ? _darkAccent : _lightAccent;
+
+  static List<Color> studioGradient(Brightness b) {
+    if (b == Brightness.dark) {
+      return const <Color>[
+        Color(0xFF080E1A),
+        Color(0xFF121C30),
+        Color(0xFF0A0F1D),
+      ];
+    }
+    return const <Color>[
+      Color(0xFFF5F0E8),
+      Color(0xFFFBF8F2),
+      Color(0xFFEDE7DD),
+    ];
+  }
 
   static ThemeData get lightTheme => _build(Brightness.light);
   static ThemeData get darkTheme => _build(Brightness.dark);
@@ -30,22 +71,28 @@ class AppTheme {
 
     final Color bg = isDark ? _darkBg : _lightBg;
     final Color surface = isDark ? _darkSurface : _lightSurface;
+    final Color elevated = isDark ? _darkElevated : _lightElevated;
     final Color ink = isDark ? _darkInk : _lightInk;
     final Color primary = isDark ? _darkPrimary : _lightPrimary;
     final Color accent = isDark ? _darkAccent : _lightAccent;
+    final Color outline = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : ink.withValues(alpha: 0.12);
 
-    final ColorScheme scheme =
-        ColorScheme.fromSeed(
-          seedColor: primary,
-          brightness: brightness,
-          surface: surface,
-        ).copyWith(
-          primary: primary,
-          secondary: accent,
-          surface: surface,
-          onSurface: ink,
-          onPrimary: Colors.white,
-        );
+    final ColorScheme scheme = ColorScheme(
+      brightness: brightness,
+      primary: primary,
+      onPrimary: Colors.white,
+      secondary: accent,
+      onSecondary: isDark ? _darkBg : _lightInk,
+      error: danger,
+      onError: Colors.white,
+      surface: surface,
+      onSurface: ink,
+      surfaceContainerHighest: elevated,
+      outline: outline,
+      outlineVariant: outline.withValues(alpha: 0.6),
+    );
 
     final TextTheme text = GoogleFonts.interTextTheme().copyWith(
       displayLarge: GoogleFonts.inter(
@@ -94,13 +141,13 @@ class AppTheme {
         fontSize: 15,
         height: 1.35,
         letterSpacing: -0.15,
-        color: ink.withValues(alpha: 0.72),
+        color: ink.withValues(alpha: isDark ? 0.78 : 0.72),
       ),
       bodySmall: GoogleFonts.inter(
         fontSize: 13,
         height: 1.30,
         letterSpacing: -0.08,
-        color: ink.withValues(alpha: 0.60),
+        color: ink.withValues(alpha: isDark ? 0.68 : 0.60),
       ),
       labelLarge: GoogleFonts.inter(
         fontSize: 16,
@@ -112,37 +159,46 @@ class AppTheme {
         fontSize: 12,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.00,
-        color: ink.withValues(alpha: 0.50),
+        color: ink.withValues(alpha: isDark ? 0.58 : 0.50),
       ),
       labelSmall: GoogleFonts.inter(
         fontSize: 11,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.07,
-        color: ink.withValues(alpha: 0.40),
+        color: ink.withValues(alpha: isDark ? 0.52 : 0.40),
       ),
     );
+
+    final Color fieldFill = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.white.withValues(alpha: 0.80);
+    final Color cardColor = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.white.withValues(alpha: 0.75);
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: bg,
+      canvasColor: bg,
+      dividerColor: outline,
       textTheme: text,
+      iconTheme: IconThemeData(color: ink.withValues(alpha: 0.85)),
+      primaryIconTheme: const IconThemeData(color: Colors.white),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark
-            ? Colors.white.withValues(alpha: 0.06)
-            : Colors.white.withValues(alpha: 0.80),
+        fillColor: fieldFill,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
         ),
         labelStyle: TextStyle(
-          color: isDark ? const Color(0xFF7A8BAA) : const Color(0xFF5A6478),
+          color: isDark ? const Color(0xFF9AABC8) : const Color(0xFF5A6478),
           fontWeight: FontWeight.w500,
         ),
         hintStyle: TextStyle(
-          color: isDark ? const Color(0xFF3D4F6A) : const Color(0xFF9AA3B0),
+          color: isDark ? const Color(0xFF5A6D8A) : const Color(0xFF9AA3B0),
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusInput),
@@ -152,7 +208,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(radiusInput),
           borderSide: isDark
               ? BorderSide(
-                  color: Colors.white.withValues(alpha: 0.07),
+                  color: Colors.white.withValues(alpha: 0.10),
                   width: 0.5,
                 )
               : BorderSide.none,
@@ -160,7 +216,7 @@ class AppTheme {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusInput),
           borderSide: BorderSide(
-            color: primary.withValues(alpha: 0.55),
+            color: primary.withValues(alpha: 0.65),
             width: 1.0,
           ),
         ),
@@ -176,38 +232,151 @@ class AppTheme {
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
         ),
       ),
-      appBarTheme: const AppBarTheme(
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: primary),
+      ),
+      appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
+        foregroundColor: ink,
+        systemOverlayStyle: isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
       ),
       cardTheme: CardThemeData(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.white.withValues(alpha: 0.75),
+        color: cardColor,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusCard),
         ),
       ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: elevated,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusCard),
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: elevated.withValues(alpha: isDark ? 0.96 : 0.98),
+        surfaceTintColor: Colors.transparent,
+        modalBackgroundColor: elevated,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: isDark ? _darkElevated : _lightInk,
+        contentTextStyle: TextStyle(color: isDark ? _darkInk : Colors.white),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+      ),
+      dividerTheme: DividerThemeData(
+        color: outline,
+        thickness: 0.5,
+        space: 1,
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: ink.withValues(alpha: 0.85),
+        textColor: ink,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return Colors.white;
+          return isDark ? const Color(0xFF8E9BB0) : Colors.white;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return primary.withValues(alpha: 0.85);
+          }
+          return isDark
+              ? Colors.white.withValues(alpha: 0.14)
+              : ink.withValues(alpha: 0.18);
+        }),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: bg,
+        indicatorColor: primary.withValues(alpha: isDark ? 0.22 : 0.14),
+        labelTextStyle: WidgetStatePropertyAll(
+          text.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: primary),
+      splashFactory: InkSparkle.splashFactory,
     );
   }
 }
 
-/// Shared semantic color tokens used by the reusable studio controls.
+/// Shared semantic color tokens used across studio controls and chrome.
 class AppTokens {
   AppTokens._();
 
   static const double sectionPadding = 16.0;
 
+  static bool _isDark(ColorScheme scheme) =>
+      scheme.brightness == Brightness.dark;
+
   static Color separator(ColorScheme scheme) =>
-      scheme.outline.withValues(alpha: 0.18);
+      scheme.outline.withValues(alpha: _isDark(scheme) ? 0.22 : 0.18);
 
   static Color secondaryLabel(ColorScheme scheme) =>
-      scheme.onSurface.withValues(alpha: 0.60);
+      scheme.onSurface.withValues(alpha: _isDark(scheme) ? 0.68 : 0.60);
+
+  static Color tertiaryLabel(ColorScheme scheme) =>
+      scheme.onSurface.withValues(alpha: _isDark(scheme) ? 0.52 : 0.40);
 
   static Color groupedFieldFill(ColorScheme scheme, {required bool isDark}) =>
       isDark
-      ? scheme.onSurface.withValues(alpha: 0.06)
+      ? scheme.onSurface.withValues(alpha: 0.08)
       : scheme.surfaceContainerHighest.withValues(alpha: 0.55);
+
+  static Color elevatedSurface(ColorScheme scheme) =>
+      _isDark(scheme)
+      ? AppTheme.elevated(Brightness.dark)
+      : AppTheme.elevated(Brightness.light);
+
+  static Color fieldFill(ColorScheme scheme, {bool focused = false}) {
+    final bool dark = _isDark(scheme);
+    if (dark) {
+      return scheme.onSurface.withValues(alpha: focused ? 0.12 : 0.08);
+    }
+    return focused ? Colors.white : Colors.white.withValues(alpha: 0.62);
+  }
+
+  static Color fieldBorder(ColorScheme scheme, {bool focused = false}) {
+    final bool dark = _isDark(scheme);
+    if (focused) return scheme.primary.withValues(alpha: 0.65);
+    return dark
+        ? scheme.onSurface.withValues(alpha: 0.10)
+        : Colors.white.withValues(alpha: 0.72);
+  }
+
+  static Color sheetBackground(ColorScheme scheme) {
+    final bool dark = _isDark(scheme);
+    final Color base = AppTheme.elevated(
+      dark ? Brightness.dark : Brightness.light,
+    );
+    return base.withValues(alpha: dark ? 0.92 : 0.94);
+  }
+
+  static Color sheetHandle(ColorScheme scheme) => _isDark(scheme)
+      ? scheme.onSurface.withValues(alpha: 0.28)
+      : const Color(0xFFE5E5EA);
+
+  static Color scrim(ColorScheme scheme) =>
+      Colors.black.withValues(alpha: _isDark(scheme) ? 0.55 : 0.35);
+
+  static Color chipInactiveBorder(ColorScheme scheme) => _isDark(scheme)
+      ? scheme.onSurface.withValues(alpha: 0.15)
+      : scheme.onSurface.withValues(alpha: 0.15);
+
+  static Color hairline(ColorScheme scheme) => _isDark(scheme)
+      ? scheme.onSurface.withValues(alpha: 0.06)
+      : const Color(0x1207111F);
+
+  static Color success(ColorScheme scheme) => AppTheme.success;
+  static Color danger(ColorScheme scheme) => AppTheme.danger;
 }

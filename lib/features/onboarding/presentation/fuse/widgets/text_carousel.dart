@@ -167,6 +167,9 @@ class _CarouselRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final Color ink = scheme.onSurface;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.start,
       children: <Widget>[
@@ -183,7 +186,7 @@ class _CarouselRow extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               child: Row(
                 children: [
-                  Icon(item.icon, color: const Color(0xFF007AFF), size: 28),
+                  Icon(item.icon, color: scheme.primary, size: 28),
                   const SizedBox(width: 10),
                 ],
               ),
@@ -195,8 +198,8 @@ class _CarouselRow extends StatelessWidget {
           curve: Curves.easeOutCubic,
           style: TextStyle(
             color: highlighted
-                ? Colors.black
-                : Colors.black.withValues(alpha: 0.18),
+                ? ink
+                : ink.withValues(alpha: 0.22),
             fontSize: highlighted ? 38 : 26,
             fontWeight: highlighted ? FontWeight.w800 : FontWeight.w600,
             letterSpacing: -0.6,

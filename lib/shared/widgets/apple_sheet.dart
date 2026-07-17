@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
+
 class AppleSheet extends StatelessWidget {
   const AppleSheet({
     super.key,
@@ -18,24 +20,16 @@ class AppleSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    // Premium Apple Glass colors
-    final Color bgColor = isDark
-        ? const Color(0xFF1E1E1E).withValues(alpha: 0.86)
-        : Colors.white.withValues(alpha: 0.94);
-    
-    final Color handleColor = isDark
-        ? const Color(0xFF48484A)
-        : const Color(0xFFE5E5EA);
-
-    final Color titleColor = isDark
-        ? Colors.white
-        : const Color(0xFF1C1C1E);
-
-    final Color subtitleColor = isDark
-        ? const Color(0xFF8E8E93)
-        : const Color(0xFF64748B);
+    final Color bgColor = AppTokens.sheetBackground(scheme);
+    final Color handleColor = AppTokens.sheetHandle(scheme);
+    final Color titleColor = scheme.onSurface;
+    final Color subtitleColor = AppTokens.secondaryLabel(scheme);
+    final Color borderColor = isDark
+        ? scheme.onSurface.withValues(alpha: 0.10)
+        : Colors.white.withValues(alpha: 0.40);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -45,22 +39,20 @@ class AppleSheet extends StatelessWidget {
         MediaQuery.of(context).padding.bottom + 12,
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(36),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSheet),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
           child: Container(
             decoration: BoxDecoration(
               color: bgColor,
-              borderRadius: BorderRadius.circular(36),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSheet),
               border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.white.withValues(alpha: 0.40),
+                color: borderColor,
                 width: 0.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.08),
+                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
                   blurRadius: 32,
                   spreadRadius: -4,
                   offset: const Offset(0, -10),

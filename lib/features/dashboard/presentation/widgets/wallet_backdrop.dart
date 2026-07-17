@@ -154,9 +154,13 @@ class AppleCardGradientPainter extends CustomPainter {
     final Color baseTicketBg =
         isDark ? const Color(0xFF140D0B) : const Color(0xFFFFF8E8);
     final Color neutralBase = Color.lerp(baseDocBg, baseTicketBg, ticketsMix)!;
-    final double tintStrength = isDark ? 0.14 : 0.10;
+    final double tintStrength = isDark ? 0.22 : 0.10;
     final Paint basePaint = Paint()
-      ..color = Color.lerp(neutralBase, palette.baseTint, tintStrength)!;
+      ..color = Color.lerp(
+        neutralBase,
+        palette.ambientTint(isDark: isDark),
+        tintStrength,
+      )!;
     canvas.drawRect(Offset.zero & size, basePaint);
 
     void drawOrb(
