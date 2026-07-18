@@ -68,6 +68,7 @@ flutter:
 
   assets:
     - assets/branding/
+    - assets/passes/
     - assets/auth/google/
     - assets/navbar/
     - assets/navbar/alt/ids_filled.svg

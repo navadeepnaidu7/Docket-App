@@ -40,20 +40,20 @@ class MovieBrandPalette {
 
   /// BookMyShow — brand carnation pink/red (#F84464).
   static const MovieBrandPalette bookMyShow = MovieBrandPalette(
-    top: Color(0xFFF84464),
-    bottom: Color(0xFFC4242B),
-    accent: Color(0xFFFF8FA3),
+    top: Color(0xFFD22533),
+    bottom: Color(0xFF9E121E),
+    accent: Color(0xFFFFB3C1),
     onAccent: Colors.white,
-    glow: Color(0xFFFF6B8A),
+    glow: Color(0xFFE22636),
   );
 
-  /// District by Zomato — charcoal + cranberry (#E23744).
+  /// District by Zomato — redesigned purple/violet gradient.
   static const MovieBrandPalette district = MovieBrandPalette(
-    top: Color(0xFF1C1C1E),
-    bottom: Color(0xFF0A0A0B),
-    accent: Color(0xFFE23744),
+    top: Color(0xFF492FBD),
+    bottom: Color(0xFF7A3FF2),
+    accent: Color(0xFFB5A3FF),
     onAccent: Colors.white,
-    glow: Color(0xFFE23744),
+    glow: Color(0xFF5F22D9),
   );
 
   /// Universal e-ticket — periwinkle from the reference mock.
@@ -160,6 +160,18 @@ class MoviePass {
     final bool active = forceActive || status == TicketStatus.active;
     return MovieBrandPalette.forBrand(brand, active: active);
   }
+
+  String get posterUrl => switch (movieTitle) {
+        'Dune: Part Two' => 'https://upload.wikimedia.org/wikipedia/en/7/72/Dune_Part_Two_poster.jpeg',
+        'Kalki 2898 AD' => 'https://upload.wikimedia.org/wikipedia/en/c/c5/Kalki_2898_AD_poster.jpg',
+        'Pushpa 2: The Rule' => 'https://upload.wikimedia.org/wikipedia/en/1/15/Pushpa_2_The_Rule_poster.jpg',
+        _ => 'https://upload.wikimedia.org/wikipedia/en/0/0f/Spider-Man_No_Way_Home_poster.jpg',
+      };
+
+  String? get posterAsset => switch (movieTitle) {
+        'Dune: Part Two' => 'assets/passes/dune_poster.jpg',
+        _ => null,
+      };
 }
 
 /// Decorative poster gradient family (no external image assets).

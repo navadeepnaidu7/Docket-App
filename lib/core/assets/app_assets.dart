@@ -13,6 +13,21 @@ abstract final class AppAssets {
   /// Docket wordmark / app icon SVG (rounded square + monogram).
   static const String docketLogo = 'assets/branding/docket_logo.svg';
 
+  /// BookMyShow mark (movie pass chrome).
+  static const String bookMyShowLogo = 'assets/passes/bookmyshow.svg';
+
+  /// BookMyShow official logo vector (for footer).
+  static const String bookMyShowLogoVector = 'assets/passes/bookmyshow-logo-vector.svg';
+
+  /// Zomato / District mark (movie pass chrome).
+  static const String zomatoLogo = 'assets/passes/zomato.svg';
+
+  /// Zomato District official logo vector (for footer).
+  static const String districtLogo = 'assets/passes/district-logo.svg';
+
+  /// Dune Part Two poster image.
+  static const String dunePoster = 'assets/passes/dune_poster.jpg';
+
   // ── Auth ─────────────────────────────────────────────────────────────────────
 
   /// Google Sign-In button assets (dark, rounded). Names follow Google branding.

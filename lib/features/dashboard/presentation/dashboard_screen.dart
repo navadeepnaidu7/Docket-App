@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,7 +15,7 @@ import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../passport/presentation/passport_entry_screen.dart';
 import '../../tickets/presentation/tickets_tab.dart';
-import '../../tickets/presentation/wallet_ticket_card.dart';
+
 import '../../../core/wallet/wallet_backdrop_tilt.dart';
 import '../../../core/wallet/wallet_filter.dart';
 import '../../../core/wallet/wallet_items.dart';
@@ -68,12 +69,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   final LayerLink _headerTitleLink = LayerLink();
   DashboardViewMode _openedMode = DashboardViewMode.home;
 
+  /// Passes tab is heavy — prewarm after first paint; kept under [_HomeTabTransition].
+  bool _passesTabMounted = false;
+  int _lastTabIndex = 0;
+
   void _onMenuToggle() {
     if (_showHomeMenu.value) {
       setState(() {
         _openedMode = _viewMode.value;
       });
     }
+  }
+
+  void _onTabChanged() {
+    // Content transition is driven by controller.animation (no rebuild needed).
+    // Rebuild when the index flips so backdrop tint / prewarm stay in sync.
+    final bool indexChanged = _tabCtrl.index != _lastTabIndex;
+    if (_tabCtrl.index == 1 && !_passesTabMounted) {
+      _passesTabMounted = true;
+      _lastTabIndex = _tabCtrl.index;
+      setState(() {});
+      return;
+    }
+    if (indexChanged) {
+      _lastTabIndex = _tabCtrl.index;
+      setState(() {});
+    }
+  }
+
+  void _prewarmPassesTab() {
+    if (!mounted || _passesTabMounted) return;
+    setState(() => _passesTabMounted = true);
   }
 
   @override
@@ -98,9 +124,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           ),
         );
     _tabCtrl = TabController(length: 2, vsync: this);
-    _tabCtrl.addListener(() {
-      if (!_tabCtrl.indexIsChanging) setState(() {});
-    });
+    _tabCtrl.addListener(_onTabChanged);
     _easterEggCtrl = AnimationController(
       vsync: this,
       duration: kEasterEggSnapDuration,
@@ -112,11 +136,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       }
     });
     _entryCtrl.forward();
+
+    // After home paints, warm Passes when the scheduler is idle so the first
+    // IDs → Passes switch is just an IndexedStack index flip.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SchedulerBinding.instance.scheduleTask(
+        _prewarmPassesTab,
+        Priority.idle,
+      );
+    });
   }
 
   @override
   void dispose() {
     _showHomeMenu.removeListener(_onMenuToggle);
+    _tabCtrl.removeListener(_onTabChanged);
     _entryCtrl.dispose();
     _tabCtrl.dispose();
     _docPage.dispose();
@@ -412,21 +446,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           children: <Widget>[
             ValueListenableBuilder<double>(
               valueListenable: _easterEggOffset,
-              builder: (context, offsetY, drawerWidget) {
+              builder: (context, offsetY, _) {
                 final EasterEggSheetMotion motion =
                     EasterEggSheetMotion.lerpFromOffset(offsetY);
+                final bool showEasterEgg =
+                    offsetY > 0.5 || _easterEggCtrl.isAnimating;
 
                 return Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    // 1. Easter Egg Drawer (positioned in background with parallax)
-                    Positioned(
-                      top: motion.drawerTop,
-                      left: 0,
-                      right: 0,
-                      height: kEasterEggPanelHeight + 150.0,
-                      child: drawerWidget!,
-                    ),
+                    // 1. Easter Egg Drawer — only mount when pulled open.
+                    if (showEasterEgg)
+                      Positioned(
+                        top: motion.drawerTop,
+                        left: 0,
+                        right: 0,
+                        height: kEasterEggPanelHeight + 150.0,
+                        child: EasterEggDrawer(
+                          controller: _easterEggCtrl,
+                          dragOffsetNotifier: _easterEggOffset,
+                          onDragUpdate: _handleDragUpdate,
+                          onDragEnd: _handleDragEnd,
+                          passports: passports,
+                          idDocs: idDocs,
+                          onAddPassport: _showPassportTypeSheet,
+                          onAddId: _openIdEntry,
+                        ),
+                      ),
                     // 2. Main Sliding Sheet (translated down, rounded at top)
                     Positioned.fill(
                       child: Transform.translate(
@@ -550,22 +596,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                             Widget viewChild;
                                             switch (mode) {
                                               case DashboardViewMode.home:
-                                                viewChild = TabBarView(
+                                                viewChild = KeyedSubtree(
                                                   key: const ValueKey('home_view'),
-                                                  controller: _tabCtrl,
-                                                  clipBehavior: Clip.none,
-                                                  physics: const NeverScrollableScrollPhysics(),
-                                                  children: [
-                                                    IdsTab(
+                                                  child: _HomeTabTransition(
+                                                    controller: _tabCtrl,
+                                                    ids: IdsTab(
                                                       items: displayItems,
                                                       allItems: items,
-                                                      onDeletePassport: _showDeleteDialog,
-                                                      onDeleteId: _showDeleteIdDialog,
+                                                      onDeletePassport:
+                                                          _showDeleteDialog,
+                                                      onDeleteId:
+                                                          _showDeleteIdDialog,
                                                       pageNotifier: _docPage,
-                                                      backdropTilt: _backdropTilt,
+                                                      backdropTilt:
+                                                          _backdropTilt,
                                                     ),
-                                                    const TicketsTab(),
-                                                  ],
+                                                    passes: _passesTabMounted
+                                                        ? const TicketsTab()
+                                                        : const SizedBox
+                                                            .expand(),
+                                                  ),
                                                 );
                                                 break;
                                               case DashboardViewMode.manage:
@@ -661,17 +711,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   ],
                 );
               },
-              child: EasterEggDrawer(
-                controller: _easterEggCtrl,
-                dragOffsetNotifier: _easterEggOffset,
-                onDragUpdate: _handleDragUpdate,
-                onDragEnd: _handleDragEnd,
-                passports: passports,
-                idDocs: idDocs,
-                tickets: mockTickets,
-                onAddPassport: _showPassportTypeSheet,
-                onAddId: _openIdEntry,
-              ),
             ),
 
             // ── Bottom island bar ────────────────────────────────────────
@@ -721,6 +760,65 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Crossfade + soft lateral slide between IDs and Passes, locked to the
+/// same [TabController] animation the nav pill uses.
+class _HomeTabTransition extends StatelessWidget {
+  const _HomeTabTransition({
+    required this.controller,
+    required this.ids,
+    required this.passes,
+  });
+
+  final TabController controller;
+  final Widget ids;
+  final Widget passes;
+
+  static const double _slidePx = 28;
+
+  @override
+  Widget build(BuildContext context) {
+    final Animation<double> anim = controller.animation!;
+
+    return AnimatedBuilder(
+      animation: anim,
+      builder: (BuildContext context, _) {
+        final double t = anim.value.clamp(0.0, 1.0);
+        // Ease the handoff so mid-transition feels softer than linear fade.
+        final double fadeOut = Curves.easeOutCubic.transform(1.0 - t);
+        final double fadeIn = Curves.easeOutCubic.transform(t);
+
+        return Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            // IDs — exit left + fade
+            IgnorePointer(
+              ignoring: t > 0.5,
+              child: Opacity(
+                opacity: fadeOut,
+                child: Transform.translate(
+                  offset: Offset(-_slidePx * t, 0),
+                  child: ids,
+                ),
+              ),
+            ),
+            // Passes — enter from right + fade
+            IgnorePointer(
+              ignoring: t < 0.5,
+              child: Opacity(
+                opacity: fadeIn,
+                child: Transform.translate(
+                  offset: Offset(_slidePx * (1.0 - t), 0),
+                  child: passes,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

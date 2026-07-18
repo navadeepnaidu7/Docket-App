@@ -34,16 +34,25 @@ class _WalletBackdropState extends State<WalletBackdrop>
     _ambientCtrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 14),
-    )..repeat();
+    );
     _deepCtrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 30),
-    )..repeat();
+    );
     _colorCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
       value: widget.tabIndex.toDouble().clamp(0.0, 1.0),
     );
+    // Defer looping ambient motion so the first frames stay free for layout.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Future<void>.delayed(const Duration(milliseconds: 480), () {
+        if (!mounted) return;
+        _ambientCtrl.repeat();
+        _deepCtrl.repeat();
+      });
+    });
   }
 
   @override

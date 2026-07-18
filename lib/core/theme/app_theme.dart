@@ -63,8 +63,12 @@ class AppTheme {
     ];
   }
 
-  static ThemeData get lightTheme => _build(Brightness.light);
-  static ThemeData get darkTheme => _build(Brightness.dark);
+  /// Cached — [GoogleFonts] resolution is expensive; never rebuild per frame.
+  static ThemeData? _lightTheme;
+  static ThemeData? _darkTheme;
+
+  static ThemeData get lightTheme => _lightTheme ??= _build(Brightness.light);
+  static ThemeData get darkTheme => _darkTheme ??= _build(Brightness.dark);
 
   static ThemeData _build(Brightness brightness) {
     final bool isDark = brightness == Brightness.dark;

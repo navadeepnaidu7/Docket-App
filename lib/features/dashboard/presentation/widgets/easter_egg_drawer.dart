@@ -18,7 +18,6 @@ class EasterEggDrawer extends StatefulWidget {
     required this.onDragEnd,
     required this.passports,
     required this.idDocs,
-    required this.tickets,
     required this.onAddPassport,
     required this.onAddId,
   });
@@ -29,7 +28,6 @@ class EasterEggDrawer extends StatefulWidget {
   final GestureDragEndCallback onDragEnd;
   final List<PassportProfile> passports;
   final List<IdDocument> idDocs;
-  final List<MockTicket> tickets;
   final VoidCallback onAddPassport;
   final void Function(IdDocumentType) onAddId;
 
