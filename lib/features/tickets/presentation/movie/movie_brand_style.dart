@@ -64,7 +64,12 @@ class MovieBrandStyle {
   );
 
   static const MovieBrandStyle district = MovieBrandStyle(
-    bodyGradient: <Color>[Color(0xFF492FBD), Color(0xFF7A3FF2)],
+    bodyGradient: <Color>[
+      Color(0xFF6B42F6),
+      Color(0xFF6440F0),
+      Color(0xFF5B37E8),
+      Color(0xFF7A3FF8),
+    ],
     accent: Color(0xFFB5A3FF),
     glow: Color(0xFF5F22D9),
     chipBackground: Color(0xFF5F22D9),
@@ -74,18 +79,20 @@ class MovieBrandStyle {
     logoAsset: AppAssets.districtLogo,
     logoTint: null,
     chipBorder: null,
-    showTopHairline: true,
+    showTopHairline: false,
     showQrInStub: false,
     labelAlpha: 0.60,
   );
 
   static const MovieBrandStyle universal = MovieBrandStyle(
-    bodyGradient: <Color>[Color(0xFF7B8CFF), Color(0xFF5B6BE0)],
-    accent: Color(0xFFA5B4FF),
-    glow: Color(0xFF818CF8),
-    chipBackground: Color(0x33FFFFFF),
+    bodyGradient: <Color>[Color(0xFF2C2C2E), Color(0xFF151517)],
+    accent: Color(0xFF8E8E93),
+    glow: Color(0xFF2C2C2E),
+    chipBackground: Color(0xFF2C2C2E),
     chipLabel: 'E-Ticket',
     presenterPrimary: 'Movie Ticket',
+    showTopHairline: false,
+    showQrInStub: true,
     labelAlpha: 0.60,
   );
 

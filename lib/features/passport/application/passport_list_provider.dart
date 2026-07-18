@@ -2,17 +2,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/passport_profile.dart';
 import '../../../core/storage/secure_document_store.dart';
 
+import '../../dashboard/application/wallet_loading_provider.dart';
+
 final passportListProvider =
     StateNotifierProvider<PassportListController, List<PassportProfile>>((
       Ref ref,
     ) {
-      final controller = PassportListController();
+      final controller = PassportListController(ref);
       controller.loadPassports(); // async load
       return controller;
     });
 
 class PassportListController extends StateNotifier<List<PassportProfile>> {
-  PassportListController() : super([]);
+  PassportListController(this.ref) : super([]);
+  final Ref ref;
 
   static const _storageKey = 'saved_passports';
   Future<void> _saveQueue = Future<void>.value();
@@ -20,6 +23,7 @@ class PassportListController extends StateNotifier<List<PassportProfile>> {
   Future<void> loadPassports() async {
     final savedData = await SecureDocumentStore.readList(_storageKey);
     state = savedData.map(_tryParse).whereType<PassportProfile>().toList();
+    ref.read(passportLoadingProvider.notifier).state = false;
   }
 
   Future<void> _savePassports(List<PassportProfile> passports) async {

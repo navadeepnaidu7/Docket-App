@@ -49,20 +49,20 @@ class MovieBrandPalette {
 
   /// District by Zomato — redesigned purple/violet gradient.
   static const MovieBrandPalette district = MovieBrandPalette(
-    top: Color(0xFF492FBD),
-    bottom: Color(0xFF7A3FF2),
+    top: Color(0xFF6B42F6),
+    bottom: Color(0xFF7A3FF8),
     accent: Color(0xFFB5A3FF),
     onAccent: Colors.white,
     glow: Color(0xFF5F22D9),
   );
 
-  /// Universal e-ticket — periwinkle from the reference mock.
+  /// Universal e-ticket — premium carbon black.
   static const MovieBrandPalette universal = MovieBrandPalette(
-    top: Color(0xFF7B8CFF),
-    bottom: Color(0xFF5B6BE0),
-    accent: Color(0xFFA5B4FF),
+    top: Color(0xFF2C2C2E),
+    bottom: Color(0xFF151517),
+    accent: Color(0xFF8E8E93),
     onAccent: Colors.white,
-    glow: Color(0xFF818CF8),
+    glow: Color(0xFF2C2C2E),
   );
 
   static const MovieBrandPalette expired = MovieBrandPalette(
@@ -170,6 +170,8 @@ class MoviePass {
 
   String? get posterAsset => switch (movieTitle) {
         'Dune: Part Two' => 'assets/passes/dune_poster.jpg',
+        'Spider-Man: Brand New Day' => 'assets/passes/spiderman_poster.jpg',
+        'The Odyssey' => 'assets/passes/odyssey_poster.jpg',
         _ => null,
       };
 }
@@ -246,15 +248,15 @@ final List<MoviePass> mockMoviePasses = <MoviePass>[
   MoviePass(
     id: 'movie_dist_1',
     brand: MoviePassBrand.district,
-    movieTitle: 'Pushpa 2: The Rule',
-    movieSubtitle: 'Action · UA',
+    movieTitle: 'The Odyssey',
+    movieSubtitle: 'Adventure · UA',
     cinemaName: 'Cinepolis Nexus Mall',
     cinemaAddress: 'Nexus Koramangala, Bengaluru',
     screen: 'Audi 3',
     showDate: 'Sun, 13 Apr 2025',
     showTime: '10:00 PM',
     format: 'Dolby Atmos',
-    language: 'Telugu',
+    language: 'English',
     seats: const <MovieSeat>[
       MovieSeat(row: 'F', number: '08'),
       MovieSeat(row: 'F', number: '09'),
@@ -263,9 +265,9 @@ final List<MoviePass> mockMoviePasses = <MoviePass>[
     bookingId: 'DST-4A71C2E9',
     orderId: 'DZM8821456',
     status: TicketStatus.active,
-    posterHint: MoviePosterHint.action,
+    posterHint: MoviePosterHint.sciFi,
     certification: 'UA',
-    runtime: '3h 20m',
+    runtime: '2h 18m',
     gateType: 'QR Scan',
   ),
 

@@ -2,15 +2,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/id_document.dart';
 import '../../../core/storage/secure_document_store.dart';
 
+import '../../dashboard/application/wallet_loading_provider.dart';
+
 final idListProvider =
     StateNotifierProvider<IdListController, List<IdDocument>>((ref) {
-      final controller = IdListController();
+      final controller = IdListController(ref);
       controller.loadDocuments();
       return controller;
     });
 
 class IdListController extends StateNotifier<List<IdDocument>> {
-  IdListController() : super([]);
+  IdListController(this.ref) : super([]);
+  final Ref ref;
 
   static const _storageKey = 'saved_id_documents';
   Future<void> _saveQueue = Future<void>.value();
@@ -18,6 +21,7 @@ class IdListController extends StateNotifier<List<IdDocument>> {
   Future<void> loadDocuments() async {
     final saved = await SecureDocumentStore.readList(_storageKey);
     state = saved.map(_tryParse).whereType<IdDocument>().toList();
+    ref.read(idLoadingProvider.notifier).state = false;
   }
 
   Future<void> _save(List<IdDocument> docs) async {

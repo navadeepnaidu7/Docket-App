@@ -46,16 +46,18 @@ class MovieTicketFace extends StatelessWidget {
     );
     final double scale =
         _isGlance ? MovieTicketMetrics.glanceTallScale : 1.0;
-    final bool qrStub = !_isGlance && style.showQrInStub;
-    final double notchFromBottom = qrStub
-        ? MovieTicketMetrics.notchFromBottomDetailQr()
-        : MovieTicketMetrics.notchFromBottom(scale: scale);
+    final bool detail = !_isGlance;
+    final bool qrStub = detail && style.showQrInStub;
+
+    final double footerHeight = (pass.brand == MoviePassBrand.bookMyShow || pass.brand == MoviePassBrand.district)
+        ? (detail ? 82.0 : 64.0) * scale
+        : (qrStub
+            ? MovieTicketMetrics.detailQrFooterBody
+            : MovieTicketMetrics.footerBodyHeight(scale: scale));
+
+    final double notchFromBottom = footerHeight + (MovieTicketMetrics.tearHeight * scale) / 2;
     final double factor = widthFactor ??
-        (_isGlance
-            ? (pass.brand == MoviePassBrand.bookMyShow || pass.brand == MoviePassBrand.district
-                ? 0.88
-                : MovieTicketMetrics.glanceWidthFactor)
-            : 1.0);
+        (_isGlance ? 0.94 : 1.0);
 
     final Widget ticket = Container(
       decoration: BoxDecoration(
@@ -173,9 +175,7 @@ class _TicketBody extends StatelessWidget {
                 pass: pass,
                 style: style,
                 isActive: isActive,
-                height: (pass.brand == MoviePassBrand.bookMyShow || pass.brand == MoviePassBrand.district
-                    ? (_detail ? 260.0 : 190.0)
-                    : (_detail ? 150.0 : 120.0)) * scale,
+                height: (_detail ? 260.0 : 190.0) * scale,
                 detail: _detail,
               ),
             ),
@@ -189,10 +189,7 @@ class _TicketBody extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  if (pass.brand != MoviePassBrand.bookMyShow && pass.brand != MoviePassBrand.district) ...<Widget>[
-                    _Presenter(style: style),
-                    SizedBox(height: 4 * scale),
-                  ],
+                  // Title starts directly at the top for clean e-ticket look
                   Text(
                     pass.movieTitle,
                     maxLines: 2,
@@ -333,11 +330,30 @@ class _TicketBody extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 height: (_detail ? 82.0 : 64.0) * scale,
-                child: Center(
-                  child: SvgPicture.asset(
-                    style.footerLogoAsset ?? style.logoAsset!,
-                    height: (_detail ? 50.0 : 40.0) * scale,
-                  ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: <Widget>[
+                    if (pass.brand == MoviePassBrand.district)
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: RadialGradient(
+                              radius: 0.9,
+                              colors: <Color>[
+                                const Color(0xFFC948FF).withValues(alpha: 0.35),
+                                const Color(0xFFA53BFF).withValues(alpha: 0.12),
+                                const Color(0x00A53BFF),
+                              ],
+                              stops: const <double>[0.0, 0.5, 1.0],
+                            ),
+                          ),
+                        ),
+                      ),
+                    SvgPicture.asset(
+                      style.footerLogoAsset ?? style.logoAsset!,
+                      height: (_detail ? 50.0 : 40.0) * scale,
+                    ),
+                  ],
                 ),
               )
             else
@@ -401,7 +417,7 @@ class _HeroBand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (pass.brand == MoviePassBrand.bookMyShow || pass.brand == MoviePassBrand.district) {
+    if (pass.brand == MoviePassBrand.bookMyShow || pass.brand == MoviePassBrand.district || pass.brand == MoviePassBrand.universal) {
       final String? asset = pass.posterAsset;
       return ClipRRect(
         borderRadius: BorderRadius.circular(16),
@@ -622,61 +638,6 @@ class _StatusPill extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _Presenter extends StatelessWidget {
-  const _Presenter({required this.style});
-  final MovieBrandStyle style;
-
-  @override
-  Widget build(BuildContext context) {
-    if (style.logoAsset == null) {
-      return Text(
-        style.presenterPrimary,
-        style: GoogleFonts.inter(
-          color: Colors.white.withValues(alpha: 0.75),
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      );
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        SvgPicture.asset(
-          style.logoAsset!,
-          width: 14,
-          height: 14,
-          colorFilter: ColorFilter.mode(
-            style.logoTint ?? Colors.white,
-            BlendMode.srcIn,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          style.presenterPrimary,
-          style: GoogleFonts.inter(
-            color: Colors.white.withValues(
-              alpha: style.presenterSecondary != null ? 1.0 : 0.75,
-            ),
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.2,
-          ),
-        ),
-        if (style.presenterSecondary != null)
-          Text(
-            style.presenterSecondary!,
-            style: GoogleFonts.inter(
-              color: Colors.white.withValues(alpha: 0.50),
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-      ],
     );
   }
 }

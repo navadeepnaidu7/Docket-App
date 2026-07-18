@@ -7,6 +7,7 @@ import '../../../../core/wallet/wallet_filter.dart';
 import '../../../../core/wallet/wallet_items.dart';
 import '../../application/card_shine_border_provider.dart';
 import '../../application/wallet_filter_provider.dart';
+import '../../application/wallet_loading_provider.dart';
 import '../../../../shared/widgets/rolling_card_page.dart';
 import '../../../../shared/widgets/wallet_card_shine_border.dart';
 import '../../../ids/domain/id_document.dart';
@@ -101,6 +102,16 @@ class _IdsTabState extends ConsumerState<IdsTab> {
         ref.watch(walletFilterCategoryProvider);
     final List<WalletFilterCategory> filterOptions =
         walletFilterOptionsFor(widget.allItems);
+    final bool isWalletLoading = ref.watch(walletLoadingProvider);
+    if (isWalletLoading) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(32, 0, 32, fabClearance),
+          child: const CircularProgressIndicator.adaptive(),
+        ),
+      );
+    }
+
     if (widget.allItems.isEmpty) {
       return Center(
         child: Padding(
