@@ -20,4 +20,5 @@ class IdDraftController extends StateNotifier<IdDocument> {
   void updateAddress(String v) => state = state.copyWith(address: v);
   void updateGender(String v) => state = state.copyWith(gender: v);
   void updateImagePath(String v) => state = state.copyWith(imagePath: v);
+  void updateQrImageBase64(String v) => state = state.copyWith(qrImageBase64: v);
 }

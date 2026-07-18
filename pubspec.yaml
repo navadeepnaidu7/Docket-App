@@ -42,6 +42,10 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   camera: ^0.11.0+2
   google_mlkit_text_recognition: ^0.14.0
+  google_mlkit_face_detection: any
+  google_mlkit_barcode_scanning: any
+  qr_flutter: ^4.1.0
+  tflite_flutter: ^0.10.4
   permission_handler: ^11.4.0
 
 dev_dependencies:

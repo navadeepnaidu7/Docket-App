@@ -28,6 +28,7 @@ class _IdScannerScreenState extends State<IdScannerScreen>
   _ScanState _state = _ScanState.scanning;
   String? _capturedImagePath;
   String _errorMessage = '';
+  String _qrCodeData = '';
 
   // Preview editable controllers
   late final TextEditingController _nameCtrl;
@@ -137,6 +138,7 @@ class _IdScannerScreenState extends State<IdScannerScreen>
       );
       if (!mounted) return;
       if (result != null) {
+        _qrCodeData = result.qrCodeData;
         _populateControllers(result);
         setState(() => _state = _ScanState.preview);
       } else {
@@ -176,12 +178,14 @@ class _IdScannerScreenState extends State<IdScannerScreen>
     address: _addressCtrl.text,
     gender: _genderCtrl.text,
     capturedImagePath: _capturedImagePath ?? '',
+    qrCodeData: _qrCodeData,
   );
 
   void _retake() => setState(() {
     _state = _ScanState.scanning;
     _capturedImagePath = null;
     _errorMessage = '';
+    _qrCodeData = '';
   });
 
   String _docLabel(IdDocumentType t) =>

@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../domain/id_document.dart';
 import 'id_wallet_shared.dart';
@@ -220,6 +223,60 @@ class PanCardFront extends StatelessWidget {
                           ],
                         ),
                       ),
+                      if (isBase64IdImage(document.imagePath)) ...[
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Container(
+                              width: 52,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: const Color(0xFFB0C4DE),
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: Image.memory(
+                                  base64Decode(document.imagePath),
+                                  fit: BoxFit.cover,
+                                  width: 52,
+                                  height: 64,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              width: 52,
+                              height: 18,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                borderRadius: BorderRadius.circular(3),
+                                border: Border.all(
+                                  color: const Color(0xFFB0C4DE),
+                                  style: BorderStyle.solid,
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'SIGNATURE',
+                                  style: TextStyle(
+                                    fontSize: 5,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0x7F0F2C59),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 12),
+                      ],
                       // Right details column (Hologram + Vertical PAN Number)
                       Column(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -346,7 +403,6 @@ class PanCardBack extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         child: Stack(
           children: [
-
             // Layout content containing NSDL details & bottom frosted summary row
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -371,7 +427,7 @@ class PanCardBack extends StatelessWidget {
                       height: 1.2,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 4),
                   const Text(
                     'If found or lost, please return / inform to:',
                     style: TextStyle(
@@ -390,58 +446,89 @@ class PanCardBack extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  
-                  // Contact details row
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.45),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        width: 0.5,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: const [
-                            Expanded(
-                              child: Text(
-                                'Tel: +91-20-2721 8080, Fax: +91-20-2721 8081',
+
+                  // Contact details and QR code row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.6),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: const [
+                                  Expanded(
+                                    child: Text(
+                                      'Tel: +91-20-2721 8080, Fax: +91-20-2721 8081',
+                                      style: TextStyle(
+                                        color: primaryText,
+                                        fontSize: 6.0,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    'Email: tininfo@nsdl.co.in',
+                                    style: TextStyle(
+                                      color: primaryText,
+                                      fontSize: 6.0,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 1),
+                              const Text(
+                                'Website: www.tin-nsdl.com or www.incometaxindia.gov.in',
                                 style: TextStyle(
                                   color: primaryText,
                                   fontSize: 6.0,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                            ),
-                            Text(
-                              'Email: tininfo@nsdl.co.in',
-                              style: TextStyle(
-                                color: primaryText,
-                                fontSize: 6.0,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 1),
-                        const Text(
-                          'Website: www.tin-nsdl.com or www.incometaxindia.gov.in',
-                          style: TextStyle(
-                            color: primaryText,
-                            fontSize: 6.0,
-                            fontWeight: FontWeight.w700,
+                      ),
+                      if (document.qrImageBase64.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.6),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: QrImageView(
+                            data: document.qrImageBase64,
+                            version: QrVersions.auto,
+                            size: 32,
+                            padding: EdgeInsets.zero,
+                            eyeStyle: const QrEyeStyle(
+                              eyeShape: QrEyeShape.square,
+                              color: Color(0xFF0F2C59),
+                            ),
                           ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
-                  
+
                   const Spacer(),
-                  
+
                   // Bottom Frosted Data Summary Row
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),

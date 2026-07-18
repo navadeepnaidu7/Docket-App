@@ -94,6 +94,7 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
       _genderCtrl.text = result.gender;
     });
     _syncDraft();
+    ref.read(idDraftProvider.notifier).updateQrImageBase64(result.qrCodeData);
     if (result.capturedImagePath.isNotEmpty) {
       // Encode the full image to base64 so it persists across app restarts
       try {

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../../core/assets/app_assets.dart';
 import '../../domain/id_document.dart';
@@ -669,7 +670,29 @@ class AadhaarCardBack extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (isBase64IdImage(document.imagePath))
+                      if (document.qrImageBase64.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: const Color(0xFFCDC5BD),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: QrImageView(
+                            data: document.qrImageBase64,
+                            version: QrVersions.auto,
+                            size: 52,
+                            padding: EdgeInsets.zero,
+                            eyeStyle: const QrEyeStyle(
+                              eyeShape: QrEyeShape.square,
+                              color: Color(0xFF2D2D2D),
+                            ),
+                          ),
+                        )
+                      else if (isBase64IdImage(document.imagePath))
                         GestureDetector(
                           onTap: () =>
                               showIdCardFullImage(context, document.imagePath),
