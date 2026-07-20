@@ -4,11 +4,9 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../core/assets/app_assets.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/haptics/haptics_provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -326,24 +324,24 @@ class _WalletMembershipCard extends StatefulWidget {
 
 const String _kWalletJoinedAtKey = 'wallet_joined_at';
 
-const List<String> _kShortMonths = <String>[
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
+const List<String> _kFullMonths = <String>[
+  'January',
+  'February',
+  'March',
+  'April',
   'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 String _formatJoinedLabel(DateTime date) {
-  final String month = _kShortMonths[date.month - 1];
-  return 'Joined  $month ${date.year}';
+  final String month = _kFullMonths[date.month - 1];
+  return 'Date joined $month ${date.year}';
 }
 
 /// Loads or stamps the wallet join date (first open for legacy installs).
@@ -394,7 +392,6 @@ class _WalletMembershipCardState extends State<_WalletMembershipCard>
         widget.idDocs.isNotEmpty ? widget.idDocs.first : null;
 
     final String name = _resolveName(primaryPassport, primaryId);
-    final String detail = _resolveDetail(widget.passports, widget.idDocs);
     final List<Color> washes = _walletWashColors(
       passports: widget.passports,
       idDocs: widget.idDocs,
@@ -467,26 +464,6 @@ class _WalletMembershipCardState extends State<_WalletMembershipCard>
                     empty: !hasDocs,
                   ),
                 ),
-                // Specular sheen that drifts with motion
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment(
-                        -1.0 + 0.35 * math.sin(angle * 0.6),
-                        -1.0,
-                      ),
-                      end: Alignment(
-                        0.5 + 0.25 * math.cos(angle * 0.5),
-                        0.6,
-                      ),
-                      colors: <Color>[
-                        Colors.white.withValues(alpha: isDark ? 0.10 : 0.45),
-                        Colors.white.withValues(alpha: 0),
-                      ],
-                      stops: const <double>[0.0, 0.55],
-                    ),
-                  ),
-                ),
                 DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(kSettingsHeroRadius),
@@ -498,57 +475,51 @@ class _WalletMembershipCardState extends State<_WalletMembershipCard>
             );
           },
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 18, 20, 20),
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                // Join date left · logo right
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: <Widget>[
-                    if (_joinedLabel != null)
-                      Expanded(
-                        child: Text(
-                          _joinedLabel!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.2,
-                            color: inkMuted,
-                          ),
-                        ),
-                      )
-                    else
-                      const Spacer(),
-                    _DocketLogoMark(size: 34, isDark: isDark),
-                  ],
-                ),
+                if (_joinedLabel != null)
+                  Text(
+                    _joinedLabel!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
+                      color: inkMuted,
+                    ),
+                  ),
                 const Spacer(),
-                Text(
-                  name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.6,
-                    height: 1.12,
-                    color: ink,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  detail,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: -0.1,
-                    color: inkMuted,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.6,
+                          height: 1.12,
+                          color: ink,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      '#8923',
+                      style: GoogleFonts.robotoMono(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: inkMuted,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -566,48 +537,6 @@ class _WalletMembershipCardState extends State<_WalletMembershipCard>
       return id.holderName.trim();
     }
     return 'Your wallet';
-  }
-
-  String _resolveDetail(
-    List<PassportProfile> passports,
-    List<IdDocument> idDocs,
-  ) {
-    final int total = passports.length + idDocs.length;
-    if (total == 0) return 'No cards yet';
-
-    final List<String> parts = <String>[];
-    if (idDocs.isNotEmpty) {
-      parts.add('${idDocs.length} ID${idDocs.length == 1 ? '' : 's'}');
-    }
-    if (passports.isNotEmpty) {
-      parts.add(
-        '${passports.length} pass${passports.length == 1 ? '' : 'es'}',
-      );
-    }
-    return parts.join('  ·  ');
-  }
-}
-
-/// Docket logo — solid on light; slightly lifted on dark for contrast.
-class _DocketLogoMark extends StatelessWidget {
-  const _DocketLogoMark({required this.size, required this.isDark});
-
-  final double size;
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    return Opacity(
-      opacity: isDark ? 0.95 : 0.92,
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: SvgPicture.asset(
-          AppAssets.docketLogo,
-          fit: BoxFit.contain,
-        ),
-      ),
-    );
   }
 }
 
@@ -660,20 +589,20 @@ class _MembershipWashPainter extends CustomPainter {
       final double pulse =
           0.92 + 0.08 * math.sin(angle * (0.9 + i * 0.15) + i);
       final double richness = empty
-          ? (isDark ? 0.22 : 0.16)
-          : ((isDark ? 0.38 : 0.34) + layers.length * 0.04).clamp(0.30, 0.58);
+          ? (isDark ? 0.12 : 0.08)
+          : ((isDark ? 0.20 : 0.16) + layers.length * 0.02).clamp(0.12, 0.28);
       final double radius = size.shortestSide *
-          lerpDouble(0.95, 0.52, i / layers.length.clamp(1, 5))! *
+          lerpDouble(1.30, 0.85, i / layers.length.clamp(1, 5))! *
           pulse;
 
       final Paint paint = Paint()
         ..shader = RadialGradient(
           colors: <Color>[
             layers[i].withValues(alpha: richness),
-            layers[i].withValues(alpha: richness * 0.42),
+            layers[i].withValues(alpha: richness * 0.40),
             layers[i].withValues(alpha: 0),
           ],
-          stops: const <double>[0.0, 0.48, 1.0],
+          stops: const <double>[0.0, 0.65, 1.0],
         ).createShader(Rect.fromCircle(center: center, radius: radius));
 
       canvas.drawCircle(center, radius, paint);

@@ -310,8 +310,25 @@ class _TicketBody extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              const TicketBarcodeStrip(
-                                height: MovieTicketMetrics.detailQrBarcode,
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.confirmation_number_outlined,
+                                    size: 14 * scale,
+                                    color: Colors.white.withValues(alpha: 0.70),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'E-TICKET',
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white.withValues(alpha: 0.85),
+                                      fontSize: 11 * scale,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 1.0,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -366,8 +383,25 @@ class _TicketBody extends StatelessWidget {
                 ),
                 child: Column(
                   children: <Widget>[
-                    TicketBarcodeStrip(
-                      height: MovieTicketMetrics.barcodeHeight * scale,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Icon(
+                          Icons.confirmation_number_outlined,
+                          size: 18 * scale,
+                          color: Colors.white.withValues(alpha: 0.70),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'E-TICKET',
+                          style: GoogleFonts.inter(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 13 * scale,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                      ],
                     ),
                     SizedBox(height: MovieTicketMetrics.footerIdGap * scale),
                     SizedBox(
