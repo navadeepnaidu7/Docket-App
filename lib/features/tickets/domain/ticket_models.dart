@@ -116,6 +116,30 @@ class MockTicket {
     return '${passengers.length} seats';
   }
 
+  String get seatsListLabel {
+    if (passengers.length == 1) return '${passengers.first.seat} ${passengers.first.berth}';
+    return passengers.map((p) => p.seat).join(', ');
+  }
+
+  String get berthsListLabel {
+    if (passengers.length == 1) return passengers.first.berth;
+    final List<String> shortBerths = passengers.map((p) {
+      final String b = p.berth;
+      if (b.toLowerCase().contains('lower')) return 'LB';
+      if (b.toLowerCase().contains('middle')) return 'MB';
+      if (b.toLowerCase().contains('upper')) return 'UB';
+      if (b.toLowerCase().contains('side lower')) return 'SL';
+      if (b.toLowerCase().contains('side upper')) return 'SU';
+      return b;
+    }).toList();
+    return shortBerths.toSet().join('/');
+  }
+
+  String get coachesListLabel {
+    final Set<String> uniqueCoaches = passengers.map((p) => p.coach).toSet();
+    return uniqueCoaches.join('/');
+  }
+
   TicketHalt? get nextHalt {
     for (final TicketHalt h in halts) {
       if (h.state == HaltState.arriving || h.state == HaltState.upcoming) {
@@ -132,23 +156,23 @@ final List<MockTicket> mockTickets = <MockTicket>[
   MockTicket(
     id: 'mock_t1',
     operator: 'IRCTC',
-    trainNumber: '12427',
+    trainNumber: '12932',
     trainName: 'Rajdhani Express',
-    fromCode: 'NZM',
-    fromName: 'H. Nizamuddin',
-    toCode: 'NDLS',
-    toName: 'New Delhi',
-    departTime: '08:40',
-    arriveTime: '13:10',
-    date: '23 Mar 2024',
-    arrivalDate: '23 Mar 2024',
-    duration: '4h 30m',
+    fromCode: 'HYB',
+    fromName: 'Hyderabad',
+    toCode: 'BLR',
+    toName: 'Bengaluru',
+    departTime: '07:10 AM',
+    arriveTime: '02:40 PM',
+    date: '20 Jul 2025',
+    arrivalDate: '20 Jul 2025',
+    duration: '7h 30m',
     ticketClass: 'AC 2 Tier',
     passengers: const <TicketPassenger>[
       TicketPassenger(
         name: 'Navadeep Naidu',
         coach: 'B2',
-        seat: '23',
+        seat: '32',
         berth: 'Lower',
         age: 28,
         gender: 'M',
@@ -156,7 +180,7 @@ final List<MockTicket> mockTickets = <MockTicket>[
       TicketPassenger(
         name: 'Ananya Rao',
         coach: 'B2',
-        seat: '24',
+        seat: '33',
         berth: 'Upper',
         age: 26,
         gender: 'F',
@@ -164,51 +188,51 @@ final List<MockTicket> mockTickets = <MockTicket>[
       TicketPassenger(
         name: 'Vikram Rao',
         coach: 'B2',
-        seat: '25',
+        seat: '34',
         berth: 'Middle',
         age: 54,
         gender: 'M',
       ),
     ],
-    pnr: '2432587612',
-    bookingId: 'E12345678',
+    pnr: '1234567890',
+    bookingId: 'IRCTC1234567890',
     status: TicketStatus.active,
     progressFraction: 0.48,
     liveStatusLabel: 'Running on time',
     halts: const <TicketHalt>[
       TicketHalt(
-        time: '08:40',
-        station: 'H. Nizamuddin (NZM)',
-        dateLabel: 'Sat, 23 Mar',
+        time: '07:10',
+        station: 'Hyderabad Decan (HYB)',
+        dateLabel: 'Sun, 20 Jul',
         state: HaltState.departed,
         platform: 'PF 5',
       ),
       TicketHalt(
-        time: '10:15',
-        station: 'Mathura Jn (MTJ)',
-        dateLabel: 'Sat, 23 Mar',
+        time: '09:15',
+        station: 'Kazipet Jn (KZJ)',
+        dateLabel: 'Sun, 20 Jul',
         state: HaltState.departed,
         platform: 'PF 2',
       ),
       TicketHalt(
         time: '11:40',
         actual: '11:48',
-        station: 'Agra Cantt (AGC)',
-        dateLabel: 'Sat, 23 Mar',
+        station: 'Vijayawada Jn (BZA)',
+        dateLabel: 'Sun, 20 Jul',
         state: HaltState.arriving,
         platform: 'PF 3',
       ),
       TicketHalt(
         time: '12:20',
-        station: 'Hazrat Nizamuddin (NZM)',
-        dateLabel: 'Sat, 23 Mar',
+        station: 'Guntur Jn (GNT)',
+        dateLabel: 'Sun, 20 Jul',
         state: HaltState.upcoming,
         platform: 'PF 1',
       ),
       TicketHalt(
-        time: '13:10',
-        station: 'New Delhi (NDLS)',
-        dateLabel: 'Sat, 23 Mar',
+        time: '14:40',
+        station: 'KSR Bengaluru (SBC)',
+        dateLabel: 'Sun, 20 Jul',
         state: HaltState.upcoming,
         platform: 'PF 12',
       ),

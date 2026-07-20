@@ -9,10 +9,6 @@ export '../domain/ticket_models.dart';
 
 // ΓöÇΓöÇ Pass face palette ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
-const Color _kActiveTop = Color(0xFF1B3A6B);
-const Color _kActiveBot = Color(0xFF0A1F3D);
-const Color _kActiveAccent = Color(0xFF5BA3E8);
-
 const Color _kExpiredTop = Color(0xFF3A3A3C);
 const Color _kExpiredBot = Color(0xFF1C1C1E);
 
@@ -65,8 +61,8 @@ class _WalletTicketCardState extends State<WalletTicketCard>
   Widget build(BuildContext context) {
     final MockTicket t = widget.ticket;
     final bool isActive = t.status == TicketStatus.active;
-    final Color top = isActive ? _kActiveTop : _kExpiredTop;
-    final Color bot = isActive ? _kActiveBot : _kExpiredBot;
+    final Color top = isActive ? const Color(0xFF1B2E8D) : _kExpiredTop;
+    final Color bot = isActive ? const Color(0xFF0F1035) : _kExpiredBot;
 
     return GestureDetector(
       onTapDown: (_) => _pressCtrl.forward(),
@@ -78,6 +74,10 @@ class _WalletTicketCardState extends State<WalletTicketCard>
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: isActive ? 0.08 : 0.05),
+              width: 1.0,
+            ),
             boxShadow: <BoxShadow>[
               BoxShadow(
                 color: top.withValues(alpha: isActive ? 0.38 : 0.28),
@@ -102,77 +102,129 @@ class _WalletTicketCardState extends State<WalletTicketCard>
                     ),
                   ),
                 ),
-                Positioned(
-                  top: -50,
-                  right: -30,
-                  child: Container(
-                    width: 160,
-                    height: 160,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: <Color>[
-                          (isActive ? _kActiveAccent : Colors.white)
-                              .withValues(alpha: 0.14),
-                          Colors.transparent,
-                        ],
+                if (isActive)
+                  Positioned(
+                    top: -120,
+                    left: 0,
+                    right: 0,
+                    height: 240,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: <Color>[
+                            const Color(0xFF3B82F6).withValues(alpha: 0.35),
+                            const Color(0xFF3B82F6).withValues(alpha: 0.0),
+                          ],
+                          stops: const <double>[0.0, 1.0],
+                        ),
                       ),
                     ),
                   ),
-                ),
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          // Top: operator + status
+                          // Top: operator + Class badge + Passenger count badge
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: <Widget>[
-                              Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(9),
-                                ),
-                                child: const Icon(
-                                  Icons.train_rounded,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
+                              const Icon(
+                                Icons.train_rounded,
+                                color: Colors.white,
+                                size: 28,
                               ),
                               const SizedBox(width: 10),
-                              Text(
-                                t.operator,
-                                style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: -0.2,
-                                ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    t.trainName.toUpperCase(),
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                  Text(
+                                    t.trainNumber,
+                                    style: GoogleFonts.inter(
+                                      color: const Color(0xFF828BCF),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
                               const Spacer(),
-                              _StatusPill(isActive: isActive),
+                              if (t.passengers.length > 1) ...<Widget>[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.30),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      const Icon(
+                                        Icons.group_outlined,
+                                        size: 13,
+                                        color: Colors.white,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${t.passengers.length} Pax',
+                                        style: GoogleFonts.inter(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.30),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    Text(
+                                      t.ticketClass.contains('2') ? '2A' : (t.ticketClass.contains('1') ? '1A' : 'SL'),
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w900,
+                                        height: 1.1,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Class',
+                                      style: GoogleFonts.inter(
+                                        color: const Color(0xFF828BCF),
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            t.trainTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              color: Colors.white.withValues(alpha: 0.72),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: -0.15,
-                            ),
-                          ),
-                          const SizedBox(height: 22),
-                          // Route
+                          const SizedBox(height: 24),
+                          // Route block
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
@@ -184,9 +236,9 @@ class _WalletTicketCardState extends State<WalletTicketCard>
                                   alignEnd: false,
                                 ),
                               ),
-                              Padding(
-                                padding: const EdgeInsets.only(top: 10),
-                                child: _RouteRail(duration: t.duration),
+                              const Padding(
+                                padding: EdgeInsets.only(top: 14),
+                                child: _RouteRail(),
                               ),
                               Expanded(
                                 child: _StationBlock(
@@ -198,52 +250,222 @@ class _WalletTicketCardState extends State<WalletTicketCard>
                               ),
                             ],
                           ),
+                          const SizedBox(height: 16),
+                          // Date pill centered
+                          Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color(0xFF828BCF).withValues(alpha: 0.30),
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  const Icon(
+                                    Icons.calendar_today_outlined,
+                                    size: 13,
+                                    color: Color(0xFF828BCF),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    t.date,
+                                    style: GoogleFonts.inter(
+                                      color: const Color(0xFF828BCF),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    // Soft divider
+                    // Notched Divider
                     _PassDivider(
                       notchColor: Theme.of(context).scaffoldBackgroundColor,
                     ),
-                    // Footer
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+                    // Inner Box containing Fields and Footer
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          width: 1.0,
+                        ),
+                      ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
-                          Row(
-                            children: <Widget>[
-                              Expanded(
-                                child: Text(
-                                  t.passengerSummary,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.inter(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: -0.2,
-                                  ),
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              children: <Widget>[
+                                // Row 1: Date | Departure | Arrival
+                                Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: _GridField(
+                                        label: 'Date',
+                                        value: t.date.split(' ').sublist(0, 2).join(' '),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: _GridField(
+                                        label: 'Departure',
+                                        value: t.departTime,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: _GridField(
+                                        label: 'Arrival',
+                                        value: t.arriveTime,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              Text(
-                                t.seatSummary,
-                                style: GoogleFonts.inter(
-                                  color: Colors.white.withValues(alpha: 0.92),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: -0.2,
+                                Container(
+                                  height: 1,
+                                  color: Colors.white.withValues(alpha: 0.06),
+                                  margin: const EdgeInsets.symmetric(vertical: 12),
                                 ),
-                              ),
-                            ],
+                                // Row 2: Coach | Seat | Platform | Berth
+                                Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: _GridField(
+                                        label: 'Coach',
+                                        value: t.coachesListLabel,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: _GridField(
+                                        label: 'Seat',
+                                        value: t.seatsListLabel,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: _GridField(
+                                        label: 'Platform',
+                                        value: t.halts.isNotEmpty ? (t.halts.first.platform ?? '5') : '5',
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: _GridField(
+                                        label: 'Berth',
+                                        value: t.berthsListLabel,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  height: 1,
+                                  color: Colors.white.withValues(alpha: 0.06),
+                                  margin: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                                // Row 3: PNR | Booking ID
+                                Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: _GridField(
+                                        label: 'PNR',
+                                        value: t.pnr,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: _GridField(
+                                        label: 'Booking ID',
+                                        value: t.bookingId,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '${t.date}  ·  ${t.ticketClass}',
-                            style: GoogleFonts.inter(
-                              color: Colors.white.withValues(alpha: 0.50),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                          // IRCTC Footer
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(15)),
+                              border: Border(
+                                top: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.06),
+                                  width: 1.0,
+                                ),
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                            child: Row(
+                              children: <Widget>[
+                                const Icon(
+                                  Icons.train_outlined,
+                                  size: 20,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 8),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    Text(
+                                      t.operator,
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Indian Railways',
+                                      style: GoogleFonts.inter(
+                                        color: const Color(0xFF828BCF),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const Spacer(),
+                                Container(
+                                  width: 1,
+                                  height: 24,
+                                  color: Colors.white.withValues(alpha: 0.08),
+                                ),
+                                const Spacer(),
+                                const Icon(
+                                  Icons.notifications_active_outlined,
+                                  size: 18,
+                                  color: Color(0xFF828BCF),
+                                ),
+                                const SizedBox(width: 6),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    Text(
+                                      'Your trip begins in',
+                                      style: GoogleFonts.inter(
+                                        color: const Color(0xFF828BCF),
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      '3 Days',
+                                      style: GoogleFonts.inter(
+                                        color: const Color(0xFF4A90E2),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -287,33 +509,33 @@ class _StationBlock extends StatelessWidget {
           textAlign: textAlign,
           style: GoogleFonts.inter(
             color: Colors.white,
-            fontSize: 30,
+            fontSize: 32,
             fontWeight: FontWeight.w800,
-            letterSpacing: -1.4,
+            letterSpacing: -1.0,
             height: 1.0,
           ),
         ),
         const SizedBox(height: 6),
-        Text(
-          time,
-          textAlign: textAlign,
-          style: GoogleFonts.inter(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.3,
-          ),
-        ),
-        const SizedBox(height: 3),
         Text(
           city,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: textAlign,
           style: GoogleFonts.inter(
-            color: Colors.white.withValues(alpha: 0.48),
-            fontSize: 11,
+            color: const Color(0xFF828BCF),
+            fontSize: 12,
             fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          time,
+          textAlign: textAlign,
+          style: GoogleFonts.inter(
+            color: const Color(0xFF5282F0),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
           ),
         ),
       ],
@@ -322,50 +544,92 @@ class _StationBlock extends StatelessWidget {
 }
 
 class _RouteRail extends StatelessWidget {
-  const _RouteRail({required this.duration});
-  final String duration;
+  const _RouteRail();
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 88,
-      child: Column(
+      width: 80,
+      child: Stack(
+        alignment: Alignment.center,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Container(
-                  height: 1,
-                  color: Colors.white.withValues(alpha: 0.22),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: Icon(
-                  Icons.train_rounded,
-                  size: 16,
-                  color: Colors.white.withValues(alpha: 0.55),
-                ),
-              ),
-              Expanded(
-                child: Container(
-                  height: 1,
-                  color: Colors.white.withValues(alpha: 0.22),
-                ),
-              ),
-            ],
+          Container(
+            height: 1.2,
+            color: Colors.white.withValues(alpha: 0.25),
           ),
-          const SizedBox(height: 6),
-          Text(
-            duration,
-            style: GoogleFonts.inter(
-              color: Colors.white.withValues(alpha: 0.48),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+          Positioned(
+            left: 0,
+            child: Container(
+              width: 5,
+              height: 5,
+              decoration: const BoxDecoration(
+                color: Color(0xFF828BCF),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            right: 0,
+            child: Container(
+              width: 5,
+              height: 5,
+              decoration: const BoxDecoration(
+                color: Color(0xFF828BCF),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: const BoxDecoration(
+              color: Color(0xFF1B2E8D),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.train_rounded,
+              size: 14,
+              color: Colors.white,
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _GridField extends StatelessWidget {
+  const _GridField({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            color: Colors.white.withValues(alpha: 0.35),
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: GoogleFonts.inter(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.15,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -411,44 +675,4 @@ class _PassDividerPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _PassDividerPainter old) =>
       old.notchColor != notchColor;
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.isActive});
-  final bool isActive;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: isActive
-                  ? const Color(0xFF30D158)
-                  : const Color(0xFF8E8E93),
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            isActive ? 'Active' : 'Expired',
-            style: GoogleFonts.inter(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

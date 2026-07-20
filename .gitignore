@@ -58,6 +58,7 @@ app.*.map.json
 
 # Android generated/local files
 **/android/.gradle/
+**/android/.kotlin/
 **/android/captures/
 **/android/**/local.properties
 **/android/**/key.properties
