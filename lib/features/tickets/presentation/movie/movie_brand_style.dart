@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/assets/app_assets.dart';
 import '../../domain/movie_pass_models.dart';
-import '../../domain/ticket_models.dart' show TicketStatus;
 
 /// Canonical visual policy for a movie pass brand.
 /// Layout reads this instead of scattering `brand ==` switches.

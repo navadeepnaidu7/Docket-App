@@ -3,7 +3,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../domain/movie_pass_models.dart';
-import '../../domain/ticket_models.dart' show TicketStatus;
 import 'movie_brand_style.dart';
 import 'movie_ticket_chrome.dart';
 
@@ -508,7 +507,7 @@ class _HeroBand extends StatelessWidget {
     if (pass.brand == MoviePassBrand.bookMyShow ||
         pass.brand == MoviePassBrand.district ||
         pass.brand == MoviePassBrand.universal) {
-      final String? asset = pass.posterAsset;
+      final String? asset = pass.resolvedPosterAsset;
       return ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: SizedBox(
@@ -523,7 +522,7 @@ class _HeroBand extends StatelessWidget {
                   },
                 )
               : Image.network(
-                  pass.posterUrl,
+                  pass.resolvedPosterUrl,
                   fit: BoxFit.cover,
                   loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
                     if (loadingProgress == null) return child;

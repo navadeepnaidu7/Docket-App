@@ -1,8 +1,25 @@
-// Train pass models and mock data for the Passes tab.
+// Train pass domain models (API-serializable).
 
-enum TicketStatus { active, expired }
+import 'pass_status.dart';
 
-enum HaltState { departed, arriving, upcoming }
+export 'pass_status.dart' show TicketStatus, PassKind;
+
+enum HaltState {
+  departed,
+  arriving,
+  upcoming;
+
+  static HaltState fromJson(Object? raw) {
+    final String s = raw?.toString().toLowerCase() ?? '';
+    return switch (s) {
+      'departed' || 'past' => HaltState.departed,
+      'arriving' || 'current' => HaltState.arriving,
+      _ => HaltState.upcoming,
+    };
+  }
+
+  String toJson() => name;
+}
 
 class TicketHalt {
   const TicketHalt({
@@ -20,6 +37,26 @@ class TicketHalt {
   final String? platform;
   final HaltState state;
   final String dateLabel;
+
+  factory TicketHalt.fromJson(Map<String, dynamic> json) {
+    return TicketHalt(
+      time: json['time']?.toString() ?? '',
+      actual: json['actual']?.toString(),
+      station: json['station']?.toString() ?? '',
+      platform: json['platform']?.toString(),
+      state: HaltState.fromJson(json['state']),
+      dateLabel: json['dateLabel']?.toString() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'time': time,
+        if (actual != null) 'actual': actual,
+        'station': station,
+        if (platform != null) 'platform': platform,
+        'state': state.toJson(),
+        'dateLabel': dateLabel,
+      };
 }
 
 /// One traveller on a booking (max 6).
@@ -41,10 +78,36 @@ class TicketPassenger {
   final String? gender;
 
   String get seatLabel => '$coach · $seat · $berth';
+
+  factory TicketPassenger.fromJson(Map<String, dynamic> json) {
+    return TicketPassenger(
+      name: json['name']?.toString() ?? '',
+      coach: json['coach']?.toString() ?? '',
+      seat: json['seat']?.toString() ?? '',
+      berth: json['berth']?.toString() ?? '',
+      age: json['age'] is int
+          ? json['age'] as int
+          : int.tryParse(json['age']?.toString() ?? ''),
+      gender: json['gender']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'name': name,
+        'coach': coach,
+        'seat': seat,
+        'berth': berth,
+        if (age != null) 'age': age,
+        if (gender != null) 'gender': gender,
+      };
 }
 
-class MockTicket {
-  const MockTicket({
+/// Train booking pass — primary domain type for rail tickets.
+///
+/// Prefer ISO fields [departAt]/[arriveAt] when available; display strings
+/// remain for the current UI until client formatters replace them.
+class TrainPass {
+  const TrainPass({
     required this.id,
     required this.operator,
     required this.trainNumber,
@@ -68,6 +131,10 @@ class MockTicket {
     this.liveStatusLabel = 'Running on time',
     this.progressFraction = 0.45,
     this.halts = const <TicketHalt>[],
+    this.departAt,
+    this.arriveAt,
+    this.codeType,
+    this.codePayload,
   }) : assert(passengers.length >= 1 && passengers.length <= 6);
 
   final String id;
@@ -78,6 +145,8 @@ class MockTicket {
   final String fromName;
   final String toCode;
   final String toName;
+
+  /// Display time (e.g. "07:10 AM") — keep for current cards.
   final String departTime;
   final String arriveTime;
   final String date;
@@ -93,6 +162,14 @@ class MockTicket {
   final String liveStatusLabel;
   final double progressFraction;
   final List<TicketHalt> halts;
+
+  /// Preferred machine-readable timestamps (ISO-8601).
+  final String? departAt;
+  final String? arriveAt;
+
+  /// Optional gate code metadata for future scannable tickets.
+  final String? codeType;
+  final String? codePayload;
 
   String get trainTitle => '$trainNumber · $trainName';
 
@@ -117,13 +194,15 @@ class MockTicket {
   }
 
   String get seatsListLabel {
-    if (passengers.length == 1) return '${passengers.first.seat} ${passengers.first.berth}';
-    return passengers.map((p) => p.seat).join(', ');
+    if (passengers.length == 1) {
+      return '${passengers.first.seat} ${passengers.first.berth}';
+    }
+    return passengers.map((TicketPassenger p) => p.seat).join(', ');
   }
 
   String get berthsListLabel {
     if (passengers.length == 1) return passengers.first.berth;
-    final List<String> shortBerths = passengers.map((p) {
+    final List<String> shortBerths = passengers.map((TicketPassenger p) {
       final String b = p.berth;
       if (b.toLowerCase().contains('lower')) return 'LB';
       if (b.toLowerCase().contains('middle')) return 'MB';
@@ -136,7 +215,8 @@ class MockTicket {
   }
 
   String get coachesListLabel {
-    final Set<String> uniqueCoaches = passengers.map((p) => p.coach).toSet();
+    final Set<String> uniqueCoaches =
+        passengers.map((TicketPassenger p) => p.coach).toSet();
     return uniqueCoaches.join('/');
   }
 
@@ -148,345 +228,101 @@ class MockTicket {
     }
     return null;
   }
+
+  factory TrainPass.fromJson(Map<String, dynamic> json) {
+    final List<dynamic> paxRaw =
+        json['passengers'] is List ? json['passengers'] as List : const [];
+    final List<dynamic> haltRaw =
+        json['halts'] is List ? json['halts'] as List : const [];
+
+    final List<TicketPassenger> passengers = paxRaw
+        .whereType<Map>()
+        .map(
+          (Map m) =>
+              TicketPassenger.fromJson(Map<String, dynamic>.from(m)),
+        )
+        .toList();
+
+    if (passengers.isEmpty) {
+      passengers.add(
+        const TicketPassenger(
+          name: 'Passenger',
+          coach: '—',
+          seat: '—',
+          berth: '—',
+        ),
+      );
+    }
+
+    return TrainPass(
+      id: json['id']?.toString() ?? '',
+      operator: json['operator']?.toString() ?? '',
+      trainNumber: json['trainNumber']?.toString() ?? '',
+      trainName: json['trainName']?.toString() ?? '',
+      fromCode: json['fromCode']?.toString() ?? '',
+      fromName: json['fromName']?.toString() ?? '',
+      toCode: json['toCode']?.toString() ?? '',
+      toName: json['toName']?.toString() ?? '',
+      departTime: json['departTime']?.toString() ?? '',
+      arriveTime: json['arriveTime']?.toString() ?? '',
+      date: json['date']?.toString() ?? '',
+      arrivalDate: json['arrivalDate']?.toString() ?? '',
+      duration: json['duration']?.toString() ?? '',
+      ticketClass: json['ticketClass']?.toString() ?? '',
+      passengers: passengers,
+      pnr: json['pnr']?.toString() ?? '',
+      bookingId: json['bookingId']?.toString() ?? '',
+      status: TicketStatus.fromJson(json['status']),
+      bookingStatus: json['bookingStatus']?.toString() ?? 'Confirmed',
+      chartStatus: json['chartStatus']?.toString() ?? 'Chart Prepared',
+      liveStatusLabel:
+          json['liveStatusLabel']?.toString() ?? 'Running on time',
+      progressFraction: (json['progressFraction'] is num)
+          ? (json['progressFraction'] as num).toDouble()
+          : double.tryParse(json['progressFraction']?.toString() ?? '') ??
+              0.0,
+      halts: haltRaw
+          .whereType<Map>()
+          .map((Map m) => TicketHalt.fromJson(Map<String, dynamic>.from(m)))
+          .toList(),
+      departAt: json['departAt']?.toString(),
+      arriveAt: json['arriveAt']?.toString(),
+      codeType: json['codeType']?.toString(),
+      codePayload: json['codePayload']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'id': id,
+        'operator': operator,
+        'trainNumber': trainNumber,
+        'trainName': trainName,
+        'fromCode': fromCode,
+        'fromName': fromName,
+        'toCode': toCode,
+        'toName': toName,
+        'departTime': departTime,
+        'arriveTime': arriveTime,
+        'date': date,
+        'arrivalDate': arrivalDate,
+        'duration': duration,
+        'ticketClass': ticketClass,
+        'passengers':
+            passengers.map((TicketPassenger p) => p.toJson()).toList(),
+        'pnr': pnr,
+        'bookingId': bookingId,
+        'status': status.toJson(),
+        'bookingStatus': bookingStatus,
+        'chartStatus': chartStatus,
+        'liveStatusLabel': liveStatusLabel,
+        'progressFraction': progressFraction,
+        'halts': halts.map((TicketHalt h) => h.toJson()).toList(),
+        if (departAt != null) 'departAt': departAt,
+        if (arriveAt != null) 'arriveAt': arriveAt,
+        if (codeType != null) 'codeType': codeType,
+        if (codePayload != null) 'codePayload': codePayload,
+      };
 }
 
-// ── Mock catalogue ────────────────────────────────────────────────────────────
-
-final List<MockTicket> mockTickets = <MockTicket>[
-  MockTicket(
-    id: 'mock_t1',
-    operator: 'IRCTC',
-    trainNumber: '12932',
-    trainName: 'Rajdhani Express',
-    fromCode: 'HYB',
-    fromName: 'Hyderabad',
-    toCode: 'BLR',
-    toName: 'Bengaluru',
-    departTime: '07:10 AM',
-    arriveTime: '02:40 PM',
-    date: '20 Jul 2025',
-    arrivalDate: '20 Jul 2025',
-    duration: '7h 30m',
-    ticketClass: 'AC 2 Tier',
-    passengers: const <TicketPassenger>[
-      TicketPassenger(
-        name: 'Navadeep Naidu',
-        coach: 'B2',
-        seat: '32',
-        berth: 'Lower',
-        age: 28,
-        gender: 'M',
-      ),
-      TicketPassenger(
-        name: 'Ananya Rao',
-        coach: 'B2',
-        seat: '33',
-        berth: 'Upper',
-        age: 26,
-        gender: 'F',
-      ),
-      TicketPassenger(
-        name: 'Vikram Rao',
-        coach: 'B2',
-        seat: '34',
-        berth: 'Middle',
-        age: 54,
-        gender: 'M',
-      ),
-    ],
-    pnr: '1234567890',
-    bookingId: 'IRCTC1234567890',
-    status: TicketStatus.active,
-    progressFraction: 0.48,
-    liveStatusLabel: 'Running on time',
-    halts: const <TicketHalt>[
-      TicketHalt(
-        time: '07:10',
-        station: 'Hyderabad Decan (HYB)',
-        dateLabel: 'Sun, 20 Jul',
-        state: HaltState.departed,
-        platform: 'PF 5',
-      ),
-      TicketHalt(
-        time: '09:15',
-        station: 'Kazipet Jn (KZJ)',
-        dateLabel: 'Sun, 20 Jul',
-        state: HaltState.departed,
-        platform: 'PF 2',
-      ),
-      TicketHalt(
-        time: '11:40',
-        actual: '11:48',
-        station: 'Vijayawada Jn (BZA)',
-        dateLabel: 'Sun, 20 Jul',
-        state: HaltState.arriving,
-        platform: 'PF 3',
-      ),
-      TicketHalt(
-        time: '12:20',
-        station: 'Guntur Jn (GNT)',
-        dateLabel: 'Sun, 20 Jul',
-        state: HaltState.upcoming,
-        platform: 'PF 1',
-      ),
-      TicketHalt(
-        time: '14:40',
-        station: 'KSR Bengaluru (SBC)',
-        dateLabel: 'Sun, 20 Jul',
-        state: HaltState.upcoming,
-        platform: 'PF 12',
-      ),
-    ],
-  ),
-  MockTicket(
-    id: 'mock_t3',
-    operator: 'IRCTC',
-    trainNumber: '22691',
-    trainName: 'Rajdhani Express',
-    fromCode: 'SBC',
-    fromName: 'KSR Bengaluru',
-    toCode: 'NDLS',
-    toName: 'New Delhi',
-    departTime: '20:00',
-    arriveTime: '06:00',
-    date: '02 Jun 2024',
-    arrivalDate: '04 Jun 2024',
-    duration: '34h 00m',
-    ticketClass: 'AC 1 Tier',
-    passengers: const <TicketPassenger>[
-      TicketPassenger(
-        name: 'Navadeep Naidu',
-        coach: 'H1',
-        seat: '04',
-        berth: 'Lower',
-        age: 28,
-        gender: 'M',
-      ),
-    ],
-    pnr: '4109823761',
-    bookingId: 'E23456789',
-    status: TicketStatus.active,
-    progressFraction: 0.12,
-    liveStatusLabel: 'Running on time',
-    halts: const <TicketHalt>[
-      TicketHalt(
-        time: '20:00',
-        station: 'KSR Bengaluru (SBC)',
-        dateLabel: 'Sun, 02 Jun',
-        state: HaltState.departed,
-        platform: 'PF 8',
-      ),
-      TicketHalt(
-        time: '23:45',
-        station: 'Guntakal Jn (GTL)',
-        dateLabel: 'Sun, 02 Jun',
-        state: HaltState.arriving,
-        platform: 'PF 2',
-        actual: '23:52',
-      ),
-      TicketHalt(
-        time: '06:30',
-        station: 'Jhansi Jn (JHS)',
-        dateLabel: 'Mon, 03 Jun',
-        state: HaltState.upcoming,
-        platform: 'PF 4',
-      ),
-      TicketHalt(
-        time: '06:00',
-        station: 'New Delhi (NDLS)',
-        dateLabel: 'Tue, 04 Jun',
-        state: HaltState.upcoming,
-        platform: 'PF 14',
-      ),
-    ],
-  ),
-  MockTicket(
-    id: 'mock_t4',
-    operator: 'IRCTC',
-    trainNumber: '12163',
-    trainName: 'Chennai Express',
-    fromCode: 'NDLS',
-    fromName: 'New Delhi',
-    toCode: 'MAS',
-    toName: 'Chennai Central',
-    departTime: '22:30',
-    arriveTime: '19:45',
-    date: '15 Jun 2024',
-    arrivalDate: '16 Jun 2024',
-    duration: '21h 15m',
-    ticketClass: 'AC 2 Tier',
-    passengers: const <TicketPassenger>[
-      TicketPassenger(
-        name: 'Navadeep Naidu',
-        coach: 'A2',
-        seat: '12',
-        berth: 'Side Upper',
-      ),
-      TicketPassenger(
-        name: 'Priya Sharma',
-        coach: 'A2',
-        seat: '13',
-        berth: 'Side Lower',
-      ),
-      TicketPassenger(
-        name: 'Arjun Sharma',
-        coach: 'A2',
-        seat: '14',
-        berth: 'Lower',
-      ),
-      TicketPassenger(
-        name: 'Meera Sharma',
-        coach: 'A2',
-        seat: '15',
-        berth: 'Upper',
-      ),
-      TicketPassenger(
-        name: 'Kabir Mehta',
-        coach: 'A3',
-        seat: '01',
-        berth: 'Lower',
-      ),
-      TicketPassenger(
-        name: 'Saanvi Mehta',
-        coach: 'A3',
-        seat: '02',
-        berth: 'Upper',
-      ),
-    ],
-    pnr: '6637291048',
-    bookingId: 'E34567890',
-    status: TicketStatus.active,
-    progressFraction: 0.0,
-    liveStatusLabel: 'Scheduled',
-    chartStatus: 'Chart not prepared',
-    bookingStatus: 'Confirmed',
-    halts: const <TicketHalt>[
-      TicketHalt(
-        time: '22:30',
-        station: 'New Delhi (NDLS)',
-        dateLabel: 'Sat, 15 Jun',
-        state: HaltState.upcoming,
-        platform: 'PF 9',
-      ),
-      TicketHalt(
-        time: '19:45',
-        station: 'Chennai Central (MAS)',
-        dateLabel: 'Sun, 16 Jun',
-        state: HaltState.upcoming,
-        platform: 'PF 5',
-      ),
-    ],
-  ),
-  MockTicket(
-    id: 'mock_t2',
-    operator: 'IRCTC',
-    trainNumber: '12951',
-    trainName: 'Mumbai Rajdhani',
-    fromCode: 'NDLS',
-    fromName: 'New Delhi',
-    toCode: 'BCT',
-    toName: 'Mumbai Central',
-    departTime: '16:55',
-    arriveTime: '08:15',
-    date: '10 Jan 2024',
-    arrivalDate: '11 Jan 2024',
-    duration: '15h 20m',
-    ticketClass: 'AC 3 Tier',
-    passengers: const <TicketPassenger>[
-      TicketPassenger(
-        name: 'Navadeep Naidu',
-        coach: 'A1',
-        seat: '45',
-        berth: 'Upper',
-      ),
-      TicketPassenger(
-        name: 'Rohan Iyer',
-        coach: 'A1',
-        seat: '46',
-        berth: 'Middle',
-      ),
-    ],
-    pnr: '8821456730',
-    bookingId: 'E98765432',
-    status: TicketStatus.expired,
-    bookingStatus: 'Completed',
-    liveStatusLabel: 'Journey completed',
-    progressFraction: 1.0,
-    halts: const <TicketHalt>[
-      TicketHalt(
-        time: '16:55',
-        station: 'New Delhi (NDLS)',
-        dateLabel: 'Wed, 10 Jan',
-        state: HaltState.departed,
-        platform: 'PF 6',
-      ),
-      TicketHalt(
-        time: '08:15',
-        station: 'Mumbai Central (BCT)',
-        dateLabel: 'Thu, 11 Jan',
-        state: HaltState.departed,
-        platform: 'PF 3',
-      ),
-    ],
-  ),
-  MockTicket(
-    id: 'mock_t5',
-    operator: 'IRCTC',
-    trainNumber: '12650',
-    trainName: 'Karnataka Express',
-    fromCode: 'SBC',
-    fromName: 'KSR Bengaluru',
-    toCode: 'NZM',
-    toName: 'H. Nizamuddin',
-    departTime: '19:45',
-    arriveTime: '06:30',
-    date: '14 Nov 2023',
-    arrivalDate: '16 Nov 2023',
-    duration: '34h 45m',
-    ticketClass: 'AC 3 Tier',
-    passengers: const <TicketPassenger>[
-      TicketPassenger(
-        name: 'Navadeep Naidu',
-        coach: 'B4',
-        seat: '32',
-        berth: 'Middle',
-      ),
-    ],
-    pnr: '3312984756',
-    bookingId: 'E87654321',
-    status: TicketStatus.expired,
-    bookingStatus: 'Completed',
-    liveStatusLabel: 'Journey completed',
-    progressFraction: 1.0,
-  ),
-  MockTicket(
-    id: 'mock_t6',
-    operator: 'IRCTC',
-    trainNumber: '12028',
-    trainName: 'Shatabdi Express',
-    fromCode: 'MAS',
-    fromName: 'Chennai Central',
-    toCode: 'SBC',
-    toName: 'KSR Bengaluru',
-    departTime: '06:00',
-    arriveTime: '11:00',
-    date: '03 Sep 2023',
-    arrivalDate: '03 Sep 2023',
-    duration: '5h 00m',
-    ticketClass: 'CC Chair Car',
-    passengers: const <TicketPassenger>[
-      TicketPassenger(
-        name: 'Navadeep Naidu',
-        coach: 'C3',
-        seat: '67',
-        berth: 'Seat',
-      ),
-    ],
-    pnr: '9901234567',
-    bookingId: 'E76543210',
-    status: TicketStatus.expired,
-    bookingStatus: 'Completed',
-    liveStatusLabel: 'Journey completed',
-    progressFraction: 1.0,
-  ),
-];
+/// Backward-compatible name used across presentation.
+typedef MockTicket = TrainPass;

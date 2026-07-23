@@ -1,18 +1,45 @@
 import 'package:flutter/material.dart';
 
-import 'ticket_models.dart' show TicketStatus;
+import 'pass_status.dart';
+
+export 'pass_status.dart' show TicketStatus;
 
 /// Where the booking originated — drives brand palette + layout.
+///
+/// Wire: `"bookMyShow"` | `"district"` | `"universal"`.
 enum MoviePassBrand {
   bookMyShow,
   district,
-  universal,
+  universal;
+
+  static MoviePassBrand fromJson(Object? raw) {
+    final String s = raw?.toString() ?? '';
+    final String n = s.toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '');
+    return switch (n) {
+      'bookmyshow' || 'bms' => MoviePassBrand.bookMyShow,
+      'district' || 'districtbyzomato' => MoviePassBrand.district,
+      _ => MoviePassBrand.universal,
+    };
+  }
+
+  String toJson() => name;
 }
 
 /// Gate entry code shown on the e-ticket (one per booking).
+///
+/// Wire: `"qr"` | `"barcode"`.
 enum MovieTicketCodeType {
   qr,
-  barcode,
+  barcode;
+
+  static MovieTicketCodeType fromJson(Object? raw) {
+    final String s = raw?.toString().toLowerCase() ?? '';
+    return s.contains('bar')
+        ? MovieTicketCodeType.barcode
+        : MovieTicketCodeType.qr;
+  }
+
+  String toJson() => name;
 }
 
 /// One seat on a movie booking.
@@ -26,9 +53,21 @@ class MovieSeat {
   final String number;
 
   String get label => '$row$number';
+
+  factory MovieSeat.fromJson(Map<String, dynamic> json) {
+    return MovieSeat(
+      row: json['row']?.toString() ?? '',
+      number: json['number']?.toString() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'row': row,
+        'number': number,
+      };
 }
 
-/// Brand colors for wallet faces and detail chrome.
+/// Brand colors for wallet faces and detail chrome (UI-only, not API).
 class MovieBrandPalette {
   const MovieBrandPalette({
     required this.top,
@@ -44,7 +83,6 @@ class MovieBrandPalette {
   final Color onAccent;
   final Color glow;
 
-  /// BookMyShow — brand carnation pink/red (#F84464).
   static const MovieBrandPalette bookMyShow = MovieBrandPalette(
     top: Color(0xFFD22533),
     bottom: Color(0xFF9E121E),
@@ -53,7 +91,6 @@ class MovieBrandPalette {
     glow: Color(0xFFE22636),
   );
 
-  /// District by Zomato — redesigned purple/violet gradient.
   static const MovieBrandPalette district = MovieBrandPalette(
     top: Color(0xFF6B42F6),
     bottom: Color(0xFF7A3FF8),
@@ -62,7 +99,6 @@ class MovieBrandPalette {
     glow: Color(0xFF5F22D9),
   );
 
-  /// Universal e-ticket — premium carbon black.
   static const MovieBrandPalette universal = MovieBrandPalette(
     top: Color(0xFF2C2C2E),
     bottom: Color(0xFF151517),
@@ -79,7 +115,10 @@ class MovieBrandPalette {
     glow: Color(0xFF636366),
   );
 
-  static MovieBrandPalette forBrand(MoviePassBrand brand, {required bool active}) {
+  static MovieBrandPalette forBrand(
+    MoviePassBrand brand, {
+    required bool active,
+  }) {
     if (!active) return expired;
     return switch (brand) {
       MoviePassBrand.bookMyShow => bookMyShow,
@@ -89,114 +128,26 @@ class MovieBrandPalette {
   }
 }
 
-class MoviePass {
-  const MoviePass({
-    required this.id,
-    required this.brand,
-    required this.movieTitle,
-    required this.movieSubtitle,
-    required this.cinemaName,
-    required this.cinemaAddress,
-    required this.screen,
-    required this.showDate,
-    required this.showTime,
-    required this.format,
-    required this.language,
-    required this.seats,
-    required this.bookingId,
-    required this.orderId,
-    required this.status,
-    this.posterHint = MoviePosterHint.action,
-    this.certification = 'UA',
-    this.runtime = '2h 28m',
-    this.gateType = 'QR Scan',
-    this.sourcePlatform,
-    this.codeType = MovieTicketCodeType.qr,
-  }) : assert(seats.length >= 1 && seats.length <= 10);
-
-  final String id;
-  final MoviePassBrand brand;
-  final String movieTitle;
-
-  /// Genre / tagline line under the title (e.g. "Action · UA").
-  final String movieSubtitle;
-  final String cinemaName;
-  final String cinemaAddress;
-  final String screen;
-  final String showDate;
-  final String showTime;
-
-  /// e.g. "IMAX 2D", "4DX", "Dolby Atmos".
-  final String format;
-  final String language;
-  final List<MovieSeat> seats;
-  final String bookingId;
-  final String orderId;
-  final TicketStatus status;
-  final MoviePosterHint posterHint;
-  final String certification;
-  final String runtime;
-
-  /// Check-in style label (VIP, QR Scan, etc.).
-  final String gateType;
-
-  /// Booking source platform name — used on universal footers only.
-  final String? sourcePlatform;
-
-  /// Whether this booking uses a QR or a barcode at the gate.
-  final MovieTicketCodeType codeType;
-
-  String get brandLabel => switch (brand) {
-        MoviePassBrand.bookMyShow => 'BookMyShow',
-        MoviePassBrand.district => 'District',
-        MoviePassBrand.universal => 'Ticket',
-      };
-
-  String get brandMicro => switch (brand) {
-        MoviePassBrand.bookMyShow => 'bookmyshow',
-        MoviePassBrand.district => 'district',
-        MoviePassBrand.universal => 'E-Ticket',
-      };
-
-  int get seatCount => seats.length;
-
-  String get seatSummary {
-    if (seats.length == 1) return seats.first.label;
-    if (seats.length <= 3) {
-      return seats.map((MovieSeat s) => s.label).join(', ');
-    }
-    return '${seats.take(2).map((s) => s.label).join(', ')} +${seats.length - 2}';
-  }
-
-  String get seatListLabel => seats.map((MovieSeat s) => s.label).join(', ');
-
-  MovieBrandPalette palette({required bool forceActive}) {
-    final bool active = forceActive || status == TicketStatus.active;
-    return MovieBrandPalette.forBrand(brand, active: active);
-  }
-
-  String get posterUrl => switch (movieTitle) {
-        'Dune: Part Two' => 'https://upload.wikimedia.org/wikipedia/en/7/72/Dune_Part_Two_poster.jpeg',
-        'Kalki 2898 AD' => 'https://upload.wikimedia.org/wikipedia/en/c/c5/Kalki_2898_AD_poster.jpg',
-        'Pushpa 2: The Rule' => 'https://upload.wikimedia.org/wikipedia/en/1/15/Pushpa_2_The_Rule_poster.jpg',
-        _ => 'https://upload.wikimedia.org/wikipedia/en/0/0f/Spider-Man_No_Way_Home_poster.jpg',
-      };
-
-  String? get posterAsset => switch (movieTitle) {
-        'Dune: Part Two' => 'assets/passes/dune_poster.jpg',
-        'Spider-Man: Brand New Day' => 'assets/passes/spiderman_poster.jpg',
-        'The Odyssey' => 'assets/passes/odyssey_poster.jpg',
-        _ => null,
-      };
-}
-
-/// Decorative poster gradient family (no external image assets).
+/// Decorative poster gradient family (UI fallback, not required from API).
 enum MoviePosterHint {
   action,
   romance,
   thriller,
   comedy,
-  sciFi,
+  sciFi;
+
+  static MoviePosterHint fromJson(Object? raw) {
+    final String s = raw?.toString().toLowerCase() ?? '';
+    return switch (s) {
+      'romance' => MoviePosterHint.romance,
+      'thriller' => MoviePosterHint.thriller,
+      'comedy' => MoviePosterHint.comedy,
+      'scifi' || 'sci_fi' || 'sci-fi' => MoviePosterHint.sciFi,
+      _ => MoviePosterHint.action,
+    };
+  }
+
+  String toJson() => name;
 }
 
 extension MoviePosterHintColors on MoviePosterHint {
@@ -229,111 +180,189 @@ extension MoviePosterHintColors on MoviePosterHint {
       };
 }
 
-// ── Mock catalogue ────────────────────────────────────────────────────────────
+class MoviePass {
+  const MoviePass({
+    required this.id,
+    required this.brand,
+    required this.movieTitle,
+    required this.movieSubtitle,
+    required this.cinemaName,
+    required this.cinemaAddress,
+    required this.screen,
+    required this.showDate,
+    required this.showTime,
+    required this.format,
+    required this.language,
+    required this.seats,
+    required this.bookingId,
+    required this.orderId,
+    required this.status,
+    this.posterHint = MoviePosterHint.action,
+    this.certification = 'UA',
+    this.runtime = '2h 28m',
+    this.gateType = 'QR Scan',
+    this.sourcePlatform,
+    this.codeType = MovieTicketCodeType.qr,
+    this.codePayload,
+    this.posterUrl,
+    this.posterAsset,
+    this.showAt,
+  }) : assert(seats.length >= 1 && seats.length <= 10);
 
-final List<MoviePass> mockMoviePasses = <MoviePass>[
-  // BookMyShow — active
-  MoviePass(
-    id: 'movie_bms_1',
-    brand: MoviePassBrand.bookMyShow,
-    movieTitle: 'Dune: Part Two',
-    movieSubtitle: 'Sci-Fi · UA 13+',
-    cinemaName: 'PVR INOX Phoenix Mall',
-    cinemaAddress: 'Phoenix Marketcity, Whitefield, Bengaluru',
-    screen: 'Screen 5 · IMAX',
-    showDate: 'Sat, 12 Apr 2025',
-    showTime: '7:15 PM',
-    format: 'IMAX 2D',
-    language: 'English',
-    seats: const <MovieSeat>[
-      MovieSeat(row: 'H', number: '12'),
-      MovieSeat(row: 'H', number: '13'),
-    ],
-    bookingId: 'BMS-8F2K9P1Q',
-    orderId: 'ORD99763JS',
-    status: TicketStatus.active,
-    posterHint: MoviePosterHint.sciFi,
-    certification: 'UA 13+',
-    runtime: '2h 46m',
-    gateType: 'QR Scan',
-  ),
+  final String id;
+  final MoviePassBrand brand;
+  final String movieTitle;
+  final String movieSubtitle;
+  final String cinemaName;
+  final String cinemaAddress;
+  final String screen;
+  final String showDate;
+  final String showTime;
+  final String format;
+  final String language;
+  final List<MovieSeat> seats;
+  final String bookingId;
+  final String orderId;
+  final TicketStatus status;
+  final MoviePosterHint posterHint;
+  final String certification;
+  final String runtime;
+  final String gateType;
+  final String? sourcePlatform;
+  final MovieTicketCodeType codeType;
 
-  // District — active
-  MoviePass(
-    id: 'movie_dist_1',
-    brand: MoviePassBrand.district,
-    movieTitle: 'The Odyssey',
-    movieSubtitle: 'Adventure · UA',
-    cinemaName: 'Cinepolis Nexus Mall',
-    cinemaAddress: 'Nexus Koramangala, Bengaluru',
-    screen: 'Audi 3',
-    showDate: 'Sun, 13 Apr 2025',
-    showTime: '10:00 PM',
-    format: 'Dolby Atmos',
-    language: 'English',
-    seats: const <MovieSeat>[
-      MovieSeat(row: 'F', number: '08'),
-      MovieSeat(row: 'F', number: '09'),
-      MovieSeat(row: 'F', number: '10'),
-    ],
-    bookingId: 'DST-4A71C2E9',
-    orderId: 'DZM8821456',
-    status: TicketStatus.active,
-    posterHint: MoviePosterHint.sciFi,
-    certification: 'UA',
-    runtime: '2h 18m',
-    gateType: 'QR Scan',
-  ),
+  /// Raw payload for a real QR/barcode library (optional until backend ships it).
+  final String? codePayload;
 
-  // Universal — active (reference-style e-ticket)
-  MoviePass(
-    id: 'movie_uni_1',
-    brand: MoviePassBrand.universal,
-    movieTitle: 'Spider-Man: Brand New Day',
-    movieSubtitle: 'Action · UA',
-    cinemaName: 'Miraj Cinemas Orion',
-    cinemaAddress: 'Orion Mall, Rajajinagar, Bengaluru',
-    screen: 'Screen 2',
-    showDate: 'Fri, 18 Apr 2025',
-    showTime: '6:30 PM',
-    format: '2D',
-    language: 'English',
-    seats: const <MovieSeat>[
-      MovieSeat(row: 'J', number: '05'),
-      MovieSeat(row: 'J', number: '06'),
-    ],
-    bookingId: 'TKT-GBD99763',
-    orderId: 'GBD99763JS',
-    status: TicketStatus.active,
-    posterHint: MoviePosterHint.action,
-    certification: 'UA',
-    runtime: '2h 15m',
-    gateType: 'Barcode',
-    sourcePlatform: 'PVR',
-    codeType: MovieTicketCodeType.barcode,
-  ),
+  /// Network poster URL from API (preferred).
+  final String? posterUrl;
 
-  // BookMyShow — expired
-  MoviePass(
-    id: 'movie_bms_2',
-    brand: MoviePassBrand.bookMyShow,
-    movieTitle: 'Kalki 2898 AD',
-    movieSubtitle: 'Sci-Fi · UA',
-    cinemaName: 'INOX Garuda Mall',
-    cinemaAddress: 'Magrath Road, Bengaluru',
-    screen: 'Screen 1',
-    showDate: 'Mon, 10 Feb 2025',
-    showTime: '4:00 PM',
-    format: '4DX',
-    language: 'Hindi',
-    seats: const <MovieSeat>[
-      MovieSeat(row: 'D', number: '14'),
-    ],
-    bookingId: 'BMS-1A2B3C4D',
-    orderId: 'ORD44120XZ',
-    status: TicketStatus.expired,
-    posterHint: MoviePosterHint.sciFi,
-    certification: 'UA',
-    runtime: '3h 01m',
-  ),
-];
+  /// Local asset path for demo fixtures only (not from API).
+  final String? posterAsset;
+
+  /// Preferred machine-readable show time (ISO-8601).
+  final String? showAt;
+
+  String get brandLabel => switch (brand) {
+        MoviePassBrand.bookMyShow => 'BookMyShow',
+        MoviePassBrand.district => 'District',
+        MoviePassBrand.universal => 'Ticket',
+      };
+
+  String get brandMicro => switch (brand) {
+        MoviePassBrand.bookMyShow => 'bookmyshow',
+        MoviePassBrand.district => 'district',
+        MoviePassBrand.universal => 'E-Ticket',
+      };
+
+  int get seatCount => seats.length;
+
+  String get seatSummary {
+    if (seats.length == 1) return seats.first.label;
+    if (seats.length <= 3) {
+      return seats.map((MovieSeat s) => s.label).join(', ');
+    }
+    return '${seats.take(2).map((s) => s.label).join(', ')} +${seats.length - 2}';
+  }
+
+  String get seatListLabel => seats.map((MovieSeat s) => s.label).join(', ');
+
+  MovieBrandPalette palette({required bool forceActive}) {
+    final bool active = forceActive || status == TicketStatus.active;
+    return MovieBrandPalette.forBrand(brand, active: active);
+  }
+
+  /// Resolved poster for UI: explicit URL, else legacy title fallback.
+  String get resolvedPosterUrl {
+    if (posterUrl != null && posterUrl!.isNotEmpty) return posterUrl!;
+    return switch (movieTitle) {
+      'Dune: Part Two' =>
+        'https://upload.wikimedia.org/wikipedia/en/7/72/Dune_Part_Two_poster.jpeg',
+      'Kalki 2898 AD' =>
+        'https://upload.wikimedia.org/wikipedia/en/c/c5/Kalki_2898_AD_poster.jpg',
+      'Pushpa 2: The Rule' =>
+        'https://upload.wikimedia.org/wikipedia/en/1/15/Pushpa_2_The_Rule_poster.jpg',
+      _ =>
+        'https://upload.wikimedia.org/wikipedia/en/0/0f/Spider-Man_No_Way_Home_poster.jpg',
+    };
+  }
+
+  /// Resolved local asset when present (demo fixtures).
+  String? get resolvedPosterAsset {
+    if (posterAsset != null) return posterAsset;
+    return switch (movieTitle) {
+      'Dune: Part Two' => 'assets/passes/dune_poster.jpg',
+      'Spider-Man: Brand New Day' => 'assets/passes/spiderman_poster.jpg',
+      'The Odyssey' => 'assets/passes/odyssey_poster.jpg',
+      _ => null,
+    };
+  }
+
+  factory MoviePass.fromJson(Map<String, dynamic> json) {
+    final List<dynamic> seatsRaw =
+        json['seats'] is List ? json['seats'] as List : const [];
+    final List<MovieSeat> seats = seatsRaw
+        .whereType<Map>()
+        .map((Map m) => MovieSeat.fromJson(Map<String, dynamic>.from(m)))
+        .toList();
+    if (seats.isEmpty) {
+      seats.add(const MovieSeat(row: 'A', number: '1'));
+    }
+
+    return MoviePass(
+      id: json['id']?.toString() ?? '',
+      brand: MoviePassBrand.fromJson(json['brand']),
+      movieTitle: json['movieTitle']?.toString() ?? '',
+      movieSubtitle: json['movieSubtitle']?.toString() ?? '',
+      cinemaName: json['cinemaName']?.toString() ?? '',
+      cinemaAddress: json['cinemaAddress']?.toString() ?? '',
+      screen: json['screen']?.toString() ?? '',
+      showDate: json['showDate']?.toString() ?? '',
+      showTime: json['showTime']?.toString() ?? '',
+      format: json['format']?.toString() ?? '',
+      language: json['language']?.toString() ?? '',
+      seats: seats,
+      bookingId: json['bookingId']?.toString() ?? '',
+      orderId: json['orderId']?.toString() ?? '',
+      status: TicketStatus.fromJson(json['status']),
+      posterHint: MoviePosterHint.fromJson(json['posterHint']),
+      certification: json['certification']?.toString() ?? 'UA',
+      runtime: json['runtime']?.toString() ?? '',
+      gateType: json['gateType']?.toString() ?? 'QR Scan',
+      sourcePlatform: json['sourcePlatform']?.toString(),
+      codeType: MovieTicketCodeType.fromJson(json['codeType']),
+      codePayload: json['codePayload']?.toString(),
+      posterUrl: json['posterUrl']?.toString(),
+      posterAsset: json['posterAsset']?.toString(),
+      showAt: json['showAt']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'id': id,
+        'brand': brand.toJson(),
+        'movieTitle': movieTitle,
+        'movieSubtitle': movieSubtitle,
+        'cinemaName': cinemaName,
+        'cinemaAddress': cinemaAddress,
+        'screen': screen,
+        'showDate': showDate,
+        'showTime': showTime,
+        'format': format,
+        'language': language,
+        'seats': seats.map((MovieSeat s) => s.toJson()).toList(),
+        'bookingId': bookingId,
+        'orderId': orderId,
+        'status': status.toJson(),
+        'posterHint': posterHint.toJson(),
+        'certification': certification,
+        'runtime': runtime,
+        'gateType': gateType,
+        if (sourcePlatform != null) 'sourcePlatform': sourcePlatform,
+        'codeType': codeType.toJson(),
+        if (codePayload != null) 'codePayload': codePayload,
+        if (posterUrl != null) 'posterUrl': posterUrl,
+        if (posterAsset != null) 'posterAsset': posterAsset,
+        if (showAt != null) 'showAt': showAt,
+      };
+}

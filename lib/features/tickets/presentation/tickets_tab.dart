@@ -1,21 +1,24 @@
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/haptics/haptic_service.dart';
 import '../../../shared/widgets/bounce_tap.dart';
 import '../../../shared/widgets/rolling_card_page.dart';
+import '../application/pass_list_provider.dart';
 import '../domain/pass_catalog.dart';
 import 'wallet_movie_card.dart';
 import 'wallet_ticket_card.dart';
 
-class TicketsTab extends StatefulWidget {
+class TicketsTab extends ConsumerStatefulWidget {
   const TicketsTab({super.key});
 
   @override
-  State<TicketsTab> createState() => _TicketsTabState();
+  ConsumerState<TicketsTab> createState() => _TicketsTabState();
 }
 
-class _TicketsTabState extends State<TicketsTab> {
+class _TicketsTabState extends ConsumerState<TicketsTab> {
   int _filterIndex = 0;
   late final PageController _pageCtrl;
 
@@ -31,28 +34,30 @@ class _TicketsTabState extends State<TicketsTab> {
     super.dispose();
   }
 
-  List<WalletPassItem> get _filtered => mockWalletPasses
-      .where(
-        (WalletPassItem p) => _filterIndex == 0
-            ? p.status == TicketStatus.active
-            : p.status == TicketStatus.expired,
-      )
-      .toList();
+  List<WalletPassItem> _filter(List<WalletPassItem> all) {
+    return all
+        .where(
+          (WalletPassItem p) => _filterIndex == 0
+              ? p.status == TicketStatus.active
+              : p.status == TicketStatus.expired,
+        )
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final List<WalletPassItem> filtered = _filtered;
+    final AsyncValue<List<WalletPassItem>> asyncPasses =
+        ref.watch(passListProvider);
     final double fabClearance =
         MediaQuery.of(context).padding.bottom + 16 + 58 + 20;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // ── Filter pills ─────────────────────────────────────────────
+      children: <Widget>[
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
           child: Row(
-            children: [
+            children: <Widget>[
               _FilterPill(
                 label: 'Active',
                 selected: _filterIndex == 0,
@@ -60,7 +65,7 @@ class _TicketsTabState extends State<TicketsTab> {
                   HapticService.select();
                   setState(() {
                     _filterIndex = 0;
-                    _pageCtrl.jumpToPage(0);
+                    if (_pageCtrl.hasClients) _pageCtrl.jumpToPage(0);
                   });
                 },
               ),
@@ -72,69 +77,85 @@ class _TicketsTabState extends State<TicketsTab> {
                   HapticService.select();
                   setState(() {
                     _filterIndex = 1;
-                    _pageCtrl.jumpToPage(0);
+                    if (_pageCtrl.hasClients) _pageCtrl.jumpToPage(0);
                   });
                 },
               ),
             ],
           ),
         ),
-
         const SizedBox(height: 12),
-
-        // ── Cards + dot indicator ────────────────────────────────────
         Expanded(
-          child: filtered.isEmpty
-              ? _EmptyState(isActive: _filterIndex == 0)
-              : Stack(
-                  children: [
-                    PageView.builder(
-                      controller: _pageCtrl,
-                      scrollDirection: Axis.vertical,
-                      physics: const BouncingScrollPhysics(
-                        parent: AlwaysScrollableScrollPhysics(),
-                      ),
-                      itemCount: filtered.length,
-                      itemBuilder: (context, index) {
-                        final WalletPassItem item = filtered[index];
-                        return RollingCardPage(
-                          controller: _pageCtrl,
-                          index: index,
-                          padding: EdgeInsets.fromLTRB(20, 0, 28, fabClearance),
-                          child: switch (item) {
-                            TrainPassItem(:final ticket) => WalletTicketCard(
-                                key: ValueKey<String>(ticket.id),
-                                ticket: ticket,
-                              ),
-                            MoviePassItem(:final pass) => WalletMovieCard(
-                                key: ValueKey<String>(pass.id),
-                                pass: pass,
-                              ),
-                          },
-                        );
-                      },
+          child: asyncPasses.when(
+            loading: () => const Center(
+              child: SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
+            ),
+            error: (Object err, StackTrace st) => _ErrorState(
+              message: err.toString(),
+              onRetry: () => ref.read(passListProvider.notifier).refresh(),
+            ),
+            data: (List<WalletPassItem> all) {
+              final List<WalletPassItem> filtered = _filter(all);
+              if (filtered.isEmpty) {
+                return _EmptyState(isActive: _filterIndex == 0);
+              }
+              return Stack(
+                children: <Widget>[
+                  PageView.builder(
+                    controller: _pageCtrl,
+                    scrollDirection: Axis.vertical,
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
                     ),
-                    // Right-side dot indicator
-                    if (filtered.length > 1)
-                      Positioned(
-                        right: 12,
-                        top: 0,
-                        bottom: fabClearance,
-                        child: Center(
-                          child: AnimatedBuilder(
-                            animation: _pageCtrl,
-                            builder: (context, _) {
-                              final double page = _pageCtrl.page ?? 0;
-                              return _DotIndicator(
-                                count: filtered.length,
-                                page: page,
-                              );
-                            },
-                          ),
+                    itemCount: filtered.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final WalletPassItem item = filtered[index];
+                      return RollingCardPage(
+                        controller: _pageCtrl,
+                        index: index,
+                        padding:
+                            EdgeInsets.fromLTRB(20, 0, 28, fabClearance),
+                        child: switch (item) {
+                          TrainPassItem(:final ticket) => WalletTicketCard(
+                              key: ValueKey<String>(ticket.id),
+                              ticket: ticket,
+                            ),
+                          MoviePassItem(:final pass) => WalletMovieCard(
+                              key: ValueKey<String>(pass.id),
+                              pass: pass,
+                            ),
+                        },
+                      );
+                    },
+                  ),
+                  if (filtered.length > 1)
+                    Positioned(
+                      right: 12,
+                      top: 0,
+                      bottom: fabClearance,
+                      child: Center(
+                        child: AnimatedBuilder(
+                          animation: _pageCtrl,
+                          builder: (BuildContext context, Widget? _) {
+                            final double page = _pageCtrl.hasClients
+                                ? (_pageCtrl.page ?? 0)
+                                : 0;
+                            return _DotIndicator(
+                              count: filtered.length,
+                              page: page,
+                            );
+                          },
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
+              );
+            },
+          ),
         ),
       ],
     );
@@ -156,7 +177,7 @@ class _DotIndicator extends StatelessWidget {
     if (count <= _dotThreshold) {
       return Column(
         mainAxisSize: MainAxisSize.min,
-        children: List.generate(count, (i) {
+        children: List<Widget>.generate(count, (int i) {
           final double distance = (page - i).abs().clamp(0.0, 1.0);
           final double size = lerpDouble(10, 6, distance)!;
           final double opacity = lerpDouble(1.0, 0.25, distance)!;
@@ -189,7 +210,7 @@ class _DotIndicator extends StatelessWidget {
       width: 4,
       height: _trackH,
       child: Stack(
-        children: [
+        children: <Widget>[
           Container(
             width: 4,
             height: _trackH,
@@ -232,8 +253,8 @@ class _FilterPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
 
     final Color activeColor =
         isDark ? theme.colorScheme.primary : const Color(0xFF1F3A60);
@@ -271,7 +292,7 @@ class _FilterPill extends StatelessWidget {
   }
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
+// ── Empty / error ─────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.isActive});
@@ -279,7 +300,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color contentColor = isDark
         ? Colors.white.withValues(alpha: 0.35)
         : Colors.black.withValues(alpha: 0.35);
@@ -287,7 +308,7 @@ class _EmptyState extends StatelessWidget {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: [
+        children: <Widget>[
           Icon(
             Icons.confirmation_number_outlined,
             size: 44,
@@ -303,6 +324,68 @@ class _EmptyState extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(Icons.cloud_off_rounded, size: 40, color: scheme.error),
+            const SizedBox(height: 12),
+            Text(
+              'Couldn’t load passes',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: scheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                color: scheme.onSurface.withValues(alpha: 0.55),
+              ),
+            ),
+            const SizedBox(height: 16),
+            BounceTap(
+              onTap: onRetry,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                decoration: BoxDecoration(
+                  color: scheme.primary,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  'Retry',
+                  style: TextStyle(
+                    color: scheme.onPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
