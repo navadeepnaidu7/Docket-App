@@ -9,6 +9,12 @@ enum MoviePassBrand {
   universal,
 }
 
+/// Gate entry code shown on the e-ticket (one per booking).
+enum MovieTicketCodeType {
+  qr,
+  barcode,
+}
+
 /// One seat on a movie booking.
 class MovieSeat {
   const MovieSeat({
@@ -104,6 +110,8 @@ class MoviePass {
     this.certification = 'UA',
     this.runtime = '2h 28m',
     this.gateType = 'QR Scan',
+    this.sourcePlatform,
+    this.codeType = MovieTicketCodeType.qr,
   }) : assert(seats.length >= 1 && seats.length <= 10);
 
   final String id;
@@ -131,6 +139,12 @@ class MoviePass {
 
   /// Check-in style label (VIP, QR Scan, etc.).
   final String gateType;
+
+  /// Booking source platform name — used on universal footers only.
+  final String? sourcePlatform;
+
+  /// Whether this booking uses a QR or a barcode at the gate.
+  final MovieTicketCodeType codeType;
 
   String get brandLabel => switch (brand) {
         MoviePassBrand.bookMyShow => 'BookMyShow',
@@ -294,7 +308,9 @@ final List<MoviePass> mockMoviePasses = <MoviePass>[
     posterHint: MoviePosterHint.action,
     certification: 'UA',
     runtime: '2h 15m',
-    gateType: 'Standard',
+    gateType: 'Barcode',
+    sourcePlatform: 'PVR',
+    codeType: MovieTicketCodeType.barcode,
   ),
 
   // BookMyShow — expired

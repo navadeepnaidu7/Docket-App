@@ -1,27 +1,30 @@
-import 'dart:ui';
-
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/haptics/haptic_service.dart';
-import '../../../core/motion/entry_reveal.dart';
 import '../../../core/sound/sound_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../shared/widgets/bounce_tap.dart';
-import '../../../shared/widgets/apple_sheet.dart';
+import '../../../core/validation/document_validators.dart';
 import '../../../shared/widgets/completion_celebration.dart';
+import '../../../shared/widgets/document_date_picker.dart';
+import '../../../shared/widgets/entry/document_entry_scaffold.dart';
+import '../../../shared/widgets/entry/entry_method_card.dart';
+import '../../../shared/widgets/entry/entry_review_summary.dart';
 import '../../../shared/widgets/studio_field.dart';
+import '../../../shared/widgets/studio_section.dart';
 import '../../dashboard/application/wallet_order_provider.dart';
 import '../application/id_draft_controller.dart';
 import '../application/id_list_provider.dart';
 import '../application/id_scanner_service.dart';
 import '../domain/id_document.dart';
-import '../../../core/validation/document_validators.dart';
+import '../domain/id_document_catalog.dart';
 import 'id_scanner_screen.dart';
+
+enum _IdStep { method, details, review }
 
 class IdEntryScreen extends ConsumerStatefulWidget {
   const IdEntryScreen({super.key, required this.type});
@@ -40,17 +43,24 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
   late final TextEditingController _addressCtrl;
   late final TextEditingController _genderCtrl;
 
+  _IdStep _step = _IdStep.method;
+  String? _bannerError;
+  bool _cameFromScan = false;
+
+  bool get _isPan => widget.type == IdDocumentType.pan;
+
+  String get _docLabel =>
+      IdDocumentCatalog.titleFor(widget.type);
+
   @override
   void initState() {
     super.initState();
-    // Initialize controllers with empty values immediately
     _nameCtrl = TextEditingController();
     _numberCtrl = TextEditingController();
     _dobCtrl = TextEditingController();
     _fatherCtrl = TextEditingController();
     _addressCtrl = TextEditingController();
     _genderCtrl = TextEditingController();
-    // Defer provider mutation until after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(idDraftProvider.notifier).reset(widget.type);
     });
@@ -68,7 +78,7 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
   }
 
   void _syncDraft() {
-    final n = ref.read(idDraftProvider.notifier);
+    final IdDraftController n = ref.read(idDraftProvider.notifier);
     n
       ..updateHolderName(_nameCtrl.text)
       ..updateDocumentNumber(_numberCtrl.text)
@@ -78,10 +88,42 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
       ..updateGender(_genderCtrl.text);
   }
 
+  void _goTo(_IdStep step) {
+    HapticService.select();
+    setState(() {
+      _step = step;
+      _bannerError = null;
+    });
+  }
+
+  void _onBack() {
+    switch (_step) {
+      case _IdStep.method:
+        Navigator.of(context).maybePop();
+      case _IdStep.details:
+        _goTo(_IdStep.method);
+      case _IdStep.review:
+        _goTo(_cameFromScan ? _IdStep.method : _IdStep.details);
+    }
+  }
+
+  int get _progressIndex => switch (_step) {
+        _IdStep.method => 0,
+        _IdStep.details => 1,
+        _IdStep.review => 2,
+      };
+
+  String get _title => switch (_step) {
+        _IdStep.method => 'Add $_docLabel',
+        _IdStep.details => '$_docLabel details',
+        _IdStep.review => 'Review',
+      };
+
   Future<void> _openScanner() async {
-    final result = await Navigator.of(context).push<IdScanResult>(
+    final IdScanResult? result = await Navigator.of(context).push<IdScanResult>(
       MaterialPageRoute<IdScanResult>(
-          builder: (_) => IdScannerScreen(type: widget.type)),
+        builder: (_) => IdScannerScreen(type: widget.type),
+      ),
     );
     if (result == null || !mounted) return;
 
@@ -96,507 +138,344 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
     _syncDraft();
     ref.read(idDraftProvider.notifier).updateQrImageBase64(result.qrCodeData);
     if (result.capturedImagePath.isNotEmpty) {
-      // Encode the full image to base64 so it persists across app restarts
       try {
-        final bytes = await File(result.capturedImagePath).readAsBytes();
-        ref.read(idDraftProvider.notifier).updateImagePath(base64Encode(bytes));
+        final List<int> bytes =
+            await File(result.capturedImagePath).readAsBytes();
+        ref
+            .read(idDraftProvider.notifier)
+            .updateImagePath(base64Encode(bytes));
       } catch (_) {
-        ref.read(idDraftProvider.notifier).updateImagePath(result.capturedImagePath);
+        ref
+            .read(idDraftProvider.notifier)
+            .updateImagePath(result.capturedImagePath);
       }
     }
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Row(children: [
+    _cameFromScan = true;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(children: <Widget>[
           Icon(Icons.check_circle_rounded, color: Colors.white),
           SizedBox(width: 10),
-          Text('Fields filled from scan — please review'),
+          Text('Scanned — review details before saving'),
         ]),
-        backgroundColor: const Color(0xFF34C759),
+        backgroundColor: AppTheme.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        duration: const Duration(seconds: 3),
-      ));
-    }
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    _goTo(_IdStep.review);
   }
 
-  void _save() {
+  bool _validateDetails() {
     _syncDraft();
-    final doc = ref.read(idDraftProvider);
+    final IdDocument doc = ref.read(idDraftProvider);
 
     if (doc.holderName.trim().isEmpty && doc.documentNumber.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Row(children: [
-          Icon(Icons.warning_rounded, color: Colors.white),
-          SizedBox(width: 10),
-          Text('Please fill in at least a name or document number.'),
-        ]),
-        backgroundColor: const Color(0xFFFF3B30),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        duration: const Duration(seconds: 3),
-      ));
-      return;
+      setState(
+        () => _bannerError =
+            'Add at least a name or document number to continue.',
+      );
+      return false;
     }
 
-    // Date and format validation ("exceptions")
-    final isPan = doc.type == IdDocumentType.pan;
-    final typeForVal = isPan
+    final IdDocumentTypeForValidation typeForVal = _isPan
         ? IdDocumentTypeForValidation.pan
         : IdDocumentTypeForValidation.aadhaar;
 
-    final validationError = DocumentValidators.validateIdForSave(
+    final String? validationError = DocumentValidators.validateIdForSave(
       dateOfBirth: doc.dateOfBirth,
       documentNumber: doc.documentNumber,
       type: typeForVal,
     );
 
     if (validationError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Row(children: [
-          const Icon(Icons.warning_rounded, color: Colors.white),
-          const SizedBox(width: 10),
-          Expanded(child: Text(validationError)),
-        ]),
-        backgroundColor: const Color(0xFFFF3B30),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        duration: const Duration(seconds: 4),
-      ));
+      setState(() => _bannerError = validationError);
+      return false;
+    }
+
+    setState(() => _bannerError = null);
+    return true;
+  }
+
+  void _continueFromDetails() {
+    if (!_validateDetails()) return;
+    _cameFromScan = false;
+    _goTo(_IdStep.review);
+  }
+
+  void _save() {
+    if (!_validateDetails()) {
+      _goTo(_IdStep.details);
       return;
     }
 
+    final IdDocument doc = ref.read(idDraftProvider);
     HapticService.success();
     SoundService.success();
     ref.read(idListProvider.notifier).addDocument(doc);
     ref.read(walletOrderProvider.notifier).updateOrderOnItemAdded(doc.id);
-
     showWalletSaveCelebration(context);
   }
 
-  Future<void> _selectDate(TextEditingController ctrl, {bool adultDob = false}) async {
-    DateTime init = DateTime(2000);
-    if (ctrl.text.isNotEmpty) {
-      try {
-        init = DateTime.parse(ctrl.text);
-      } catch (_) {}
+  @override
+  Widget build(BuildContext context) {
+    final bool showCta =
+        _step == _IdStep.details || _step == _IdStep.review;
+
+    String? ctaLabel;
+    IconData? ctaIcon;
+    VoidCallback? ctaAction;
+
+    switch (_step) {
+      case _IdStep.method:
+        break;
+      case _IdStep.details:
+        ctaLabel = 'Continue';
+        ctaIcon = Icons.arrow_forward_rounded;
+        ctaAction = _continueFromDetails;
+      case _IdStep.review:
+        ctaLabel = 'Save to wallet';
+        ctaIcon = Icons.wallet_rounded;
+        ctaAction = _save;
     }
 
-    final now = DateTime.now();
-    DateTime maxDate = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 1));
-    if (adultDob) {
-      maxDate = DateTime(now.year - 18, now.month, now.day);
-    }
-
-    await showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return AppleSheet(
-          title: 'Select Date',
-          showDragHandle: true,
-          child: SizedBox(
-            height: 200,
-            child: CupertinoTheme(
-              data: CupertinoThemeData(
-                brightness: isDark ? Brightness.dark : Brightness.light,
-                textTheme: CupertinoTextThemeData(
-                  dateTimePickerTextStyle: TextStyle(
-                    color: isDark ? Colors.white : const Color(0xFF1C1C1E),
-                    fontSize: 20,
-                  ),
-                ),
-              ),
-              child: CupertinoDatePicker(
-                mode: CupertinoDatePickerMode.date,
-                initialDateTime: init,
-                minimumDate: DateTime(1900),
-                maximumDate: maxDate,
-                onDateTimeChanged: (d) {
-                  ctrl.text =
-                      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-                  _syncDraft();
-                },
-              ),
-            ),
+    return DocumentEntryScaffold(
+      title: _title,
+      stepIndex: _progressIndex,
+      stepCount: 3,
+      onBack: _onBack,
+      primaryLabel: showCta ? ctaLabel : null,
+      primaryIcon: ctaIcon,
+      onPrimary: ctaAction,
+      banner: _bannerError != null ? EntryBanner(message: _bannerError!) : null,
+      body: switch (_step) {
+        _IdStep.method => _MethodStep(
+            docLabel: _docLabel,
+            isPan: _isPan,
+            onScan: _openScanner,
+            onManual: () => _goTo(_IdStep.details),
           ),
-        );
+        _IdStep.details => _DetailsStep(
+            isPan: _isPan,
+            nameCtrl: _nameCtrl,
+            numberCtrl: _numberCtrl,
+            dobCtrl: _dobCtrl,
+            fatherCtrl: _fatherCtrl,
+            addressCtrl: _addressCtrl,
+            genderCtrl: _genderCtrl,
+            onChanged: () {
+              _syncDraft();
+              if (_bannerError != null) setState(() => _bannerError = null);
+            },
+          ),
+        _IdStep.review => _ReviewStep(
+            doc: ref.watch(idDraftProvider),
+            isPan: _isPan,
+            onEdit: () => _goTo(_IdStep.details),
+          ),
       },
     );
   }
+}
+
+// ── Steps ─────────────────────────────────────────────────────────────────────
+
+class _MethodStep extends StatelessWidget {
+  const _MethodStep({
+    required this.docLabel,
+    required this.isPan,
+    required this.onScan,
+    required this.onManual,
+  });
+
+  final String docLabel;
+  final bool isPan;
+  final VoidCallback onScan;
+  final VoidCallback onManual;
 
   @override
   Widget build(BuildContext context) {
-    final isPan = widget.type == IdDocumentType.pan;
-    final label = isPan ? 'PAN Card' : 'Aadhaar Card';
-
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 10),
-          child: _CircleButton(
-              icon: Icons.arrow_back_rounded,
-              onTap: () => Navigator.of(context).pop()),
-        ),
-        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: _CircleButton(icon: Icons.check_rounded, onTap: _save),
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Text(
+          'How would you like to add it?',
+          style: GoogleFonts.inter(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.45,
+            color: scheme.onSurface,
           ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          const _StudioBackdrop(),
-          SafeArea(
-            child: ListView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 72, 20, 30),
-              children: [
-                const SizedBox(height: 18),
-                EntryReveal(
-                  child: _GlassPanel(
-                    child: Column(
-                      children: [
-                        _ScanButton(
-                            label: 'Scan $label',
-                            onTap: _openScanner),
-                        const _OrDivider(),
-                        StudioField(
-                            controller: _nameCtrl,
-                            label: 'Full Name',
-                            icon: Icons.person_rounded,
-                            onChanged: _syncDraft),
-                        StudioField(
-                            controller: _numberCtrl,
-                            label: isPan ? 'PAN Number' : 'Aadhaar Number',
-                            icon: Icons.badge_rounded,
-                            onChanged: _syncDraft,
-                            textCapitalization: isPan
-                                ? TextCapitalization.characters
-                                : TextCapitalization.none),
-                        StudioField(
-                            controller: _dobCtrl,
-                            label: 'Date of Birth',
-                            icon: Icons.cake_rounded,
-                            onChanged: _syncDraft,
-                            readOnly: true,
-                            onTap: () => _selectDate(_dobCtrl, adultDob: isPan)),
-                        if (isPan)
-                          StudioField(
-                              controller: _fatherCtrl,
-                              label: "Father's Name",
-                              icon: Icons.people_rounded,
-                              onChanged: _syncDraft),
-                        if (!isPan) ...[
-                          StudioField(
-                              controller: _genderCtrl,
-                              label: 'Gender',
-                              icon: Icons.person_outline_rounded,
-                              onChanged: _syncDraft),
-                          StudioField(
-                              controller: _addressCtrl,
-                              label: 'Address',
-                              icon: Icons.location_on_rounded,
-                              onChanged: _syncDraft,
-                              maxLines: 3),
-                        ],
-                      ],
-                    ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          isPan
+              ? 'Scan the PAN card to auto-fill, or type the details yourself.'
+              : 'Scan the Aadhaar card or QR to auto-fill, or enter details.',
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            height: 1.4,
+            color: AppTokens.secondaryLabel(scheme),
+          ),
+        ),
+        const SizedBox(height: 24),
+        EntryMethodCard(
+          hero: true,
+          icon: Icons.document_scanner_rounded,
+          title: 'Scan $docLabel',
+          subtitle: 'Camera · auto-fill fields',
+          onTap: onScan,
+        ),
+        const SizedBox(height: 8),
+        EntryTextAction(
+          label: 'Enter details manually',
+          onTap: onManual,
+        ),
+      ],
+    );
+  }
+}
+
+class _DetailsStep extends StatelessWidget {
+  const _DetailsStep({
+    required this.isPan,
+    required this.nameCtrl,
+    required this.numberCtrl,
+    required this.dobCtrl,
+    required this.fatherCtrl,
+    required this.addressCtrl,
+    required this.genderCtrl,
+    required this.onChanged,
+  });
+
+  final bool isPan;
+  final TextEditingController nameCtrl;
+  final TextEditingController numberCtrl;
+  final TextEditingController dobCtrl;
+  final TextEditingController fatherCtrl;
+  final TextEditingController addressCtrl;
+  final TextEditingController genderCtrl;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const EntrySectionLabel('Identity'),
+        StudioSection(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 12, 10, 4),
+            child: Column(
+              children: <Widget>[
+                StudioField(
+                  controller: nameCtrl,
+                  label: 'Full name',
+                  icon: Icons.person_rounded,
+                  onChanged: onChanged,
+                  textCapitalization: TextCapitalization.words,
+                ),
+                StudioField(
+                  controller: dobCtrl,
+                  label: 'Date of birth',
+                  icon: Icons.cake_rounded,
+                  readOnly: true,
+                  onTap: () => showDocumentDatePicker(
+                    context: context,
+                    controller: dobCtrl,
+                    onChanged: onChanged,
+                    kind: DocumentDateKind.dateOfBirth,
+                    adultDob: isPan,
+                    title: 'Date of birth',
                   ),
+                  onChanged: onChanged,
                 ),
-                const SizedBox(height: 18),
-                EntryReveal(
-                  delay: const Duration(milliseconds: 80),
-                  child: _SaveButton(onTap: _save),
-                ),
+                if (isPan)
+                  StudioField(
+                    controller: fatherCtrl,
+                    label: "Father's name",
+                    icon: Icons.people_rounded,
+                    onChanged: onChanged,
+                    textCapitalization: TextCapitalization.words,
+                  ),
+                if (!isPan)
+                  StudioField(
+                    controller: genderCtrl,
+                    label: 'Gender',
+                    icon: Icons.person_outline_rounded,
+                    onChanged: onChanged,
+                  ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Backdrop ──────────────────────────────────────────────────────────────────
-
-class _StudioBackdrop extends StatelessWidget {
-  const _StudioBackdrop();
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final Brightness brightness = theme.brightness;
-    final List<Color> colors = AppTheme.studioGradient(brightness);
-    final Color lineColor = AppTokens.hairline(theme.colorScheme);
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: colors,
         ),
-      ),
-      child: SizedBox.expand(child: CustomPaint(painter: _StudioPainter(lineColor: lineColor))),
-    );
-  }
-}
-
-class _StudioPainter extends CustomPainter {
-  const _StudioPainter({required this.lineColor});
-  final Color lineColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = lineColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-
-    for (int i = 0; i < 12; i++) {
-      final double top = 86 + i * 34;
-      final Rect rect = Rect.fromLTWH(
-        18 + i * 3,
-        top,
-        size.width - 36 - i * 6,
-        22,
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(18)),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _StudioPainter oldDelegate) => oldDelegate.lineColor != lineColor;
-}
-
-// ── Shared widgets ────────────────────────────────────────────────────────────
-
-class _GlassPanel extends StatelessWidget {
-  const _GlassPanel({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(30),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : Colors.white.withValues(alpha: 0.74),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.white.withValues(alpha: 0.40),
-            ),
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
-class _ScanButton extends StatelessWidget {
-  const _ScanButton({required this.label, required this.onTap});
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final Gradient gradient = isDark
-        ? LinearGradient(
-            colors: <Color>[
-              theme.colorScheme.primary.withValues(alpha: 0.9),
-              theme.colorScheme.primary.withValues(alpha: 0.7),
-            ],
-          )
-        : const LinearGradient(
-            colors: <Color>[Color(0xFF1A1A2E), Color(0xFF16213E)],
-          );
-
-    final Color shadowColor = isDark
-        ? theme.colorScheme.primary.withValues(alpha: 0.20)
-        : const Color(0xFF1A1A2E).withValues(alpha: 0.25);
-
-    return BounceTap(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: shadowColor,
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 22),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
+        const SizedBox(height: 18),
+        const EntrySectionLabel('Document'),
+        StudioSection(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 12, 10, 4),
+            child: Column(
+              children: <Widget>[
+                StudioField(
+                  controller: numberCtrl,
+                  label: isPan ? 'PAN number' : 'Aadhaar number',
+                  icon: Icons.badge_rounded,
+                  onChanged: onChanged,
+                  textCapitalization: isPan
+                      ? TextCapitalization.characters
+                      : TextCapitalization.none,
+                  keyboardType:
+                      isPan ? TextInputType.text : TextInputType.number,
+                ),
+                if (!isPan)
+                  StudioField(
+                    controller: addressCtrl,
+                    label: 'Address',
+                    icon: Icons.location_on_rounded,
+                    onChanged: onChanged,
+                    maxLines: 3,
                   ),
-                ),
-                const Text(
-                  'Auto-fill from camera',
-                  style: TextStyle(color: Colors.white54, fontSize: 11),
-                ),
               ],
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
 
-class _OrDivider extends StatelessWidget {
-  const _OrDivider();
+class _ReviewStep extends StatelessWidget {
+  const _ReviewStep({
+    required this.doc,
+    required this.isPan,
+    required this.onEdit,
+  });
+
+  final IdDocument doc;
+  final bool isPan;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color lineColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1);
-    final Color textColor = isDark ? Colors.white.withValues(alpha: 0.35) : Colors.black.withValues(alpha: 0.35);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      child: Row(
-        children: [
-          Expanded(child: Divider(color: lineColor, thickness: 1)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              'or enter manually',
-              style: TextStyle(
-                color: textColor,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          Expanded(child: Divider(color: lineColor, thickness: 1)),
+    return EntryReviewSummary(
+      title: doc.holderName.isEmpty
+          ? IdDocumentCatalog.titleFor(doc.type)
+          : doc.holderName,
+      onEdit: onEdit,
+      rows: <(String, String)>[
+        (isPan ? 'PAN' : 'Aadhaar', doc.documentNumber),
+        ('Date of birth', doc.dateOfBirth),
+        if (isPan) ("Father's name", doc.fatherName),
+        if (!isPan) ...<(String, String)>[
+          ('Gender', doc.gender),
+          ('Address', doc.address),
         ],
-      ),
+      ],
     );
   }
 }
-
-class _SaveButton extends StatelessWidget {
-  const _SaveButton({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final Color buttonColor = isDark ? theme.colorScheme.primary : const Color(0xFF07111F);
-    final Color shadowColor = isDark ? theme.colorScheme.primary.withValues(alpha: 0.22) : const Color(0xFF07111F).withValues(alpha: 0.22);
-
-    return BounceTap(
-      onTap: onTap,
-      child: Container(
-        height: 58,
-        decoration: BoxDecoration(
-          color: buttonColor,
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(
-              color: shadowColor,
-              blurRadius: 18,
-              offset: const Offset(0, 14),
-            ),
-          ],
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.save_rounded, color: Colors.white),
-            SizedBox(width: 10),
-            Text(
-              'Save',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CircleButton extends StatelessWidget {
-  const _CircleButton({required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return BounceTap(
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.10)
-                  : Colors.white.withValues(alpha: 0.70),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.white,
-              ),
-            ),
-            child: Icon(
-              icon,
-              color: isDark ? Colors.white : const Color(0xFF07111F),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-

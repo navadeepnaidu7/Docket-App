@@ -4,8 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/ticket_models.dart';
+import 'train/train_ticket_face.dart';
 
-/// Fullscreen train pass detail ΓÇö Details | Live status (reference-inspired).
+/// Fullscreen train pass detail — ticket face, then Details | Live status.
 class TicketDetailScreen extends StatefulWidget {
   const TicketDetailScreen({super.key, required this.ticket});
 
@@ -17,6 +18,96 @@ class TicketDetailScreen extends StatefulWidget {
 
 class _TicketDetailScreenState extends State<TicketDetailScreen> {
   int _tab = 0; // 0 Details, 1 Live status
+
+  void _openCodes(BuildContext context, MockTicket t) {
+    HapticService.tap();
+    _showQrSheet(context, t);
+  }
+
+  void _showQrSheet(BuildContext context, MockTicket t) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color ink = theme.colorScheme.onSurface;
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: ink.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Ticket QR',
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: ink,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: isDark
+                        ? null
+                        : Border.all(color: Colors.black.withValues(alpha: 0.06)),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.qr_code_2_rounded,
+                    size: 140,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  t.pnr,
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2,
+                    color: ink,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'PNR Number',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: ink.withValues(alpha: 0.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,9 +129,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            // App bar
             Padding(
-              padding: const EdgeInsets.fromLTRB(4, 0, 12, 0),
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
               child: Row(
                 children: <Widget>[
                   IconButton(
@@ -49,7 +139,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   ),
                   Expanded(
                     child: Text(
-                      t.trainNumber,
+                      'E-Ticket',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         fontSize: 16,
@@ -59,48 +149,55 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 48), // balance close button
+                  const SizedBox(width: 48),
                 ],
               ),
             ),
-
-            // Segmented control
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: _SegmentedTabs(
-                index: _tab,
-                onChanged: (int i) {
-                  HapticService.select();
-                  setState(() => _tab = i);
-                },
-                isDark: isDark,
-              ),
-            ),
-
             Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
-                child: _tab == 0
-                    ? _DetailsTab(
-                        key: const ValueKey<String>('details'),
-                        ticket: t,
-                        cardSurface: cardSurface,
-                        border: border,
-                        ink: ink,
-                        muted: muted,
-                        isDark: isDark,
-                      )
-                    : _LiveStatusTab(
-                        key: const ValueKey<String>('live'),
-                        ticket: t,
-                        cardSurface: cardSurface,
-                        border: border,
-                        ink: ink,
-                        muted: muted,
-                        isDark: isDark,
-                      ),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                physics: const BouncingScrollPhysics(),
+                children: <Widget>[
+                  TrainTicketFace(
+                    ticket: t,
+                    density: TrainTicketDensity.detail,
+                    useBrandColors: true,
+                    onOpenCodes: () => _openCodes(context, t),
+                  ),
+                  const SizedBox(height: 18),
+                  _SegmentedTabs(
+                    index: _tab,
+                    onChanged: (int i) {
+                      HapticService.select();
+                      setState(() => _tab = i);
+                    },
+                    isDark: isDark,
+                  ),
+                  const SizedBox(height: 14),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    child: _tab == 0
+                        ? _DetailsTab(
+                            key: const ValueKey<String>('details'),
+                            ticket: t,
+                            cardSurface: cardSurface,
+                            border: border,
+                            ink: ink,
+                            muted: muted,
+                          )
+                        : _LiveStatusTab(
+                            key: const ValueKey<String>('live'),
+                            ticket: t,
+                            cardSurface: cardSurface,
+                            border: border,
+                            ink: ink,
+                            muted: muted,
+                            isDark: isDark,
+                          ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -227,7 +324,6 @@ class _DetailsTab extends StatelessWidget {
     required this.border,
     required this.ink,
     required this.muted,
-    required this.isDark,
   });
 
   final MockTicket ticket;
@@ -235,134 +331,17 @@ class _DetailsTab extends StatelessWidget {
   final Color border;
   final Color ink;
   final Color muted;
-  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
     final MockTicket t = ticket;
     final bool confirmed = t.status == TicketStatus.active;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+    // Nested under the parent ListView (ticket face + tabs above).
+    return Column(
+      key: key,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        // Train header
-        Text(
-          t.trainTitle,
-          style: GoogleFonts.inter(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.4,
-            color: ink,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          t.ticketClass,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: muted,
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        // Route strip card
-        _SurfaceCard(
-          surface: cardSurface,
-          border: border,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        t.fromCode,
-                        style: GoogleFonts.inter(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -1.2,
-                          color: ink,
-                          height: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        t.fromName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: muted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: _DottedLine(color: muted.withValues(alpha: 0.45)),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                            child: Icon(
-                              Icons.train_rounded,
-                              size: 18,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                          Expanded(
-                            child: _DottedLine(color: muted.withValues(alpha: 0.45)),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: <Widget>[
-                      Text(
-                        t.toCode,
-                        style: GoogleFonts.inter(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -1.2,
-                          color: ink,
-                          height: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        t.toName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: muted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // Journey info
         _SurfaceCard(
           surface: cardSurface,
           border: border,
@@ -431,10 +410,7 @@ class _DetailsTab extends StatelessWidget {
             ],
           ),
         ),
-
-        const SizedBox(height: 16),
-
-        // Passengers (1–6) — same card style as before
+        const SizedBox(height: 12),
         _SurfaceCard(
           surface: cardSurface,
           border: border,
@@ -476,37 +452,6 @@ class _DetailsTab extends StatelessWidget {
             ],
           ),
         ),
-
-        const SizedBox(height: 20),
-
-        // QR CTA
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: FilledButton.icon(
-            onPressed: () {
-              HapticService.tap();
-              _showQrSheet(context, t);
-            },
-            icon: const Icon(Icons.qr_code_2_rounded, size: 22),
-            label: Text(
-              'Show ticket QR',
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            style: FilledButton.styleFrom(
-              backgroundColor: isDark
-                  ? Theme.of(context).colorScheme.primary
-                  : const Color(0xFF1C1C1E),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -519,91 +464,6 @@ class _DetailsTab extends StatelessWidget {
       b.write(pnr[i]);
     }
     return b.toString();
-  }
-
-  void _showQrSheet(BuildContext context, MockTicket t) {
-    final ThemeData theme = Theme.of(context);
-    final bool isDark = theme.brightness == Brightness.dark;
-    final Color ink = theme.colorScheme.onSurface;
-
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: theme.scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (BuildContext ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: ink.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Ticket QR',
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: ink,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: isDark
-                        ? null
-                        : Border.all(color: Colors.black.withValues(alpha: 0.06)),
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.qr_code_2_rounded,
-                    size: 140,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  t.pnr,
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 2,
-                    color: ink,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'PNR Number',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: ink.withValues(alpha: 0.5),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 }
 
@@ -649,8 +509,10 @@ class _LiveStatusTab extends StatelessWidget {
     final TicketHalt? next = t.nextHalt;
     final bool completed = t.status == TicketStatus.expired;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+    // Nested under the parent ListView (ticket face + tabs above).
+    return Column(
+      key: key,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -705,7 +567,7 @@ class _LiveStatusTab extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         if (halts.isEmpty)
           _SurfaceCard(
             surface: cardSurface,
@@ -740,7 +602,7 @@ class _LiveStatusTab extends StatelessWidget {
             ),
           ),
         if (next != null && !completed) ...<Widget>[
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _SurfaceCard(
             surface: cardSurface,
             border: border,
@@ -806,7 +668,7 @@ class _LiveStatusTab extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Center(
           child: Text(
             'All times are in IST',
@@ -1305,27 +1167,4 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class _DottedLine extends StatelessWidget {
-  const _DottedLine({required this.color});
-  final Color color;
 
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints c) {
-        final int count = (c.maxWidth / 6).floor().clamp(1, 40);
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: List<Widget>.generate(
-            count,
-            (_) => Container(
-              width: 3,
-              height: 1.5,
-              color: color,
-            ),
-          ),
-        );
-      },
-    );
-  }
-}

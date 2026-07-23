@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/movie_pass_models.dart';
+import 'movie/movie_ticket_code_screen.dart';
 import 'movie/movie_ticket_face.dart';
 
 /// Fullscreen e-ticket detail — shared face + booking/cinema sections.
@@ -12,6 +13,16 @@ class MoviePassDetailScreen extends StatelessWidget {
   const MoviePassDetailScreen({super.key, required this.pass});
 
   final MoviePass pass;
+
+  void _openCodes(BuildContext context, MoviePass p) {
+    HapticService.tap();
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => MovieTicketCodeScreen(pass: p),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,10 +78,11 @@ class MoviePassDetailScreen extends StatelessWidget {
                     pass: p,
                     density: MovieTicketDensity.detail,
                     useBrandColors: true,
+                    onOpenCodes: () => _openCodes(context, p),
                   ),
                   const SizedBox(height: 18),
                   _InfoCard(
-                    title: 'Booking',
+                    title: 'Booking Details',
                     ink: ink,
                     muted: muted,
                     isDark: isDark,
@@ -86,7 +98,7 @@ class MoviePassDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   _InfoCard(
-                    title: 'Cinema',
+                    title: 'Cinema Details',
                     ink: ink,
                     muted: muted,
                     isDark: isDark,

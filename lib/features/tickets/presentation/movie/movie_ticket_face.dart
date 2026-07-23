@@ -24,6 +24,7 @@ class MovieTicketFace extends StatelessWidget {
     required this.density,
     this.useBrandColors = false,
     this.widthFactor,
+    this.onOpenCodes,
   });
 
   final MoviePass pass;
@@ -35,7 +36,14 @@ class MovieTicketFace extends StatelessWidget {
   /// Optional width shrink vs parent (glance only).
   final double? widthFactor;
 
+  /// Detail only — opens fullscreen QR/barcode viewer.
+  final VoidCallback? onOpenCodes;
+
   bool get _isGlance => density == MovieTicketDensity.glance;
+
+  /// Shared stub height so notch + tear align for every brand.
+  static double footerBodyHeight({required bool detail, required double scale}) =>
+      (detail ? 82.0 : 64.0) * scale;
 
   @override
   Widget build(BuildContext context) {
@@ -46,16 +54,9 @@ class MovieTicketFace extends StatelessWidget {
     );
     final double scale =
         _isGlance ? MovieTicketMetrics.glanceTallScale : 1.0;
-    final bool detail = !_isGlance;
-    final bool qrStub = detail && style.showQrInStub;
-
-    final double footerHeight = (pass.brand == MoviePassBrand.bookMyShow || pass.brand == MoviePassBrand.district)
-        ? (detail ? 82.0 : 64.0) * scale
-        : (qrStub
-            ? MovieTicketMetrics.detailQrFooterBody
-            : MovieTicketMetrics.footerBodyHeight(scale: scale));
-
-    final double notchFromBottom = footerHeight + (MovieTicketMetrics.tearHeight * scale) / 2;
+    final double footerHeight = footerBodyHeight(detail: !_isGlance, scale: scale);
+    final double notchFromBottom =
+        footerHeight + (MovieTicketMetrics.tearHeight * scale) / 2;
     final double factor = widthFactor ??
         (_isGlance ? 0.94 : 1.0);
 
@@ -80,6 +81,8 @@ class MovieTicketFace extends StatelessWidget {
           isActive: isActive,
           scale: scale,
           density: density,
+          footerHeight: footerHeight,
+          onOpenCodes: onOpenCodes,
         ),
       ),
     );
@@ -104,6 +107,8 @@ class _TicketBody extends StatelessWidget {
     required this.isActive,
     required this.scale,
     required this.density,
+    required this.footerHeight,
+    this.onOpenCodes,
   });
 
   final MoviePass pass;
@@ -111,8 +116,14 @@ class _TicketBody extends StatelessWidget {
   final bool isActive;
   final double scale;
   final MovieTicketDensity density;
+  final double footerHeight;
+  final VoidCallback? onOpenCodes;
 
   bool get _detail => density == MovieTicketDensity.detail;
+
+  bool get _brandLogoFooter =>
+      pass.brand == MoviePassBrand.bookMyShow ||
+      pass.brand == MoviePassBrand.district;
 
   @override
   Widget build(BuildContext context) {
@@ -189,7 +200,6 @@ class _TicketBody extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  // Title starts directly at the top for clean e-ticket look
                   Text(
                     pass.movieTitle,
                     maxLines: 2,
@@ -270,83 +280,21 @@ class _TicketBody extends StatelessWidget {
                     detail: _detail,
                   ),
                   if (_detail) ...<Widget>[
-                    SizedBox(height: 14 * scale),
-                    _SeatChips(seats: pass.seats, accent: style.accent),
+                    SizedBox(height: 16 * scale),
+                    _TicketCodes(
+                      codeType: pass.codeType,
+                      accent: style.accent,
+                      onTap: onOpenCodes,
+                    ),
                   ],
                 ],
               ),
             ),
             TicketTearLine(height: MovieTicketMetrics.tearHeight * scale),
-            if (style.showQrInStub && _detail)
-              SizedBox(
-                height: MovieTicketMetrics.detailQrFooterBody,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    20,
-                    MovieTicketMetrics.footerPadTop,
-                    20,
-                    MovieTicketMetrics.footerPadBottom,
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: <Widget>[
-                      Expanded(
-                        child: SizedBox(
-                          height: MovieTicketMetrics.detailQrContentH,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.max,
-                            children: <Widget>[
-                              Text(
-                                pass.bookingId,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.robotoMono(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.0,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  Icon(
-                                    Icons.confirmation_number_outlined,
-                                    size: 14 * scale,
-                                    color: Colors.white.withValues(alpha: 0.70),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'E-TICKET',
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white.withValues(alpha: 0.85),
-                                      fontSize: 11 * scale,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 1.0,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      TicketQrTile(
-                        size: MovieTicketMetrics.detailQrTile,
-                        accent: style.accent,
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else if (pass.brand == MoviePassBrand.bookMyShow || pass.brand == MoviePassBrand.district)
+            if (_brandLogoFooter)
               SizedBox(
                 width: double.infinity,
-                height: (_detail ? 82.0 : 64.0) * scale,
+                height: footerHeight,
                 child: Stack(
                   alignment: Alignment.center,
                   children: <Widget>[
@@ -374,50 +322,50 @@ class _TicketBody extends StatelessWidget {
                 ),
               )
             else
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  20 * scale,
-                  MovieTicketMetrics.footerPadTop * scale,
-                  20 * scale,
-                  MovieTicketMetrics.footerPadBottom * scale,
-                ),
-                child: Column(
-                  children: <Widget>[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        Icon(
-                          Icons.confirmation_number_outlined,
-                          size: 18 * scale,
-                          color: Colors.white.withValues(alpha: 0.70),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'E-TICKET',
+              SizedBox(
+                width: double.infinity,
+                height: footerHeight,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20 * scale),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Icon(
+                            Icons.local_activity_rounded,
+                            size: 18 * scale,
+                            color: Colors.white.withValues(alpha: 0.70),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'E-TICKET',
+                            style: GoogleFonts.inter(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              fontSize: 13 * scale,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: MovieTicketMetrics.footerIdGap * scale),
+                      SizedBox(
+                        height: MovieTicketMetrics.footerIdLine,
+                        child: Text(
+                          pass.sourcePlatform ?? 'Ticket',
                           style: GoogleFonts.inter(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 13 * scale,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.5,
+                            color: Colors.white.withValues(alpha: 0.60),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.4,
+                            height: 1.0,
                           ),
                         ),
-                      ],
-                    ),
-                    SizedBox(height: MovieTicketMetrics.footerIdGap * scale),
-                    SizedBox(
-                      height: MovieTicketMetrics.footerIdLine,
-                      child: Text(
-                        pass.bookingId,
-                        style: GoogleFonts.robotoMono(
-                          color: Colors.white.withValues(alpha: 0.60),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 1.2,
-                          height: 1.0,
-                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
           ],
@@ -433,6 +381,112 @@ class _TicketBody extends StatelessWidget {
 }
 
 // ── Pieces ────────────────────────────────────────────────────────────────────
+
+class _TicketCodes extends StatelessWidget {
+  const _TicketCodes({
+    required this.codeType,
+    required this.accent,
+    this.onTap,
+  });
+
+  final MovieTicketCodeType codeType;
+  final Color accent;
+  final VoidCallback? onTap;
+
+  bool get _isQr => codeType == MovieTicketCodeType.qr;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(
+                _isQr ? 'QR code' : 'Barcode',
+                style: GoogleFonts.inter(
+                  color: Colors.white.withValues(alpha: 0.50),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 10),
+              if (_isQr)
+                Row(
+                  children: <Widget>[
+                    TicketQrTile(
+                      size: 88,
+                      accent: accent,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        'Tap to open full screen for scanning',
+                        style: GoogleFonts.inter(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: Colors.white.withValues(alpha: 0.45),
+                      size: 22,
+                    ),
+                  ],
+                )
+              else
+                Row(
+                  children: <Widget>[
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.18),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.barcode_reader,
+                        size: 28,
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        'Open for scanning',
+                        style: GoogleFonts.inter(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: Colors.white.withValues(alpha: 0.45),
+                      size: 22,
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _HeroBand extends StatelessWidget {
   const _HeroBand({
@@ -451,7 +505,9 @@ class _HeroBand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (pass.brand == MoviePassBrand.bookMyShow || pass.brand == MoviePassBrand.district || pass.brand == MoviePassBrand.universal) {
+    if (pass.brand == MoviePassBrand.bookMyShow ||
+        pass.brand == MoviePassBrand.district ||
+        pass.brand == MoviePassBrand.universal) {
       final String? asset = pass.posterAsset;
       return ClipRRect(
         borderRadius: BorderRadius.circular(16),
@@ -716,58 +772,6 @@ class _Field extends StatelessWidget {
             letterSpacing: -0.2,
             height: 1.2,
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SeatChips extends StatelessWidget {
-  const _SeatChips({required this.seats, required this.accent});
-
-  final List<MovieSeat> seats;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          'Seats',
-          style: GoogleFonts.inter(
-            color: Colors.white.withValues(alpha: 0.50),
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: seats
-              .map(
-                (MovieSeat s) => Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 9,
-                  ),
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: accent.withValues(alpha: 0.40)),
-                  ),
-                  child: Text(
-                    s.label,
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              )
-              .toList(),
         ),
       ],
     );

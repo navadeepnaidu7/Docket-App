@@ -16,6 +16,7 @@ class StudioField extends StatefulWidget {
     this.onTap,
     this.textCapitalization = TextCapitalization.none,
     this.keyboardType,
+    this.errorText,
   });
 
   final TextEditingController controller;
@@ -29,6 +30,7 @@ class StudioField extends StatefulWidget {
   final VoidCallback? onTap;
   final TextCapitalization textCapitalization;
   final TextInputType? keyboardType;
+  final String? errorText;
 
   @override
   State<StudioField> createState() => _StudioFieldState();
@@ -56,84 +58,105 @@ class _StudioFieldState extends State<StudioField> {
     final bool isDark = theme.brightness == Brightness.dark;
     final bool focused = _focusNode.hasFocus;
 
+    final bool hasError =
+        widget.errorText != null && widget.errorText!.isNotEmpty;
     final Color inputColor = scheme.onSurface;
-    final Color focusColor = scheme.primary;
+    final Color focusColor = hasError ? AppTheme.danger : scheme.primary;
     final Color muted = AppTokens.secondaryLabel(scheme);
-    final Color iconColor = focused ? focusColor : muted;
-    final Color labelColor = focused ? focusColor : muted;
+    final Color iconColor = focused || hasError ? focusColor : muted;
+    final Color labelColor = focused || hasError ? focusColor : muted;
 
     final Color bgColor = AppTokens.fieldFill(scheme, focused: focused);
-    final Color borderColor = AppTokens.fieldBorder(scheme, focused: focused);
+    final Color borderColor = hasError
+        ? AppTheme.danger.withValues(alpha: 0.55)
+        : AppTokens.fieldBorder(scheme, focused: focused);
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: borderColor,
-          width: isDark ? 0.5 : 1.0,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          margin: EdgeInsets.only(bottom: hasError ? 4 : 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: borderColor,
+              width: isDark ? 0.5 : 1.0,
+            ),
+            boxShadow: <BoxShadow>[
+              if (focused && !isDark && !hasError)
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: widget.maxLines > 1
+                ? CrossAxisAlignment.start
+                : CrossAxisAlignment.center,
+            children: <Widget>[
+              Padding(
+                padding: EdgeInsets.only(top: widget.maxLines > 1 ? 16 : 0),
+                child: Icon(
+                  widget.icon,
+                  color: iconColor,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  focusNode: _focusNode,
+                  controller: widget.controller,
+                  maxLines: widget.maxLines,
+                  textInputAction: widget.textInputAction,
+                  readOnly: widget.readOnly,
+                  onTap: widget.onTap,
+                  textCapitalization: widget.textCapitalization,
+                  keyboardType: widget.keyboardType,
+                  onChanged: (_) => widget.onChanged(),
+                  style: TextStyle(
+                    color: inputColor,
+                    fontSize: 16,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: widget.label,
+                    labelStyle: TextStyle(
+                      color: labelColor,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    hintText: widget.hintText,
+                    hintStyle: TextStyle(
+                      color: AppTokens.tertiaryLabel(scheme),
+                    ),
+                    filled: false,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        boxShadow: <BoxShadow>[
-          if (focused && !isDark)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: widget.maxLines > 1
-            ? CrossAxisAlignment.start
-            : CrossAxisAlignment.center,
-        children: <Widget>[
+        if (hasError)
           Padding(
-            padding: EdgeInsets.only(top: widget.maxLines > 1 ? 16 : 0),
-            child: Icon(
-              widget.icon,
-              color: iconColor,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              focusNode: _focusNode,
-              controller: widget.controller,
-              maxLines: widget.maxLines,
-              textInputAction: widget.textInputAction,
-              readOnly: widget.readOnly,
-              onTap: widget.onTap,
-              textCapitalization: widget.textCapitalization,
-              keyboardType: widget.keyboardType,
-              onChanged: (_) => widget.onChanged(),
+            padding: const EdgeInsets.only(left: 12, bottom: 10),
+            child: Text(
+              widget.errorText!,
               style: TextStyle(
-                color: inputColor,
-                fontSize: 16,
-              ),
-              decoration: InputDecoration(
-                labelText: widget.label,
-                labelStyle: TextStyle(
-                  color: labelColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-                hintText: widget.hintText,
-                hintStyle: TextStyle(
-                  color: AppTokens.tertiaryLabel(scheme),
-                ),
-                filled: false,
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
+                color: AppTheme.danger,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }

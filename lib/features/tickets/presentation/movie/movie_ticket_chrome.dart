@@ -23,32 +23,17 @@ abstract final class MovieTicketMetrics {
   static const double footerIdGap = 6;
   static const double footerIdLine = 14;
 
-  /// Full stub under the tear (barcode + id + pads).
-  static double footerBodyHeight({required double scale}) =>
-      footerPadTop * scale +
-      barcodeHeight * scale +
-      footerIdGap * scale +
-      footerIdLine +
-      footerPadBottom * scale;
+  /// Brand-logo / e-ticket stub under the tear (shared for notch alignment).
+  static double footerBodyHeight({required bool detail, required double scale}) =>
+      (detail ? 82.0 : 64.0) * scale;
 
   /// Tear row + stub — used for notch placement from the bottom.
-  static double footerStackHeight({required double scale}) =>
-      tearHeight * scale + footerBodyHeight(scale: scale);
+  static double footerStackHeight({required bool detail, required double scale}) =>
+      tearHeight * scale + footerBodyHeight(detail: detail, scale: scale);
 
   /// Distance from ticket bottom to notch center (middle of tear row).
-  static double notchFromBottom({required double scale}) =>
-      footerBodyHeight(scale: scale) + (tearHeight * scale) / 2;
-
-  /// Detail + QR stub (booking id + compact barcode | QR tile).
-  static const double detailQrTile = 72;
-  static const double detailQrBarcode = 32;
-  /// max(QR tile, id line + gap + barcode) — keep column ≤ this.
-  static const double detailQrContentH = detailQrTile;
-  static const double detailQrFooterBody =
-      footerPadTop + detailQrContentH + footerPadBottom;
-
-  static double notchFromBottomDetailQr() =>
-      detailQrFooterBody + tearHeight / 2;
+  static double notchFromBottom({required bool detail, required double scale}) =>
+      footerBodyHeight(detail: detail, scale: scale) + (tearHeight * scale) / 2;
 }
 
 /// Rounded ticket with side semicircle cutouts (real clip, no painted fill).

@@ -21,7 +21,6 @@ class MovieBrandStyle {
     this.logoTint,
     this.chipBorder,
     this.showTopHairline = false,
-    this.showQrInStub = false,
     this.labelAlpha = 0.60,
   });
 
@@ -37,7 +36,6 @@ class MovieBrandStyle {
   final Color? logoTint;
   final Color? chipBorder;
   final bool showTopHairline;
-  final bool showQrInStub;
   final double labelAlpha;
 
   static const MovieBrandStyle _expired = MovieBrandStyle(
@@ -80,7 +78,6 @@ class MovieBrandStyle {
     logoTint: null,
     chipBorder: null,
     showTopHairline: false,
-    showQrInStub: false,
     labelAlpha: 0.60,
   );
 
@@ -92,7 +89,6 @@ class MovieBrandStyle {
     chipLabel: 'E-Ticket',
     presenterPrimary: 'Movie Ticket',
     showTopHairline: false,
-    showQrInStub: true,
     labelAlpha: 0.60,
   );
 
@@ -112,7 +108,6 @@ class MovieBrandStyle {
         logoTint: Colors.white24,
         chipBorder: null,
         showTopHairline: false,
-        showQrInStub: base.showQrInStub,
         labelAlpha: _expired.labelAlpha,
       );
     }
