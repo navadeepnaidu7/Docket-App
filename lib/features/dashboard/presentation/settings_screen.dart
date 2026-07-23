@@ -7,6 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/dev/dev_config.dart';
+import '../../../core/dev/dev_flags.dart';
+import '../../../core/dev/dev_flags_provider.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/haptics/haptics_provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -16,6 +19,7 @@ import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
+import '../../tickets/application/pass_list_provider.dart';
 import '../application/card_shine_border_provider.dart';
 import '../application/wallet_filter_provider.dart';
 import '../application/nav_icon_style_provider.dart';
@@ -216,6 +220,14 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
+                  if (DevConfig.showDevMenu) ...[
+                    const SizedBox(height: 20),
+                    _DeveloperSection(
+                      surface: surface,
+                      borderColor: borderColor,
+                      isDark: isDark,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -624,6 +636,124 @@ class _MembershipWashPainter extends CustomPainter {
   }
 }
 
+/// Debug / profile only — mock vs consumer data sources.
+class _DeveloperSection extends ConsumerWidget {
+  const _DeveloperSection({
+    required this.surface,
+    required this.borderColor,
+    required this.isDark,
+  });
+
+  final Color surface;
+  final Color borderColor;
+  final bool isDark;
+
+  Future<void> _editApiBaseUrl(BuildContext context, WidgetRef ref) async {
+    final DevFlags flags = ref.read(devFlagsProvider);
+    final TextEditingController controller =
+        TextEditingController(text: flags.apiBaseUrl);
+    final String? result = await showDialog<String>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: const Text('API base URL'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(
+              hintText: 'https://api.example.com',
+              helperText: 'No trailing slash. Empty forces mock.',
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    if (result == null) return;
+    HapticService.select();
+    await ref.read(devFlagsProvider.notifier).setApiBaseUrl(result);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final DevFlags flags = ref.watch(devFlagsProvider);
+    final String urlLabel = flags.apiBaseUrl.isEmpty
+        ? 'Not set'
+        : flags.apiBaseUrl;
+
+    return _SettingsSection(
+      title: 'Developer',
+      surface: surface,
+      borderColor: borderColor,
+      isDark: isDark,
+      children: <Widget>[
+        _SettingsToggleRow(
+          icon: Icons.science_rounded,
+          iconColor: const Color(0xFFAF52DE),
+          title: 'Use mock passes',
+          subtitle: flags.isMockPassesActive
+              ? 'Fixtures · demo train & movie cards'
+              : 'Remote repository (consumer path)',
+          value: flags.useMockPasses,
+          onChanged: (bool v) async {
+            HapticService.select();
+            await ref.read(devFlagsProvider.notifier).setUseMockPasses(v);
+          },
+        ),
+        const _SettingsDivider(),
+        _SettingsLinkRow(
+          icon: Icons.link_rounded,
+          iconColor: const Color(0xFF2F6FED),
+          title: 'API base URL',
+          subtitle: urlLabel,
+          onTap: () => _editApiBaseUrl(context, ref),
+        ),
+        const _SettingsDivider(),
+        _SettingsLinkRow(
+          icon: Icons.refresh_rounded,
+          iconColor: const Color(0xFF30D158),
+          title: 'Reload passes',
+          onTap: () {
+            HapticService.select();
+            ref.read(passListProvider.notifier).refresh();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Refreshing passes…'),
+                behavior: SnackBarBehavior.floating,
+                duration: Duration(seconds: 1),
+              ),
+            );
+          },
+        ),
+        const _SettingsDivider(),
+        _SettingsLinkRow(
+          icon: Icons.restart_alt_rounded,
+          iconColor: const Color(0xFF8E8E93),
+          title: 'Reset dev flags',
+          subtitle: 'Compile-time defaults',
+          onTap: () async {
+            HapticService.select();
+            await ref
+                .read(devFlagsProvider.notifier)
+                .resetToCompileTimeDefaults();
+          },
+        ),
+      ],
+    );
+  }
+}
+
 class _SettingsSection extends StatelessWidget {
   const _SettingsSection({
     required this.title,
@@ -920,11 +1050,13 @@ class _SettingsLinkRow extends StatelessWidget {
     required this.iconColor,
     required this.title,
     required this.onTap,
+    this.subtitle,
   });
 
   final IconData icon;
   final Color iconColor;
   final String title;
+  final String? subtitle;
   final VoidCallback onTap;
 
   @override
@@ -940,7 +1072,7 @@ class _SettingsLinkRow extends StatelessWidget {
         onTap();
       },
       child: SizedBox(
-        height: 54,
+        height: subtitle == null ? 54 : 68,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Row(
@@ -948,15 +1080,42 @@ class _SettingsLinkRow extends StatelessWidget {
               _SettingsRowIcon(icon: icon, color: iconColor),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: -0.2,
-                    color: ink,
-                  ),
-                ),
+                child: subtitle == null
+                    ? Text(
+                        title,
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: -0.2,
+                          color: ink,
+                        ),
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            title,
+                            style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: -0.2,
+                              color: ink,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              color: muted,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
               Icon(
                 Icons.chevron_right_rounded,

@@ -3,6 +3,8 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/dev/dev_config.dart';
+import '../../../core/dev/dev_flags_provider.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../shared/widgets/bounce_tap.dart';
 import '../../../shared/widgets/rolling_card_page.dart';
@@ -48,6 +50,8 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
   Widget build(BuildContext context) {
     final AsyncValue<List<WalletPassItem>> asyncPasses =
         ref.watch(passListProvider);
+    final bool showMockBadge = DevConfig.showDevMenu &&
+        ref.watch(devFlagsProvider).isMockPassesActive;
     final double fabClearance =
         MediaQuery.of(context).padding.bottom + 16 + 58 + 20;
 
@@ -81,6 +85,10 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
                   });
                 },
               ),
+              if (showMockBadge) ...<Widget>[
+                const Spacer(),
+                _MockBadge(),
+              ],
             ],
           ),
         ),
@@ -233,6 +241,31 @@ class _DotIndicator extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MockBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFAF52DE).withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFAF52DE).withValues(alpha: 0.35),
+        ),
+      ),
+      child: const Text(
+        'MOCK',
+        style: TextStyle(
+          color: Color(0xFFAF52DE),
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.6,
+        ),
       ),
     );
   }

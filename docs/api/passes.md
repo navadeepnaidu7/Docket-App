@@ -5,6 +5,8 @@ This document is the handoff for backend implementers. The Flutter Passes tab al
 Default client implementation: **`MockPassRepository`** (fixtures).  
 Swap to **`RemotePassRepository`** when `baseUrl` + auth exist.
 
+**In-app switch:** Settings → Developer (debug/profile). See also [dev-flags.md](../dev-flags.md).
+
 ## Endpoints
 
 | Method | Path | Purpose |

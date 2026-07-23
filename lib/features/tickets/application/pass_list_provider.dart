@@ -1,20 +1,33 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/dev/dev_flags.dart';
+import '../../../core/dev/dev_flags_provider.dart';
 import '../data/mock_pass_repository.dart';
+import '../data/remote_pass_repository.dart';
 import '../domain/pass_catalog.dart';
 import '../domain/pass_repository.dart';
 import '../domain/pass_status.dart';
 
-/// Override in tests or when switching to [RemotePassRepository]:
+/// Resolves mock vs remote from [devFlagsProvider].
 ///
+/// Override in tests:
 /// ```dart
-/// passRepositoryProvider.overrideWithValue(RemotePassRepository(...))
+/// passRepositoryProvider.overrideWithValue(MockPassRepository(...))
 /// ```
 final passRepositoryProvider = Provider<PassRepository>((Ref ref) {
-  return MockPassRepository();
+  final DevFlags flags = ref.watch(devFlagsProvider);
+  if (flags.isMockPassesActive) {
+    return MockPassRepository();
+  }
+  return RemotePassRepository(
+    baseUrl: flags.apiBaseUrl.trim(),
+    enabled: true,
+  );
 });
 
 /// Async list of wallet passes (train + movie).
+///
+/// Rebuilds when the repository instance changes (mock ↔ remote).
 final passListProvider =
     AsyncNotifierProvider<PassListNotifier, List<WalletPassItem>>(
   PassListNotifier.new,
@@ -22,7 +35,12 @@ final passListProvider =
 
 class PassListNotifier extends AsyncNotifier<List<WalletPassItem>> {
   @override
-  Future<List<WalletPassItem>> build() => _load();
+  Future<List<WalletPassItem>> build() {
+    // Depend on flags so toggle invalidates and reloads.
+    ref.watch(devFlagsProvider);
+    ref.watch(passRepositoryProvider);
+    return _load();
+  }
 
   PassRepository get _repo => ref.read(passRepositoryProvider);
 
