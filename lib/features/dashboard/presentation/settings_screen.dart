@@ -3,7 +3,6 @@ import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -26,7 +25,7 @@ import '../application/nav_labels_provider.dart';
 import 'user_card_detail_screen.dart';
 
 /// Apple Card–like hero dimensions (scrolls with the settings list).
-const double kSettingsHeroHeight = 200.0;
+const double kSettingsHeroHeight = 226.0;
 const double kSettingsHeroRadius = 22.0;
 
 class SettingsScreen extends ConsumerWidget {
@@ -79,10 +78,7 @@ class SettingsScreen extends ConsumerWidget {
                         isDark: isDark,
                       ),
                     ),
-                  )
-                      .animate()
-                      .fadeIn(duration: 380.ms, curve: Curves.easeOutCubic)
-                      .slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic),
+                  ),
                   const SizedBox(height: 8),
                   Center(
                     child: Row(
@@ -282,15 +278,9 @@ class SettingsScreen extends ConsumerWidget {
 
 Color _toWashAccent(Color source, {required bool isDark}) {
   final HSLColor hsl = HSLColor.fromColor(source);
-  if (isDark) {
-    return hsl
-        .withSaturation((hsl.saturation * 0.55).clamp(0.28, 0.62))
-        .withLightness(0.52)
-        .toColor();
-  }
   return hsl
-      .withSaturation((hsl.saturation * 0.40).clamp(0.22, 0.52))
-      .withLightness(0.78)
+      .withSaturation((hsl.saturation * 0.70).clamp(0.40, 0.85))
+      .withLightness(0.68)
       .toColor();
 }
 
@@ -313,7 +303,14 @@ List<Color> _walletWashColors({
     case CardFluidScheme.auto:
       final List<Object> items = <Object>[...passports, ...idDocs];
       if (items.isEmpty) {
-        return const <Color>[Color(0xFF3A4A68), Color(0xFF2C3A55)];
+        // Iconic Apple Card spending heatmap colors (coral orange, magenta pink, cyan, lime mint, violet)
+        return const <Color>[
+          Color(0xFFFF7A00),
+          Color(0xFFEC4899),
+          Color(0xFF00C8FF),
+          Color(0xFF10B981),
+          Color(0xFF8B5CF6),
+        ];
       }
 
       final List<Color> washes = <Color>[];
@@ -321,7 +318,7 @@ List<Color> _walletWashColors({
 
       for (final Object item in items) {
         final Color raw = WalletPalette.forItem(item).primary;
-        final Color wash = _toWashAccent(raw, isDark: true);
+        final Color wash = _toWashAccent(raw, isDark: false);
         final int bucket = (HSLColor.fromColor(wash).hue / 28).round();
         if (seenHueBuckets.add(bucket) || washes.length < 2) {
           washes.add(wash);
@@ -332,7 +329,7 @@ List<Color> _walletWashColors({
       if (washes.length < 2 && items.length > 1) {
         for (final Object item in items) {
           washes.add(
-            _toWashAccent(WalletPalette.forItem(item).secondary, isDark: true),
+            _toWashAccent(WalletPalette.forItem(item).secondary, isDark: false),
           );
           if (washes.length >= 3) break;
         }
@@ -343,14 +340,14 @@ List<Color> _walletWashColors({
 }
 
 List<Color> _membershipBaseColors(List<Color> washes) {
-  const Color deep = Color(0xFF141820);
-  const Color mid = Color(0xFF1A2230);
-  const Color lift = Color(0xFF243044);
-  if (washes.isEmpty) return const <Color>[deep, mid, lift];
+  const Color whiteBase = Color(0xFFFAFAFC);
+  const Color silverMid = Color(0xFFF2F3F7);
+  const Color titaniumLift = Color(0xFFE8EBF0);
+  if (washes.isEmpty) return const <Color>[whiteBase, silverMid, titaniumLift];
   return <Color>[
-    Color.lerp(deep, washes.first, 0.28)!,
-    Color.lerp(mid, washes.length > 1 ? washes[1] : washes.first, 0.24)!,
-    Color.lerp(lift, washes.length > 2 ? washes[2] : washes.first, 0.20)!,
+    Color.lerp(whiteBase, washes.first, 0.12)!,
+    Color.lerp(silverMid, washes.length > 1 ? washes[1] : washes.first, 0.10)!,
+    Color.lerp(titaniumLift, washes.length > 2 ? washes[2] : washes.first, 0.08)!,
   ];
 }
 
@@ -405,10 +402,10 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
     );
     final List<Color> baseColors = _membershipBaseColors(washes);
 
-    // Fixed dark titanium styling so card design is 100% identical in light and dark mode
-    const Color ink = Color(0xFFF2F2F7);
-    const Color inkMuted = Color(0xFFAEAEB2);
-    final Color border = Colors.white.withValues(alpha: 0.10);
+    // Crisp Light Titanium Apple Card styling (dark charcoal text for maximum contrast on white titanium)
+    const Color ink = Color(0xFF1C1C1E);
+    const Color inkMuted = Color(0xFF636366);
+    final Color border = Colors.black.withValues(alpha: 0.08);
     final bool hasDocs =
         widget.passports.isNotEmpty || widget.idDocs.isNotEmpty;
 
@@ -417,13 +414,13 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
         borderRadius: BorderRadius.circular(kSettingsHeroRadius),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.45),
+            color: Colors.black.withValues(alpha: 0.12),
             blurRadius: 28,
-            offset: const Offset(0, 12),
-            spreadRadius: -6,
+            offset: const Offset(0, 10),
+            spreadRadius: -4,
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.20),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -463,7 +460,7 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
                   painter: _MembershipWashPainter(
                     washes: washes,
                     phase: t,
-                    isDark: true,
+                    isDark: false,
                     empty: !hasDocs,
                   ),
                 ),
@@ -478,7 +475,7 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
             );
           },
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
@@ -576,7 +573,7 @@ class _MembershipWashPainter extends CustomPainter {
       final Alignment base = _anchors[i % _anchors.length];
       // Each bloom orbits at a slightly different rate/radius.
       final double speed = 0.55 + i * 0.18;
-      final double orbit = 0.10 + i * 0.02;
+      final double orbit = 0.12 + i * 0.02;
       final double ax =
           (base.x + orbit * math.sin(angle * speed + i)).clamp(-1.15, 1.15);
       final double ay =
@@ -591,20 +588,20 @@ class _MembershipWashPainter extends CustomPainter {
       final double pulse =
           0.92 + 0.08 * math.sin(angle * (0.9 + i * 0.15) + i);
       final double richness = empty
-          ? (isDark ? 0.12 : 0.08)
-          : ((isDark ? 0.20 : 0.16) + layers.length * 0.02).clamp(0.12, 0.28);
+          ? (isDark ? 0.22 : 0.16)
+          : ((isDark ? 0.38 : 0.30) + layers.length * 0.03).clamp(0.20, 0.48);
       final double radius = size.shortestSide *
-          lerpDouble(1.30, 0.85, i / layers.length.clamp(1, 5))! *
+          lerpDouble(1.50, 0.95, i / layers.length.clamp(1, 5))! *
           pulse;
 
       final Paint paint = Paint()
         ..shader = RadialGradient(
           colors: <Color>[
-            layers[i].withValues(alpha: richness),
-            layers[i].withValues(alpha: richness * 0.40),
+            layers[i].withValues(alpha: richness * 0.65),
+            layers[i].withValues(alpha: richness * 0.25),
             layers[i].withValues(alpha: 0),
           ],
-          stops: const <double>[0.0, 0.65, 1.0],
+          stops: const <double>[0.0, 0.55, 1.0],
         ).createShader(Rect.fromCircle(center: center, radius: radius));
 
       canvas.drawCircle(center, radius, paint);
