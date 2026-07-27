@@ -31,20 +31,17 @@ void main() {
       await tester.pump(const Duration(milliseconds: 900));
     }
 
-    // New onboarding step: Skip authorization
     final Finder skipFinder = find.text('Skip, I will login later');
     expect(skipFinder, findsOneWidget);
-    final skipButton = tester.widget<TextButton>(
-      find.ancestor(of: skipFinder, matching: find.byType(TextButton)),
-    );
-    skipButton.onPressed!();
-    await tester.pump(const Duration(milliseconds: 900));
+    await tester.ensureVisible(skipFinder);
+    await tester.pumpAndSettle();
+    await tester.tap(skipFinder);
+    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pumpAndSettle();
 
-    await tester.pump(const Duration(milliseconds: 3000));
     expect(find.text('Enter Docket'), findsOneWidget);
     await tester.tap(find.text('Enter Docket'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
 
     expect(find.text('No Documents Yet'), findsOneWidget);
     expect(find.text('IDs'), findsOneWidget);

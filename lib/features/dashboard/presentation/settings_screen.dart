@@ -5,7 +5,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/dev/dev_config.dart';
 import '../../../core/dev/dev_flags.dart';
@@ -24,6 +23,7 @@ import '../application/card_shine_border_provider.dart';
 import '../application/wallet_filter_provider.dart';
 import '../application/nav_icon_style_provider.dart';
 import '../application/nav_labels_provider.dart';
+import 'user_card_detail_screen.dart';
 
 /// Apple Card–like hero dimensions (scrolls with the settings list).
 const double kSettingsHeroHeight = 200.0;
@@ -62,15 +62,48 @@ class SettingsScreen extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                 children: [
-                  SizedBox(
-                    height: kSettingsHeroHeight,
-                    child: _WalletMembershipCard(
-                      passports: passports,
-                      idDocs: idDocs,
-                      isDark: isDark,
+                  GestureDetector(
+                    onTap: () {
+                      HapticService.select();
+                      Navigator.of(context).push(
+                        CupertinoPageRoute<void>(
+                          builder: (_) => const UserCardDetailScreen(),
+                        ),
+                      );
+                    },
+                    child: SizedBox(
+                      height: kSettingsHeroHeight,
+                      child: WalletMembershipCard(
+                        passports: passports,
+                        idDocs: idDocs,
+                        isDark: isDark,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Text(
+                          'Tap to open',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
+                            color: ink.withValues(alpha: isDark ? 0.45 : 0.55),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 10,
+                          color: ink.withValues(alpha: isDark ? 0.45 : 0.55),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
                   _SettingsSection(
                     title: 'Appearance',
                     surface: surface,
@@ -261,66 +294,66 @@ Color _toWashAccent(Color source, {required bool isDark}) {
 List<Color> _walletWashColors({
   required List<PassportProfile> passports,
   required List<IdDocument> idDocs,
-  required bool isDark,
+  required CardFluidScheme scheme,
 }) {
-  final List<Object> items = <Object>[...passports, ...idDocs];
-  if (items.isEmpty) {
-    return isDark
-        ? const <Color>[Color(0xFF3A4A68), Color(0xFF2C3A55)]
-        : const <Color>[Color(0xFFE8E8ED), Color(0xFFD1D1D6)];
+  switch (scheme) {
+    case CardFluidScheme.titaniumClassic:
+      return const <Color>[Color(0xFF8E8E93), Color(0xFF636366), Color(0xFFAEAEE2)];
+    case CardFluidScheme.emerald:
+      return const <Color>[Color(0xFF2A9D6B), Color(0xFF34D399), Color(0xFF059669)];
+    case CardFluidScheme.vibrantSunset:
+      return const <Color>[Color(0xFFE07A2F), Color(0xFFEC4899), Color(0xFF8B5CF6)];
+    case CardFluidScheme.neonAurora:
+      return const <Color>[Color(0xFF38BDF8), Color(0xFF818CF8), Color(0xFFC084FC)];
+    case CardFluidScheme.goldenHour:
+      return const <Color>[Color(0xFFF59E0B), Color(0xFFF43F5E), Color(0xFFD97706)];
+    case CardFluidScheme.auto:
+      final List<Object> items = <Object>[...passports, ...idDocs];
+      if (items.isEmpty) {
+        return const <Color>[Color(0xFF3A4A68), Color(0xFF2C3A55)];
+      }
+
+      final List<Color> washes = <Color>[];
+      final Set<int> seenHueBuckets = <int>{};
+
+      for (final Object item in items) {
+        final Color raw = WalletPalette.forItem(item).primary;
+        final Color wash = _toWashAccent(raw, isDark: true);
+        final int bucket = (HSLColor.fromColor(wash).hue / 28).round();
+        if (seenHueBuckets.add(bucket) || washes.length < 2) {
+          washes.add(wash);
+        }
+        if (washes.length >= 5) break;
+      }
+
+      if (washes.length < 2 && items.length > 1) {
+        for (final Object item in items) {
+          washes.add(
+            _toWashAccent(WalletPalette.forItem(item).secondary, isDark: true),
+          );
+          if (washes.length >= 3) break;
+        }
+      }
+
+      return washes;
   }
-
-  final List<Color> washes = <Color>[];
-  final Set<int> seenHueBuckets = <int>{};
-
-  for (final Object item in items) {
-    final Color raw = WalletPalette.forItem(item).primary;
-    final Color wash = _toWashAccent(raw, isDark: isDark);
-    final int bucket = (HSLColor.fromColor(wash).hue / 28).round();
-    if (seenHueBuckets.add(bucket) || washes.length < 2) {
-      washes.add(wash);
-    }
-    if (washes.length >= 5) break;
-  }
-
-  if (washes.length < 2 && items.length > 1) {
-    for (final Object item in items) {
-      washes.add(
-        _toWashAccent(WalletPalette.forItem(item).secondary, isDark: isDark),
-      );
-      if (washes.length >= 3) break;
-    }
-  }
-
-  return washes;
 }
 
-List<Color> _membershipBaseColors(List<Color> washes, {required bool isDark}) {
-  if (isDark) {
-    const Color deep = Color(0xFF141820);
-    const Color mid = Color(0xFF1A2230);
-    const Color lift = Color(0xFF243044);
-    if (washes.isEmpty) return const <Color>[deep, mid, lift];
-    return <Color>[
-      Color.lerp(deep, washes.first, 0.28)!,
-      Color.lerp(mid, washes.length > 1 ? washes[1] : washes.first, 0.24)!,
-      Color.lerp(lift, washes.length > 2 ? washes[2] : washes.first, 0.20)!,
-    ];
-  }
-
-  const Color a = Color(0xFFFFFFFF);
-  const Color b = Color(0xFFF7F7F8);
-  const Color c = Color(0xFFEEEEF0);
-  if (washes.isEmpty) return const <Color>[a, b, c];
+List<Color> _membershipBaseColors(List<Color> washes) {
+  const Color deep = Color(0xFF141820);
+  const Color mid = Color(0xFF1A2230);
+  const Color lift = Color(0xFF243044);
+  if (washes.isEmpty) return const <Color>[deep, mid, lift];
   return <Color>[
-    Color.lerp(a, washes.first, 0.30)!,
-    Color.lerp(b, washes.length > 1 ? washes[1] : washes.first, 0.24)!,
-    Color.lerp(c, washes.length > 2 ? washes[2] : washes.first, 0.18)!,
+    Color.lerp(deep, washes.first, 0.28)!,
+    Color.lerp(mid, washes.length > 1 ? washes[1] : washes.first, 0.24)!,
+    Color.lerp(lift, washes.length > 2 ? washes[2] : washes.first, 0.20)!,
   ];
 }
 
-class _WalletMembershipCard extends StatefulWidget {
-  const _WalletMembershipCard({
+class WalletMembershipCard extends ConsumerStatefulWidget {
+  const WalletMembershipCard({
+    super.key,
     required this.passports,
     required this.idDocs,
     required this.isDark,
@@ -331,47 +364,12 @@ class _WalletMembershipCard extends StatefulWidget {
   final bool isDark;
 
   @override
-  State<_WalletMembershipCard> createState() => _WalletMembershipCardState();
+  ConsumerState<WalletMembershipCard> createState() => _WalletMembershipCardState();
 }
 
-const String _kWalletJoinedAtKey = 'wallet_joined_at';
-
-const List<String> _kFullMonths = <String>[
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-String _formatJoinedLabel(DateTime date) {
-  final String month = _kFullMonths[date.month - 1];
-  return 'Date joined $month ${date.year}';
-}
-
-/// Loads or stamps the wallet join date (first open for legacy installs).
-Future<DateTime> _ensureWalletJoinedAt() async {
-  final SharedPreferences prefs = await SharedPreferences.getInstance();
-  final String? raw = prefs.getString(_kWalletJoinedAtKey);
-  if (raw != null) {
-    return DateTime.tryParse(raw) ?? DateTime.now();
-  }
-  final DateTime now = DateTime.now();
-  await prefs.setString(_kWalletJoinedAtKey, now.toIso8601String());
-  return now;
-}
-
-class _WalletMembershipCardState extends State<_WalletMembershipCard>
+class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _motion;
-  String? _joinedLabel;
 
   @override
   void initState() {
@@ -380,13 +378,6 @@ class _WalletMembershipCardState extends State<_WalletMembershipCard>
       vsync: this,
       duration: const Duration(seconds: 14),
     )..repeat();
-    _loadJoinedDate();
-  }
-
-  Future<void> _loadJoinedDate() async {
-    final DateTime joined = await _ensureWalletJoinedAt();
-    if (!mounted) return;
-    setState(() => _joinedLabel = _formatJoinedLabel(joined));
   }
 
   @override
@@ -397,7 +388,7 @@ class _WalletMembershipCardState extends State<_WalletMembershipCard>
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = widget.isDark;
+    final DevFlags devFlags = ref.watch(devFlagsProvider);
     final PassportProfile? primaryPassport =
         widget.passports.isNotEmpty ? widget.passports.first : null;
     final IdDocument? primaryId =
@@ -407,17 +398,14 @@ class _WalletMembershipCardState extends State<_WalletMembershipCard>
     final List<Color> washes = _walletWashColors(
       passports: widget.passports,
       idDocs: widget.idDocs,
-      isDark: isDark,
+      scheme: devFlags.cardFluidScheme,
     );
-    final List<Color> baseColors =
-        _membershipBaseColors(washes, isDark: isDark);
+    final List<Color> baseColors = _membershipBaseColors(washes);
 
-    final Color ink = isDark ? const Color(0xFFF2F2F7) : const Color(0xFF1C1C1E);
-    final Color inkMuted =
-        isDark ? const Color(0xFFAEAEB2) : const Color(0xFF636366);
-    final Color border = isDark
-        ? Colors.white.withValues(alpha: 0.10)
-        : Colors.black.withValues(alpha: 0.06);
+    // Fixed dark titanium styling so card design is 100% identical in light and dark mode
+    const Color ink = Color(0xFFF2F2F7);
+    const Color inkMuted = Color(0xFFAEAEB2);
+    final Color border = Colors.white.withValues(alpha: 0.10);
     final bool hasDocs =
         widget.passports.isNotEmpty || widget.idDocs.isNotEmpty;
 
@@ -426,13 +414,13 @@ class _WalletMembershipCardState extends State<_WalletMembershipCard>
         borderRadius: BorderRadius.circular(kSettingsHeroRadius),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.10),
+            color: Colors.black.withValues(alpha: 0.45),
             blurRadius: 28,
             offset: const Offset(0, 12),
             spreadRadius: -6,
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
+            color: Colors.black.withValues(alpha: 0.20),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -472,7 +460,7 @@ class _WalletMembershipCardState extends State<_WalletMembershipCard>
                   painter: _MembershipWashPainter(
                     washes: washes,
                     phase: t,
-                    isDark: isDark,
+                    isDark: true,
                     empty: !hasDocs,
                   ),
                 ),
@@ -491,18 +479,17 @@ class _WalletMembershipCardState extends State<_WalletMembershipCard>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                if (_joinedLabel != null)
-                  Text(
-                    _joinedLabel!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.2,
-                      color: inkMuted,
-                    ),
+                Text(
+                  'July 2026',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.1,
+                    color: inkMuted,
                   ),
+                ),
                 const Spacer(),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -513,9 +500,9 @@ class _WalletMembershipCardState extends State<_WalletMembershipCard>
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
-                          fontSize: 24,
+                          fontSize: 22,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: -0.6,
+                          letterSpacing: -0.5,
                           height: 1.12,
                           color: ink,
                         ),
@@ -523,7 +510,7 @@ class _WalletMembershipCardState extends State<_WalletMembershipCard>
                     ),
                     const SizedBox(width: 16),
                     Text(
-                      '#8923',
+                      '#4377',
                       style: GoogleFonts.robotoMono(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -685,6 +672,52 @@ class _DeveloperSection extends ConsumerWidget {
     await ref.read(devFlagsProvider.notifier).setApiBaseUrl(result);
   }
 
+  Future<void> _selectFluidScheme(BuildContext context, WidgetRef ref) async {
+    final DevFlags flags = ref.read(devFlagsProvider);
+    final CardFluidScheme? selected = await showDialog<CardFluidScheme>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return SimpleDialog(
+          title: const Text('Card Fluidic Gradient Scheme'),
+          children: CardFluidScheme.values.map((CardFluidScheme scheme) {
+            final bool isCurrent = scheme == flags.cardFluidScheme;
+            return SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, scheme),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: <Widget>[
+                    Icon(
+                      isCurrent
+                          ? Icons.radio_button_checked_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      color: isCurrent ? const Color(0xFF5E5CE6) : Colors.grey,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        scheme.label,
+                        style: TextStyle(
+                          fontWeight:
+                              isCurrent ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+    if (selected != null) {
+      HapticService.select();
+      await ref.read(devFlagsProvider.notifier).setCardFluidScheme(selected);
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final DevFlags flags = ref.watch(devFlagsProvider);
@@ -710,6 +743,14 @@ class _DeveloperSection extends ConsumerWidget {
             HapticService.select();
             await ref.read(devFlagsProvider.notifier).setUseMockPasses(v);
           },
+        ),
+        const _SettingsDivider(),
+        _SettingsLinkRow(
+          icon: Icons.palette_rounded,
+          iconColor: const Color(0xFF5E5CE6),
+          title: 'Card fluid gradient scheme',
+          subtitle: flags.cardFluidScheme.label,
+          onTap: () => _selectFluidScheme(context, ref),
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(

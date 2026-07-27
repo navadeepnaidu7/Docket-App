@@ -7,6 +7,7 @@ import 'dev_flags.dart';
 
 const String _kUseMockPasses = 'dev_use_mock_passes';
 const String _kApiBaseUrl = 'dev_api_base_url';
+const String _kCardFluidScheme = 'dev_card_fluid_scheme';
 
 final devFlagsProvider =
     StateNotifierProvider<DevFlagsNotifier, DevFlags>((Ref ref) {
@@ -32,7 +33,16 @@ class DevFlagsNotifier extends StateNotifier<DevFlags> {
           DevConfig.defaultUseMockPasses;
       final String url =
           prefs.getString(_kApiBaseUrl) ?? DevConfig.defaultApiBaseUrl;
-      state = DevFlags(useMockPasses: useMock, apiBaseUrl: url);
+      final String? schemeRaw = prefs.getString(_kCardFluidScheme);
+      final CardFluidScheme scheme = CardFluidScheme.values.firstWhere(
+        (e) => e.name == schemeRaw,
+        orElse: () => CardFluidScheme.auto,
+      );
+      state = DevFlags(
+        useMockPasses: useMock,
+        apiBaseUrl: url,
+        cardFluidScheme: scheme,
+      );
     } catch (e, st) {
       debugPrint('DevFlags load failed: $e\n$st');
       state = DevFlags.compileTimeDefaults();
@@ -57,11 +67,19 @@ class DevFlagsNotifier extends StateNotifier<DevFlags> {
     await prefs.setString(_kApiBaseUrl, trimmed);
   }
 
+  Future<void> setCardFluidScheme(CardFluidScheme scheme) async {
+    if (!DevConfig.allowRuntimeOverrides) return;
+    state = state.copyWith(cardFluidScheme: scheme);
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kCardFluidScheme, scheme.name);
+  }
+
   Future<void> resetToCompileTimeDefaults() async {
     if (!DevConfig.allowRuntimeOverrides) return;
     state = DevFlags.compileTimeDefaults();
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kUseMockPasses);
     await prefs.remove(_kApiBaseUrl);
+    await prefs.remove(_kCardFluidScheme);
   }
 }
