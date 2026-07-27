@@ -3,6 +3,7 @@ import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -11,7 +12,6 @@ import '../../../core/dev/dev_flags.dart';
 import '../../../core/dev/dev_flags_provider.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/haptics/haptics_provider.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../core/wallet/wallet_palette.dart';
 import '../../ids/application/id_list_provider.dart';
@@ -35,17 +35,17 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
-    // Effective brightness (respects ThemeMode.system), not just stored mode.
     final bool isDark = theme.brightness == Brightness.dark;
     final Color ink = theme.colorScheme.onSurface;
-    final Color surface = theme.colorScheme.surface;
-    final Color borderColor = ink.withValues(alpha: isDark ? 0.08 : 0.06);
+    final Color scaffoldBg = isDark ? const Color(0xFF0A0A0D) : const Color(0xFFF8F8FA);
+    final Color surface = isDark ? const Color(0xFF16161A) : const Color(0xFFFFFFFF);
+    final Color borderColor = ink.withValues(alpha: isDark ? 0.08 : 0.05);
 
     final List<PassportProfile> passports = ref.watch(passportListProvider);
     final List<IdDocument> idDocs = ref.watch(idListProvider);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: scaffoldBg,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,7 +62,7 @@ class SettingsScreen extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                 children: [
-                  GestureDetector(
+                  _AnimatedPressScale(
                     onTap: () {
                       HapticService.select();
                       Navigator.of(context).push(
@@ -79,7 +79,10 @@ class SettingsScreen extends ConsumerWidget {
                         isDark: isDark,
                       ),
                     ),
-                  ),
+                  )
+                      .animate()
+                      .fadeIn(duration: 380.ms, curve: Curves.easeOutCubic)
+                      .slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic),
                   const SizedBox(height: 8),
                   Center(
                     child: Row(
@@ -817,9 +820,9 @@ class _SettingsSection extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+      children: <Widget>[
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          padding: const EdgeInsets.only(left: 6, bottom: 8),
           child: Text(
             title,
             style: GoogleFonts.inter(
@@ -870,25 +873,15 @@ class _SettingsCard extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-        boxShadow: isDark
-            ? null
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 20,
-                  offset: const Offset(0, 6),
-                  spreadRadius: -4,
-                ),
-              ],
+        borderRadius: BorderRadius.circular(22.0),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+        borderRadius: BorderRadius.circular(22.0),
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: surface,
             border: Border.all(color: borderColor, width: 0.5),
-            borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+            borderRadius: BorderRadius.circular(22.0),
           ),
           child: padding != null
               ? Padding(padding: padding!, child: content)
@@ -912,7 +905,7 @@ class _SettingsDivider extends StatelessWidget {
         );
 
     return Padding(
-      padding: const EdgeInsets.only(left: 60),
+      padding: const EdgeInsets.only(left: 58),
       child: Divider(height: 1, thickness: 0.5, color: dividerColor),
     );
   }
@@ -929,14 +922,20 @@ class _SettingsRowIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color ink = Theme.of(context).colorScheme.onSurface;
+
+    final Color containerBg = ink.withValues(alpha: isDark ? 0.08 : 0.05);
+    final Color iconTint = isDark ? const Color(0xFFE5E5EA) : const Color(0xFF3A3A3C);
+
     return Container(
-      width: 34,
-      height: 34,
+      width: 32,
+      height: 32,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
+        color: containerBg,
+        borderRadius: BorderRadius.circular(9),
       ),
-      child: Icon(icon, size: 18, color: color),
+      child: Icon(icon, size: 18, color: iconTint),
     );
   }
 }
@@ -965,22 +964,22 @@ class _SettingsToggleRow extends StatelessWidget {
     final Color muted = ink.withValues(alpha: isDark ? 0.45 : 0.55);
 
     return SizedBox(
-      height: subtitle == null ? 54 : 68,
+      height: subtitle == null ? 58 : 66,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(
-          children: [
+          children: <Widget>[
             _SettingsRowIcon(icon: icon, color: iconColor),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                children: <Widget>[
                   Text(
                     title,
                     style: GoogleFonts.inter(
-                      fontSize: 16,
+                      fontSize: 15.5,
                       fontWeight: FontWeight.w500,
                       letterSpacing: -0.2,
                       color: ink,
@@ -990,12 +989,12 @@ class _SettingsToggleRow extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle!,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
-                        height: 1.25,
+                        height: 1.2,
                         color: muted,
                       ),
                     ),
@@ -1013,6 +1012,40 @@ class _SettingsToggleRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AnimatedPressScale extends StatefulWidget {
+  const _AnimatedPressScale({
+    required this.child,
+    this.onTap,
+  });
+
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  State<_AnimatedPressScale> createState() => _AnimatedPressScaleState();
+}
+
+class _AnimatedPressScaleState extends State<_AnimatedPressScale> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _isPressed ? 0.975 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
+        child: widget.child,
       ),
     );
   }
@@ -1041,22 +1074,21 @@ class _NavIconStyleRow extends StatelessWidget {
     final String value =
         style == NavIconStyle.classic ? 'Classic' : 'Vertical';
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return _AnimatedPressScale(
       onTap: onTap,
       child: SizedBox(
-        height: 54,
+        height: 58,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Row(
-            children: [
+            children: <Widget>[
               _SettingsRowIcon(icon: icon, color: iconColor),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   title,
                   style: GoogleFonts.inter(
-                    fontSize: 16,
+                    fontSize: 15.5,
                     fontWeight: FontWeight.w500,
                     letterSpacing: -0.2,
                     color: ink,
@@ -1066,16 +1098,16 @@ class _NavIconStyleRow extends StatelessWidget {
               Text(
                 value,
                 style: GoogleFonts.inter(
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: FontWeight.w400,
                   color: muted,
                 ),
               ),
-              const SizedBox(width: 2),
+              const SizedBox(width: 4),
               Icon(
                 Icons.chevron_right_rounded,
-                size: 20,
-                color: muted.withValues(alpha: 0.7),
+                size: 18,
+                color: muted.withValues(alpha: 0.40),
               ),
             ],
           ),
@@ -1106,18 +1138,17 @@ class _SettingsLinkRow extends StatelessWidget {
     final Color ink = Theme.of(context).colorScheme.onSurface;
     final Color muted = ink.withValues(alpha: isDark ? 0.45 : 0.55);
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return _AnimatedPressScale(
       onTap: () {
         HapticService.tap();
         onTap();
       },
       child: SizedBox(
-        height: subtitle == null ? 54 : 68,
+        height: subtitle == null ? 58 : 66,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Row(
-            children: [
+            children: <Widget>[
               _SettingsRowIcon(icon: icon, color: iconColor),
               const SizedBox(width: 12),
               Expanded(
@@ -1125,7 +1156,7 @@ class _SettingsLinkRow extends StatelessWidget {
                     ? Text(
                         title,
                         style: GoogleFonts.inter(
-                          fontSize: 16,
+                          fontSize: 15.5,
                           fontWeight: FontWeight.w500,
                           letterSpacing: -0.2,
                           color: ink,
@@ -1138,7 +1169,7 @@ class _SettingsLinkRow extends StatelessWidget {
                           Text(
                             title,
                             style: GoogleFonts.inter(
-                              fontSize: 16,
+                              fontSize: 15.5,
                               fontWeight: FontWeight.w500,
                               letterSpacing: -0.2,
                               color: ink,
@@ -1160,8 +1191,8 @@ class _SettingsLinkRow extends StatelessWidget {
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                size: 20,
-                color: muted.withValues(alpha: 0.7),
+                size: 18,
+                color: muted.withValues(alpha: 0.40),
               ),
             ],
           ),
