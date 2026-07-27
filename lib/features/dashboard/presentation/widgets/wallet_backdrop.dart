@@ -45,12 +45,13 @@ class _WalletBackdropState extends State<WalletBackdrop>
       value: widget.tabIndex.toDouble().clamp(0.0, 1.0),
     );
     // Defer looping ambient motion so the first frames stay free for layout.
+    // Controllers respect TickerMode — dashboard mutes them while Settings is open.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       Future<void>.delayed(const Duration(milliseconds: 480), () {
         if (!mounted) return;
-        _ambientCtrl.repeat();
-        _deepCtrl.repeat();
+        if (!_ambientCtrl.isAnimating) _ambientCtrl.repeat();
+        if (!_deepCtrl.isAnimating) _deepCtrl.repeat();
       });
     });
   }

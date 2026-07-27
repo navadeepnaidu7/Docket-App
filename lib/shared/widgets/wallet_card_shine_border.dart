@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 
 /// Experimental Apple-style iridescent border after the card rests post-swipe.
 class WalletCardShineBorder extends StatefulWidget {
@@ -30,8 +29,7 @@ class _WalletCardShineBorderState extends State<WalletCardShineBorder>
   Timer? _idleTimer;
   late final AnimationController _fadeCtrl;
   late final Animation<double> _fadeAnim;
-  Ticker? _sweepTicker;
-  Duration _sweepElapsed = Duration.zero;
+  late final AnimationController _sweepCtrl;
   static const Duration _sweepPeriod = Duration(milliseconds: 4800);
 
   @override
@@ -42,6 +40,13 @@ class _WalletCardShineBorderState extends State<WalletCardShineBorder>
       duration: const Duration(milliseconds: 900),
     );
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOutCubic);
+    // Drive the sweep via the animation system (respects TickerMode) instead of
+    // a raw Ticker + setState every frame, which starved input after Settings.
+    _sweepCtrl = AnimationController(
+      vsync: this,
+      duration: _sweepPeriod,
+    );
+    _fadeCtrl.addStatusListener(_onFadeStatus);
     _scheduleIfNeeded();
   }
 
@@ -57,45 +62,35 @@ class _WalletCardShineBorderState extends State<WalletCardShineBorder>
   @override
   void dispose() {
     _idleTimer?.cancel();
-    _stopSweep();
+    _fadeCtrl.removeStatusListener(_onFadeStatus);
     _fadeCtrl.dispose();
+    _sweepCtrl.dispose();
     super.dispose();
   }
 
-  void _startSweep() {
-    if (_sweepTicker != null) return;
-    _sweepTicker = createTicker((Duration elapsed) {
-      _sweepElapsed = elapsed;
-      if (mounted && _fadeAnim.value > 0.001) {
-        setState(() {});
+  void _onFadeStatus(AnimationStatus status) {
+    if (status == AnimationStatus.dismissed ||
+        status == AnimationStatus.reverse) {
+      if (_sweepCtrl.isAnimating) _sweepCtrl.stop();
+    } else if (status == AnimationStatus.completed ||
+        status == AnimationStatus.forward) {
+      if (widget.enabled && widget.isActive && !_sweepCtrl.isAnimating) {
+        _sweepCtrl.repeat();
       }
-    })..start();
-  }
-
-  void _stopSweep() {
-    _sweepTicker?.dispose();
-    _sweepTicker = null;
-    _sweepElapsed = Duration.zero;
-  }
-
-  double get _sweepProgress {
-    final double ms = _sweepElapsed.inMicroseconds / 1000.0;
-    final double periodMs = _sweepPeriod.inMilliseconds.toDouble();
-    return (ms % periodMs) / periodMs;
+    }
   }
 
   void _scheduleIfNeeded() {
     _idleTimer?.cancel();
     _fadeCtrl.reverse();
-    _stopSweep();
+    if (_sweepCtrl.isAnimating) _sweepCtrl.stop();
+    _sweepCtrl.value = 0;
 
     if (!widget.enabled || !widget.isActive) return;
 
-    // Spin up the sweep early so motion is already smooth when the border fades in.
-    _startSweep();
-
     _idleTimer = Timer(widget.idleDelay, () {
       if (!mounted || !widget.enabled || !widget.isActive) return;
+      _sweepCtrl.repeat();
       _fadeCtrl.forward();
     });
   }
@@ -103,14 +98,14 @@ class _WalletCardShineBorderState extends State<WalletCardShineBorder>
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _fadeAnim,
+      animation: Listenable.merge(<Listenable>[_fadeAnim, _sweepCtrl]),
       builder: (context, child) {
         final double opacity = _fadeAnim.value;
         if (opacity <= 0.001) return child!;
 
         return CustomPaint(
           foregroundPainter: _AppleShineBorderPainter(
-            progress: _sweepProgress,
+            progress: _sweepCtrl.value,
             opacity: opacity,
             borderRadius: widget.borderRadius,
             isDark: Theme.of(context).brightness == Brightness.dark,

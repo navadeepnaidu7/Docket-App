@@ -370,19 +370,75 @@ class WalletMembershipCard extends ConsumerStatefulWidget {
 class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _motion;
+  final ValueNotifier<double> _phase = ValueNotifier<double>(0);
+  Animation<double>? _routeAnimation;
+  Animation<double>? _secondaryAnimation;
 
   @override
   void initState() {
     super.initState();
     _motion = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 14),
-    )..repeat();
+      duration: const Duration(seconds: 18),
+    )..addListener(_onMotionTick);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final ModalRoute<dynamic>? route = ModalRoute.of(context);
+
+    final Animation<double>? nextPrimary = route?.animation;
+    if (!identical(nextPrimary, _routeAnimation)) {
+      _routeAnimation?.removeStatusListener(_onRouteChanged);
+      _routeAnimation = nextPrimary;
+      _routeAnimation?.addStatusListener(_onRouteChanged);
+    }
+
+    final Animation<double>? nextSecondary = route?.secondaryAnimation;
+    if (!identical(nextSecondary, _secondaryAnimation)) {
+      _secondaryAnimation?.removeListener(_onSecondaryTick);
+      _secondaryAnimation = nextSecondary;
+      _secondaryAnimation?.addListener(_onSecondaryTick);
+    }
+
+    _syncMotion();
+  }
+
+  void _onRouteChanged(AnimationStatus status) => _syncMotion();
+
+  void _onSecondaryTick() => _syncMotion();
+
+  void _onMotionTick() {
+    // ~12 unique frames per controller cycle — not 60/120.
+    final double next = (_motion.value * 12).floorToDouble() / 12.0;
+    if (next != _phase.value) {
+      _phase.value = next;
+    }
+  }
+
+  void _syncMotion() {
+    if (!mounted) return;
+    final ModalRoute<dynamic>? route = ModalRoute.of(context);
+    final bool routeVisible = route == null ||
+        (route.isCurrent && (route.secondaryAnimation?.value ?? 0) == 0);
+    final bool shouldRun =
+        routeVisible && TickerMode.valuesOf(context).enabled;
+    if (shouldRun) {
+      if (!_motion.isAnimating) _motion.repeat();
+    } else if (_motion.isAnimating) {
+      _motion.stop();
+    }
   }
 
   @override
   void dispose() {
-    _motion.dispose();
+    _routeAnimation?.removeStatusListener(_onRouteChanged);
+    _secondaryAnimation?.removeListener(_onSecondaryTick);
+    _motion
+      ..removeListener(_onMotionTick)
+      ..dispose();
+    _phase.dispose();
     super.dispose();
   }
 
@@ -428,101 +484,105 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(kSettingsHeroRadius),
-        child: AnimatedBuilder(
-          animation: _motion,
-          builder: (BuildContext context, Widget? child) {
-            final double t = _motion.value;
-            // Slow elliptical drift of the base gradient angle.
-            final double angle = t * 6.28318530718;
-            final Alignment begin = Alignment(
-              -0.95 + 0.18 * math.sin(angle),
-              -0.90 + 0.14 * math.cos(angle * 0.85),
-            );
-            final Alignment end = Alignment(
-              0.95 + 0.12 * math.cos(angle * 0.7),
-              1.05 + 0.10 * math.sin(angle * 0.9),
-            );
-
-            return Stack(
-              fit: StackFit.expand,
-              children: <Widget>[
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: begin,
-                      end: end,
-                      colors: baseColors,
-                      stops: const <double>[0.0, 0.5, 1.0],
-                    ),
-                  ),
-                ),
-                CustomPaint(
-                  painter: _MembershipWashPainter(
-                    washes: washes,
-                    phase: t,
-                    isDark: false,
-                    empty: !hasDocs,
-                  ),
-                ),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(kSettingsHeroRadius),
-                    border: Border.all(color: border, width: 0.5),
-                  ),
-                ),
-                child!,
-              ],
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'July 2026',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.1,
-                    color: inkMuted,
-                  ),
-                ),
-                const Spacer(),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.5,
-                          height: 1.12,
-                          color: ink,
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            // Animated wash layer only — face text stays static.
+            RepaintBoundary(
+              child: ValueListenableBuilder<double>(
+                valueListenable: _phase,
+                builder: (BuildContext context, double phase, _) {
+                  final double angle = phase * 6.28318530718;
+                  final Alignment begin = Alignment(
+                    -0.95 + 0.18 * math.sin(angle),
+                    -0.90 + 0.14 * math.cos(angle * 0.85),
+                  );
+                  final Alignment end = Alignment(
+                    0.95 + 0.12 * math.cos(angle * 0.7),
+                    1.05 + 0.10 * math.sin(angle * 0.9),
+                  );
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: <Widget>[
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: begin,
+                            end: end,
+                            colors: baseColors,
+                            stops: const <double>[0.0, 0.5, 1.0],
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Text(
-                      '#4377',
-                      style: GoogleFonts.robotoMono(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: inkMuted,
-                        letterSpacing: 0.5,
+                      CustomPaint(
+                        painter: _MembershipWashPainter(
+                          washes: washes,
+                          phase: phase,
+                          isDark: false,
+                          empty: !hasDocs,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(kSettingsHeroRadius),
+                border: Border.all(color: border, width: 0.5),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'July 2026',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.1,
+                      color: inkMuted,
+                    ),
+                  ),
+                  const Spacer(),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.5,
+                            height: 1.12,
+                            color: ink,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        '#4377',
+                        style: GoogleFonts.robotoMono(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: inkMuted,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -563,7 +623,8 @@ class _MembershipWashPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final List<Color> layers = washes.take(5).toList();
+    // Cap blooms — each radial shader is expensive on Impeller/Android.
+    final List<Color> layers = washes.take(3).toList();
     if (layers.isEmpty) return;
 
     final double twoPi = 6.28318530718;

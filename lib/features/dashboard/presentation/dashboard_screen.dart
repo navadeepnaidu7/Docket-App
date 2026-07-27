@@ -327,6 +327,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   void _openSettings() {
     HapticService.confirm();
+    // Never leave the home-menu barrier open under a pushed route.
+    if (_showHomeMenu.value) {
+      _showHomeMenu.value = false;
+    }
     Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
     );
@@ -437,7 +441,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
     final String currentName = passports.isNotEmpty ? passports.first.name : '';
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
+    // Continuous backdrop / card animations keep burning GPU while Settings (or
+    // any other route) covers the dashboard. Mute tickers while covered so the
+    // pop transition does not double-paint two full animated trees — that was
+    // hanging the UI after returning from Settings on mid-range Android.
+    final ModalRoute<dynamic>? route = ModalRoute.of(context);
+    final Animation<double>? secondary = route?.secondaryAnimation;
+
+    Widget scaffold = AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -760,6 +771,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           ],
         ),
       ),
+    );
+
+    if (secondary == null) return scaffold;
+
+    return AnimatedBuilder(
+      animation: secondary,
+      builder: (BuildContext context, Widget? child) {
+        final bool covered =
+            secondary.value > 0.0 || !(route?.isCurrent ?? true);
+        return TickerMode(
+          enabled: !covered,
+          child: child!,
+        );
+      },
+      child: scaffold,
     );
   }
 }

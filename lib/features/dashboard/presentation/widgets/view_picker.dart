@@ -130,12 +130,18 @@ class _ViewPickerExpandedState extends State<ViewPickerExpanded>
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, child) {
-          return Opacity(
-            opacity: _fadeAnimation.value,
-            child: Transform.scale(
-              scale: _scaleAnimation.value,
-              alignment: Alignment.topLeft,
-              child: child,
+          // Avoid absorbing taps while fading out (Opacity 0 still hit-tests).
+          final bool absorbHits =
+              !widget.visible || _fadeAnimation.value < 0.02;
+          return IgnorePointer(
+            ignoring: absorbHits,
+            child: Opacity(
+              opacity: _fadeAnimation.value,
+              child: Transform.scale(
+                scale: _scaleAnimation.value,
+                alignment: Alignment.topLeft,
+                child: child,
+              ),
             ),
           );
         },
