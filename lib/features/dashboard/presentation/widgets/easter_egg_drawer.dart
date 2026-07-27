@@ -3,7 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../ids/domain/id_document.dart';
 import '../../../passport/domain/passport_profile.dart';
-import '../../../tickets/domain/pass_catalog.dart';
+import '../../../tickets/data/mock_pass_fixtures.dart';
+import '../../../tickets/domain/movie_pass_models.dart';
 import '../../../tickets/domain/ticket_models.dart';
 import 'blur_place_reveal.dart';
 import 'easter_egg_constants.dart';
@@ -100,9 +101,12 @@ class _EasterEggDrawerState extends State<EasterEggDrawer>
         widget.passports.isNotEmpty ? widget.passports.first.name : '';
     final String firstName =
         currentName.isEmpty ? 'Traveller' : currentName.split(' ').first;
-    final int activeTrips = mockWalletPasses
-        .where((WalletPassItem p) => p.status == TicketStatus.active)
-        .length;
+    final int activeTrips = mockTrainPasses
+            .where((TrainPass t) => t.status == TicketStatus.active)
+            .length +
+        mockMoviePasses
+            .where((MoviePass m) => m.status == TicketStatus.active)
+            .length;
     final int itemCount = widget.passports.length + widget.idDocs.length;
 
     return GestureDetector(

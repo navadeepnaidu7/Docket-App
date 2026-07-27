@@ -5,6 +5,8 @@ This document is the handoff for backend implementers. The Flutter Passes tab al
 Default client implementation: **`MockPassRepository`** (fixtures).  
 Swap to **`RemotePassRepository`** when `baseUrl` + auth exist.
 
+**Backend (docket_server):** `GET /v1/passes` and `GET /v1/passes/{id}` implement this envelope. Movie tickets are extracted via `POST /tickets/extract` (`category=movie` optional) with brands `bookMyShow` | `district` | `universal`. See `docket_server/docs/architecture.md` for pass **family** taxonomy (travel vs event vs hotel).
+
 **In-app switch:** Settings → Developer (debug/profile). See also [dev-flags.md](../dev-flags.md).
 
 ## Endpoints
