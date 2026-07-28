@@ -331,8 +331,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     if (_showHomeMenu.value) {
       _showHomeMenu.value = false;
     }
+    // Same modal transition as pass/ticket card detail (slide up / dismiss down).
     Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => const SettingsScreen(),
+      ),
     );
   }
 
