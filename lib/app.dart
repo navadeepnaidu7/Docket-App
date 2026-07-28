@@ -12,7 +12,7 @@ class DocketApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeModeProvider);
+    final ThemeMode themeMode = ref.watch(resolvedThemeModeProvider);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Docket',

@@ -5,19 +5,23 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/assets/app_assets.dart';
 import '../../../core/dev/dev_config.dart';
 import '../../../core/dev/dev_flags.dart';
 import '../../../core/dev/dev_flags_provider.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/haptics/haptics_provider.dart';
 import '../../../core/theme/theme_provider.dart';
+import '../../../core/theme/theme_time_picker.dart';
 import '../../../core/wallet/wallet_palette.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../tickets/application/pass_list_provider.dart';
+import '../application/auth_session_provider.dart';
 import '../application/card_shine_border_provider.dart';
 import '../application/wallet_filter_provider.dart';
 import '../application/nav_icon_style_provider.dart';
@@ -42,6 +46,7 @@ class SettingsScreen extends ConsumerWidget {
 
     final List<PassportProfile> passports = ref.watch(passportListProvider);
     final List<IdDocument> idDocs = ref.watch(idListProvider);
+    final AuthSession session = ref.watch(authSessionProvider);
 
     return Scaffold(
       backgroundColor: scaffoldBg,
@@ -109,22 +114,7 @@ class SettingsScreen extends ConsumerWidget {
                     borderColor: borderColor,
                     isDark: isDark,
                     children: [
-                      _SettingsToggleRow(
-                        icon: isDark
-                            ? Icons.dark_mode_rounded
-                            : Icons.light_mode_rounded,
-                        iconColor: const Color(0xFF6E40C9),
-                        title: 'Dark mode',
-                        value: isDark,
-                        onChanged: (bool enableDark) {
-                          HapticService.select();
-                          ref.read(themeModeProvider.notifier).setMode(
-                                enableDark
-                                    ? ThemeMode.dark
-                                    : ThemeMode.light,
-                              );
-                        },
-                      ),
+                      const _ThemeAppearanceBlock(),
                       const _SettingsDivider(),
                       _SettingsToggleRow(
                         icon: Icons.vibration_rounded,
@@ -231,6 +221,31 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
+                  if (session.isSignedIn) ...[
+                    const SizedBox(height: 20),
+                    _SettingsSection(
+                      title: 'Account',
+                      surface: surface,
+                      borderColor: borderColor,
+                      isDark: isDark,
+                      children: [
+                        _SettingsLinkRow(
+                          icon: Icons.manage_accounts_rounded,
+                          iconColor: const Color(0xFF2F6FED),
+                          title: 'Manage account',
+                          subtitle: session.email,
+                          onTap: () => _showAccountComingSoon(context),
+                        ),
+                        const _SettingsDivider(),
+                        _SettingsLinkRow(
+                          icon: Icons.logout_rounded,
+                          iconColor: const Color(0xFFFF3B30),
+                          title: 'Sign out',
+                          onTap: () => _confirmSignOut(context, ref),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   _SettingsSection(
                     title: 'General',
@@ -268,6 +283,85 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+Future<void> _showAccountComingSoon(BuildContext context) async {
+  await showDialog<void>(
+    context: context,
+    builder: (BuildContext dialogContext) {
+      final ThemeData theme = Theme.of(dialogContext);
+      return AlertDialog(
+        title: const Text('Coming soon'),
+        content: const Text(
+          'Account management will connect to your Google account in a '
+          'future update.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(
+              'Got it',
+              style: TextStyle(color: theme.colorScheme.primary),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+  final bool? confirmed = await showCupertinoModalPopup<bool>(
+    context: context,
+    builder: (BuildContext ctx) => CupertinoActionSheet(
+      title: const Text('Sign out of Docket?'),
+      message: const Text('You can sign back in anytime from the wallet card.'),
+      actions: <CupertinoActionSheetAction>[
+        CupertinoActionSheetAction(
+          isDestructiveAction: true,
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Sign out'),
+        ),
+      ],
+      cancelButton: CupertinoActionSheetAction(
+        onPressed: () => Navigator.of(ctx).pop(false),
+        child: const Text('Cancel'),
+      ),
+    ),
+  );
+  if (confirmed != true) return;
+  await setMockSignedIn(ref, false);
+}
+
+Future<void> _handleGoogleSignInTap(BuildContext context, WidgetRef ref) async {
+  HapticService.confirm();
+  if (!DevConfig.allowRuntimeOverrides) {
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        final ThemeData theme = Theme.of(dialogContext);
+        return AlertDialog(
+          title: const Text('Google sign-in coming soon'),
+          content: const Text(
+            'Account sign-in is not available yet. This will connect to your '
+            'Google account in a future update.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(
+                'Got it',
+                style: TextStyle(color: theme.colorScheme.primary),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    return;
+  }
+  // Placeholder mock: flips signed-in UI (same as Developer → Mock signed in).
+  await setMockSignedIn(ref, true);
 }
 
 // ── Apple Card–inspired wallet membership surface ────────────────────────────
@@ -445,12 +539,13 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
   @override
   Widget build(BuildContext context) {
     final DevFlags devFlags = ref.watch(devFlagsProvider);
+    final AuthSession session = ref.watch(authSessionProvider);
     final PassportProfile? primaryPassport =
         widget.passports.isNotEmpty ? widget.passports.first : null;
     final IdDocument? primaryId =
         widget.idDocs.isNotEmpty ? widget.idDocs.first : null;
 
-    final String name = _resolveName(primaryPassport, primaryId);
+    final String name = _resolveName(session, primaryPassport, primaryId);
     final List<Color> washes = _walletWashColors(
       passports: widget.passports,
       idDocs: widget.idDocs,
@@ -464,6 +559,7 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
     final Color border = Colors.black.withValues(alpha: 0.08);
     final bool hasDocs =
         widget.passports.isNotEmpty || widget.idDocs.isNotEmpty;
+    final bool signedIn = session.isSignedIn;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -550,35 +646,65 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
                     ),
                   ),
                   const Spacer(),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: <Widget>[
-                      Expanded(
-                        child: Text(
-                          name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.5,
-                            height: 1.12,
-                            color: ink,
+                  if (signedIn)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.5,
+                              height: 1.12,
+                              color: ink,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        '#4377',
-                        style: GoogleFonts.robotoMono(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: inkMuted,
-                          letterSpacing: 0.5,
+                        const SizedBox(width: 16),
+                        Text(
+                          '#4377',
+                          style: GoogleFonts.robotoMono(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: inkMuted,
+                            letterSpacing: 0.5,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    )
+                  else
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: <Widget>[
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            // Own detector so this does not open card detail.
+                            child: _GoogleSignInOnCardButton(
+                              onTap: () =>
+                                  _handleGoogleSignInTap(context, ref),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            '#4377',
+                            style: GoogleFonts.robotoMono(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: inkMuted,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -588,7 +714,15 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
     );
   }
 
-  String _resolveName(PassportProfile? passport, IdDocument? id) {
+  String _resolveName(
+    AuthSession session,
+    PassportProfile? passport,
+    IdDocument? id,
+  ) {
+    final String? accountName = session.displayName?.trim();
+    if (accountName != null && accountName.isNotEmpty) {
+      return accountName;
+    }
     if (passport != null && passport.name.trim().isNotEmpty) {
       return passport.name.trim();
     }
@@ -596,6 +730,28 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
       return id.holderName.trim();
     }
     return 'Your wallet';
+  }
+}
+
+/// Official Google button sized for the membership card face.
+class _GoogleSignInOnCardButton extends StatelessWidget {
+  const _GoogleSignInOnCardButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return _AnimatedPressScale(
+      onTap: onTap,
+      child: SizedBox(
+        height: 40,
+        child: SvgPicture.asset(
+          AppAssets.googleSignInButton,
+          fit: BoxFit.contain,
+          alignment: Alignment.centerLeft,
+        ),
+      ),
+    );
   }
 }
 
@@ -806,6 +962,20 @@ class _DeveloperSection extends ConsumerWidget {
           },
         ),
         const _SettingsDivider(),
+        _SettingsToggleRow(
+          icon: Icons.account_circle_rounded,
+          iconColor: const Color(0xFF2F6FED),
+          title: 'Mock signed in',
+          subtitle: flags.mockSignedIn
+              ? 'Card shows name · Account section on'
+              : 'Card shows Google button · signed out',
+          value: flags.mockSignedIn,
+          onChanged: (bool v) async {
+            HapticService.select();
+            await ref.read(devFlagsProvider.notifier).setMockSignedIn(v);
+          },
+        ),
+        const _SettingsDivider(),
         _SettingsLinkRow(
           icon: Icons.palette_rounded,
           iconColor: const Color(0xFF5E5CE6),
@@ -852,6 +1022,437 @@ class _DeveloperSection extends ConsumerWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+// ── Appearance: theme preference + schedule ────────────────────────────────
+
+class _ThemeAppearanceBlock extends ConsumerWidget {
+  const _ThemeAppearanceBlock();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeControllerState themeState = ref.watch(themeControllerProvider);
+    final ThemeSettings settings = themeState.settings;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color ink = Theme.of(context).colorScheme.onSurface;
+    // Stronger secondary labels in dark mode so the block reads clearly.
+    final Color muted = ink.withValues(alpha: isDark ? 0.62 : 0.55);
+    final Color titleColor = isDark ? const Color(0xFFF2F2F7) : ink;
+
+    final String? statusSubtitle = _themeStatusSubtitle(themeState);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  const _SettingsRowIcon(
+                    icon: Icons.brightness_6_rounded,
+                    color: Color(0xFF6E40C9),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Theme',
+                      style: GoogleFonts.inter(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                        color: titleColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (statusSubtitle != null) ...[
+                const SizedBox(height: 6),
+                Padding(
+                  padding: const EdgeInsets.only(left: 44),
+                  child: Text(
+                    statusSubtitle,
+                    style: GoogleFonts.inter(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w400,
+                      height: 1.25,
+                      color: muted,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              _ThemeSegmentedControl(
+                value: settings.preference,
+                onChanged: (AppThemePreference next) {
+                  HapticService.select();
+                  ref.read(themeControllerProvider.notifier).setPreference(next);
+                },
+              ),
+            ],
+          ),
+        ),
+        if (settings.preference == AppThemePreference.schedule) ...[
+          const _SettingsDivider(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Schedule',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.1,
+                    color: muted,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _ScheduleKindSegmented(
+                  value: settings.scheduleKind,
+                  onChanged: (ScheduleKind kind) {
+                    HapticService.select();
+                    ref
+                        .read(themeControllerProvider.notifier)
+                        .setScheduleKind(kind);
+                  },
+                ),
+              ],
+            ),
+          ),
+          if (settings.scheduleKind == ScheduleKind.custom) ...[
+            const _SettingsDivider(),
+            _ThemeTimeRow(
+              title: 'Light from',
+              minutes: settings.lightStartMinutes,
+              onTap: () async {
+                final int? picked = await showThemeTimePicker(
+                  context: context,
+                  title: 'Light from',
+                  initialMinutes: settings.lightStartMinutes,
+                );
+                if (picked == null) return;
+                HapticService.select();
+                await ref
+                    .read(themeControllerProvider.notifier)
+                    .setLightStartMinutes(picked);
+              },
+            ),
+            const _SettingsDivider(),
+            _ThemeTimeRow(
+              title: 'Dark from',
+              minutes: settings.lightEndMinutes,
+              onTap: () async {
+                final int? picked = await showThemeTimePicker(
+                  context: context,
+                  title: 'Dark from',
+                  initialMinutes: settings.lightEndMinutes,
+                );
+                if (picked == null) return;
+                HapticService.select();
+                await ref
+                    .read(themeControllerProvider.notifier)
+                    .setLightEndMinutes(picked);
+              },
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+}
+
+String? _themeStatusSubtitle(ThemeControllerState state) {
+  final ThemeSettings s = state.settings;
+  if (s.preference == AppThemePreference.light) return 'Always light';
+  if (s.preference == AppThemePreference.dark) return 'Always dark';
+
+  final int start = s.effectiveLightStartMinutes;
+  final int end = s.effectiveLightEndMinutes;
+  final String range =
+      '${formatMinutesOfDay(start)} – ${formatMinutesOfDay(end)}';
+
+  if (s.scheduleKind == ScheduleKind.custom) {
+    return 'Light $range';
+  }
+
+  // Sunrise–sunset uses fixed local day window (device clock).
+  if (state.resolvedMode == ThemeMode.light) {
+    return 'Light until ${formatMinutesOfDay(end)} · $range';
+  }
+  return 'Dark until ${formatMinutesOfDay(start)} · $range';
+}
+
+class _ThemeSegmentedControl extends StatelessWidget {
+  const _ThemeSegmentedControl({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final AppThemePreference value;
+  final ValueChanged<AppThemePreference> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PillSegmented<AppThemePreference>(
+      value: value,
+      segments: const <(AppThemePreference, String)>[
+        (AppThemePreference.light, 'Light'),
+        (AppThemePreference.dark, 'Dark'),
+        (AppThemePreference.schedule, 'Schedule'),
+      ],
+      onChanged: onChanged,
+    );
+  }
+}
+
+class _ScheduleKindSegmented extends StatelessWidget {
+  const _ScheduleKindSegmented({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final ScheduleKind value;
+  final ValueChanged<ScheduleKind> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PillSegmented<ScheduleKind>(
+      value: value,
+      segments: const <(ScheduleKind, String)>[
+        (ScheduleKind.sunriseSunset, 'Sunrise–sunset'),
+        (ScheduleKind.custom, 'Custom'),
+      ],
+      onChanged: onChanged,
+    );
+  }
+}
+
+/// iOS-style sliding segmented control with press scale + thumb motion.
+class _PillSegmented<T> extends StatefulWidget {
+  const _PillSegmented({
+    required this.value,
+    required this.segments,
+    required this.onChanged,
+  });
+
+  final T value;
+  final List<(T, String)> segments;
+  final ValueChanged<T> onChanged;
+
+  @override
+  State<_PillSegmented<T>> createState() => _PillSegmentedState<T>();
+}
+
+class _PillSegmentedState<T> extends State<_PillSegmented<T>> {
+  static const double _height = 40;
+  static const double _pad = 3;
+  static const Duration _slideDuration = Duration(milliseconds: 280);
+  static const Curve _slideCurve = Curves.easeOutCubic;
+
+  int? _pressedIndex;
+
+  int get _selectedIndex {
+    final int i = widget.segments.indexWhere((e) => e.$1 == widget.value);
+    return i < 0 ? 0 : i;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color ink = Theme.of(context).colorScheme.onSurface;
+
+    // Dark: deeper track + brighter elevated thumb for clear contrast.
+    final Color track = isDark
+        ? const Color(0xFF0C0C10)
+        : ink.withValues(alpha: 0.07);
+    final Color trackBorder = isDark
+        ? Colors.white.withValues(alpha: 0.10)
+        : Colors.black.withValues(alpha: 0.04);
+    final Color thumbBg = isDark
+        ? const Color(0xFF3A3A44)
+        : const Color(0xFFFFFFFF);
+    final Color thumbBorder = isDark
+        ? Colors.white.withValues(alpha: 0.14)
+        : Colors.black.withValues(alpha: 0.04);
+    final Color selectedFg =
+        isDark ? const Color(0xFFF5F5F7) : const Color(0xFF1C1C1E);
+    final Color unselectedFg = isDark
+        ? Colors.white.withValues(alpha: 0.58)
+        : ink.withValues(alpha: 0.48);
+
+    final int count = widget.segments.length;
+    final int selected = _selectedIndex;
+
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double innerW = constraints.maxWidth - _pad * 2;
+        final double segmentW = innerW / count;
+        final double thumbLeft = _pad + selected * segmentW;
+
+        return Container(
+          height: _height,
+          decoration: BoxDecoration(
+            color: track,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: trackBorder, width: 0.5),
+          ),
+          child: Stack(
+            children: <Widget>[
+              // Sliding thumb
+              AnimatedPositioned(
+                duration: _slideDuration,
+                curve: _slideCurve,
+                left: thumbLeft,
+                width: segmentW,
+                top: _pad,
+                bottom: _pad,
+                child: AnimatedScale(
+                  scale: _pressedIndex == selected ? 0.96 : 1.0,
+                  duration: const Duration(milliseconds: 120),
+                  curve: Curves.easeOutCubic,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: thumbBg,
+                      borderRadius: BorderRadius.circular(9),
+                      border: Border.all(color: thumbBorder, width: 0.5),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.45 : 0.08,
+                          ),
+                          blurRadius: isDark ? 10 : 8,
+                          offset: const Offset(0, 2),
+                        ),
+                        if (!isDark)
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 2,
+                            offset: const Offset(0, 1),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Labels + hit targets
+              Row(
+                children: <Widget>[
+                  for (int i = 0; i < count; i++)
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTapDown: (_) => setState(() => _pressedIndex = i),
+                        onTapUp: (_) => setState(() => _pressedIndex = null),
+                        onTapCancel: () => setState(() => _pressedIndex = null),
+                        onTap: () {
+                          final T key = widget.segments[i].$1;
+                          if (key != widget.value) {
+                            widget.onChanged(key);
+                          }
+                        },
+                        child: AnimatedScale(
+                          scale: _pressedIndex == i ? 0.94 : 1.0,
+                          duration: const Duration(milliseconds: 110),
+                          curve: Curves.easeOutCubic,
+                          child: Center(
+                            child: AnimatedDefaultTextStyle(
+                              duration: _slideDuration,
+                              curve: _slideCurve,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: i == selected
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                                letterSpacing: -0.2,
+                                color: i == selected
+                                    ? selectedFg
+                                    : unselectedFg,
+                                height: 1.1,
+                              ),
+                              child: Text(
+                                widget.segments[i].$2,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ThemeTimeRow extends StatelessWidget {
+  const _ThemeTimeRow({
+    required this.title,
+    required this.minutes,
+    required this.onTap,
+  });
+
+  final String title;
+  final int minutes;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color ink = Theme.of(context).colorScheme.onSurface;
+    final Color titleColor = isDark ? const Color(0xFFF2F2F7) : ink;
+    final Color muted = ink.withValues(alpha: isDark ? 0.62 : 0.55);
+
+    return _AnimatedPressScale(
+      onTap: onTap,
+      child: SizedBox(
+        height: 54,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: -0.2,
+                    color: titleColor,
+                  ),
+                ),
+              ),
+              Text(
+                formatMinutesOfDay(minutes),
+                style: GoogleFonts.inter(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w500,
+                  color: muted,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: muted.withValues(alpha: isDark ? 0.55 : 0.45),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

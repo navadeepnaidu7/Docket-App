@@ -6,11 +6,15 @@ import '../../../passport/domain/passport_profile.dart';
 import '../../../tickets/data/mock_pass_fixtures.dart';
 import '../../../tickets/domain/movie_pass_models.dart';
 import '../../../tickets/domain/ticket_models.dart';
-import 'blur_place_reveal.dart';
 import 'easter_egg_constants.dart';
 import 'travel_weather_glance.dart';
 
-class EasterEggDrawer extends StatefulWidget {
+/// The quiet, private layer revealed by pulling the dashboard down.
+///
+/// This stays mounted for the entire gesture and reads the live offset. That
+/// is important: content should be present while the surface is moving, not
+/// appear after a second animation has finished.
+class EasterEggDrawer extends StatelessWidget {
   const EasterEggDrawer({
     super.key,
     required this.controller,
@@ -33,213 +37,117 @@ class EasterEggDrawer extends StatefulWidget {
   final void Function(IdDocumentType) onAddId;
 
   @override
-  State<EasterEggDrawer> createState() => _EasterEggDrawerState();
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onVerticalDragUpdate: onDragUpdate,
+      onVerticalDragEnd: onDragEnd,
+      child: ValueListenableBuilder<double>(
+        valueListenable: dragOffsetNotifier,
+        builder: (context, offset, _) {
+          final double progress = (offset / kEasterEggPanelHeight).clamp(
+            0.0,
+            1.0,
+          );
+          final double contentT = Curves.easeOutCubic.transform(
+            ((progress - 0.04) / 0.72).clamp(0.0, 1.0),
+          );
+          return Opacity(
+            opacity: 0.55 + (contentT * 0.45),
+            child: Transform.translate(
+              offset: Offset(0, 12 * (1 - contentT)),
+              child: _DrawerContent(passports: passports, idDocs: idDocs),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
 
-class _EasterEggDrawerState extends State<EasterEggDrawer>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _contentReveal;
+class _DrawerContent extends StatelessWidget {
+  const _DrawerContent({required this.passports, required this.idDocs});
 
-  bool _contentVisible = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _contentReveal = AnimationController(
-      vsync: this,
-      duration: kEasterEggContentRevealDuration,
-    );
-    widget.controller.addStatusListener(_onSheetStatusChanged);
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeStatusListener(_onSheetStatusChanged);
-    _contentReveal.dispose();
-    super.dispose();
-  }
-
-  void _resetContent() {
-    _contentVisible = false;
-    _contentReveal.stop();
-    _contentReveal.value = 0;
-  }
-
-  void _startContentReveal() {
-    if (!mounted || _contentVisible) return;
-    _contentVisible = true;
-    _contentReveal.stop();
-    _contentReveal.forward(from: 0);
-  }
-
-  void _onSheetStatusChanged(AnimationStatus status) {
-    if (!mounted) return;
-    final AnimationController sheet = widget.controller;
-
-    switch (status) {
-      case AnimationStatus.forward:
-        // Sheet opening — keep content hidden until fully settled.
-        if (sheet.value < 0.99) {
-          _resetContent();
-        }
-      case AnimationStatus.completed:
-        if (sheet.value >= 0.99) {
-          _startContentReveal();
-        }
-      case AnimationStatus.reverse:
-        // Sheet closing — hide immediately; don't run a slow reverse in parallel.
-        _resetContent();
-      case AnimationStatus.dismissed:
-        _resetContent();
-    }
-  }
+  final List<PassportProfile> passports;
+  final List<IdDocument> idDocs;
 
   @override
   Widget build(BuildContext context) {
-    final double panelHeight = kEasterEggPanelHeight;
-    final String currentName =
-        widget.passports.isNotEmpty ? widget.passports.first.name : '';
-    final String firstName =
-        currentName.isEmpty ? 'Traveller' : currentName.split(' ').first;
-    final int activeTrips = mockTrainPasses
-            .where((TrainPass t) => t.status == TicketStatus.active)
-            .length +
-        mockMoviePasses
-            .where((MoviePass m) => m.status == TicketStatus.active)
-            .length;
-    final int itemCount = widget.passports.length + widget.idDocs.length;
+    final String name = passports.isNotEmpty ? passports.first.name : '';
+    final String firstName = name.isEmpty ? 'Traveller' : name.split(' ').first;
+    final int activeTrips =
+        mockTrainPasses.where((t) => t.status == TicketStatus.active).length +
+        mockMoviePasses.where((m) => m.status == TicketStatus.active).length;
+    final int itemCount = passports.length + idDocs.length;
+    final TextStyle body = GoogleFonts.inter(
+      color: const Color(0xFFA8B8D3),
+      fontSize: 13,
+      height: 1.4,
+      letterSpacing: -0.05,
+    );
 
-    return GestureDetector(
-      onVerticalDragUpdate: widget.onDragUpdate,
-      onVerticalDragEnd: widget.onDragEnd,
-      child: Container(
-        width: double.infinity,
-        height: panelHeight + 150.0,
-        clipBehavior: Clip.antiAlias,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF081A36), Color(0xFF030811)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+    return Container(
+      width: double.infinity,
+      height: kEasterEggPanelHeight + 150,
+      clipBehavior: Clip.antiAlias,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF102A52), Color(0xFF071326), Color(0xFF030811)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
-        child: Container(
-          height: panelHeight,
-          padding: const EdgeInsets.fromLTRB(20, 44, 20, 10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              BlurPlaceReveal(
-                animation: _contentReveal,
-                intervalStart: 0.0,
-                intervalEnd: 0.38,
-                placementOffset: 20,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Hey, $firstName',
-                  style: GoogleFonts.inter(
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 30, 20, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'D O C K E T  ·  PRIVATE SPACE',
+            style: GoogleFonts.inter(
+              color: const Color(0xFF8EA8CF),
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.4,
+            ),
+          ),
+          const SizedBox(height: 9),
+          Text(
+            'A little room to breathe, $firstName.',
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.7,
+              height: 1.08,
+            ),
+          ),
+          const SizedBox(height: 9),
+          Text.rich(
+            TextSpan(
+              children: [
+                const TextSpan(text: 'Your wallet has '),
+                TextSpan(
+                  text: '$itemCount items',
+                  style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.6,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              BlurPlaceReveal(
-                animation: _contentReveal,
-                intervalStart: 0.16,
-                intervalEnd: 0.52,
-                placementOffset: 24,
-                alignment: Alignment.topLeft,
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      const TextSpan(text: 'You have '),
-                      WidgetSpan(
-                        alignment: PlaceholderAlignment.middle,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 3),
-                          child: Icon(
-                            Icons.wallet_rounded,
-                            color: Colors.white.withValues(alpha: 0.7),
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                      TextSpan(
-                        text: '$itemCount items',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const TextSpan(text: ' in your wallet,\n'),
-                      WidgetSpan(
-                        alignment: PlaceholderAlignment.middle,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 3),
-                          child: Icon(
-                            Icons.flight_takeoff_rounded,
-                            color: Colors.white.withValues(alpha: 0.7),
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                      TextSpan(
-                        text: '$activeTrips active trips',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const TextSpan(text: ', and '),
-                      WidgetSpan(
-                        alignment: PlaceholderAlignment.middle,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 3),
-                          child: Icon(
-                            Icons.offline_pin_rounded,
-                            color: Colors.white.withValues(alpha: 0.7),
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                      const TextSpan(
-                        text: 'all data offline.',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF8DA2C4),
-                    fontSize: 14,
-                    height: 1.38,
-                    letterSpacing: -0.1,
+                const TextSpan(text: ' · '),
+                TextSpan(
+                  text: '$activeTrips active trips',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: BlurPlaceReveal(
-                    animation: _contentReveal,
-                    intervalStart: 0.34,
-                    intervalEnd: 1.0,
-                    placementOffset: 32,
-                    alignment: Alignment.bottomCenter,
-                    maxBlur: 18,
-                    child: const TravelWeatherGlance(),
-                  ),
-                ),
-              ),
-            ],
+                const TextSpan(text: ' · all data offline.'),
+              ],
+            ),
+            style: body,
           ),
-        ),
+          const Spacer(),
+          const TravelWeatherGlance(),
+        ],
       ),
     );
   }

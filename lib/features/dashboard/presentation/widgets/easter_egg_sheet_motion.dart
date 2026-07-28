@@ -35,13 +35,15 @@ class EasterEggSheetMotion {
     return EasterEggSheetMotion(
       progress: t,
       sheetOffsetY: offsetY,
-      drawerTop: lerpDouble(-30, 0, eased)!,
-      topRadius: lerpDouble(0, 44, eased)!,
-      sheetScale: lerpDouble(1.0, 0.985, eased)!,
-      shadowOpacity: lerpDouble(0, 0.15, eased)!,
-      pullPillOpacity: lerpDouble(0, 0.35, eased)!,
-      pillBarOffsetY: lerpDouble(0, 12, eased)!,
-      pillBarOpacity: lerpDouble(1, 0.82, eased)!,
+      // The drawer is anchored to the window. The main surface reveals it by
+      // moving down, so the two surfaces never drift apart during a drag.
+      drawerTop: 0,
+      topRadius: lerpDouble(0, 28, eased)!,
+      sheetScale: lerpDouble(1.0, 0.992, eased)!,
+      shadowOpacity: lerpDouble(0, 0.20, eased)!,
+      pullPillOpacity: lerpDouble(0, 0.42, eased)!,
+      pillBarOffsetY: lerpDouble(0, 8, eased)!,
+      pillBarOpacity: lerpDouble(1, 0.88, eased)!,
     );
   }
 

@@ -38,11 +38,7 @@ import 'widgets/trash_view.dart';
 import 'widgets/view_picker.dart';
 import 'widgets/wallet_backdrop.dart';
 
-enum DashboardViewMode {
-  home,
-  manage,
-  trash,
-}
+enum DashboardViewMode { home, manage, trash }
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -62,7 +58,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   late final AnimationController _easterEggCtrl;
   final ValueNotifier<double> _easterEggOffset = ValueNotifier(0.0);
   final ValueNotifier<bool> _showHomeMenu = ValueNotifier(false);
-  final ValueNotifier<DashboardViewMode> _viewMode = ValueNotifier(DashboardViewMode.home);
+  final ValueNotifier<DashboardViewMode> _viewMode = ValueNotifier(
+    DashboardViewMode.home,
+  );
   double _dragOffset = 0.0;
   bool _isDragging = false;
 
@@ -140,10 +138,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     // After home paints, warm Passes when the scheduler is idle so the first
     // IDs → Passes switch is just an IndexedStack index flip.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      SchedulerBinding.instance.scheduleTask(
-        _prewarmPassesTab,
-        Priority.idle,
-      );
+      SchedulerBinding.instance.scheduleTask(_prewarmPassesTab, Priority.idle);
     });
   }
 
@@ -165,13 +160,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   void _handleDragUpdate(DragUpdateDetails details) {
     _isDragging = true;
     final double delta = details.primaryDelta ?? 0;
-    _dragOffset += delta * kEasterEggDragDamping;
+    // Keep the sheet under the finger 1:1. Only the part beyond the resting
+    // position is rubber-banded, which makes reversals feel immediate.
+    _dragOffset += delta;
+    if (_dragOffset < 0) _dragOffset = 0;
 
     final double panelHeight = kEasterEggPanelHeight;
     double effective = _dragOffset;
     if (_dragOffset > panelHeight) {
       final double overshoot = _dragOffset - panelHeight;
-      effective = panelHeight + (overshoot * kEasterEggDrawerOvershootFactor);
+      effective =
+          panelHeight +
+          ((overshoot * kEasterEggDrawerOvershootFactor * panelHeight) /
+              (panelHeight + kEasterEggDrawerOvershootFactor * overshoot));
     } else if (_dragOffset < 0) {
       effective = 0;
     }
@@ -188,8 +189,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       velocityY: velocityY,
     );
 
-    final double startProgress =
-        (currentOffset / panelHeight).clamp(0.0, 1.0);
+    final double startProgress = (currentOffset / panelHeight).clamp(0.0, 1.0);
     _easterEggCtrl.stop();
     _easterEggCtrl.value = startProgress;
     _easterEggCtrl.animateTo(
@@ -257,7 +257,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       ),
     );
   }
-
 
   void _showAddSheet() {
     HapticService.confirm();
@@ -340,7 +339,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
-
   void _showDeleteDialog(PassportProfile profile) {
     HapticService.destructive();
     showCupertinoModalPopup<void>(
@@ -354,9 +352,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           CupertinoActionSheetAction(
             isDestructiveAction: true,
             onPressed: () {
-              ref.read(passportListProvider.notifier).removePassport(profile.id);
+              ref
+                  .read(passportListProvider.notifier)
+                  .removePassport(profile.id);
               ref.read(trashProvider.notifier).moveToTrash(profile);
-              ref.read(walletOrderProvider.notifier).updateOrderOnItemRemoved(profile.id);
+              ref
+                  .read(walletOrderProvider.notifier)
+                  .updateOrderOnItemRemoved(profile.id);
               Navigator.of(ctx).pop();
             },
             child: const Text('Remove'),
@@ -389,7 +391,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             onPressed: () {
               ref.read(idListProvider.notifier).removeDocument(doc.id);
               ref.read(trashProvider.notifier).moveToTrash(doc);
-              ref.read(walletOrderProvider.notifier).updateOrderOnItemRemoved(doc.id);
+              ref
+                  .read(walletOrderProvider.notifier)
+                  .updateOrderOnItemRemoved(doc.id);
               Navigator.of(ctx).pop();
             },
             child: const Text('Remove'),
@@ -410,7 +414,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final List<String> order = ref.watch(walletOrderProvider);
 
     final activeIds = activeWalletItemIds(passports: passports, idDocs: idDocs);
-    final reconciledOrder = reconcileWalletOrder(order: order, activeIds: activeIds);
+    final reconciledOrder = reconcileWalletOrder(
+      order: order,
+      activeIds: activeIds,
+    );
     if (reconciledOrder.length != order.length ||
         !_ordersEqual(reconciledOrder, order)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -426,12 +433,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
 
     final bool filterEnabled = ref.watch(walletFilterEnabledProvider);
-    WalletFilterCategory filterCategory =
-        ref.watch(walletFilterCategoryProvider);
-    final List<WalletFilterCategory> filterOptions =
-        walletFilterOptionsFor(items);
-    if (filterEnabled &&
-        !filterOptions.contains(filterCategory)) {
+    WalletFilterCategory filterCategory = ref.watch(
+      walletFilterCategoryProvider,
+    );
+    final List<WalletFilterCategory> filterOptions = walletFilterOptionsFor(
+      items,
+    );
+    if (filterEnabled && !filterOptions.contains(filterCategory)) {
       filterCategory = WalletFilterCategory.all;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -496,230 +504,288 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           scale: motion.sheetScale,
                           alignment: Alignment.topCenter,
                           child: Container(
-                          clipBehavior: Clip.antiAlias,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).scaffoldBackgroundColor,
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(motion.topRadius),
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).scaffoldBackgroundColor,
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(motion.topRadius),
+                              ),
+                              boxShadow: motion.shadowOpacity > 0
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: motion.shadowOpacity,
+                                        ),
+                                        blurRadius: 16,
+                                        offset: const Offset(0, -6),
+                                      ),
+                                    ]
+                                  : null,
                             ),
-                            boxShadow: motion.shadowOpacity > 0
-                                ? [
-                                    BoxShadow(
-                                      color: Colors.black
-                                          .withValues(alpha: motion.shadowOpacity),
-                                      blurRadius: 16,
-                                      offset: const Offset(0, -6),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Stack(
-                            children: [
-                              Positioned(
-                                top: 8,
-                                left: 0,
-                                right: 0,
-                                child: IgnorePointer(
-                                  child: Opacity(
-                                    opacity: motion.pullPillOpacity,
-                                    child: Center(
-                                      child: Container(
-                                        width: 36,
-                                        height: 4,
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).brightness ==
-                                                  Brightness.dark
-                                              ? Colors.white
-                                                  .withValues(alpha: 0.28)
-                                              : Colors.black
-                                                  .withValues(alpha: 0.16),
-                                          borderRadius:
-                                              BorderRadius.circular(99),
+                            child: Stack(
+                              children: [
+                                Positioned(
+                                  top: 8,
+                                  left: 0,
+                                  right: 0,
+                                  child: IgnorePointer(
+                                    child: Opacity(
+                                      opacity: motion.pullPillOpacity,
+                                      child: Center(
+                                        child: Container(
+                                          width: 36,
+                                          height: 4,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                Theme.of(context).brightness ==
+                                                    Brightness.dark
+                                                ? Colors.white.withValues(
+                                                    alpha: 0.28,
+                                                  )
+                                                : Colors.black.withValues(
+                                                    alpha: 0.16,
+                                                  ),
+                                            borderRadius: BorderRadius.circular(
+                                              99,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              // Background: gradient orbs on Home, flat surface elsewhere
-                              ValueListenableBuilder<DashboardViewMode>(
-                                valueListenable: _viewMode,
-                                builder: (context, mode, _) {
-                                  return AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 350),
-                                    switchInCurve: Curves.easeOutCubic,
-                                    switchOutCurve: Curves.easeInCubic,
-                                    child: mode == DashboardViewMode.home
-                                        ? RepaintBoundary(
-                                            key: const ValueKey('gradient_backdrop'),
-                                            child: WalletBackdrop(
-                                              tabIndex: _tabCtrl.index,
-                                              items: displayItems,
-                                              pageNotifier: _docPage,
-                                              tiltNotifier: _backdropTilt,
+                                // Background: gradient orbs on Home, flat surface elsewhere
+                                ValueListenableBuilder<DashboardViewMode>(
+                                  valueListenable: _viewMode,
+                                  builder: (context, mode, _) {
+                                    return AnimatedSwitcher(
+                                      duration: const Duration(
+                                        milliseconds: 350,
+                                      ),
+                                      switchInCurve: Curves.easeOutCubic,
+                                      switchOutCurve: Curves.easeInCubic,
+                                      child: mode == DashboardViewMode.home
+                                          ? RepaintBoundary(
+                                              key: const ValueKey(
+                                                'gradient_backdrop',
+                                              ),
+                                              child: WalletBackdrop(
+                                                tabIndex: _tabCtrl.index,
+                                                items: displayItems,
+                                                pageNotifier: _docPage,
+                                                tiltNotifier: _backdropTilt,
+                                              ),
+                                            )
+                                          : ColoredBox(
+                                              key: ValueKey(
+                                                'flat_backdrop_${mode.name}',
+                                              ),
+                                              color: Theme.of(
+                                                context,
+                                              ).scaffoldBackgroundColor,
                                             ),
-                                          )
-                                        : ColoredBox(
-                                            key: ValueKey('flat_backdrop_${mode.name}'),
-                                            color: Theme.of(context).scaffoldBackgroundColor,
-                                          ),
-                                  );
-                                },
-                              ),
-                              // Content Column
-                              SafeArea(
-                                child: FadeTransition(
-                                  opacity: _entryFade,
-                                  child: SlideTransition(
-                                    position: _entrySlide,
-                                    child: Column(
-                                      children: [
-                                        // Header with Drag Interceptor
-                                        GestureDetector(
-                                          behavior: HitTestBehavior.opaque,
-                                          onVerticalDragUpdate: _handleDragUpdate,
-                                          onVerticalDragEnd: _handleDragEnd,
-                                          child: Padding(
-                                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                                            child: ValueListenableBuilder<bool>(
-                                              valueListenable: _showHomeMenu,
-                                              builder: (context, isMenuOpen, _) {
-                                                return ValueListenableBuilder<DashboardViewMode>(
-                                                  valueListenable: _viewMode,
-                                                  builder: (context, currentMode, _) {
-                                                    return DashboardHeader(
-                                                      name: currentName,
-                                                      isMenuOpen: isMenuOpen,
-                                                      currentMode: currentMode,
-                                                      onHomeTap: () {
-                                                        _showHomeMenu.value = !_showHomeMenu.value;
-                                                      },
-                                                      onAvatarTap: _openSettings,
-                                                      headerTitleLink: _headerTitleLink,
-                                                    );
-                                                  },
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        // Tab content
-                                        ValueListenableBuilder<DashboardViewMode>(
-                                          valueListenable: _viewMode,
-                                          builder: (context, mode, _) {
-                                            Widget viewChild;
-                                            switch (mode) {
-                                              case DashboardViewMode.home:
-                                                viewChild = KeyedSubtree(
-                                                  key: const ValueKey('home_view'),
-                                                  child: _HomeTabTransition(
-                                                    controller: _tabCtrl,
-                                                    ids: IdsTab(
-                                                      items: displayItems,
-                                                      allItems: items,
-                                                      onDeletePassport:
-                                                          _showDeleteDialog,
-                                                      onDeleteId:
-                                                          _showDeleteIdDialog,
-                                                      pageNotifier: _docPage,
-                                                      backdropTilt:
-                                                          _backdropTilt,
-                                                    ),
-                                                    passes: _passesTabMounted
-                                                        ? const TicketsTab()
-                                                        : const SizedBox
-                                                            .expand(),
+                                    );
+                                  },
+                                ),
+                                // Content Column
+                                SafeArea(
+                                  child: FadeTransition(
+                                    opacity: _entryFade,
+                                    child: SlideTransition(
+                                      position: _entrySlide,
+                                      child: Column(
+                                        children: [
+                                          // Header with Drag Interceptor
+                                          GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onVerticalDragUpdate:
+                                                _handleDragUpdate,
+                                            onVerticalDragEnd: _handleDragEnd,
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                    20,
+                                                    20,
+                                                    20,
+                                                    0,
                                                   ),
-                                                );
-                                                break;
-                                              case DashboardViewMode.manage:
-                                                viewChild = ManageCardsView(
-                                                  key: const ValueKey('manage_view'),
-                                                  items: items,
-                                                );
-                                                break;
-                                              case DashboardViewMode.trash:
-                                                viewChild = const TrashView(
-                                                  key: ValueKey('trash_view'),
-                                                );
-                                                break;
-                                            }
-
-                                            return Expanded(
-                                              child: AnimatedSwitcher(
-                                                duration: const Duration(milliseconds: 350),
-                                                switchInCurve: Curves.easeOutCubic,
-                                                switchOutCurve: Curves.easeInCubic,
-                                                transitionBuilder: (child, animation) {
-                                                  return FadeTransition(
-                                                    opacity: animation,
-                                                    child: SlideTransition(
-                                                      position: Tween<Offset>(
-                                                        begin: const Offset(0, 0.04),
-                                                        end: Offset.zero,
-                                                      ).animate(animation),
-                                                      child: child,
-                                                    ),
+                                              child: ValueListenableBuilder<bool>(
+                                                valueListenable: _showHomeMenu,
+                                                builder: (context, isMenuOpen, _) {
+                                                  return ValueListenableBuilder<
+                                                    DashboardViewMode
+                                                  >(
+                                                    valueListenable: _viewMode,
+                                                    builder:
+                                                        (
+                                                          context,
+                                                          currentMode,
+                                                          _,
+                                                        ) {
+                                                          return DashboardHeader(
+                                                            name: currentName,
+                                                            isMenuOpen:
+                                                                isMenuOpen,
+                                                            currentMode:
+                                                                currentMode,
+                                                            onHomeTap: () {
+                                                              _showHomeMenu
+                                                                      .value =
+                                                                  !_showHomeMenu
+                                                                      .value;
+                                                            },
+                                                            onAvatarTap:
+                                                                _openSettings,
+                                                            headerTitleLink:
+                                                                _headerTitleLink,
+                                                          );
+                                                        },
                                                   );
                                                 },
-                                                child: viewChild,
                                               ),
-                                            );
-                                          },
-                                        ),
-                                      ],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          // Tab content
+                                          ValueListenableBuilder<
+                                            DashboardViewMode
+                                          >(
+                                            valueListenable: _viewMode,
+                                            builder: (context, mode, _) {
+                                              Widget viewChild;
+                                              switch (mode) {
+                                                case DashboardViewMode.home:
+                                                  viewChild = KeyedSubtree(
+                                                    key: const ValueKey(
+                                                      'home_view',
+                                                    ),
+                                                    child: _HomeTabTransition(
+                                                      controller: _tabCtrl,
+                                                      ids: IdsTab(
+                                                        items: displayItems,
+                                                        allItems: items,
+                                                        onDeletePassport:
+                                                            _showDeleteDialog,
+                                                        onDeleteId:
+                                                            _showDeleteIdDialog,
+                                                        pageNotifier: _docPage,
+                                                        backdropTilt:
+                                                            _backdropTilt,
+                                                      ),
+                                                      passes: _passesTabMounted
+                                                          ? const TicketsTab()
+                                                          : const SizedBox.expand(),
+                                                    ),
+                                                  );
+                                                  break;
+                                                case DashboardViewMode.manage:
+                                                  viewChild = ManageCardsView(
+                                                    key: const ValueKey(
+                                                      'manage_view',
+                                                    ),
+                                                    items: items,
+                                                  );
+                                                  break;
+                                                case DashboardViewMode.trash:
+                                                  viewChild = const TrashView(
+                                                    key: ValueKey('trash_view'),
+                                                  );
+                                                  break;
+                                              }
+
+                                              return Expanded(
+                                                child: AnimatedSwitcher(
+                                                  duration: const Duration(
+                                                    milliseconds: 350,
+                                                  ),
+                                                  switchInCurve:
+                                                      Curves.easeOutCubic,
+                                                  switchOutCurve:
+                                                      Curves.easeInCubic,
+                                                  transitionBuilder:
+                                                      (child, animation) {
+                                                        return FadeTransition(
+                                                          opacity: animation,
+                                                          child: SlideTransition(
+                                                            position:
+                                                                Tween<Offset>(
+                                                                  begin:
+                                                                      const Offset(
+                                                                        0,
+                                                                        0.04,
+                                                                      ),
+                                                                  end: Offset
+                                                                      .zero,
+                                                                ).animate(
+                                                                  animation,
+                                                                ),
+                                                            child: child,
+                                                          ),
+                                                        );
+                                                      },
+                                                  child: viewChild,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              // Tap Barrier to dismiss menu
-                              ValueListenableBuilder<bool>(
-                                valueListenable: _showHomeMenu,
-                                builder: (context, show, child) {
-                                  if (!show) return const SizedBox.shrink();
-                                  return Positioned.fill(
-                                    child: GestureDetector(
-                                      behavior: HitTestBehavior.opaque,
-                                      onTap: () => _showHomeMenu.value = false,
-                                      child: Container(
-                                        color: Colors.transparent,
+                                // Tap Barrier to dismiss menu
+                                ValueListenableBuilder<bool>(
+                                  valueListenable: _showHomeMenu,
+                                  builder: (context, show, child) {
+                                    if (!show) return const SizedBox.shrink();
+                                    return Positioned.fill(
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: () =>
+                                            _showHomeMenu.value = false,
+                                        child: Container(
+                                          color: Colors.transparent,
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              // Custom expanded view picker
-                              ValueListenableBuilder<bool>(
-                                valueListenable: _showHomeMenu,
-                                builder: (context, show, child) {
-                                  return ValueListenableBuilder<DashboardViewMode>(
-                                    valueListenable: _viewMode,
-                                    builder: (context, currentMode, _) {
-                                      return ViewPickerExpanded(
-                                        link: _headerTitleLink,
-                                        visible: show,
-                                        currentMode: currentMode,
-                                        openedMode: _openedMode,
-                                        onSelectMode: (mode) {
-                                          _viewMode.value = mode;
-                                          Future.delayed(const Duration(milliseconds: 280), () {
-                                            if (mounted) {
-                                              _showHomeMenu.value = false;
-                                            }
-                                          });
-                                        },
-                                        onClose: () {
-                                          _showHomeMenu.value = false;
-                                        },
-                                      );
-                                    },
-                                  );
-                                },
-                              ),
-                            ],
+                                    );
+                                  },
+                                ),
+                                // Custom expanded view picker
+                                ValueListenableBuilder<bool>(
+                                  valueListenable: _showHomeMenu,
+                                  builder: (context, show, child) {
+                                    return ValueListenableBuilder<
+                                      DashboardViewMode
+                                    >(
+                                      valueListenable: _viewMode,
+                                      builder: (context, currentMode, _) {
+                                        return ViewPickerExpanded(
+                                          link: _headerTitleLink,
+                                          visible: show,
+                                          currentMode: currentMode,
+                                          openedMode: _openedMode,
+                                          onSelectMode: (mode) {
+                                            _viewMode.value = mode;
+                                            Future.delayed(
+                                              const Duration(milliseconds: 280),
+                                              () {
+                                                if (mounted) {
+                                                  _showHomeMenu.value = false;
+                                                }
+                                              },
+                                            );
+                                          },
+                                          onClose: () {
+                                            _showHomeMenu.value = false;
+                                          },
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
                         ),
                       ),
                     ),
@@ -784,10 +850,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       builder: (BuildContext context, Widget? child) {
         final bool covered =
             secondary.value > 0.0 || !(route?.isCurrent ?? true);
-        return TickerMode(
-          enabled: !covered,
-          child: child!,
-        );
+        return TickerMode(enabled: !covered, child: child!);
       },
       child: scaffold,
     );

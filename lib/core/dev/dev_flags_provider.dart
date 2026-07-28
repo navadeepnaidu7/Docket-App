@@ -8,6 +8,7 @@ import 'dev_flags.dart';
 const String _kUseMockPasses = 'dev_use_mock_passes';
 const String _kApiBaseUrl = 'dev_api_base_url';
 const String _kCardFluidScheme = 'dev_card_fluid_scheme';
+const String _kMockSignedIn = 'dev_mock_signed_in';
 
 final devFlagsProvider =
     StateNotifierProvider<DevFlagsNotifier, DevFlags>((Ref ref) {
@@ -38,10 +39,12 @@ class DevFlagsNotifier extends StateNotifier<DevFlags> {
         (e) => e.name == schemeRaw,
         orElse: () => CardFluidScheme.auto,
       );
+      final bool mockSignedIn = prefs.getBool(_kMockSignedIn) ?? false;
       state = DevFlags(
         useMockPasses: useMock,
         apiBaseUrl: url,
         cardFluidScheme: scheme,
+        mockSignedIn: mockSignedIn,
       );
     } catch (e, st) {
       debugPrint('DevFlags load failed: $e\n$st');
@@ -74,6 +77,16 @@ class DevFlagsNotifier extends StateNotifier<DevFlags> {
     await prefs.setString(_kCardFluidScheme, scheme.name);
   }
 
+  /// Flip signed-in Settings UI (card name + Account section vs Google button).
+  Future<void> setMockSignedIn(bool value) async {
+    if (!DevConfig.allowRuntimeOverrides) return;
+    state = state.copyWith(mockSignedIn: value);
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kMockSignedIn, value);
+  }
+
+  Future<void> toggleMockSignedIn() => setMockSignedIn(!state.mockSignedIn);
+
   Future<void> resetToCompileTimeDefaults() async {
     if (!DevConfig.allowRuntimeOverrides) return;
     state = DevFlags.compileTimeDefaults();
@@ -81,5 +94,6 @@ class DevFlagsNotifier extends StateNotifier<DevFlags> {
     await prefs.remove(_kUseMockPasses);
     await prefs.remove(_kApiBaseUrl);
     await prefs.remove(_kCardFluidScheme);
+    await prefs.remove(_kMockSignedIn);
   }
 }
