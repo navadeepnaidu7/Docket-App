@@ -2,10 +2,11 @@ import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/assets/app_assets.dart';
 import '../../../core/dev/dev_config.dart';
 import '../../../core/dev/dev_flags_provider.dart';
-import '../../../core/haptics/haptic_service.dart';
 import '../../../shared/widgets/bounce_tap.dart';
 import '../../../shared/widgets/rolling_card_page.dart';
 import '../application/pass_list_provider.dart';
@@ -21,7 +22,8 @@ class TicketsTab extends ConsumerStatefulWidget {
 }
 
 class _TicketsTabState extends ConsumerState<TicketsTab> {
-  int _filterIndex = 0;
+  /// false = active passes, true = history (expired).
+  bool _showHistory = false;
   late final PageController _pageCtrl;
 
   @override
@@ -36,12 +38,19 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
     super.dispose();
   }
 
+  void _toggleHistory() {
+    setState(() {
+      _showHistory = !_showHistory;
+      if (_pageCtrl.hasClients) _pageCtrl.jumpToPage(0);
+    });
+  }
+
   List<WalletPassItem> _filter(List<WalletPassItem> all) {
     return all
         .where(
-          (WalletPassItem p) => _filterIndex == 0
-              ? p.status == TicketStatus.active
-              : p.status == TicketStatus.expired,
+          (WalletPassItem p) => _showHistory
+              ? p.status == TicketStatus.expired
+              : p.status == TicketStatus.active,
         )
         .toList();
   }
@@ -54,45 +63,49 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
         ref.watch(devFlagsProvider).isMockPassesActive;
     final double fabClearance =
         MediaQuery.of(context).padding.bottom + 16 + 58 + 20;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color ink = Theme.of(context).colorScheme.onSurface;
+    final Color historyLabelColor = isDark
+        ? Colors.white.withValues(alpha: 0.55)
+        : ink.withValues(alpha: 0.48);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+          padding: const EdgeInsets.fromLTRB(20, 4, 12, 0),
           child: Row(
             children: <Widget>[
-              _FilterPill(
-                label: 'Active',
-                selected: _filterIndex == 0,
-                onTap: () {
-                  HapticService.select();
-                  setState(() {
-                    _filterIndex = 0;
-                    if (_pageCtrl.hasClients) _pageCtrl.jumpToPage(0);
-                  });
-                },
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                opacity: _showHistory ? 1 : 0,
+                child: IgnorePointer(
+                  ignoring: !_showHistory,
+                  child: Text(
+                    'History',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
+                      color: historyLabelColor,
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(width: 8),
-              _FilterPill(
-                label: 'Expired',
-                selected: _filterIndex == 1,
-                onTap: () {
-                  HapticService.select();
-                  setState(() {
-                    _filterIndex = 1;
-                    if (_pageCtrl.hasClients) _pageCtrl.jumpToPage(0);
-                  });
-                },
-              ),
+              const Spacer(),
               if (showMockBadge) ...<Widget>[
-                const Spacer(),
                 _MockBadge(),
+                const SizedBox(width: 8),
               ],
+              _HistoryIconButton(
+                selected: _showHistory,
+                onTap: _toggleHistory,
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Expanded(
           child: asyncPasses.when(
             loading: () => const Center(
@@ -109,7 +122,7 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
             data: (List<WalletPassItem> all) {
               final List<WalletPassItem> filtered = _filter(all);
               if (filtered.isEmpty) {
-                return _EmptyState(isActive: _filterIndex == 0);
+                return _EmptyState(isHistory: _showHistory);
               }
               return Stack(
                 children: <Widget>[
@@ -271,16 +284,14 @@ class _MockBadge extends StatelessWidget {
   }
 }
 
-// ── Filter pill ───────────────────────────────────────────────────────────────
+// ── History icon ──────────────────────────────────────────────────────────────
 
-class _FilterPill extends StatelessWidget {
-  const _FilterPill({
-    required this.label,
+class _HistoryIconButton extends StatelessWidget {
+  const _HistoryIconButton({
     required this.selected,
     required this.onTap,
   });
 
-  final String label;
   final bool selected;
   final VoidCallback onTap;
 
@@ -288,36 +299,40 @@ class _FilterPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
-
-    final Color activeColor =
+    final Color selectedBg = isDark
+        ? theme.colorScheme.primary.withValues(alpha: 0.22)
+        : const Color(0xFF1F3A60).withValues(alpha: 0.12);
+    final Color selectedFg =
         isDark ? theme.colorScheme.primary : const Color(0xFF1F3A60);
-    final Color inactiveBorderColor = isDark
-        ? Colors.white.withValues(alpha: 0.15)
-        : Colors.black.withValues(alpha: 0.15);
+    final Color idleFg = isDark
+        ? Colors.white.withValues(alpha: 0.72)
+        : const Color(0xFF3A3A3C);
 
     return BounceTap(
       onTap: onTap,
-      scaleFactor: 0.94,
+      scaleFactor: 0.90,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        width: 40,
+        height: 40,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? activeColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected ? activeColor : inactiveBorderColor,
-            width: 1.5,
-          ),
+          color: selected ? selectedBg : Colors.transparent,
+          shape: BoxShape.circle,
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected
-                ? Colors.white
-                : (isDark ? const Color(0xFF8E8E93) : const Color(0xFF64748B)),
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
+        child: AnimatedScale(
+          scale: selected ? 1.0 : 0.96,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          child: SvgPicture.asset(
+            AppAssets.passesHistory,
+            width: 22,
+            height: 22,
+            colorFilter: ColorFilter.mode(
+              selected ? selectedFg : idleFg,
+              BlendMode.srcIn,
+            ),
           ),
         ),
       ),
@@ -328,8 +343,8 @@ class _FilterPill extends StatelessWidget {
 // ── Empty / error ─────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.isActive});
-  final bool isActive;
+  const _EmptyState({required this.isHistory});
+  final bool isHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -342,14 +357,25 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Icon(
-            Icons.confirmation_number_outlined,
-            size: 44,
-            color: contentColor.withValues(alpha: 0.58),
-          ),
+          if (isHistory)
+            SvgPicture.asset(
+              AppAssets.passesHistory,
+              width: 40,
+              height: 40,
+              colorFilter: ColorFilter.mode(
+                contentColor.withValues(alpha: 0.58),
+                BlendMode.srcIn,
+              ),
+            )
+          else
+            Icon(
+              Icons.confirmation_number_outlined,
+              size: 44,
+              color: contentColor.withValues(alpha: 0.58),
+            ),
           const SizedBox(height: 12),
           Text(
-            isActive ? 'No active passes' : 'No expired passes',
+            isHistory ? 'No past passes' : 'No active passes',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,

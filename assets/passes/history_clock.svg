@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- Outer history arc + arrow (counter-clockwise around the clock) -->
+  <path
+    d="M4.2 8.2A8.5 8.5 0 1 1 5.1 16.8"
+    stroke="currentColor"
+    stroke-width="1.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M4.2 4.4v4h4"
+    stroke="currentColor"
+    stroke-width="1.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <!-- Inner clock face -->
+  <circle
+    cx="12.2"
+    cy="12.2"
+    r="5.35"
+    stroke="currentColor"
+    stroke-width="1.75"
+  />
+  <!-- Clock hands -->
+  <path
+    d="M12.2 9.6v2.85l2 1.2"
+    stroke="currentColor"
+    stroke-width="1.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

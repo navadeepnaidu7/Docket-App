@@ -25,6 +25,9 @@ abstract final class AppAssets {
   /// Zomato District official logo vector (for footer).
   static const String districtLogo = 'assets/passes/district-logo.svg';
 
+  /// Clock-history icon for past / expired passes.
+  static const String passesHistory = 'assets/passes/history_clock.svg';
+
   /// Dune Part Two poster image.
   static const String dunePoster = 'assets/passes/dune_poster.jpg';
 
