@@ -1,13 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ── Model ──────────────────────────────────────────────────────────────────
 
-enum AppThemePreference { light, dark, schedule }
+enum AppThemePreference { light, dark, system, schedule }
 
 enum ScheduleKind { sunriseSunset, custom }
 
@@ -25,7 +24,7 @@ class ThemeSettings {
   });
 
   static const ThemeSettings defaults = ThemeSettings(
-    preference: AppThemePreference.light,
+    preference: AppThemePreference.system,
     scheduleKind: ScheduleKind.custom,
     lightStartMinutes: 7 * 60,
     lightEndMinutes: 18 * 60,
@@ -122,6 +121,8 @@ ThemeMode resolveThemeMode(ThemeSettings settings, DateTime now) {
       return ThemeMode.light;
     case AppThemePreference.dark:
       return ThemeMode.dark;
+    case AppThemePreference.system:
+      return ThemeMode.system;
     case AppThemePreference.schedule:
       final bool light = isInLightWindow(
         nowMinutes: minutesOfDay(now),
@@ -176,9 +177,10 @@ class ThemeController extends StateNotifier<ThemeControllerState>
     with WidgetsBindingObserver {
   ThemeController()
       : super(
+          // Default = follow device (system). Never start forced light/dark.
           const ThemeControllerState(
             settings: ThemeSettings.defaults,
-            resolvedMode: ThemeMode.light,
+            resolvedMode: ThemeMode.system,
           ),
         ) {
     WidgetsBinding.instance.addObserver(this);
@@ -200,6 +202,14 @@ class ThemeController extends StateNotifier<ThemeControllerState>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _recompute(scheduleTimer: true);
+    }
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    // Keep subtitle / resolved mode in sync when following the device.
+    if (state.settings.preference == AppThemePreference.system) {
+      _recompute(scheduleTimer: false);
     }
   }
 
@@ -228,17 +238,13 @@ class ThemeController extends StateNotifier<ThemeControllerState>
 
     // Legacy theme_mode migration.
     final Object? legacy = prefs.get(_kLegacyMode);
-    AppThemePreference preference = AppThemePreference.light;
+    AppThemePreference preference = AppThemePreference.system;
     if (legacy is String) {
       preference = switch (legacy) {
         'dark' => AppThemePreference.dark,
         'light' => AppThemePreference.light,
-        'system' =>
-          SchedulerBinding.instance.platformDispatcher.platformBrightness ==
-                  Brightness.dark
-              ? AppThemePreference.dark
-              : AppThemePreference.light,
-        _ => AppThemePreference.light,
+        'system' => AppThemePreference.system,
+        _ => AppThemePreference.system,
       };
     } else if (legacy is bool) {
       preference = legacy ? AppThemePreference.dark : AppThemePreference.light;
@@ -254,6 +260,7 @@ class ThemeController extends StateNotifier<ThemeControllerState>
   AppThemePreference _parsePreference(String raw) {
     return switch (raw) {
       'dark' => AppThemePreference.dark,
+      'system' => AppThemePreference.system,
       'schedule' => AppThemePreference.schedule,
       _ => AppThemePreference.light,
     };
@@ -266,6 +273,7 @@ class ThemeController extends StateNotifier<ThemeControllerState>
       switch (s.preference) {
         AppThemePreference.light => 'light',
         AppThemePreference.dark => 'dark',
+        AppThemePreference.system => 'system',
         AppThemePreference.schedule => 'schedule',
       },
     );

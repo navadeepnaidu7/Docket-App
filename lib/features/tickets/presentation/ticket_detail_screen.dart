@@ -481,7 +481,7 @@ const double _kCurrentDotSize = 8;
 // Soft flat route colors (no glossy gradients)
 const Color _kRouteActive = Color(0xFF34C759);
 const Color _kRouteTrackLight = Color(0xFFD8D8DE);
-const Color _kRouteTrackDark = Color(0xFF3A3F4A);
+const Color _kRouteTrackDark = Color(0xFF3A3A3C);
 const Color _kStatusGreen = Color(0xFF30D158);
 
 class _LiveStatusTab extends StatelessWidget {

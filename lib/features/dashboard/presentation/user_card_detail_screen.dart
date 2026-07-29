@@ -36,11 +36,16 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
     final List<PassportProfile> passports = ref.watch(passportListProvider);
     final List<IdDocument> idDocs = ref.watch(idListProvider);
 
-    final Color bg = theme.scaffoldBackgroundColor;
-    final Color surface = isDark ? const Color(0xFF161820) : const Color(0xFFFFFFFF);
-    final Color ink = isDark ? const Color(0xFFF2F2F7) : const Color(0xFF1C1C1E);
-    final Color muted = isDark ? const Color(0xFFAEAEB2) : const Color(0xFF636366);
-    final Color border = ink.withValues(alpha: isDark ? 0.08 : 0.06);
+    // Match Settings dark chrome (neutral graphite, not blue-tinted navy).
+    final Color bg =
+        isDark ? const Color(0xFF0A0A0D) : theme.scaffoldBackgroundColor;
+    final Color surface =
+        isDark ? const Color(0xFF16161A) : const Color(0xFFFFFFFF);
+    final Color ink =
+        isDark ? const Color(0xFFF2F2F7) : const Color(0xFF1C1C1E);
+    final Color muted =
+        isDark ? const Color(0xFFAEAEB2) : const Color(0xFF636366);
+    final Color border = ink.withValues(alpha: isDark ? 0.10 : 0.06);
 
     return Scaffold(
       backgroundColor: bg,
@@ -261,7 +266,9 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
                 children: <Widget>[
                   _buildRichStatBadge(
                     icon: CupertinoIcons.square_stack_3d_up_fill,
-                    iconColor: const Color(0xFF5E5CE6),
+                    iconColor: isDark
+                        ? const Color(0xFFAEAEB2)
+                        : const Color(0xFF636366),
                     value: '${data.grandTotal}',
                     label: 'Total Credentials',
                     ink: ink,
@@ -633,7 +640,9 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFF5E5CE6)
+                            ? (isDark
+                                ? const Color(0xFFE8E8ED)
+                                : const Color(0xFF1C1C1E))
                             : (hasPasses
                                 ? (isDark
                                     ? const Color(0xFF2C2C2E)
@@ -641,7 +650,12 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
                                 : Colors.transparent),
                         borderRadius: BorderRadius.circular(10),
                         border: isSelected
-                            ? Border.all(color: Colors.white, width: 1.5)
+                            ? Border.all(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.35)
+                                    : Colors.black.withValues(alpha: 0.12),
+                                width: 1,
+                              )
                             : null,
                       ),
                       child: Stack(
@@ -654,8 +668,12 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
                               fontWeight:
                                   isSelected ? FontWeight.w800 : FontWeight.w500,
                               color: isSelected
-                                  ? Colors.white
-                                  : (hasPasses ? ink : muted.withValues(alpha: 0.6)),
+                                  ? (isDark
+                                      ? const Color(0xFF0A0A0D)
+                                      : Colors.white)
+                                  : (hasPasses
+                                      ? ink
+                                      : muted.withValues(alpha: 0.6)),
                             ),
                           ),
                           if (hasPasses && !isSelected)
@@ -664,8 +682,10 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
                               child: Container(
                                 width: 4,
                                 height: 4,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF5E5CE6),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF8E8E93)
+                                      : const Color(0xFF636366),
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -733,7 +753,8 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
     String title = 'Pass Document';
     String subtitle = 'Wallet Item';
     IconData icon = Icons.confirmation_number_rounded;
-    Color accent = const Color(0xFF5E5CE6);
+    Color accent =
+        isDark ? const Color(0xFFAEAEB2) : const Color(0xFF636366);
 
     if (item is TrainPassItem) {
       final TrainPass t = item.ticket;

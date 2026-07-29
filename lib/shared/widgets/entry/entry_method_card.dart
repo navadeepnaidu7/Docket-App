@@ -41,20 +41,19 @@ class EntryMethodCard extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: isDark
-                  ? <Color>[
-                      scheme.primary,
-                      scheme.primary.withValues(alpha: 0.78),
+                  ? const <Color>[
+                      Color(0xFF2C2C2E),
+                      Color(0xFF1C1C1E),
                     ]
                   : <Color>[
                       scheme.onSurface,
-                      const Color(0xFF1A2740),
+                      const Color(0xFF1C1C1E),
                     ],
             ),
             borderRadius: BorderRadius.circular(22),
             boxShadow: <BoxShadow>[
               BoxShadow(
-                color: (isDark ? scheme.primary : scheme.onSurface)
-                    .withValues(alpha: 0.28),
+                color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.22),
                 blurRadius: 22,
                 offset: const Offset(0, 10),
               ),

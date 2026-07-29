@@ -13,12 +13,13 @@ class AppTheme {
   static const Color _lightPrimary = Color(0xFF1A3A6B); // rich indigo-navy
   static const Color _lightAccent = Color(0xFFD4A853); // warm gold
 
-  // ── Dark palette — deep space navy, not generic dark ────────────────────────
-  static const Color _darkBg = Color(0xFF080E1A); // deep space navy
-  static const Color _darkSurface = Color(0xFF121C30); // elevated navy
-  static const Color _darkElevated = Color(0xFF1A2740); // cards / sheets
-  static const Color _darkInk = Color(0xFFE8EEFF); // cool white with blue tint
-  static const Color _darkPrimary = Color(0xFF4D8FE0); // electric blue
+  // ── Dark palette — neutral graphite (matches Settings / system dark) ───────
+  // Avoid navy/electric-blue chrome; keep warm gold as the only color accent.
+  static const Color _darkBg = Color(0xFF0A0A0D); // near-black graphite
+  static const Color _darkSurface = Color(0xFF16161A); // grouped cards
+  static const Color _darkElevated = Color(0xFF1C1C1E); // sheets / raised
+  static const Color _darkInk = Color(0xFFF2F2F7); // system-like label
+  static const Color _darkPrimary = Color(0xFFE8E8ED); // light fill (not blue)
   static const Color _darkAccent = Color(0xFFE8B84B); // warm amber
 
   static const Color success = Color(0xFF30D158);
@@ -51,9 +52,9 @@ class AppTheme {
   static List<Color> studioGradient(Brightness b) {
     if (b == Brightness.dark) {
       return const <Color>[
-        Color(0xFF080E1A),
-        Color(0xFF121C30),
-        Color(0xFF0A0F1D),
+        Color(0xFF0A0A0D),
+        Color(0xFF121214),
+        Color(0xFF0C0C0F),
       ];
     }
     return const <Color>[
@@ -86,7 +87,8 @@ class AppTheme {
     final ColorScheme scheme = ColorScheme(
       brightness: brightness,
       primary: primary,
-      onPrimary: Colors.white,
+      // Dark primary is a light fill — ink must be dark for contrast on CTAs.
+      onPrimary: isDark ? _darkBg : Colors.white,
       secondary: accent,
       onSecondary: isDark ? _darkBg : _lightInk,
       error: danger,
@@ -198,11 +200,11 @@ class AppTheme {
           vertical: 14,
         ),
         labelStyle: TextStyle(
-          color: isDark ? const Color(0xFF9AABC8) : const Color(0xFF5A6478),
+          color: isDark ? const Color(0xFF8E8E93) : const Color(0xFF5A6478),
           fontWeight: FontWeight.w500,
         ),
         hintStyle: TextStyle(
-          color: isDark ? const Color(0xFF5A6D8A) : const Color(0xFF9AA3B0),
+          color: isDark ? const Color(0xFF636366) : const Color(0xFF9AA3B0),
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusInput),
@@ -228,7 +230,7 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: primary,
-          foregroundColor: Colors.white,
+          foregroundColor: isDark ? _darkBg : Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusButton),
@@ -237,7 +239,9 @@ class AppTheme {
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: primary),
+        style: TextButton.styleFrom(
+          foregroundColor: isDark ? _darkInk : primary,
+        ),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,

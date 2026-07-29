@@ -63,49 +63,23 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
         ref.watch(devFlagsProvider).isMockPassesActive;
     final double fabClearance =
         MediaQuery.of(context).padding.bottom + 16 + 58 + 20;
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color ink = Theme.of(context).colorScheme.onSurface;
-    final Color historyLabelColor = isDark
-        ? Colors.white.withValues(alpha: 0.55)
-        : ink.withValues(alpha: 0.48);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 12, 0),
+          padding: const EdgeInsets.fromLTRB(16, 6, 20, 0),
           child: Row(
             children: <Widget>[
-              AnimatedOpacity(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                opacity: _showHistory ? 1 : 0,
-                child: IgnorePointer(
-                  ignoring: !_showHistory,
-                  child: Text(
-                    'History',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.2,
-                      color: historyLabelColor,
-                    ),
-                  ),
-                ),
-              ),
-              const Spacer(),
-              if (showMockBadge) ...<Widget>[
-                _MockBadge(),
-                const SizedBox(width: 8),
-              ],
               _HistoryIconButton(
                 selected: _showHistory,
                 onTap: _toggleHistory,
               ),
+              const Spacer(),
+              if (showMockBadge) _MockBadge(),
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Expanded(
           child: asyncPasses.when(
             loading: () => const Center(
@@ -284,7 +258,7 @@ class _MockBadge extends StatelessWidget {
   }
 }
 
-// ── History icon ──────────────────────────────────────────────────────────────
+// ── History button ────────────────────────────────────────────────────────────
 
 class _HistoryIconButton extends StatelessWidget {
   const _HistoryIconButton({
@@ -299,41 +273,85 @@ class _HistoryIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
-    final Color selectedBg = isDark
-        ? theme.colorScheme.primary.withValues(alpha: 0.22)
-        : const Color(0xFF1F3A60).withValues(alpha: 0.12);
+
+    // Neutral graphite chrome (Settings-aligned) — no electric blue.
+    final Color idleBg =
+        isDark ? const Color(0xFF1C1C1E) : const Color(0xFFFFFFFF);
+    final Color idleBorder = isDark
+        ? Colors.white.withValues(alpha: 0.14)
+        : Colors.black.withValues(alpha: 0.10);
+    final Color idleFg =
+        isDark ? const Color(0xFFE8E8ED) : const Color(0xFF1C1C1E);
+
+    final Color selectedBg =
+        isDark ? const Color(0xFFE8E8ED) : const Color(0xFF1F3A60);
     final Color selectedFg =
-        isDark ? theme.colorScheme.primary : const Color(0xFF1F3A60);
-    final Color idleFg = isDark
-        ? Colors.white.withValues(alpha: 0.72)
-        : const Color(0xFF3A3A3C);
+        isDark ? const Color(0xFF0A0A0D) : Colors.white;
+
+    final Color bg = selected ? selectedBg : idleBg;
+    final Color border = selected ? selectedBg : idleBorder;
+    final Color fg = selected ? selectedFg : idleFg;
 
     return BounceTap(
       onTap: onTap,
-      scaleFactor: 0.90,
+      scaleFactor: 0.92,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
-        width: 40,
         height: 40,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? selectedBg : Colors.transparent,
-          shape: BoxShape.circle,
+        padding: EdgeInsets.symmetric(
+          horizontal: selected ? 14 : 11,
         ),
-        child: AnimatedScale(
-          scale: selected ? 1.0 : 0.96,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          child: SvgPicture.asset(
-            AppAssets.passesHistory,
-            width: 22,
-            height: 22,
-            colorFilter: ColorFilter.mode(
-              selected ? selectedFg : idleFg,
-              BlendMode.srcIn,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: border, width: 1.5),
+          boxShadow: selected
+              ? <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.14),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            SvgPicture.asset(
+              AppAssets.passesHistory,
+              width: 18,
+              height: 18,
+              colorFilter: ColorFilter.mode(fg, BlendMode.srcIn),
             ),
-          ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.centerLeft,
+              child: selected
+                  ? Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Text(
+                        'History',
+                        style: TextStyle(
+                          color: fg,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.15,
+                          height: 1.0,
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
         ),
       ),
     );

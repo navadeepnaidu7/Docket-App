@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/assets/app_assets.dart';
 import '../../../core/dev/dev_config.dart';
@@ -32,21 +35,69 @@ import 'user_card_detail_screen.dart';
 const double kSettingsHeroHeight = 226.0;
 const double kSettingsHeroRadius = 22.0;
 
-class SettingsScreen extends ConsumerWidget {
+/// Credits shown under Settings → About (edit freely).
+const String kDeveloperDisplayName = 'Navad';
+const String kDeveloperEmail = 'hello@docket.app';
+
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  /// While true, pause continuous effects so scroll isn't fighting paint work.
+  bool _isScrolling = false;
+  Timer? _scrollIdleTimer;
+
+  @override
+  void dispose() {
+    _scrollIdleTimer?.cancel();
+    super.dispose();
+  }
+
+  bool _onScrollNotification(ScrollNotification notification) {
+    // Any scroll activity → pause; resume shortly after motion settles.
+    if (notification is ScrollStartNotification ||
+        notification is ScrollUpdateNotification ||
+        notification is OverscrollNotification) {
+      _scrollIdleTimer?.cancel();
+      if (!_isScrolling) {
+        setState(() => _isScrolling = true);
+      }
+      _scrollIdleTimer = Timer(const Duration(milliseconds: 140), () {
+        if (mounted && _isScrolling) {
+          setState(() => _isScrolling = false);
+        }
+      });
+    } else if (notification is ScrollEndNotification) {
+      _scrollIdleTimer?.cancel();
+      _scrollIdleTimer = Timer(const Duration(milliseconds: 80), () {
+        if (mounted && _isScrolling) {
+          setState(() => _isScrolling = false);
+        }
+      });
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
     final Color ink = theme.colorScheme.onSurface;
-    final Color scaffoldBg = isDark ? const Color(0xFF0A0A0D) : const Color(0xFFF8F8FA);
-    final Color surface = isDark ? const Color(0xFF16161A) : const Color(0xFFFFFFFF);
+    final Color scaffoldBg =
+        isDark ? const Color(0xFF0A0A0D) : const Color(0xFFF8F8FA);
+    final Color surface =
+        isDark ? const Color(0xFF16161A) : const Color(0xFFFFFFFF);
     final Color borderColor = ink.withValues(alpha: isDark ? 0.08 : 0.05);
 
     final List<PassportProfile> passports = ref.watch(passportListProvider);
     final List<IdDocument> idDocs = ref.watch(idListProvider);
     final AuthSession session = ref.watch(authSessionProvider);
+
+    final bool effectsOn = !_isScrolling;
 
     return Scaffold(
       backgroundColor: scaffoldBg,
@@ -63,48 +114,47 @@ class SettingsScreen extends ConsumerWidget {
             ),
             Expanded(
               // Single scroll: card is a normal list item (not sticky).
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-                children: [
-                  _AnimatedPressScale(
-                    onTap: () {
-                      HapticService.select();
-                      Navigator.of(context).push(
-                        CupertinoPageRoute<void>(
-                          builder: (_) => const UserCardDetailScreen(),
+              child: NotificationListener<ScrollNotification>(
+                onNotification: _onScrollNotification,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  cacheExtent: 480,
+                  // Avoid keep-alive overhead for a short settings list.
+                  addAutomaticKeepAlives: false,
+                  addRepaintBoundaries: true,
+                  children: [
+                  RepaintBoundary(
+                    child: _AnimatedPressScale(
+                      onTap: () {
+                        HapticService.select();
+                        Navigator.of(context).push(
+                          CupertinoPageRoute<void>(
+                            builder: (_) => const UserCardDetailScreen(),
+                          ),
+                        );
+                      },
+                      child: SizedBox(
+                        height: kSettingsHeroHeight,
+                        child: WalletMembershipCard(
+                          passports: passports,
+                          idDocs: idDocs,
+                          isDark: isDark,
+                          enableMotion: effectsOn,
                         ),
-                      );
-                    },
-                    child: SizedBox(
-                      height: kSettingsHeroHeight,
-                      child: WalletMembershipCard(
-                        passports: passports,
-                        idDocs: idDocs,
-                        isDark: isDark,
                       ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        Text(
-                          'Tap to open',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.2,
-                            color: ink.withValues(alpha: isDark ? 0.45 : 0.55),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 10,
-                          color: ink.withValues(alpha: isDark ? 0.45 : 0.55),
-                        ),
-                      ],
+                    child: RepaintBoundary(
+                      child: _TapToOpenShineLabel(
+                        isDark: isDark,
+                        ink: ink,
+                        enabled: effectsOn,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 18),
@@ -248,7 +298,7 @@ class SettingsScreen extends ConsumerWidget {
                   ],
                   const SizedBox(height: 20),
                   _SettingsSection(
-                    title: 'General',
+                    title: 'About',
                     surface: surface,
                     borderColor: borderColor,
                     isDark: isDark,
@@ -256,7 +306,7 @@ class SettingsScreen extends ConsumerWidget {
                       _SettingsLinkRow(
                         icon: Icons.info_outline_rounded,
                         iconColor: const Color(0xFF8E8E93),
-                        title: 'About',
+                        title: 'About Docket',
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute<void>(
@@ -264,6 +314,28 @@ class SettingsScreen extends ConsumerWidget {
                             ),
                           );
                         },
+                      ),
+                      const _SettingsDivider(),
+                      _SettingsLinkRow(
+                        icon: Icons.person_outline_rounded,
+                        iconColor: const Color(0xFF8E8E93),
+                        title: 'About developer',
+                        subtitle: kDeveloperDisplayName,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const AboutDeveloperScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const _SettingsDivider(),
+                      _SettingsLinkRow(
+                        icon: Icons.mail_outline_rounded,
+                        iconColor: const Color(0xFF8E8E93),
+                        title: 'Mail to developer',
+                        subtitle: kDeveloperEmail,
+                        onTap: () => _mailToDeveloper(context),
                       ),
                     ],
                   ),
@@ -275,7 +347,9 @@ class SettingsScreen extends ConsumerWidget {
                       isDark: isDark,
                     ),
                   ],
+                  _DocketSettingsWatermark(isDark: isDark, ink: ink),
                 ],
+                ),
               ),
             ),
           ],
@@ -283,6 +357,34 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+Future<void> _mailToDeveloper(BuildContext context) async {
+  HapticService.tap();
+  final Uri uri = Uri(
+    scheme: 'mailto',
+    path: kDeveloperEmail,
+    queryParameters: <String, String>{
+      'subject': 'Docket feedback',
+    },
+  );
+
+  try {
+    final bool launched = await launchUrl(uri);
+    if (launched || !context.mounted) return;
+  } catch (_) {
+    // Fall through to clipboard fallback.
+  }
+
+  if (!context.mounted) return;
+  await Clipboard.setData(const ClipboardData(text: kDeveloperEmail));
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Email copied — no mail app available'),
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
 }
 
 Future<void> _showAccountComingSoon(BuildContext context) async {
@@ -451,11 +553,15 @@ class WalletMembershipCard extends ConsumerStatefulWidget {
     required this.passports,
     required this.idDocs,
     required this.isDark,
+    this.enableMotion = true,
   });
 
   final List<PassportProfile> passports;
   final List<IdDocument> idDocs;
   final bool isDark;
+
+  /// When false (e.g. parent list is scrolling), freeze the fluid wash.
+  final bool enableMotion;
 
   @override
   ConsumerState<WalletMembershipCard> createState() => _WalletMembershipCardState();
@@ -499,6 +605,14 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
     _syncMotion();
   }
 
+  @override
+  void didUpdateWidget(covariant WalletMembershipCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.enableMotion != widget.enableMotion) {
+      _syncMotion();
+    }
+  }
+
   void _onRouteChanged(AnimationStatus status) => _syncMotion();
 
   void _onSecondaryTick() => _syncMotion();
@@ -516,8 +630,9 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
     final ModalRoute<dynamic>? route = ModalRoute.of(context);
     final bool routeVisible = route == null ||
         (route.isCurrent && (route.secondaryAnimation?.value ?? 0) == 0);
-    final bool shouldRun =
-        routeVisible && TickerMode.valuesOf(context).enabled;
+    final bool shouldRun = widget.enableMotion &&
+        routeVisible &&
+        TickerMode.valuesOf(context).enabled;
     if (shouldRun) {
       if (!_motion.isAnimating) _motion.repeat();
     } else if (_motion.isAnimating) {
@@ -1026,6 +1141,154 @@ class _DeveloperSection extends ConsumerWidget {
   }
 }
 
+// ── "Tap to open" shimmer ───────────────────────────────────────────────────
+
+/// Soft left→right shine across the membership-card affordance (~2.5s loop).
+class _TapToOpenShineLabel extends StatefulWidget {
+  const _TapToOpenShineLabel({
+    required this.isDark,
+    required this.ink,
+    this.enabled = true,
+  });
+
+  final bool isDark;
+  final Color ink;
+  final bool enabled;
+
+  @override
+  State<_TapToOpenShineLabel> createState() => _TapToOpenShineLabelState();
+}
+
+class _TapToOpenShineLabelState extends State<_TapToOpenShineLabel>
+    with SingleTickerProviderStateMixin {
+  /// Slow glint across the affordance.
+  static const Duration _period = Duration(milliseconds: 2500);
+
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: _period);
+    _syncShine();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TapToOpenShineLabel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.enabled != widget.enabled) {
+      _syncShine();
+    }
+  }
+
+  void _syncShine() {
+    if (widget.enabled) {
+      if (!_ctrl.isAnimating) _ctrl.repeat();
+    } else if (_ctrl.isAnimating) {
+      _ctrl.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Color base = widget.ink.withValues(
+      alpha: widget.isDark ? 0.40 : 0.48,
+    );
+    // Soft peak — hard pure-white edges read as letter-by-letter strobing.
+    final Color mid = widget.isDark
+        ? Colors.white.withValues(alpha: 0.72)
+        : widget.ink.withValues(alpha: 0.72);
+    final Color peak = widget.isDark
+        ? Colors.white.withValues(alpha: 0.92)
+        : widget.ink.withValues(alpha: 0.90);
+
+    final TextStyle labelStyle = GoogleFonts.inter(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.2,
+      // Solid for ShaderMask; gradient supplies the visible color.
+      color: Colors.white,
+    );
+
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (BuildContext context, Widget? child) {
+        // Ease the travel so it doesn't feel linear/mechanical.
+        final double t = Curves.easeInOutCubic.transform(_ctrl.value);
+
+        return ShaderMask(
+          blendMode: BlendMode.srcIn,
+          shaderCallback: (Rect bounds) {
+            // Wide band (~55% of label width) slides in pixel space so the
+            // highlight covers multiple glyphs at once instead of snapping
+            // letter-to-letter.
+            final double w = bounds.width;
+            final double band = w * 0.55;
+            // Travel fully off-screen left → fully off-screen right.
+            final double x = (w + band) * t - band;
+
+            return LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: <Color>[
+                base,
+                base,
+                mid,
+                peak,
+                mid,
+                base,
+                base,
+              ],
+              stops: const <double>[
+                0.0,
+                0.28,
+                0.42,
+                0.50,
+                0.58,
+                0.72,
+                1.0,
+              ],
+              tileMode: TileMode.clamp,
+              transform: _ShimmerSlide(x / w),
+            ).createShader(bounds);
+          },
+          child: child,
+        );
+      },
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text('Tap to open', style: labelStyle),
+          const SizedBox(width: 4),
+          const Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 10,
+            color: Colors.white,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Translates a gradient along X in units of the shader bounds width.
+class _ShimmerSlide extends GradientTransform {
+  const _ShimmerSlide(this.dxInWidths);
+
+  final double dxInWidths;
+
+  @override
+  Matrix4? transform(Rect bounds, {TextDirection? textDirection}) {
+    return Matrix4.translationValues(bounds.width * dxInWidths, 0, 0);
+  }
+}
+
 // ── Appearance: theme preference + schedule ────────────────────────────────
 
 class _ThemeAppearanceBlock extends ConsumerWidget {
@@ -1075,7 +1338,7 @@ class _ThemeAppearanceBlock extends ConsumerWidget {
               if (statusSubtitle != null) ...[
                 const SizedBox(height: 6),
                 Padding(
-                  padding: const EdgeInsets.only(left: 44),
+                  padding: const EdgeInsets.only(left: 36),
                   child: Text(
                     statusSubtitle,
                     style: GoogleFonts.inter(
@@ -1173,6 +1436,12 @@ String? _themeStatusSubtitle(ThemeControllerState state) {
   final ThemeSettings s = state.settings;
   if (s.preference == AppThemePreference.light) return 'Always light';
   if (s.preference == AppThemePreference.dark) return 'Always dark';
+  if (s.preference == AppThemePreference.system) {
+    final Brightness platform =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    final String side = platform == Brightness.dark ? 'Dark' : 'Light';
+    return 'Matches device · $side now';
+  }
 
   final int start = s.effectiveLightStartMinutes;
   final int end = s.effectiveLightEndMinutes;
@@ -1206,6 +1475,7 @@ class _ThemeSegmentedControl extends StatelessWidget {
       segments: const <(AppThemePreference, String)>[
         (AppThemePreference.light, 'Light'),
         (AppThemePreference.dark, 'Dark'),
+        (AppThemePreference.system, 'Device'),
         (AppThemePreference.schedule, 'Schedule'),
       ],
       onChanged: onChanged,
@@ -1367,11 +1637,12 @@ class _PillSegmentedState<T> extends State<_PillSegmented<T>> {
                               duration: _slideDuration,
                               curve: _slideCurve,
                               style: GoogleFonts.inter(
-                                fontSize: 13,
+                                // Slightly tighter type when 4 segments (theme row).
+                                fontSize: count >= 4 ? 11.5 : 13,
                                 fontWeight: i == selected
                                     ? FontWeight.w600
                                     : FontWeight.w500,
-                                letterSpacing: -0.2,
+                                letterSpacing: count >= 4 ? -0.25 : -0.2,
                                 color: i == selected
                                     ? selectedFg
                                     : unselectedFg,
@@ -1563,8 +1834,9 @@ class _SettingsDivider extends StatelessWidget {
           alpha: Theme.of(context).brightness == Brightness.dark ? 0.08 : 0.06,
         );
 
+    // Align under text after bare icon (14 pad + 24 icon + 12 gap).
     return Padding(
-      padding: const EdgeInsets.only(left: 58),
+      padding: const EdgeInsets.only(left: 50),
       child: Divider(height: 1, thickness: 0.5, color: dividerColor),
     );
   }
@@ -1573,6 +1845,7 @@ class _SettingsDivider extends StatelessWidget {
 class _SettingsRowIcon extends StatelessWidget {
   const _SettingsRowIcon({
     required this.icon,
+    // Kept for call-site compatibility; all row icons use a neutral tint.
     required this.color,
   });
 
@@ -1582,19 +1855,15 @@ class _SettingsRowIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color ink = Theme.of(context).colorScheme.onSurface;
+    // Same default ink for every row in both modes (no accent colors).
+    final Color iconTint =
+        isDark ? const Color(0xFFE5E5EA) : const Color(0xFF3A3A3C);
 
-    final Color containerBg = ink.withValues(alpha: isDark ? 0.08 : 0.05);
-    final Color iconTint = isDark ? const Color(0xFFE5E5EA) : const Color(0xFF3A3A3C);
-
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: containerBg,
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Icon(icon, size: 18, color: iconTint),
+    // Bare glyph only — no squircle / plate behind the icon.
+    return SizedBox(
+      width: 24,
+      height: 24,
+      child: Icon(icon, size: 22, color: iconTint),
     );
   }
 }
@@ -1665,7 +1934,8 @@ class _SettingsToggleRow extends StatelessWidget {
               scale: 0.82,
               child: CupertinoSwitch(
                 value: value,
-                activeTrackColor: Theme.of(context).colorScheme.primary,
+                // System green — avoids electric-blue chrome in dark mode.
+                activeTrackColor: const Color(0xFF34C759),
                 onChanged: onChanged,
               ),
             ),
@@ -1861,6 +2131,44 @@ class _SettingsLinkRow extends StatelessWidget {
   }
 }
 
+/// Big translucent wordmark at the foot of Settings.
+class _DocketSettingsWatermark extends StatelessWidget {
+  const _DocketSettingsWatermark({
+    required this.isDark,
+    required this.ink,
+  });
+
+  final bool isDark;
+  final Color ink;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color wash = ink.withValues(alpha: isDark ? 0.075 : 0.055);
+
+    return IgnorePointer(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(4, 48, 4, 20),
+        child: Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              'Docket',
+              maxLines: 1,
+              style: GoogleFonts.inter(
+                fontSize: 72,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -3.2,
+                height: 1.0,
+                color: wash,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class AboutDocketScreen extends StatelessWidget {
   const AboutDocketScreen({super.key});
 
@@ -1870,11 +2178,14 @@ class AboutDocketScreen extends StatelessWidget {
     final bool isDark = theme.brightness == Brightness.dark;
     final Color ink = theme.colorScheme.onSurface;
     final Color muted = ink.withValues(alpha: isDark ? 0.45 : 0.55);
-    final Color surface = theme.colorScheme.surface;
+    final Color surface =
+        isDark ? const Color(0xFF16161A) : theme.colorScheme.surface;
     final Color borderColor = ink.withValues(alpha: isDark ? 0.08 : 0.06);
+    final Color bg =
+        isDark ? const Color(0xFF0A0A0D) : theme.scaffoldBackgroundColor;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: bg,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1911,6 +2222,7 @@ class AboutDocketScreen extends StatelessWidget {
                     isDark: isDark,
                     padding: const EdgeInsets.all(20),
                     child: Text(
+                      'A local-first wallet for passports, IDs, and passes.\n\n'
                       'Built with Flutter and Riverpod.\n\n'
                       'ID card icon by haritselarif on the Noun Project (CC BY 3.0).',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -1925,6 +2237,94 @@ class AboutDocketScreen extends StatelessWidget {
                       '© 2026 Docket',
                       style: theme.textTheme.labelSmall?.copyWith(color: muted),
                     ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AboutDeveloperScreen extends StatelessWidget {
+  const AboutDeveloperScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color ink = theme.colorScheme.onSurface;
+    final Color muted = ink.withValues(alpha: isDark ? 0.45 : 0.55);
+    final Color surface =
+        isDark ? const Color(0xFF16161A) : theme.colorScheme.surface;
+    final Color borderColor = ink.withValues(alpha: isDark ? 0.08 : 0.06);
+    final Color bg =
+        isDark ? const Color(0xFF0A0A0D) : theme.scaffoldBackgroundColor;
+
+    return Scaffold(
+      backgroundColor: bg,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 16, 0),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                children: <Widget>[
+                  Text(
+                    'Developer',
+                    style: GoogleFonts.inter(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.5,
+                      color: ink,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    kDeveloperDisplayName,
+                    style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+                  ),
+                  const SizedBox(height: 20),
+                  _SettingsCard(
+                    surface: surface,
+                    borderColor: borderColor,
+                    isDark: isDark,
+                    padding: const EdgeInsets.all(20),
+                    child: Text(
+                      'Hi — I\'m $kDeveloperDisplayName, the developer behind Docket.\n\n'
+                      'Docket is a personal project focused on a polished, '
+                      'local-first digital wallet experience for documents and '
+                      'passes. Feedback and ideas are always welcome.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: muted,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _SettingsCard(
+                    surface: surface,
+                    borderColor: borderColor,
+                    isDark: isDark,
+                    children: <Widget>[
+                      _SettingsLinkRow(
+                        icon: Icons.mail_outline_rounded,
+                        iconColor: const Color(0xFF8E8E93),
+                        title: 'Mail to developer',
+                        subtitle: kDeveloperEmail,
+                        onTap: () => _mailToDeveloper(context),
+                      ),
+                    ],
                   ),
                 ],
               ),
