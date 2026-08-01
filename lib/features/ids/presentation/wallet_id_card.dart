@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../core/wallet/wallet_backdrop_tilt.dart';
+import '../../../core/wallet/wallet_card_metrics.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/sound/sound_service.dart';
 import '../../../shared/widgets/card_touch_layer.dart';
@@ -101,8 +102,14 @@ class _WalletIdCardState extends State<WalletIdCard>
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cardW = constraints.maxWidth;
-        final cardH = cardW / 1.586;
+        // Honour both axes: deriving height from width alone produced cards
+        // taller than the viewport in landscape and on short screens.
+        final Size card = WalletCardMetrics.resolve(
+          constraints,
+          WalletCardMetrics.idAspect,
+        );
+        final double cardW = card.width;
+        final double cardH = card.height;
 
         return SizedBox(
           width: cardW,

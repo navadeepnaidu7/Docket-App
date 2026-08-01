@@ -61,8 +61,7 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
         ref.watch(passListProvider);
     final bool showMockBadge = DevConfig.showDevMenu &&
         ref.watch(devFlagsProvider).isMockPassesActive;
-    final double fabClearance =
-        MediaQuery.of(context).padding.bottom + 16 + 58 + 20;
+    final double fabClearance = WalletLayout.fabClearance(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
