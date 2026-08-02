@@ -25,10 +25,36 @@ class AppTheme {
   static const Color success = Color(0xFF30D158);
   static const Color danger = Color(0xFFFF453A);
 
-  static const double radiusCard = 24.0;
-  static const double radiusButton = 14.0;
+  // ── Shape and size tokens ──────────────────────────────────────────────────
+  // One value per role. The entry flows previously used twelve distinct corner
+  // radii for six roles (CTAs alone appeared at 8, 14, 16 and 18) and five
+  // button heights for a single role, so the same control looked different
+  // depending on which file drew it.
+
+  /// Chips, badges, small pills.
+  static const double radiusControl = 10.0;
+
+  /// All text inputs.
   static const double radiusInput = 14.0;
-  static const double radiusSheet = 36.0;
+
+  /// All primary and secondary buttons.
+  static const double radiusButton = 14.0;
+
+  /// Grouped sections and cards.
+  static const double radiusCard = 20.0;
+
+  /// Bottom sheets. Shared by [AppleSheet] and `bottomSheetTheme`, which used
+  /// to disagree (36 vs 28) while rendering side by side.
+  static const double radiusSheet = 28.0;
+
+  /// Fully rounded.
+  static const double radiusPill = 999.0;
+
+  /// Primary CTAs, inputs, action rows.
+  static const double controlHeight = 52.0;
+
+  /// Secondary and text buttons, icon hit targets.
+  static const double controlHeightSm = 44.0;
 
   /// Public palette accessors for shared chrome (backdrops, sheets).
   static Color background(Brightness b) =>
@@ -271,7 +297,7 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         modalBackgroundColor: elevated,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(radiusSheet)),
         ),
       ),
       snackBarTheme: SnackBarThemeData(

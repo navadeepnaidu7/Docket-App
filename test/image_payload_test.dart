@@ -41,8 +41,8 @@ void main() {
     });
 
     test('a long windows path', () {
-      final String p =
-          r'C:\Users\someone\AppData\Local\Temp\cap' + 'x' * 90 + '.png';
+      final String p = '${r'C:\Users\someone\AppData\Local\Temp\cap'}'
+          '${'x' * 90}.png';
       expect(isBase64ImagePayload(p), isFalse);
     });
 
