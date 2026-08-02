@@ -28,13 +28,6 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-
-        // Plugin AARs (ML Kit, camera) ship every ABI regardless of Flutter's
-        // --target-platform, which only constrains the engine. Without this the
-        // APK carries an emulator-only x86_64 slice for real users.
-        ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
-        }
     }
 
     buildTypes {
@@ -48,6 +41,22 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            // Drop the x86_64 slice — emulators and a few Chromebooks, ~33 MB of
+            // engine + ML Kit native code that no shipped device uses.
+            //
+            // This MUST live on the build type, not defaultConfig, and MUST clear
+            // first. FlutterPlugin.kt does `buildType.ndk.abiFilters.clear()` then
+            // re-adds DEFAULT_PLATFORMS (arm32, arm64, *x86_64*) at apply() time;
+            // AGP then unions that with defaultConfig, so a defaultConfig-only
+            // filter is silently a no-op. Our android {} block is evaluated after
+            // apply(), so clearing here is what actually sticks.
+            //
+            // Release only: debug keeps x86_64 so emulators still work.
+            ndk {
+                abiFilters.clear()
+                abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+            }
         }
     }
 }
