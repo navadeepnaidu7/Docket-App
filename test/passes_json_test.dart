@@ -53,6 +53,71 @@ void main() {
     });
   });
 
+  group('MoviePass poster resolution', () {
+    MoviePass passWith({String? posterUrl}) => MoviePass(
+          id: 'p',
+          brand: MoviePassBrand.bookMyShow,
+          movieTitle: 'Some Film Nobody Has Heard Of',
+          movieSubtitle: '',
+          cinemaName: 'C',
+          cinemaAddress: 'A',
+          screen: '1',
+          showDate: 'd',
+          showTime: 't',
+          format: '2D',
+          language: 'English',
+          seats: const <MovieSeat>[MovieSeat(row: 'A', number: '1')],
+          bookingId: 'b',
+          orderId: 'o',
+          status: TicketStatus.active,
+          posterUrl: posterUrl,
+        );
+
+    // Regression: this used to fall through to a hardcoded Spider-Man poster, so every
+    // unmatched film rendered the wrong art instead of the gradient fallback.
+    test('returns null when the server sent no poster', () {
+      expect(passWith().resolvedPosterUrl, isNull);
+    });
+
+    test('treats an empty or blank posterUrl as no poster', () {
+      expect(passWith(posterUrl: '').resolvedPosterUrl, isNull);
+      expect(passWith(posterUrl: '   ').resolvedPosterUrl, isNull);
+    });
+
+    test('trims surrounding whitespace', () {
+      expect(
+        passWith(posterUrl: '  https://api.docket.app/img/poster/w500/a.jpg  ')
+            .resolvedPosterUrl,
+        'https://api.docket.app/img/poster/w500/a.jpg',
+      );
+    });
+
+    test('survives a JSON round trip', () {
+      const String url = 'https://api.docket.app/img/poster/w500/abc123abc123abc123abc12.jpg';
+      final MoviePass again = MoviePass.fromJson(passWith(posterUrl: url).toJson());
+      expect(again.resolvedPosterUrl, url);
+    });
+
+    // Fixtures point at the backend image proxy via MOCK_POSTER_ORIGIN. With no origin
+    // configured they must be null (gradient fallback), never a broken URL.
+    test('fixtures are either null or absolute proxy URLs', () {
+      for (final MoviePass m in mockMoviePasses) {
+        final String? url = m.resolvedPosterUrl;
+        if (url != null) {
+          expect(url, startsWith('http'), reason: '${m.movieTitle} has a non-absolute poster URL');
+          expect(url, contains('/img/poster/'), reason: '${m.movieTitle} bypasses the image proxy');
+        }
+      }
+    });
+
+    // The static poster JPEGs were removed with the TMDB switch.
+    test('no fixture references a bundled poster asset', () {
+      for (final MoviePass m in mockMoviePasses) {
+        expect(m.posterAsset, isNull, reason: '${m.movieTitle} still pins a local asset');
+      }
+    });
+  });
+
   group('Pass list envelope', () {
     test('parses mixed kinds', () {
       final PassListResponse res = PassListResponse.fromJson(<String, dynamic>{

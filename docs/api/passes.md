@@ -152,12 +152,36 @@ Either the same envelope as one list item, or the nested object only. Client acc
 | `sourcePlatform` | string | no | universal footer only |
 | `codeType` | string | no | `qr` \| `barcode` |
 | `codePayload` | string | no | real code data |
-| `posterUrl` | string | no | network image |
+| `posterUrl` | string | no | Absolute Docket image-proxy URL. **May be absent** — see Poster art |
 | `posterHint` | string | no | UI fallback gradient family |
 
 Unknown `brand` → client maps to **`universal`**.
 
 Do **not** send logo assets; brand styling is client-side.
+
+### Poster art
+
+Movie posters are resolved server-side from TMDB and served through the Docket API:
+
+```
+GET /img/poster/{size}/{file}
+```
+
+- **Public** — no `Authorization` header. These are public movie posters and the URL carries
+  no user identifier, so the client's image layer needs no token handling.
+- `size` is one of `w185`, `w342`, `w500`, `w780`. Anything else is `400`.
+- `file` is a TMDB poster filename (`^[A-Za-z0-9]{20,64}\.(jpg|png|webp)$`).
+- Responses carry `Cache-Control: public, max-age=31536000, immutable` and an `ETag`. TMDB
+  poster paths are content-addressed, so the bytes behind a filename never change.
+- `404` means the poster could not be fetched; the client falls back to the `posterHint`
+  gradient.
+
+Images are **proxied rather than linked directly** because `image.tmdb.org` is blocked by
+Indian ISPs. A raw TMDB CDN URL resolves fine on the server and then fails on the user's phone.
+
+`posterUrl` is **absent** when the film has not been matched yet (lookup runs asynchronously
+after extraction) or when TMDB has no confident match. Clients must treat a missing poster as
+normal and render the `posterHint` gradient — never substitute a placeholder film's artwork.
 
 ---
 
@@ -188,7 +212,8 @@ Do **not** send logo assets; brand styling is client-side.
     "certification": "UA 13+",
     "runtime": "2h 46m",
     "codeType": "qr",
-    "posterUrl": "https://example.com/posters/dune.jpg"
+    "posterUrl": "https://api.docket.app/img/poster/w500/czembW0Rk1Ke7lCJGahbOhdCuhV.jpg",
+    "posterHint": "sciFi"
   }
 }
 ```
@@ -265,4 +290,5 @@ Then implement HTTP inside `RemotePassRepository` using `PassListResponse.fromJs
 - JSON **camelCase**
 - Enums as **strings**
 - Prefer additive fields; client ignores unknown keys
-- Never require UI-only fields (`posterAsset`, brand colors)
+- Never require UI-only fields (`posterAsset`, brand colors). `posterAsset` is **client-only**
+  — the server must never send it; it exists so fixtures can pin a bundled image.

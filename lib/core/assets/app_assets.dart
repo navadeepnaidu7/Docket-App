@@ -28,9 +28,6 @@ abstract final class AppAssets {
   /// Clock-history icon for past / expired passes.
   static const String passesHistory = 'assets/passes/history_clock.svg';
 
-  /// Dune Part Two poster image.
-  static const String dunePoster = 'assets/passes/dune_poster.jpg';
-
   // ── Auth ─────────────────────────────────────────────────────────────────────
 
   /// Google Sign-In button assets (dark, rounded). Names follow Google branding.
