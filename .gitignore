@@ -35,8 +35,14 @@ PLAN.md
 .pub-cache/
 .pub/
 /build/
+/android/build/
 /coverage/
 lib/generated_plugin_registrant.dart
+
+# Local reference material and scratch output (kept on disk, never committed)
+terminals/
+jmrtd-src/
+jmrtd-sources.jar
 
 # Symbolication related
 app.*.symbols
