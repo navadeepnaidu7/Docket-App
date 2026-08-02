@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/passport_profile.dart';
 import '../../../core/storage/secure_document_store.dart';
@@ -22,8 +24,34 @@ class PassportListController extends StateNotifier<List<PassportProfile>> {
 
   Future<void> loadPassports() async {
     final savedData = await SecureDocumentStore.readList(_storageKey);
-    state = savedData.map(_tryParse).whereType<PassportProfile>().toList();
+
+    bool migrated = false;
+    final List<PassportProfile> loaded = <PassportProfile>[];
+    for (final String source in savedData) {
+      final PassportProfile? profile = _tryParse(source);
+      if (profile == null) continue;
+      if (_sourceNeedsMigration(source)) migrated = true;
+      loaded.add(profile);
+    }
+
+    state = loaded;
     ref.read(passportLoadingProvider.notifier).state = false;
+
+    // Records written before the imagePath/photoBase64 split are rewritten once
+    // so the heuristic never has to run again. This goes through _queueSave
+    // rather than _savePassports directly, or it could clobber a write already
+    // in flight from an add that landed while we were loading.
+    if (migrated) _queueSave(loaded);
+  }
+
+  bool _sourceNeedsMigration(String source) {
+    try {
+      final decoded = jsonDecode(source);
+      return decoded is Map<String, dynamic> &&
+          PassportProfile.mapNeedsMigration(decoded);
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _savePassports(List<PassportProfile> passports) async {

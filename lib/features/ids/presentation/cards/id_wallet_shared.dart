@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../../../../core/assets/app_assets.dart';
+import '../../../../core/storage/image_payload.dart';
 
 String formatIdDate(String d) {
   if (d.contains('-')) {
@@ -12,8 +13,10 @@ String formatIdDate(String d) {
   return d;
 }
 
-bool isBase64IdImage(String s) =>
-    s.length > 100 && !s.startsWith('/') && !s.contains('\\');
+/// Kept as the ID-side name for [isBase64ImagePayload], which now lives in
+/// core so the passport card can share the same rule.
+bool isBase64IdImage(String s) => isBase64ImagePayload(s);
+
 // ── Full-screen image viewer ──────────────────────────────────────────────────
 
 class IdCardFullImageViewer extends StatelessWidget {

@@ -18,10 +18,7 @@ The two repos are developed together; the shared contract lives in `docs/api/pas
 flutter pub get
 flutter run                      # debug, mock passes on
 flutter analyze
-
-# NOTE: bare `flutter test` does not terminate — test/widget_test.dart hangs in
-# pumpAndSettle against continuous animations. Run the working suites explicitly:
-flutter test test/passes_json_test.dart test/wallet_card_responsive_test.dart
+flutter test                     # whole suite; runs in ~10s
 
 # point at a real backend
 flutter run \
@@ -86,6 +83,17 @@ Wiring it to the backend is the main open task and means: add `http`/`dio`, impl
 is the pickup guide: `POST /v1/auth/google` → access JWT + refresh, tokens in secure storage,
 401 → single refresh + retry).
 
+### Movie posters
+
+Posters come from the backend's TMDB image proxy (`/img/poster/{size}/{file}`), rendered with
+`cached_network_image` — `Image.network` has no disk cache, so every cold start would
+re-download. `MoviePass.resolvedPosterUrl` is **nullable**: "no poster" is a normal state (TMDB
+has no match, or the async lookup has not finished) and the `posterHint` gradient is the
+fallback. Never substitute another film's artwork.
+
+`posterAsset` is client-only — the server never sends it. It survives so fixtures can pin a
+bundled image; with no `--dart-define=MOCK_POSTER_ORIGIN`, mock passes render the gradient.
+
 Pass JSON models are hand-written (`ticket_models.dart`, `movie_pass_models.dart`,
 `pass_catalog.dart`) — no codegen. `WalletPassItem` is a sealed class over
 `TrainPassItem | MoviePassItem`, discriminated by `kind`. Parsers accept both the
@@ -148,3 +156,11 @@ Pass JSON models are hand-written (`ticket_models.dart`, `movie_pass_models.dart
   test an NFC read against a real passport after touching those rules.
 - `defaultConfig.ndk.abiFilters` pins armeabi-v7a + arm64-v8a. Flutter's `--target-platform`
   only constrains the engine; without the filter, plugin AARs re-add an x86_64 slice.
+- `android.permission.INTERNET` is now declared explicitly in the **main** manifest. It used to
+  reach release builds only because ML Kit / Play Services manifests merged it in — too fragile
+  once network images became a core feature. Don't remove it.
+- `res/xml/network_security_config.xml` permits cleartext for `10.0.2.2` / `localhost` only, so
+  `--dart-define=API_BASE_URL=http://10.0.2.2:8080` works on the emulator. Without it Android 9+
+  blocks the request **silently**. Don't widen it to the base config.
+- iOS `Info.plist` has no ATS exception, so plain-`http://` local backends are blocked on the
+  simulator. Production is HTTPS; add `NSAllowsLocalNetworking` when iOS development starts.

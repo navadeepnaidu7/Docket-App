@@ -8,6 +8,10 @@ class DocumentValidators {
   static final RegExp _panRegex = RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]$');
   static final RegExp _aadhaarDigits = RegExp(r'^\d{12}$');
 
+  /// ICAO 9303 document numbers are up to 9 alphanumerics. Shorter is allowed
+  /// because some older books are issued with 6-8.
+  static final RegExp _passportNumberRegex = RegExp(r'^[A-Z0-9]{6,9}$');
+
   /// Safely parse "YYYY-MM-DD" or "YYYYMMDD" style. Returns null on failure.
   static DateTime? tryParseYmd(String raw) {
     if (raw.trim().isEmpty) return null;
@@ -17,9 +21,15 @@ class DocumentValidators {
       final m = int.tryParse(s.substring(4, 6));
       final d = int.tryParse(s.substring(6, 8));
       if (y != null && m != null && d != null) {
-        try {
-          return DateTime(y, m, d);
-        } catch (_) {}
+        final DateTime parsed = DateTime(y, m, d);
+        // DateTime does not reject out-of-range parts, it rolls them over:
+        // DateTime(1203, 19, 90) silently becomes 1204-09-28. Without this
+        // round-trip check a day-first value like "12/03/1990" parses to a
+        // date in the year 1204 instead of being reported as invalid.
+        if (parsed.year == y && parsed.month == m && parsed.day == d) {
+          return parsed;
+        }
+        return null;
       }
     }
     // Try direct ISO
@@ -34,8 +44,17 @@ class DocumentValidators {
   /// - Future or today → error
   /// - requireAdult (PAN) → must be at least 18 years old
   /// - Unrealistic (before 1900 or age > 120) → error
-  static String? validateDateOfBirth(String raw, {bool requireAdult = false}) {
-    if (raw.trim().isEmpty) return null; // optional in many flows
+  /// Set [required] when the value is a hard prerequisite (for example the BAC
+  /// triple, without which the NFC chip read cannot even be attempted).
+  /// It defaults to false so existing optional-field callers are unaffected.
+  static String? validateDateOfBirth(
+    String raw, {
+    bool requireAdult = false,
+    bool required = false,
+  }) {
+    if (raw.trim().isEmpty) {
+      return required ? 'Date of birth is required.' : null;
+    }
 
     final date = tryParseYmd(raw);
     if (date == null) {
@@ -75,8 +94,14 @@ class DocumentValidators {
   /// Returns error if expiry is invalid.
   /// - Must be in the future (if provided)
   /// - If dob provided, expiry must be after DOB
-  static String? validateExpiryDate(String raw, {String? dob}) {
-    if (raw.trim().isEmpty) return null;
+  static String? validateExpiryDate(
+    String raw, {
+    String? dob,
+    bool required = false,
+  }) {
+    if (raw.trim().isEmpty) {
+      return required ? 'Expiry date is required.' : null;
+    }
 
     final exp = tryParseYmd(raw);
     if (exp == null) {
@@ -155,14 +180,72 @@ class DocumentValidators {
   static String? validatePassportDates({
     required String dateOfBirth,
     required String expiryDate,
+    bool required = false,
   }) {
-    final dobErr = validateDateOfBirth(dateOfBirth);
+    final dobErr = validateDateOfBirth(dateOfBirth, required: required);
     if (dobErr != null) return dobErr;
 
-    final expErr = validateExpiryDate(expiryDate, dob: dateOfBirth);
+    final expErr = validateExpiryDate(
+      expiryDate,
+      dob: dateOfBirth,
+      required: required,
+    );
     if (expErr != null) return expErr;
 
     return null;
+  }
+
+  /// Passport document number format.
+  ///
+  /// Normalises before checking (trim, upper-case, strip spaces) so a value
+  /// typed as "z3 456 789" validates. Callers should persist the normalised
+  /// form via [normalisePassportNumber].
+  static String? validatePassportNumber(String raw, {bool required = false}) {
+    final String v = normalisePassportNumber(raw);
+    if (v.isEmpty) {
+      return required ? 'Passport number is required.' : null;
+    }
+    if (!_passportNumberRegex.hasMatch(v)) {
+      return 'Passport number is 6-9 letters and digits, no spaces.';
+    }
+    return null;
+  }
+
+  static String normalisePassportNumber(String raw) =>
+      raw.trim().toUpperCase().replaceAll(RegExp(r'\s'), '');
+
+  /// The three values Basic Access Control needs before the chip will unlock.
+  ///
+  /// Returns a per-field map so the caller can attach each message to the field
+  /// that caused it, rather than collapsing them into one banner. An empty map
+  /// means the read may be attempted.
+  ///
+  /// This is the gate that was missing: [validateDateOfBirth] and
+  /// [validateExpiryDate] treat empty as valid, so an unguarded caller could
+  /// start a chip read with no BAC data at all and get an opaque INVALID_ARGS
+  /// back from the platform channel.
+  static Map<String, String> validateBacTriple({
+    required String passportNumber,
+    required String dateOfBirth,
+    required String expiryDate,
+  }) {
+    final Map<String, String> errors = <String, String>{};
+
+    final String? numberErr =
+        validatePassportNumber(passportNumber, required: true);
+    if (numberErr != null) errors['passportNumber'] = numberErr;
+
+    final String? dobErr = validateDateOfBirth(dateOfBirth, required: true);
+    if (dobErr != null) errors['dateOfBirth'] = dobErr;
+
+    final String? expiryErr = validateExpiryDate(
+      expiryDate,
+      dob: dateOfBirth,
+      required: true,
+    );
+    if (expiryErr != null) errors['expiryDate'] = expiryErr;
+
+    return errors;
   }
 }
 
