@@ -1,6 +1,7 @@
 """Generate Docket Android launcher icons from the brand monogram.
 
-Matches assets/branding SVGs:
+Matches the shape variants in tool/design_src/ (design masters, not bundled
+into the APK — only assets/branding/docket_logo.svg ships):
 
 - circle:  docket_logo_circle.svg  (inset monogram for round masks)
 - square:  docket_logo_square.svg

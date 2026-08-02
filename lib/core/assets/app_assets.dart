@@ -57,11 +57,9 @@ abstract final class AppAssets {
   static const String passportAshokaChakra =
       'assets/wallet/passport/ashoka_chakra.svg';
 
-  /// Full-resolution source SVG (437 KB). Prefer [passportEmblem*] PNGs at runtime.
-  static const String passportEmblemOfIndia =
-      'assets/wallet/passport/emblem_of_india.svg';
-
   /// Pre-rasterized emblem PNGs sized for specific card placements.
+  /// Rasterized from `tool/design_src/emblem_of_india.svg`, which is kept in the
+  /// repo as the design master but deliberately not bundled into the APK.
   static const String passportEmblemHologram =
       'assets/wallet/passport/emblems/emblem_28.png';
   static const String passportEmblemHeader =

@@ -28,6 +28,13 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Plugin AARs (ML Kit, camera) ship every ABI regardless of Flutter's
+        // --target-platform, which only constrains the engine. Without this the
+        // APK carries an emulator-only x86_64 slice for real users.
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        }
     }
 
     buildTypes {
@@ -35,6 +42,12 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
@@ -43,7 +56,19 @@ flutter {
     source = "../.."
 }
 
+// Swap ML Kit face detection and barcode scanning from the bundled model
+// variants to the Play Services ones: identical API surface (no Dart changes),
+// but the models are fetched by Play Services instead of shipping in the APK.
+// Text recognition stays bundled so MRZ/OCR works offline on a fresh install.
+configurations.all {
+    exclude(group = "com.google.mlkit", module = "face-detection")
+    exclude(group = "com.google.mlkit", module = "barcode-scanning")
+}
+
 dependencies {
+    implementation("com.google.android.gms:play-services-mlkit-face-detection:17.1.0")
+    implementation("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1")
+
     implementation("org.jmrtd:jmrtd:0.7.38")
     implementation("net.sf.scuba:scuba-sc-android:0.0.23")
     implementation("org.bouncycastle:bcprov-jdk18on:1.75")
