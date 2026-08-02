@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/assets/app_assets.dart';
 import '../../../core/wallet/wallet_backdrop_tilt.dart';
+import '../../../core/wallet/wallet_card_metrics.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/sound/sound_service.dart';
 import '../../../shared/widgets/card_touch_layer.dart';
@@ -58,12 +59,22 @@ class _WalletPassportCardState extends State<WalletPassportCard>
       curve: Curves.easeInOutCubic,
     );
 
+    _rebuildFaces();
+  }
 
+  /// Faces are authored against a fixed canvas and scaled to the card box.
+  void _rebuildFaces() {
     _frontCard = RepaintBoundary(
-      child: _CardFront(profile: widget.profile),
+      child: WalletCardCanvas(
+        designSize: WalletCardMetrics.passportCanvas,
+        child: _CardFront(profile: widget.profile),
+      ),
     );
     _backCard = RepaintBoundary(
-      child: _CardBack(profile: widget.profile),
+      child: WalletCardCanvas(
+        designSize: WalletCardMetrics.passportCanvas,
+        child: _CardBack(profile: widget.profile),
+      ),
     );
   }
 
@@ -71,12 +82,7 @@ class _WalletPassportCardState extends State<WalletPassportCard>
   void didUpdateWidget(covariant WalletPassportCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.profile != widget.profile) {
-      _frontCard = RepaintBoundary(
-        child: _CardFront(profile: widget.profile),
-      );
-      _backCard = RepaintBoundary(
-        child: _CardBack(profile: widget.profile),
-      );
+      _rebuildFaces();
     }
   }
 
@@ -102,12 +108,20 @@ class _WalletPassportCardState extends State<WalletPassportCard>
 
   @override
   Widget build(BuildContext context) {
-    const double cardHeight = 570.0;
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        // Was a hardcoded 570dp tall, full-width box — taller than an iPhone
+        // SE's entire screen and a different shape on every device. Now the
+        // booklet ratio is fixed and the box fits whatever space it is given.
+        final Size card = WalletCardMetrics.resolve(
+          constraints,
+          WalletCardMetrics.passportAspect,
+        );
 
-    return SizedBox(
-      height: cardHeight,
-      width: double.infinity,
-      child: CardTouchLayer(
+        return SizedBox(
+          height: card.height,
+          width: card.width,
+          child: CardTouchLayer(
         tiltX: _tiltX,
         tiltY: _tiltY,
         backdropTilt: widget.backdropTilt,
@@ -187,7 +201,9 @@ class _WalletPassportCardState extends State<WalletPassportCard>
                 );
               },
             ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

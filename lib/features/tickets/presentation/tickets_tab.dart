@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/dev/dev_config.dart';
 import '../../../core/dev/dev_flags_provider.dart';
+import '../../../core/wallet/wallet_layout.dart';
 import '../../../shared/widgets/bounce_tap.dart';
 import '../../../shared/widgets/rolling_card_page.dart';
 import '../application/pass_list_provider.dart';
@@ -61,8 +62,7 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
         ref.watch(passListProvider);
     final bool showMockBadge = DevConfig.showDevMenu &&
         ref.watch(devFlagsProvider).isMockPassesActive;
-    final double fabClearance =
-        MediaQuery.of(context).padding.bottom + 16 + 58 + 20;
+    final double fabClearance = WalletLayout.fabClearance(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[

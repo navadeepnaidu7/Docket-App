@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/wallet/wallet_backdrop_tilt.dart';
 import '../../../../core/wallet/wallet_filter.dart';
+import '../../../../core/wallet/wallet_layout.dart';
 import '../../../../core/wallet/wallet_items.dart';
 import '../../application/card_shine_border_provider.dart';
 import '../../application/wallet_filter_provider.dart';
@@ -93,8 +94,7 @@ class _IdsTabState extends ConsumerState<IdsTab> {
 
   @override
   Widget build(BuildContext context) {
-    final double fabClearance =
-        MediaQuery.of(context).padding.bottom + 16 + 58 + 20;
+    final double fabClearance = WalletLayout.fabClearance(context);
     final items = widget.items;
     final bool shineEnabled = ref.watch(cardShineBorderProvider);
     final bool filterEnabled = ref.watch(walletFilterEnabledProvider);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/haptics/haptic_service.dart';
+import '../../../core/wallet/wallet_card_metrics.dart';
 import '../domain/ticket_models.dart';
 import 'ticket_detail_screen.dart';
 import 'train/train_ticket_face.dart';
@@ -53,18 +54,36 @@ class _WalletTicketCardState extends State<WalletTicketCard>
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _pressCtrl.forward(),
-      onTapUp: (_) => _pressCtrl.reverse(),
-      onTapCancel: () => _pressCtrl.reverse(),
-      onTap: _openDetail,
-      child: ScaleTransition(
-        scale: _scaleAnim,
-        child: TrainTicketFace(
-          ticket: widget.ticket,
-          density: TrainTicketDensity.glance,
-        ),
-      ),
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        // The face sizes itself from its content, so it used to grow past
+        // short viewports. Pin it to a canvas and scale that to fit instead.
+        final Size card = WalletCardMetrics.resolve(
+          constraints,
+          WalletCardMetrics.ticketAspect,
+        );
+
+        return GestureDetector(
+          onTapDown: (_) => _pressCtrl.forward(),
+          onTapUp: (_) => _pressCtrl.reverse(),
+          onTapCancel: () => _pressCtrl.reverse(),
+          onTap: _openDetail,
+          child: ScaleTransition(
+            scale: _scaleAnim,
+            child: SizedBox(
+              width: card.width,
+              height: card.height,
+              child: WalletCardCanvas(
+                designSize: WalletCardMetrics.ticketCanvas,
+                child: TrainTicketFace(
+                  ticket: widget.ticket,
+                  density: TrainTicketDensity.glance,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
