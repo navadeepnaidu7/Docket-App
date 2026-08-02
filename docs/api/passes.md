@@ -1,9 +1,10 @@
 # Passes API contract (client-ready)
 
-This document is the handoff for backend implementers. The Flutter Passes tab already consumes these shapes via `PassRepository` + `PassListResponse.fromJson`.
+This document is the contract between the app and `docket_server`. The Flutter Passes tab already consumes these shapes via `PassRepository` + `PassListResponse.fromJson`.
 
-Default client implementation: **`MockPassRepository`** (fixtures).  
-Swap to **`RemotePassRepository`** when `baseUrl` + auth exist.
+**Status (2 Aug 2026):** the server implements this envelope; the app does not call it yet.
+Default client implementation is **`MockPassRepository`** (fixtures); **`RemotePassRepository`**
+is still a stub that throws `UnimplementedError`. See [`../current_state.md`](../current_state.md).
 
 **Backend (docket_server):** `GET /v1/passes` and `GET /v1/passes/{id}` implement this envelope. Movie tickets are extracted via `POST /tickets/extract` (`category=movie` optional) with brands `bookMyShow` | `district` | `universal`. See `docket_server/docs/architecture.md` for pass **family** taxonomy (travel vs event vs hotel).
 
@@ -13,10 +14,10 @@ Swap to **`RemotePassRepository`** when `baseUrl` + auth exist.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `GET` | `/v1/passes` | List wallet passes |
-| `GET` | `/v1/passes/{id}` | Single pass (train or movie envelope) |
-| `GET` | `/v1/passes/{id}/live` | *(optional)* train live status only |
-| `GET` | `/v1/passes/{id}/code` | *(optional)* gate code payload / image URL |
+| `GET` | `/v1/passes` | List wallet passes — **live on the server** |
+| `GET` | `/v1/passes/{id}` | Single pass (train or movie envelope) — **live** |
+| `GET` | `/v1/passes/{id}/live` | Train live status only (`?force=1` to bypass cache) — **live** |
+| `GET` | `/v1/passes/{id}/code` | *(not implemented)* gate code payload / image URL |
 
 ### Query params (`GET /v1/passes`)
 
