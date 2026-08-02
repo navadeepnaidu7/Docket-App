@@ -2,7 +2,7 @@
 
 What is built and verified in `docket_app`.
 
-**Snapshot:** 2 Aug 2026 · branch `master` (head `550fb8c`) · `flutter analyze` clean (4 info-level lints) · 109 tests pass, 1 suite hangs (§3.2) · working tree has uncommitted Android R8/ProGuard work.
+**Snapshot:** 2 Aug 2026 · branch `master` (head `a66c039`) · `flutter analyze` clean (4 info-level lints) · 109 tests pass, 1 suite hangs (§3.2) · release APK builds at **59.0 MB** (universal, arm32 + arm64).
 
 The app is **feature-complete on local documents and fully mock-driven on server-backed passes**. Nothing talks to `docket_server` yet.
 
@@ -40,6 +40,18 @@ Appearance (light / dark / device / scheduled with a custom time picker), haptic
 ### 1.6 Platform
 Android `minSdk 26`, `applicationId`/`namespace` `com.example.docket`, NFC via `MethodChannel('com.docket/nfc_passport')` backed by JMRTD + scuba + BouncyCastle + JP2Decoder.
 
+### 1.7 Release build — size-optimised
+Landed in `a3fe742` + `a66c039`. Universal release APK measured at **59.0 MB**, down from 90.3 MB.
+
+- R8 runs on release (`isMinifyEnabled` + `isShrinkResources`) with `android/app/proguard-rules.pro` keeping the reflection-heavy JMRTD / scuba / BouncyCastle / JP2 stack and ML Kit whole.
+- ABI filtering pins `armeabi-v7a` + `arm64-v8a`, dropping a 33 MB `x86_64` slice. **This must sit on the `release` build type and call `abiFilters.clear()` first** — `FlutterPlugin.kt` clears the build type's filters and re-adds `DEFAULT_PLATFORMS` (arm32, arm64, **x86_64**) at `apply()` time, and AGP unions that with `defaultConfig`, so a `defaultConfig`-only filter is silently a no-op. Debug keeps x86_64 so emulators still work.
+- ML Kit **face detection** and **barcode scanning** are excluded in favour of the `play-services-mlkit-*` variants, so their models are fetched by Play Services rather than bundled. **Text recognition stays bundled** (`assets/mlkit-google-ocr-models`, 1.3 MB + an 11.6 MB native pipeline per ABI) so MRZ/OCR works offline on a fresh install. `AndroidManifest.xml` declares `com.google.mlkit.vision.DEPENDENCIES = face,barcode` to prefetch at install.
+- Assets are listed file-by-file in `pubspec.yaml` rather than by directory, so an unreferenced file cannot silently ship. Design-master SVGs live in `tool/design_src/` and are deliberately not bundled.
+
+**Not yet verified:** an NFC passport read against real hardware after R8. The ProGuard keeps are reasoned, not runtime-proven — the JMRTD/scuba stack resolves providers and LDS handlers reflectively, so this is the one change that could fail only at runtime.
+
+**Remaining headroom:** the 59 MB figure is a *universal* APK carrying both ABIs. `flutter build appbundle` lets Play deliver one ABI per device, roughly halving the download without further code changes.
+
 ---
 
 ## 2. Not implemented / stubbed
@@ -52,11 +64,7 @@ Android `minSdk 26`, `applicationId`/`namespace` `com.example.docket`, NFC via `
 | **Push** | No FCM dependency and no `POST /v1/devices` registration, although the server's Phase D outbox is ready. |
 | **iOS NFC** | Not implemented; `MainActivity.kt` is Android-only. |
 | **Search** | `README.md` lists search among wallet features; there is no search UI in the codebase. |
-| **tflite_flutter** | Declared in `pubspec.yaml` but never imported from Dart. |
 | **Release signing** | `buildTypes.release` still uses the debug signing config (`TODO` in `build.gradle.kts`). |
-
-### In flight (uncommitted)
-`android/app/build.gradle.kts` enables `isMinifyEnabled` with a new `proguard-rules.pro`. The rules file currently opens with `-dontshrink -dontoptimize -dontobfuscate` and a comment marking it as a **baseline measurement block to delete afterwards**, so R8 is wired but not yet actually shrinking. Keep rules for JMRTD / scuba / BouncyCastle / JP2 and ML Kit are already in place.
 
 ---
 
