@@ -36,6 +36,19 @@ class WalletCardMetrics {
   /// Portrait passport booklet ratio, kept in step with [passportCanvas].
   static const double passportAspect = _passportW / _passportH;
 
+  /// Design canvas for train and movie pass faces.
+  ///
+  /// Measured at 382dp wide with text scaling pinned: the train face lays out
+  /// at ~597dp tall and the movie face at ~595dp. 620 clears both with room to
+  /// spare. These faces size themselves from their content, so without a fixed
+  /// canvas they simply grew past short viewports — badly in landscape.
+  static const double _ticketW = 382;
+  static const double _ticketH = 620;
+  static const Size ticketCanvas = Size(_ticketW, _ticketH);
+
+  /// Portrait ticket ratio, kept in step with [ticketCanvas].
+  static const double ticketAspect = _ticketW / _ticketH;
+
   /// Resolve the card box for the space available, honouring both axes and the
   /// tablet cap. Using only `maxWidth` (the previous behaviour) produced cards
   /// taller than the viewport in landscape and on short screens.

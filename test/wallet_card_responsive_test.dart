@@ -8,8 +8,13 @@ import 'package:docket/features/ids/domain/id_document.dart';
 import 'package:docket/features/ids/presentation/cards/id_card_registry.dart';
 import 'package:docket/features/ids/presentation/wallet_id_card.dart';
 import 'package:docket/features/passport/domain/passport_profile.dart';
+import 'package:docket/features/tickets/data/mock_pass_fixtures.dart';
+import 'package:docket/features/tickets/presentation/wallet_movie_card.dart';
+import 'package:docket/features/tickets/presentation/wallet_ticket_card.dart';
 
-/// Screen sizes we support, including the landscape case the manifest allows.
+/// Screen sizes we support. The app is portrait-locked, but the short-viewport
+/// cases stay covered: Android multi-window and split screen still hand a
+/// portrait-locked activity a wide, short box.
 const Map<String, Size> _devices = <String, Size>{
   'iPhone SE': Size(320, 568),
   'Pixel 5': Size(393, 851),
@@ -161,6 +166,42 @@ void main() {
         expect(card.height, lessThanOrEqualTo(device.value.height),
             reason: 'passport card taller than the screen');
       });
+    }
+  });
+
+  group('Ticket cards fit the viewport', () {
+    for (final MapEntry<String, Size> device in _devices.entries) {
+      for (final double scale in _textScales) {
+        testWidgets('train on ${device.key} @${scale}x',
+            (WidgetTester tester) async {
+          final List<String> overflows = await _renderAndCollect(
+            tester,
+            WalletTicketCard(ticket: mockTrainPasses.first),
+            device.value,
+            scale,
+          );
+          expect(overflows, isEmpty,
+              reason: 'overflowed: ${overflows.join(" | ")}');
+
+          final Size card = tester.getSize(find.byType(WalletTicketCard));
+          expect(card.height, lessThanOrEqualTo(device.value.height));
+        });
+
+        testWidgets('movie on ${device.key} @${scale}x',
+            (WidgetTester tester) async {
+          final List<String> overflows = await _renderAndCollect(
+            tester,
+            WalletMovieCard(pass: mockMoviePasses.first),
+            device.value,
+            scale,
+          );
+          expect(overflows, isEmpty,
+              reason: 'overflowed: ${overflows.join(" | ")}');
+
+          final Size card = tester.getSize(find.byType(WalletMovieCard));
+          expect(card.height, lessThanOrEqualTo(device.value.height));
+        });
+      }
     }
   });
 

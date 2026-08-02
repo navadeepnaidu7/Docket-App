@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/haptics/haptic_service.dart';
+import '../../../core/wallet/wallet_card_metrics.dart';
 import '../domain/movie_pass_models.dart';
 import 'movie/movie_ticket_face.dart';
 import 'movie_pass_detail_screen.dart';
@@ -51,18 +52,36 @@ class _WalletMovieCardState extends State<WalletMovieCard>
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _pressCtrl.forward(),
-      onTapUp: (_) => _pressCtrl.reverse(),
-      onTapCancel: () => _pressCtrl.reverse(),
-      onTap: _openDetail,
-      child: ScaleTransition(
-        scale: _scaleAnim,
-        child: MovieTicketFace(
-          pass: widget.pass,
-          density: MovieTicketDensity.glance,
-        ),
-      ),
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        // The face sizes itself from its content, so it used to grow past
+        // short viewports. Pin it to a canvas and scale that to fit instead.
+        final Size card = WalletCardMetrics.resolve(
+          constraints,
+          WalletCardMetrics.ticketAspect,
+        );
+
+        return GestureDetector(
+          onTapDown: (_) => _pressCtrl.forward(),
+          onTapUp: (_) => _pressCtrl.reverse(),
+          onTapCancel: () => _pressCtrl.reverse(),
+          onTap: _openDetail,
+          child: ScaleTransition(
+            scale: _scaleAnim,
+            child: SizedBox(
+              width: card.width,
+              height: card.height,
+              child: WalletCardCanvas(
+                designSize: WalletCardMetrics.ticketCanvas,
+                child: MovieTicketFace(
+                  pass: widget.pass,
+                  density: MovieTicketDensity.glance,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

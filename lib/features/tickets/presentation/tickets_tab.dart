@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/dev/dev_config.dart';
 import '../../../core/dev/dev_flags_provider.dart';
+import '../../../core/wallet/wallet_layout.dart';
 import '../../../shared/widgets/bounce_tap.dart';
 import '../../../shared/widgets/rolling_card_page.dart';
 import '../application/pass_list_provider.dart';
