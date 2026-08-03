@@ -15,9 +15,15 @@ class WalletOrderController extends StateNotifier<List<String>> {
     await SecureDocumentStore.writeList(_storageKey, order);
   }
 
-  void updateOrderOnItemAdded(String id) {
+  /// Records a newly added item's position in the carousel.
+  ///
+  /// Inserts at the front by default, because both list controllers prepend
+  /// their new record and the dashboard renders by *this* order — appending
+  /// here sent every freshly saved card to the end of the wallet, which is the
+  /// opposite of what the prepend was for.
+  void updateOrderOnItemAdded(String id, {bool atFront = true}) {
     if (!state.contains(id)) {
-      final newState = [...state, id];
+      final newState = atFront ? <String>[id, ...state] : <String>[...state, id];
       saveOrder(newState);
     }
   }

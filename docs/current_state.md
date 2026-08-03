@@ -28,7 +28,9 @@ The app is **feature-complete on local documents and fully mock-driven on server
 - Sealed `WalletPassItem` (`TrainPassItem | MoviePassItem`) with hand-written JSON models; parsers accept both the `{kind, train|movie: {...}}` envelope and a bare nested object.
 - Train: wallet card, detail screen, ticket face with passengers, halts, live-status label and progress.
 - Movie: brand chrome for `bookMyShow` / `district` / `universal` (unknown brand → universal), ticket face, and a gate-code screen.
-- Fixtures: **6 train passes and 4 movie passes** in `mock_pass_fixtures.dart`.
+- **Movie posters come from the backend's TMDB image proxy**, rendered with `cached_network_image` (disk-cached; the proxy serves `immutable`). The three bundled poster JPEGs and the hardcoded Wikipedia URL table are gone. `MoviePass.resolvedPosterUrl` is nullable — no poster means the `posterHint` gradient, which is now painted permanently beneath the image rather than swapped in on error. A shimmer covers the download.
+  - Fixed while here: the hero band's brand guard covered every `MoviePassBrand` value, so its `else` branch was unreachable and `_BrandChip` / `_StatusPill` — which had no other call site — never rendered on any movie pass. Both now show, over a scrim so they stay legible on bright art.
+- Fixtures: **6 train passes and 4 movie passes** in `mock_pass_fixtures.dart`. Movie fixtures point at the image proxy via `--dart-define=MOCK_POSTER_ORIGIN=http://10.0.2.2:8080`; with no origin set they render the gradient.
 - Source selection via `devFlagsProvider` → `MockPassRepository` or `RemotePassRepository`; a purple **MOCK** chip shows in the Passes tab while mock mode is active.
 
 ### 1.4 Settings
@@ -39,6 +41,10 @@ Appearance (light / dark / device / scheduled with a custom time picker), haptic
 
 ### 1.6 Platform
 Android `minSdk 26`, `applicationId`/`namespace` `com.example.docket`, NFC via `MethodChannel('com.docket/nfc_passport')` backed by JMRTD + scuba + BouncyCastle + JP2Decoder.
+
+- `android.permission.INTERNET` is now declared in the **main** manifest. It previously reached release builds only because ML Kit / Play Services manifests merged it in — verified present in the packaged release manifest after this change.
+- `res/xml/network_security_config.xml` permits cleartext for `10.0.2.2` / `localhost` / `127.0.0.1` only, so a local backend works on the emulator. Android 9+ blocks cleartext **silently** otherwise. Release traffic stays TLS-only.
+- iOS has no ATS exception; plain-`http://` local backends are blocked on the simulator. Production is HTTPS, and iOS is not a current target.
 
 ### 1.7 Release build — size-optimised
 Landed in `a3fe742` + `a66c039`. Universal release APK measured at **59.0 MB**, down from 90.3 MB.
@@ -74,20 +80,21 @@ Landed in `a3fe742` + `a66c039`. Universal release APK measured at **59.0 MB**, 
 ```bash
 flutter analyze
 ```
-4 issues, all `info` level `curly_braces_in_flow_control_structures`
-(`secure_document_store.dart:36`, `id_scanner_screen.dart:128`, `mrz_scanner_screen.dart:130`, `test/widget_test.dart:28`). No warnings or errors.
+3 issues, all `info` level `curly_braces_in_flow_control_structures`
+(`secure_document_store.dart:36`, `id_scanner_screen.dart:128`, `mrz_scanner_screen.dart:130`). No warnings or errors.
 
 ### 3.2 Tests
 
 ```bash
-flutter test test/passes_json_test.dart test/wallet_card_responsive_test.dart
-# 109 tests, All tests passed!
+flutter test
+# 163 tests, All tests passed! (~15s)
 ```
 
 | Suite | Covers | Result |
 |-------|--------|--------|
-| `test/passes_json_test.dart` | Train/movie JSON round-trips over fixtures, envelope parsing, brand fallback | pass |
+| `test/passes_json_test.dart` | Train/movie JSON round-trips over fixtures, envelope parsing, brand fallback, poster URL resolution (null / blank / trimmed / round-tripped) and fixture poster hygiene | pass |
 | `test/wallet_card_responsive_test.dart` | Card layout across device sizes down to 320×568, incl. short viewports (split screen) and `WalletCardMetrics.resolve` | pass |
+| `test/movie_hero_band_test.dart` | Hero band: brand chip + status pill present for all three brands (the dead-branch regression), gradient fallback with no network request when no poster, `CachedNetworkImage` when there is one, bundled asset still wins | pass |
 | `test/widget_test.dart` | Boot through onboarding into the dashboard shell | **hangs** |
 
 > ⚠️ **`flutter test` (whole suite) does not terminate.** `widget_test.dart` runs for 5+ minutes

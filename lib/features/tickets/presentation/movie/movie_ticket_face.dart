@@ -1,7 +1,12 @@
+import 'dart:math' as math;
+import 'dart:ui' show lerpDouble;
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/wallet/wallet_card_metrics.dart';
 import '../../domain/movie_pass_models.dart';
 import 'movie_brand_style.dart';
 import 'movie_ticket_chrome.dart';
@@ -504,46 +509,10 @@ class _HeroBand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (pass.brand == MoviePassBrand.bookMyShow ||
-        pass.brand == MoviePassBrand.district ||
-        pass.brand == MoviePassBrand.universal) {
-      final String? asset = pass.resolvedPosterAsset;
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: SizedBox(
-          height: height,
-          width: double.infinity,
-          child: asset != null
-              ? Image.asset(
-                  asset,
-                  fit: BoxFit.cover,
-                  errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) {
-                    return _buildFallback(context);
-                  },
-                )
-              : Image.network(
-                  pass.resolvedPosterUrl,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Center(
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withValues(alpha: 0.30)),
-                        ),
-                      ),
-                    );
-                  },
-                  errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) {
-                    return _buildFallback(context);
-                  },
-                ),
-        ),
-      );
-    }
+    // Fixtures may pin a bundled asset; everything else comes from the backend's TMDB
+    // image proxy. Either may be absent, in which case the gradient backdrop is the art.
+    final String? asset = pass.posterAsset;
+    final String? url = pass.resolvedPosterUrl;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
@@ -553,8 +522,35 @@ class _HeroBand extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: <Widget>[
+            // Painted first and never removed, so it shows through while the poster
+            // loads and remains as the fallback if the poster fails.
             _buildGradientBackdrop(),
-            _buildPlayOverlay(),
+            if (asset != null)
+              Image.asset(
+                asset,
+                fit: BoxFit.cover,
+                errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
+                    _buildPlayOverlay(),
+              )
+            else if (url != null)
+              LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+                  return CachedNetworkImage(
+                    imageUrl: url,
+                    fit: BoxFit.cover,
+                    fadeInDuration: const Duration(milliseconds: 220),
+                    memCacheWidth: _decodeWidth(context, constraints.maxWidth),
+                    placeholder: (BuildContext context, String url) => const _PosterShimmer(),
+                    errorWidget: (BuildContext context, String url, Object error) =>
+                        _buildPlayOverlay(),
+                  );
+                },
+              )
+            else
+              _buildPlayOverlay(),
+            // The chips sit over real poster art now, so they need a scrim to stay legible
+            // against a bright poster.
+            _buildChipScrim(),
             if (detail) _buildDetailScreenOverlay(),
             Positioned(
               top: 10,
@@ -572,13 +568,41 @@ class _HeroBand extends StatelessWidget {
     );
   }
 
-  Widget _buildFallback(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        _buildGradientBackdrop(),
-        _buildPlayOverlay(),
-      ],
+  /// Pixel width to decode the poster at.
+  ///
+  /// The face is authored on a 382dp canvas and then scaled by a FittedBox
+  /// ([WalletCardCanvas]) to whatever box the carousel gives it, so the width we lay out at
+  /// is not the width we paint at. Size for the widest a card may get and convert to
+  /// physical pixels. Flutter never upscales past the source, so over-asking on the detail
+  /// screen — which has no FittedBox — costs nothing.
+  int _decodeWidth(BuildContext context, double logicalWidth) {
+    final double canvasUpscale =
+        WalletCardMetrics.maxCardWidth / WalletCardMetrics.ticketCanvas.width;
+    final double dpr = MediaQuery.devicePixelRatioOf(context);
+    // Capped at the largest size the image proxy serves.
+    return math.min((logicalWidth * canvasUpscale * dpr).round(), 780);
+  }
+
+  Widget _buildChipScrim() {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 64,
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[
+                Colors.black.withValues(alpha: 0.45),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -640,6 +664,75 @@ class _HeroBand extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Sweeping highlight shown while a poster downloads.
+///
+/// Hand-rolled rather than pulling in the `shimmer` package, matching how the ID card
+/// skeletons in `ids_tab.dart` do it. The gradient backdrop paints underneath, so this only
+/// needs to contribute the moving band.
+class _PosterShimmer extends StatefulWidget {
+  const _PosterShimmer();
+
+  @override
+  State<_PosterShimmer> createState() => _PosterShimmerState();
+}
+
+class _PosterShimmerState extends State<_PosterShimmer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2200),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final double width = constraints.maxWidth.isFinite ? constraints.maxWidth : 320;
+          return AnimatedBuilder(
+            animation: _controller,
+            builder: (BuildContext context, Widget? child) {
+              final double shimmerX =
+                  lerpDouble(-width, width, _controller.value) ?? 0;
+              return Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  ColoredBox(color: Colors.white.withValues(alpha: 0.06)),
+                  Transform.translate(
+                    offset: Offset(shimmerX, 0),
+                    child: Transform.rotate(
+                      angle: 0.35,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: <Color>[
+                              Colors.transparent,
+                              Colors.white.withValues(alpha: 0.14),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
       ),
     );
   }

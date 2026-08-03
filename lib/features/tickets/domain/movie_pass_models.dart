@@ -237,7 +237,8 @@ class MoviePass {
   /// Network poster URL from API (preferred).
   final String? posterUrl;
 
-  /// Local asset path for demo fixtures only (not from API).
+  /// Local asset path for demo fixtures only. The server never sends this — it is a
+  /// client-only escape hatch for offline demos, and takes precedence over [posterUrl].
   final String? posterAsset;
 
   /// Preferred machine-readable show time (ISO-8601).
@@ -272,30 +273,16 @@ class MoviePass {
     return MovieBrandPalette.forBrand(brand, active: active);
   }
 
-  /// Resolved poster for UI: explicit URL, else legacy title fallback.
-  String get resolvedPosterUrl {
-    if (posterUrl != null && posterUrl!.isNotEmpty) return posterUrl!;
-    return switch (movieTitle) {
-      'Dune: Part Two' =>
-        'https://upload.wikimedia.org/wikipedia/en/7/72/Dune_Part_Two_poster.jpeg',
-      'Kalki 2898 AD' =>
-        'https://upload.wikimedia.org/wikipedia/en/c/c5/Kalki_2898_AD_poster.jpg',
-      'Pushpa 2: The Rule' =>
-        'https://upload.wikimedia.org/wikipedia/en/1/15/Pushpa_2_The_Rule_poster.jpg',
-      _ =>
-        'https://upload.wikimedia.org/wikipedia/en/0/0f/Spider-Man_No_Way_Home_poster.jpg',
-    };
-  }
-
-  /// Resolved local asset when present (demo fixtures).
-  String? get resolvedPosterAsset {
-    if (posterAsset != null) return posterAsset;
-    return switch (movieTitle) {
-      'Dune: Part Two' => 'assets/passes/dune_poster.jpg',
-      'Spider-Man: Brand New Day' => 'assets/passes/spiderman_poster.jpg',
-      'The Odyssey' => 'assets/passes/odyssey_poster.jpg',
-      _ => null,
-    };
+  /// Poster to render, or null when the server has not resolved one yet.
+  ///
+  /// Nullable on purpose. Posters come from the backend's TMDB image proxy, and "no poster"
+  /// is a real, common state — a film TMDB does not have, or one whose lookup has not
+  /// finished. The caller falls back to the [posterHint] gradient. A previous version
+  /// returned a hardcoded Spider-Man poster for every unmatched title, which meant unrelated
+  /// films silently rendered the wrong art.
+  String? get resolvedPosterUrl {
+    final String? url = posterUrl?.trim();
+    return (url == null || url.isEmpty) ? null : url;
   }
 
   factory MoviePass.fromJson(Map<String, dynamic> json) {

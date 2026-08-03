@@ -4,6 +4,10 @@
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Declared explicitly: movie posters are fetched over the network in release builds.
+         This previously reached release only because ML Kit / Play Services plugin manifests
+         merged it in, which is too fragile to rely on for a core feature. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
 
     <application
@@ -11,6 +15,7 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:enableOnBackInvokedCallback="true">
         <activity
             android:name=".MainActivity"

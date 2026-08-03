@@ -1,6 +1,23 @@
 import '../domain/movie_pass_models.dart';
 import '../domain/ticket_models.dart';
 
+/// Origin serving the backend's movie poster image proxy, for mock mode.
+///
+/// Empty by default: with no backend reachable, fixtures render the [MoviePosterHint]
+/// gradient rather than a URL that cannot load. Point it at a running server to exercise the
+/// real poster path in mock mode:
+///
+///   flutter run --dart-define=MOCK_POSTER_ORIGIN=http://10.0.2.2:8080
+const String _mockPosterOrigin = String.fromEnvironment('MOCK_POSTER_ORIGIN');
+
+/// Builds a fixture poster URL, or null when no origin is configured.
+///
+/// The filenames are TMDB poster paths. Against a backend running with TMDB_MOCK=true any
+/// well-formed name renders a deterministic placeholder, so these only need to be exact once
+/// a real TMDB key is in play.
+String? _mockPosterUrl(String file) =>
+    _mockPosterOrigin.isEmpty ? null : '$_mockPosterOrigin/img/poster/w500/$file';
+
 /// Demo train bookings (same content as the previous mock catalogue).
 final List<TrainPass> mockTrainPasses = <TrainPass>[
   TrainPass(
@@ -366,9 +383,7 @@ final List<MoviePass> mockMoviePasses = <MoviePass>[
     certification: 'UA 13+',
     runtime: '2h 46m',
     gateType: 'QR Scan',
-    posterUrl:
-        'https://upload.wikimedia.org/wikipedia/en/7/72/Dune_Part_Two_poster.jpeg',
-    posterAsset: 'assets/passes/dune_poster.jpg',
+    posterUrl: _mockPosterUrl('czembW0Rk1Ke7lCJGahbOhdCuhV.jpg'),
   ),
   MoviePass(
     id: 'movie_dist_1',
@@ -394,7 +409,7 @@ final List<MoviePass> mockMoviePasses = <MoviePass>[
     certification: 'UA',
     runtime: '2h 18m',
     gateType: 'QR Scan',
-    posterAsset: 'assets/passes/odyssey_poster.jpg',
+    posterUrl: _mockPosterUrl('mHsW1ChhLJcFVGCMOMPHYbQOSlY.jpg'),
   ),
   MoviePass(
     id: 'movie_uni_1',
@@ -421,7 +436,7 @@ final List<MoviePass> mockMoviePasses = <MoviePass>[
     gateType: 'Barcode',
     sourcePlatform: 'PVR',
     codeType: MovieTicketCodeType.barcode,
-    posterAsset: 'assets/passes/spiderman_poster.jpg',
+    posterUrl: _mockPosterUrl('uJYYizSuA9Y3DCsOqS4qWvHfZg4.jpg'),
   ),
   MoviePass(
     id: 'movie_bms_2',
@@ -444,8 +459,7 @@ final List<MoviePass> mockMoviePasses = <MoviePass>[
     posterHint: MoviePosterHint.sciFi,
     certification: 'UA',
     runtime: '3h 01m',
-    posterUrl:
-        'https://upload.wikimedia.org/wikipedia/en/c/c5/Kalki_2898_AD_poster.jpg',
+    posterUrl: _mockPosterUrl('gTGYNTiTfLYSGGwbAKgrJIrCPmO.jpg'),
   ),
 ];
 
