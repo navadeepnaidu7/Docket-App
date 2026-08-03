@@ -63,7 +63,8 @@ class _IdScannerScreenState extends State<IdScannerScreen>
     _fatherCtrl.dispose();
     _addressCtrl.dispose();
     _genderCtrl.dispose();
-    IdScannerService.dispose();
+    // IdScannerService owns app-lifetime ML Kit detectors. Closing them here
+    // is what made the second scan of every app run fail.
     super.dispose();
   }
 

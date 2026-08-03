@@ -69,7 +69,7 @@ class _MrzScannerScreenState extends State<MrzScannerScreen>
     _expiryCtrl.dispose();
     _nationalityCtrl.dispose();
     _genderCtrl.dispose();
-    MrzScannerService.dispose();
+    // MrzScannerService owns an app-lifetime recogniser; nothing to close.
     super.dispose();
   }
 
