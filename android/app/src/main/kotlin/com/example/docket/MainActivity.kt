@@ -123,8 +123,9 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
         bacKey = null
         nfcAdapter?.disableReaderMode(this)
 
-        scanResult?.error("CANCELLED", "Scan cancelled", null)
-        scanResult = null
+        // No-op when something already answered (a successful read, or an
+        // error). Only a genuinely abandoned scan gets CANCELLED.
+        replyOnce { it.error("CANCELLED", "Scan cancelled", null) }
     }
 
     override fun onPause() {
@@ -264,7 +265,7 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                     }
 
                     withContext(Dispatchers.Main) {
-                        scanResult?.success(response)
+                        replyOnce { it.success(response) }
                         stopNfcScanning()
                     }
                 }
@@ -276,8 +277,26 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
 
     private fun sendError(code: String, message: String) {
         CoroutineScope(Dispatchers.Main).launch {
-            scanResult?.error(code, message, null)
+            replyOnce { it.error(code, message, null) }
             stopNfcScanning()
         }
+    }
+
+    /**
+     * Answers the pending Dart call, at most once.
+     *
+     * A MethodChannel.Result may be replied to exactly once; a second reply
+     * throws IllegalStateException and takes the whole app down. Three paths
+     * can reach a reply here -- success, sendError, and the CANCELLED from
+     * stopNfcScanning -- and the success path calls stopNfcScanning
+     * immediately afterwards, so it crashed on every successful chip read.
+     *
+     * Taking the result and clearing the field before replying makes the
+     * second caller a no-op instead of a crash.
+     */
+    private fun replyOnce(reply: (MethodChannel.Result) -> Unit) {
+        val pending = scanResult ?: return
+        scanResult = null
+        reply(pending)
     }
 }
