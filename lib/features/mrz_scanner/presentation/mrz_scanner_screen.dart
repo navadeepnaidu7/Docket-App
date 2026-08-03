@@ -137,11 +137,15 @@ class _MrzScannerScreenState extends State<MrzScannerScreen>
       final result = await MrzScannerService.processImage(xFile.path);
       if (!mounted) return;
       if (result != null) {
-        _populateControllers(result);
-        setState(() {
-          _result = result;
-          _state = _ScanState.preview;
-        });
+        // Return the raw result and let the flow confirm it field by field.
+        // The preview state below is no longer reachable: it was a second
+        // review of the same values, in a hardcoded light-mode layout that
+        // rendered a black title on a black scaffold, and the flow re-asked
+        // everything anyway. Removed wholesale in the cleanup stage.
+        HapticService.success();
+        Navigator.of(context).pop(
+          result.copyWith(capturedImagePath: _capturedImagePath ?? ''),
+        );
       } else {
         setState(() {
           _state = _ScanState.error;
