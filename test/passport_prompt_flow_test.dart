@@ -4,11 +4,10 @@ import 'package:docket/features/passport/presentation/flow/passport_prompt_flow.
 import 'package:docket/shared/prompt_flow/prompt_flow_controller.dart';
 import 'package:docket/shared/prompt_flow/prompt_step.dart';
 
-PromptFlowController _flow({required bool isEPassport}) =>
-    PromptFlowController(
-      steps: buildPassportFlow(),
-      initialFlags: <String, bool>{PassportFlag.isEPassport: isEPassport},
-    );
+PromptFlowController _flow({required bool isEPassport}) => PromptFlowController(
+  steps: buildPassportFlow(),
+  initialFlags: <String, bool>{PassportFlag.isEPassport: isEPassport},
+);
 
 List<String> _ids(PromptFlowController c) =>
     c.visibleSteps.map((PromptStep s) => s.id).toList();
@@ -21,77 +20,96 @@ void _choose(PromptFlowController c, PromptPath path) {
 }
 
 void main() {
-  group('chip step visibility', () {
-    // The old screen asked "E-Passport or Regular?" in a sheet and then never
-    // read the answer, so it offered a chip read to passports that have none.
-    test('a regular passport never sees the chip step', () {
-      final PromptFlowController c = _flow(isEPassport: false);
-      c.setPath(PromptPath.chip);
+  group('e-passport shape', () {
+    // The chip is the point of an e-passport, not one route among several.
+    // Whichever way the three BAC values are supplied, the read follows.
+    test('scanning and typing both end at the chip read', () {
+      for (final PromptPath path in <PromptPath>[
+        PromptPath.scan,
+        PromptPath.manual,
+      ]) {
+        final PromptFlowController c = _flow(isEPassport: true);
+        c.setPath(path);
 
-      expect(_ids(c), isNot(contains(PassportField.nfcRead)));
+        expect(_ids(c), <String>[
+          PassportField.method,
+          PassportField.passportNumber,
+          PassportField.dateOfBirth,
+          PassportField.expiryDate,
+          PassportField.nfcRead,
+          PassportField.review,
+        ], reason: 'unexpected shape on $path');
+      }
     });
 
-    test('an e-passport sees it only on the chip route', () {
+    // DG1 carries these, so asking for them first would be collecting data we
+    // are about to read off the chip a moment later.
+    test('name, nationality and sex are never asked before the read', () {
       final PromptFlowController c = _flow(isEPassport: true);
-
       c.setPath(PromptPath.manual);
-      expect(_ids(c), isNot(contains(PassportField.nfcRead)));
 
-      c.setPath(PromptPath.chip);
-      expect(_ids(c), contains(PassportField.nfcRead));
+      expect(_ids(c), isNot(contains(PassportField.name)));
+      expect(_ids(c), isNot(contains(PassportField.nationality)));
+      expect(_ids(c), isNot(contains(PassportField.gender)));
     });
 
-    // The chip route should collect the three values BAC needs and nothing
-    // else. Name, nationality and sex are all carried by DG1, so asking for
-    // them first is collecting data we are about to read off the document.
-    test('the chip route asks for only the three BAC fields', () {
+    test('abandoning the chip brings those fields back', () {
       final PromptFlowController c = _flow(isEPassport: true);
-      c.setPath(PromptPath.chip);
+      c.setPath(PromptPath.manual);
 
-      expect(_ids(c), <String>[
-        PassportField.method,
+      c.setFlag(PassportFlag.chipSkipped, value: true);
+
+      expect(_ids(c), contains(PassportField.name));
+      expect(_ids(c), contains(PassportField.nationality));
+      expect(_ids(c), contains(PassportField.gender));
+      expect(_ids(c), isNot(contains(PassportField.nfcRead)));
+    });
+
+    test('the read comes after all three BAC fields', () {
+      final PromptFlowController c = _flow(isEPassport: true);
+      c.setPath(PromptPath.manual);
+      final List<String> ids = _ids(c);
+
+      for (final String field in <String>[
         PassportField.passportNumber,
         PassportField.dateOfBirth,
         PassportField.expiryDate,
-        PassportField.nfcRead,
-        PassportField.review,
-      ]);
+      ]) {
+        expect(
+          ids.indexOf(PassportField.nfcRead),
+          greaterThan(ids.indexOf(field)),
+          reason: '$field must be collected before the read',
+        );
+      }
     });
+  });
 
-    test('dropping to manual after a failed read restores the rest', () {
-      final PromptFlowController c = _flow(isEPassport: true);
-      c.setPath(PromptPath.chip);
-      expect(_ids(c), isNot(contains(PassportField.name)));
-
-      // What _recover(continueWithout) does.
+  group('regular passport shape', () {
+    test('never sees the chip step, and is asked for everything', () {
+      final PromptFlowController c = _flow(isEPassport: false);
       c.setPath(PromptPath.manual);
+
+      expect(_ids(c), isNot(contains(PassportField.nfcRead)));
       expect(_ids(c), contains(PassportField.name));
       expect(_ids(c), contains(PassportField.nationality));
-    });
-
-    test('the chip read comes after all three BAC fields', () {
-      final PromptFlowController c = _flow(isEPassport: true);
-      c.setPath(PromptPath.chip);
-      final List<String> ids = _ids(c);
-
-      expect(ids.indexOf(PassportField.nfcRead),
-          greaterThan(ids.indexOf(PassportField.passportNumber)));
-      expect(ids.indexOf(PassportField.nfcRead),
-          greaterThan(ids.indexOf(PassportField.dateOfBirth)));
-      expect(ids.indexOf(PassportField.nfcRead),
-          greaterThan(ids.indexOf(PassportField.expiryDate)));
     });
   });
 
   // The screen this replaces rendered passport number, DOB and expiry twice,
   // on the same controllers, under two headings, both saying "step 2 of 3".
   test('no field is asked twice on any route', () {
-    for (final PromptPath path in PromptPath.values) {
-      final PromptFlowController c = _flow(isEPassport: true);
-      c.setPath(path);
-      final List<String> ids = _ids(c);
+    for (final bool chip in <bool>[true, false]) {
+      for (final PromptPath path in PromptPath.values) {
+        final PromptFlowController c = _flow(isEPassport: chip);
+        c.setPath(path);
+        final List<String> ids = _ids(c);
 
-      expect(ids.toSet().length, ids.length, reason: 'duplicate on $path');
+        expect(
+          ids.toSet().length,
+          ids.length,
+          reason: 'duplicate on $path (chip: $chip)',
+        );
+      }
     }
   });
 
@@ -127,8 +145,9 @@ void main() {
       c.setValue(PassportField.dateOfBirth, '1994-03-12');
       c.setValue(PassportField.expiryDate, '1990-01-01');
 
-      final PromptStep expiry = c.visibleSteps
-          .firstWhere((PromptStep s) => s.id == PassportField.expiryDate);
+      final PromptStep expiry = c.visibleSteps.firstWhere(
+        (PromptStep s) => s.id == PassportField.expiryDate,
+      );
 
       expect(expiry.validate!('1990-01-01', c.state), isNotNull);
     });

@@ -4,8 +4,8 @@ import '../domain/passport_profile.dart';
 
 final passportDraftProvider =
     StateNotifierProvider<PassportDraftController, PassportProfile>((Ref ref) {
-  return PassportDraftController();
-});
+      return PassportDraftController();
+    });
 
 class PassportDraftController extends StateNotifier<PassportProfile> {
   PassportDraftController() : super(PassportProfile.empty());

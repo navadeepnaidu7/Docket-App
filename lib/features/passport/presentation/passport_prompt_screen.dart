@@ -187,8 +187,10 @@ class _PassportPromptScreenState extends ConsumerState<PassportPromptScreen> {
           returnTo: PassportField.nfcRead,
         );
       case NfcRecovery.continueWithout:
+        // Giving up on the chip means nothing else will supply the name,
+        // nationality or sex, so those steps have to come back.
         setState(() => _nfcPhase = NfcPhase.idle);
-        _flow.setPath(PromptPath.manual);
+        _flow.setFlag(PassportFlag.chipSkipped, value: true);
         _flow.next();
       case NfcRecovery.openSettings:
       case NfcRecovery.none:
@@ -348,28 +350,30 @@ class _PassportPromptScreenState extends ConsumerState<PassportPromptScreen> {
     };
   }
 
+  /// How to supply the details — never *whether* to read the chip.
+  ///
+  /// On an e-passport the read always follows, so offering it here as a third
+  /// option was wrong: it made the document's whole point look optional, and
+  /// sent the user through a longer set of questions to reach it.
   Widget _methodStep() {
-    final bool chipAvailable = widget.kind == PassportKind.ePassport;
+    final bool chip = widget.kind == PassportKind.ePassport;
 
     return Column(
       children: <Widget>[
         PromptOptionTile(
           title: 'Scan the photo page',
-          subtitle: 'Camera — reads the machine-readable zone',
+          subtitle: chip
+              ? 'Camera — reads what the chip needs to unlock'
+              : 'Camera — reads the machine-readable zone',
           icon: Icons.document_scanner_rounded,
           emphasis: true,
           onTap: () => _choosePath(PromptPath.scan),
         ),
-        if (chipAvailable)
-          PromptOptionTile(
-            title: 'Read the chip',
-            subtitle: 'NFC — needs three details first',
-            icon: Icons.nfc_rounded,
-            onTap: () => _choosePath(PromptPath.chip),
-          ),
         PromptOptionTile(
           title: 'Type it in',
-          subtitle: 'Enter the details yourself',
+          subtitle: chip
+              ? 'Three details, then hold it to your phone'
+              : 'Enter the details yourself',
           icon: Icons.keyboard_rounded,
           onTap: () => _choosePath(PromptPath.manual),
         ),

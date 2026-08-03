@@ -28,21 +28,30 @@ abstract final class PassportFlag {
 
   /// A chip read has completed, so the flow can offer to save.
   static const String chipRead = 'chipRead';
+
+  /// The chip was attempted and given up on. The fields it would have
+  /// supplied have to be asked for after all.
+  static const String chipSkipped = 'chipSkipped';
 }
+
+/// Fields the chip would supply. Asked only when it will not.
+bool _askedWhenNoChip(PromptFlowState s) =>
+    !s.flag(PassportFlag.isEPassport) || s.flag(PassportFlag.chipSkipped);
 
 /// The passport flow, one question per screen.
 ///
-/// The three BAC fields are declared **once**, visible whenever they are
-/// needed — on the chip route because the chip cannot unlock without them, and
-/// on the manual route because they are the passport's core data anyway. The
-/// screen this replaces rendered them twice, on the same controllers, under
-/// two headings, both labelled "step 2 of 3".
+/// The three BAC fields are declared **once**, and are the passport's core data
+/// on every route. The screen this replaces rendered them twice, on the same
+/// controllers, under two headings, both labelled "step 2 of 3".
 ///
-/// The chip route asks for **only** those three. Name, nationality and sex are
-/// all carried by DG1, so asking for them before the read would be collecting
-/// data we are about to read off the document a moment later. If the read
-/// fails and the user continues without the chip, the route flips to manual
-/// and those steps reappear.
+/// On an e-passport the chip is not one route among several — it is the point
+/// of the document. The user picks only *how to supply the three values BAC
+/// needs* (scan the photo page, or type them), and the read follows either way.
+/// Name, nationality and sex are never asked: DG1 carries them, so asking would
+/// be collecting data we are about to read off the chip.
+///
+/// If the read is abandoned, [PassportFlag.chipSkipped] brings those steps
+/// back, because nothing else is going to supply them.
 List<PromptStep> buildPassportFlow() {
   return <PromptStep>[
     // ── Route ────────────────────────────────────────────────────────────────
@@ -65,9 +74,7 @@ List<PromptStep> buildPassportFlow() {
       label: 'Name',
       capitalization: TextCapitalization.words,
       keyboardType: TextInputType.name,
-      // Not asked on the chip route: the chip carries the name, and typing it
-      // first would be asking for something we are about to read anyway.
-      visibleWhen: (PromptFlowState s) => s.path != PromptPath.chip,
+      visibleWhen: _askedWhenNoChip,
       validate: (String v, _) =>
           v.trim().isEmpty ? 'A name is needed to save this passport.' : null,
     ),
@@ -105,7 +112,8 @@ List<PromptStep> buildPassportFlow() {
       id: PassportField.expiryDate,
       kind: PromptStepKind.date,
       question: (_) => 'When does it expire?',
-      helper: (PromptFlowState s) => s.path == PromptPath.chip
+      helper: (PromptFlowState s) =>
+          s.flag(PassportFlag.isEPassport) && !s.flag(PassportFlag.chipSkipped)
           ? 'These three together are what unlock the chip.'
           : null,
       confirmQuestion: (_) => 'Is this the expiry date?',
@@ -113,14 +121,15 @@ List<PromptStep> buildPassportFlow() {
       style: PromptInputStyle.mono,
       validate: (String v, PromptFlowState s) =>
           DocumentValidators.validateExpiryDate(
-        v,
-        dob: s.value(PassportField.dateOfBirth),
-        required: true,
-      ),
+            v,
+            dob: s.value(PassportField.dateOfBirth),
+            required: true,
+          ),
     ),
 
     // ── Chip ─────────────────────────────────────────────────────────────────
-    // Exists only on the chip route, and only after the three fields above.
+    // Every e-passport route ends here, whether the three values above were
+    // scanned or typed. It is not something the user opts into.
     PromptStep(
       id: PassportField.nfcRead,
       kind: PromptStepKind.action,
@@ -128,7 +137,7 @@ List<PromptStep> buildPassportFlow() {
       helper: (_) =>
           'Rest the top of your phone on the cover and keep it still.',
       visibleWhen: (PromptFlowState s) =>
-          s.flag(PassportFlag.isEPassport) && s.path == PromptPath.chip,
+          s.flag(PassportFlag.isEPassport) && !s.flag(PassportFlag.chipSkipped),
       label: 'Chip',
     ),
 
@@ -144,7 +153,7 @@ List<PromptStep> buildPassportFlow() {
       capitalization: TextCapitalization.characters,
       maxLength: 3,
       skippable: true,
-      visibleWhen: (PromptFlowState s) => s.path != PromptPath.chip,
+      visibleWhen: _askedWhenNoChip,
     ),
 
     PromptStep(
@@ -154,7 +163,7 @@ List<PromptStep> buildPassportFlow() {
       confirmQuestion: (_) => 'Is this right?',
       label: 'Sex',
       skippable: true,
-      visibleWhen: (PromptFlowState s) => s.path != PromptPath.chip,
+      visibleWhen: _askedWhenNoChip,
       choices: const <PromptChoice>[
         PromptChoice(value: 'M', label: 'Male'),
         PromptChoice(value: 'F', label: 'Female'),

@@ -37,20 +37,20 @@ class PassportProfile {
   }) : id = id ?? _generateId();
 
   PassportProfile.empty()
-      : id = _generateId(),
-        name = '',
-        passportNumber = '',
-        nationality = '',
-        dateOfBirth = '',
-        expiryDate = '',
-        imagePath = '',
-        mrzRaw = '',
-        photoBase64 = '',
-        placeOfBirth = '',
-        issueDate = '',
-        issuingAuthority = '',
-        gender = '',
-        isEPassport = false;
+    : id = _generateId(),
+      name = '',
+      passportNumber = '',
+      nationality = '',
+      dateOfBirth = '',
+      expiryDate = '',
+      imagePath = '',
+      mrzRaw = '',
+      photoBase64 = '',
+      placeOfBirth = '',
+      issueDate = '',
+      issuingAuthority = '',
+      gender = '',
+      isEPassport = false;
 
   final String id;
   final String name;
@@ -58,6 +58,7 @@ class PassportProfile {
   final String nationality;
   final String dateOfBirth;
   final String expiryDate;
+
   /// Filesystem path of a captured data-page image. Never base64.
   final String imagePath;
   final String mrzRaw;
@@ -171,5 +172,6 @@ class PassportProfile {
 
   String toJson() => json.encode(toMap());
 
-  factory PassportProfile.fromJson(String source) => PassportProfile.fromMap(json.decode(source));
+  factory PassportProfile.fromJson(String source) =>
+      PassportProfile.fromMap(json.decode(source));
 }
