@@ -6,6 +6,7 @@ import android.nfc.Tag
 import android.nfc.tech.IsoDep
 import android.os.Bundle
 import android.util.Base64
+import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -26,6 +27,10 @@ import com.gemalto.jp2.JP2Decoder
 class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
 
     private val CHANNEL = "com.docket/nfc_passport"
+
+    // Lifecycle only. Never log document numbers, dates, MRZ or chip
+    // payloads -- these are somebody's identity documents.
+    private val TAG = "DocketNfc"
     private val YYMMDD = Regex("^\\d{6}$")
     private var nfcAdapter: NfcAdapter? = null
     
@@ -84,6 +89,7 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
 
                 scanResult = result
                 isScanning = true
+                Log.i(TAG, "startNfcRead: reader mode on, awaiting tag")
 
                 // Enable Reader Mode
                 val options = Bundle()
@@ -134,6 +140,7 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
     override fun onTagDiscovered(tag: Tag?) {
         if (!isScanning || tag == null) return
 
+        Log.i(TAG, "onTagDiscovered")
         val isoDep = IsoDep.get(tag)
         if (isoDep == null) {
             sendError("ISO_DEP_NOT_SUPPORTED", "Tag does not support IsoDep")
@@ -166,7 +173,9 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                     }
                     passportService.doBAC(key)
                     bacAuthSuccess = true
+                    Log.i(TAG, "BAC succeeded")
                 } catch (e: Exception) {
+                    Log.w(TAG, "BAC failed: ${e.javaClass.simpleName}")
                     sendError("BAC_FAILED", "Basic Access Control failed: ${e.message}")
                     return@launch
                 }

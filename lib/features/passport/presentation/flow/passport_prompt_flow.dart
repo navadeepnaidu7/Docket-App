@@ -37,6 +37,12 @@ abstract final class PassportFlag {
 /// on the manual route because they are the passport's core data anyway. The
 /// screen this replaces rendered them twice, on the same controllers, under
 /// two headings, both labelled "step 2 of 3".
+///
+/// The chip route asks for **only** those three. Name, nationality and sex are
+/// all carried by DG1, so asking for them before the read would be collecting
+/// data we are about to read off the document a moment later. If the read
+/// fails and the user continues without the chip, the route flips to manual
+/// and those steps reappear.
 List<PromptStep> buildPassportFlow() {
   return <PromptStep>[
     // ── Route ────────────────────────────────────────────────────────────────
@@ -59,6 +65,9 @@ List<PromptStep> buildPassportFlow() {
       label: 'Name',
       capitalization: TextCapitalization.words,
       keyboardType: TextInputType.name,
+      // Not asked on the chip route: the chip carries the name, and typing it
+      // first would be asking for something we are about to read anyway.
+      visibleWhen: (PromptFlowState s) => s.path != PromptPath.chip,
       validate: (String v, _) =>
           v.trim().isEmpty ? 'A name is needed to save this passport.' : null,
     ),
@@ -135,6 +144,7 @@ List<PromptStep> buildPassportFlow() {
       capitalization: TextCapitalization.characters,
       maxLength: 3,
       skippable: true,
+      visibleWhen: (PromptFlowState s) => s.path != PromptPath.chip,
     ),
 
     PromptStep(
@@ -144,6 +154,7 @@ List<PromptStep> buildPassportFlow() {
       confirmQuestion: (_) => 'Is this right?',
       label: 'Sex',
       skippable: true,
+      visibleWhen: (PromptFlowState s) => s.path != PromptPath.chip,
       choices: const <PromptChoice>[
         PromptChoice(value: 'M', label: 'Male'),
         PromptChoice(value: 'F', label: 'Female'),

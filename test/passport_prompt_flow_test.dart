@@ -41,6 +41,34 @@ void main() {
       expect(_ids(c), contains(PassportField.nfcRead));
     });
 
+    // The chip route should collect the three values BAC needs and nothing
+    // else. Name, nationality and sex are all carried by DG1, so asking for
+    // them first is collecting data we are about to read off the document.
+    test('the chip route asks for only the three BAC fields', () {
+      final PromptFlowController c = _flow(isEPassport: true);
+      c.setPath(PromptPath.chip);
+
+      expect(_ids(c), <String>[
+        PassportField.method,
+        PassportField.passportNumber,
+        PassportField.dateOfBirth,
+        PassportField.expiryDate,
+        PassportField.nfcRead,
+        PassportField.review,
+      ]);
+    });
+
+    test('dropping to manual after a failed read restores the rest', () {
+      final PromptFlowController c = _flow(isEPassport: true);
+      c.setPath(PromptPath.chip);
+      expect(_ids(c), isNot(contains(PassportField.name)));
+
+      // What _recover(continueWithout) does.
+      c.setPath(PromptPath.manual);
+      expect(_ids(c), contains(PassportField.name));
+      expect(_ids(c), contains(PassportField.nationality));
+    });
+
     test('the chip read comes after all three BAC fields', () {
       final PromptFlowController c = _flow(isEPassport: true);
       c.setPath(PromptPath.chip);
