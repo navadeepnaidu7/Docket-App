@@ -20,7 +20,6 @@ class IdDocument {
     this.address = '',
     this.gender = '',
     this.imagePath = '',
-    this.issueDate = '',
     this.qrImageBase64 = '',
   }) : id = id ?? _generateId();
 
@@ -34,7 +33,6 @@ class IdDocument {
         address = '',
         gender = '',
         imagePath = '',
-        issueDate = '',
         qrImageBase64 = '';
 
   final String id;
@@ -46,7 +44,6 @@ class IdDocument {
   final String address;      // Aadhaar-specific
   final String gender;       // Aadhaar-specific
   final String imagePath;
-  final String issueDate;
   final String qrImageBase64;
 
   IdDocument copyWith({
@@ -59,7 +56,6 @@ class IdDocument {
     String? address,
     String? gender,
     String? imagePath,
-    String? issueDate,
     String? qrImageBase64,
   }) {
     return IdDocument(
@@ -72,7 +68,6 @@ class IdDocument {
       address: address ?? this.address,
       gender: gender ?? this.gender,
       imagePath: imagePath ?? this.imagePath,
-      issueDate: issueDate ?? this.issueDate,
       qrImageBase64: qrImageBase64 ?? this.qrImageBase64,
     );
   }
@@ -87,7 +82,6 @@ class IdDocument {
         'address': address,
         'gender': gender,
         'imagePath': imagePath,
-        'issueDate': issueDate,
         'qrImageBase64': qrImageBase64,
       };
 
@@ -104,7 +98,6 @@ class IdDocument {
         address: map['address'] ?? '',
         gender: map['gender'] ?? '',
         imagePath: map['imagePath'] ?? '',
-        issueDate: map['issueDate'] ?? '',
         qrImageBase64: map['qrImageBase64'] ?? '',
       );
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/prompt_typography.dart';
 
 class StudioField extends StatefulWidget {
   const StudioField({
@@ -119,17 +120,17 @@ class _StudioFieldState extends State<StudioField> {
                   textCapitalization: widget.textCapitalization,
                   keyboardType: widget.keyboardType,
                   onChanged: (_) => widget.onChanged(),
-                  style: TextStyle(
-                    color: inputColor,
-                    fontSize: 16,
-                  ),
+                  // Type roles, not ad-hoc sizes: this field and the prompt
+                  // flow's inputs sit next to each other in the same product
+                  // and used to disagree on both size and weight.
+                  style: Theme.of(
+                    context,
+                  ).textTheme.promptInput.copyWith(color: inputColor),
                   decoration: InputDecoration(
                     labelText: widget.label,
-                    labelStyle: TextStyle(
-                      color: labelColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    labelStyle: Theme.of(context).textTheme
+                        .promptFieldLabel(scheme)
+                        .copyWith(color: labelColor),
                     hintText: widget.hintText,
                     hintStyle: TextStyle(
                       color: AppTokens.tertiaryLabel(scheme),
@@ -149,11 +150,7 @@ class _StudioFieldState extends State<StudioField> {
             padding: const EdgeInsets.only(left: 12, bottom: 10),
             child: Text(
               widget.errorText!,
-              style: TextStyle(
-                color: AppTheme.danger,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(context).textTheme.promptError,
             ),
           ),
       ],

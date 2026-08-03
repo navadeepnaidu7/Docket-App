@@ -2,11 +2,12 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import '../../../core/haptics/haptic_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../../../shared/widgets/scanner_capture_button.dart';
+import '../../../core/haptics/haptic_service.dart';
 import '../../../core/validation/document_validators.dart';
+import '../../../shared/widgets/scanner/scanner_chrome.dart';
+import '../../../shared/widgets/scanner_capture_button.dart';
 import '../application/id_scanner_service.dart';
 import '../domain/id_document.dart';
 
@@ -125,8 +126,9 @@ class _IdScannerScreenState extends State<IdScannerScreen>
   Future<void> _capture() async {
     if (_isCapturing ||
         _controller == null ||
-        !_controller!.value.isInitialized)
+        !_controller!.value.isInitialized) {
       return;
+    }
     _isCapturing = true;
     HapticService.impact();
     setState(() => _state = _ScanState.processing);
@@ -194,8 +196,13 @@ class _IdScannerScreenState extends State<IdScannerScreen>
 
   @override
   Widget build(BuildContext context) {
+    // The camera states are light-on-dark; the review state is a light
+    // sheet. One fixed black background made the review title and back
+    // button black-on-black.
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: _state == _ScanState.preview
+          ? const Color(0xFFF7F7FA)
+          : Colors.black,
       body: switch (_state) {
         _ScanState.permission => _buildPermissionDenied(),
         _ScanState.scanning => _buildScanning(),
@@ -222,7 +229,7 @@ class _IdScannerScreenState extends State<IdScannerScreen>
             alignment: Alignment.topLeft,
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: _GlassButton(
+              child: ScannerGlassButton(
                 icon: Icons.arrow_back_rounded,
                 onTap: () => Navigator.of(context).pop(),
               ),
@@ -296,7 +303,7 @@ class _IdScannerScreenState extends State<IdScannerScreen>
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Row(
               children: [
-                _GlassButton(
+                ScannerGlassButton(
                   icon: Icons.arrow_back_rounded,
                   onTap: _retake,
                   dark: true,
@@ -338,34 +345,34 @@ class _IdScannerScreenState extends State<IdScannerScreen>
                   ),
                 ),
                 const SizedBox(height: 12),
-                _PreviewField(
+                ScannerPreviewField(
                   label: 'Full Name',
                   controller: _nameCtrl,
                   icon: Icons.person_rounded,
                 ),
-                _PreviewField(
+                ScannerPreviewField(
                   label: isPan ? 'PAN Number' : 'Aadhaar Number',
                   controller: _numberCtrl,
                   icon: Icons.badge_rounded,
                 ),
-                _PreviewField(
+                ScannerPreviewField(
                   label: 'Date of Birth',
                   controller: _dobCtrl,
                   icon: Icons.cake_rounded,
                 ),
                 if (isPan)
-                  _PreviewField(
+                  ScannerPreviewField(
                     label: "Father's Name",
                     controller: _fatherCtrl,
                     icon: Icons.people_rounded,
                   ),
                 if (!isPan) ...[
-                  _PreviewField(
+                  ScannerPreviewField(
                     label: 'Gender',
                     controller: _genderCtrl,
                     icon: Icons.person_outline_rounded,
                   ),
-                  _PreviewField(
+                  ScannerPreviewField(
                     label: 'Address',
                     controller: _addressCtrl,
                     icon: Icons.location_on_rounded,
@@ -513,9 +520,9 @@ class _IdScannerScreenState extends State<IdScannerScreen>
               ),
             ),
             const SizedBox(height: 32),
-            _OutlineButton(label: 'Try Again', onTap: _retake),
+            ScannerOutlineButton(label: 'Try Again', onTap: _retake),
             const SizedBox(height: 12),
-            _OutlineButton(
+            ScannerOutlineButton(
               label: 'Enter Manually',
               onTap: () => Navigator.of(context).pop(),
             ),
@@ -554,9 +561,9 @@ class _IdScannerScreenState extends State<IdScannerScreen>
               style: TextStyle(color: Colors.white60, fontSize: 15),
             ),
             const SizedBox(height: 32),
-            _OutlineButton(label: 'Open Settings', onTap: openAppSettings),
+            ScannerOutlineButton(label: 'Open Settings', onTap: openAppSettings),
             const SizedBox(height: 12),
-            _OutlineButton(
+            ScannerOutlineButton(
               label: 'Enter Manually',
               onTap: () => Navigator.of(context).pop(),
             ),
@@ -605,114 +612,4 @@ class _CardOverlayPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CardOverlayPainter old) => false;
-}
-
-// ── Shared helpers ────────────────────────────────────────────────────────────
-
-class _GlassButton extends StatelessWidget {
-  const _GlassButton({
-    required this.icon,
-    required this.onTap,
-    this.dark = false,
-  });
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool dark;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: dark ? Colors.black12 : Colors.white24,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: dark ? Colors.black12 : Colors.white30),
-        ),
-        child: Icon(icon, color: dark ? Colors.black : Colors.white, size: 22),
-      ),
-    );
-  }
-}
-
-class _OutlineButton extends StatelessWidget {
-  const _OutlineButton({required this.label, required this.onTap});
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        height: 52,
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.white30),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 16,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PreviewField extends StatelessWidget {
-  const _PreviewField({
-    required this.label,
-    required this.controller,
-    required this.icon,
-    this.maxLines = 1,
-  });
-  final String label;
-  final TextEditingController controller;
-  final IconData icon;
-  final int maxLines;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F2F7),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        crossAxisAlignment: maxLines > 1
-            ? CrossAxisAlignment.start
-            : CrossAxisAlignment.center,
-        children: [
-          Padding(
-            padding: EdgeInsets.only(top: maxLines > 1 ? 14 : 0),
-            child: Icon(icon, color: const Color(0xFF64748B), size: 20),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              maxLines: maxLines,
-              decoration: InputDecoration(
-                labelText: label,
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
