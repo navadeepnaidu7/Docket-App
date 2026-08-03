@@ -29,6 +29,7 @@ class PromptFlowScreen extends StatefulWidget {
     this.onSecondary,
     this.onExit,
     this.primaryEnabled = true,
+    this.showPrimary = true,
     this.showChrome = true,
   });
 
@@ -48,6 +49,10 @@ class PromptFlowScreen extends StatefulWidget {
   final VoidCallback? onExit;
 
   final bool primaryEnabled;
+
+  /// False on steps whose answer *is* the tap (the route chooser). A disabled
+  /// button there is a dead control and a block of wasted space.
+  final bool showPrimary;
 
   /// Action steps (camera, NFC) hide the question block and own the body.
   final bool showChrome;
@@ -71,11 +76,22 @@ class _PromptFlowScreenState extends State<PromptFlowScreen> {
 
   void _onFlowChanged() => setState(() {});
 
+  /// Unwinds one step, or leaves the flow when there is nowhere left to go.
+  ///
+  /// Exits with `Navigator.pop`, never `maybePop`. `maybePop` consults the
+  /// enclosing [PopScope], which is this widget — so calling it from inside the
+  /// pop handler re-enters the handler and spins the UI thread until Android
+  /// shows "app isn't responding".
   void _handleBack() {
     HapticService.select();
-    if (!widget.controller.back()) {
-      widget.onExit?.call();
+    if (widget.controller.back()) return;
+
+    if (widget.onExit != null) {
+      widget.onExit!();
+      return;
     }
+    final NavigatorState navigator = Navigator.of(context);
+    if (navigator.canPop()) navigator.pop();
   }
 
   @override
@@ -86,10 +102,13 @@ class _PromptFlowScreenState extends State<PromptFlowScreen> {
     final PromptStep step = c.current;
 
     return PopScope(
-      // Intercept system back so it unwinds the flow rather than abandoning it.
-      canPop: false,
+      // Only intercept while there is flow left to unwind. On the first step the
+      // system pop is allowed through, so the back gesture behaves normally and
+      // cannot bounce off a handler that refuses to let go.
+      canPop: c.isFirstStep,
       onPopInvokedWithResult: (bool didPop, Object? _) {
-        if (!didPop) _handleBack();
+        if (didPop) return;
+        _handleBack();
       },
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
@@ -101,7 +120,7 @@ class _PromptFlowScreenState extends State<PromptFlowScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              _Chrome(controller: c),
+              _Chrome(controller: c, onBack: _handleBack),
               _Progress(value: c.progress, scheme: scheme),
               Expanded(
                 child: AnimatedSwitcher(
@@ -109,8 +128,7 @@ class _PromptFlowScreenState extends State<PromptFlowScreen> {
                   switchInCurve: easeOutQuint,
                   switchOutCurve: Curves.easeInCubic,
                   transitionBuilder: (Widget child, Animation<double> anim) {
-                    final bool back =
-                        c.direction == PromptDirection.backward;
+                    final bool back = c.direction == PromptDirection.backward;
                     return FadeTransition(
                       opacity: anim,
                       child: SlideTransition(
@@ -146,6 +164,7 @@ class _PromptFlowScreenState extends State<PromptFlowScreen> {
                 primaryLabel: widget.primaryLabel,
                 onPrimary: widget.onPrimary,
                 primaryEnabled: widget.primaryEnabled,
+                showPrimary: widget.showPrimary,
                 secondaryLabel: widget.secondaryLabel,
                 onSecondary: widget.onSecondary,
               ),
@@ -159,9 +178,10 @@ class _PromptFlowScreenState extends State<PromptFlowScreen> {
 
 /// Back control and step counter.
 class _Chrome extends StatelessWidget {
-  const _Chrome({required this.controller});
+  const _Chrome({required this.controller, required this.onBack});
 
   final PromptFlowController controller;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -184,10 +204,7 @@ class _Chrome extends StatelessWidget {
                 shape: const CircleBorder(),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
-                  onTap: () {
-                    HapticService.select();
-                    if (!controller.back()) Navigator.of(context).maybePop();
-                  },
+                  onTap: onBack,
                   child: Icon(
                     Icons.chevron_left_rounded,
                     size: 26,
@@ -272,61 +289,83 @@ class _StepBody extends StatelessWidget {
     final String? helper = step.helper?.call(controller.state);
     final String? error = controller.currentError;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(
-        Space.gutter,
-        Space.x8,
-        Space.gutter,
-        Space.x6,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          if (showChrome) ...<Widget>[
-            EntryReveal(
-              slideY: 12,
-              duration: const Duration(milliseconds: 320),
-              child: Text(
-                controller.currentQuestion,
-                style: text.promptQuestion,
-                maxLines: 3,
-                // Large accessibility sizes would otherwise push the input off
-                // a short screen entirely.
-                textScaler: TextScaler.linear(
-                  MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.3),
-                ),
-              ),
+    // Centred in the space between the progress bar and the CTA, rather than
+    // pinned to the top with the rest of the screen left empty. On a tall
+    // phone one question and one input read as a deliberate composition; hung
+    // from the top they read as a form that ran out of content.
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            Space.gutter,
+            Space.x6,
+            Space.gutter,
+            Space.x6,
+          ),
+          child: ConstrainedBox(
+            // Fill the viewport so centring has room to work, but let the
+            // column grow past it and scroll when the keyboard is up or the
+            // text is scaled.
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight - Space.x6 * 2,
             ),
-            if (helper != null && helper.isNotEmpty) ...<Widget>[
-              const SizedBox(height: Space.x2),
-              EntryReveal(
-                slideY: 10,
-                delay: const Duration(milliseconds: 40),
-                duration: const Duration(milliseconds: 320),
-                child: Text(helper, style: text.promptHelper(scheme)),
-              ),
-            ],
-            const SizedBox(height: Space.x8),
-          ],
-          EntryReveal(
-            slideY: 10,
-            delay: const Duration(milliseconds: 80),
-            duration: const Duration(milliseconds: 320),
-            child: child,
-          ),
-          // Reserved whether or not an error is showing, so the CTA below
-          // never jumps when validation fails.
-          SizedBox(
-            height: 20,
-            child: error == null
-                ? null
-                : Padding(
-                    padding: const EdgeInsets.only(top: Space.x1, left: 2),
-                    child: Text(error, style: text.promptError),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                if (showChrome) ...<Widget>[
+                  EntryReveal(
+                    slideY: 12,
+                    duration: const Duration(milliseconds: 320),
+                    child: Text(
+                      controller.currentQuestion,
+                      style: text.promptQuestion,
+                      maxLines: 3,
+                      // Large accessibility sizes would otherwise push the input off
+                      // a short screen entirely.
+                      textScaler: TextScaler.linear(
+                        MediaQuery.textScalerOf(
+                          context,
+                        ).scale(1.0).clamp(1.0, 1.3),
+                      ),
+                    ),
                   ),
+                  if (helper != null && helper.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: Space.x2),
+                    EntryReveal(
+                      slideY: 10,
+                      delay: const Duration(milliseconds: 40),
+                      duration: const Duration(milliseconds: 320),
+                      child: Text(helper, style: text.promptHelper(scheme)),
+                    ),
+                  ],
+                  const SizedBox(height: Space.x8),
+                ],
+                EntryReveal(
+                  slideY: 10,
+                  delay: const Duration(milliseconds: 80),
+                  duration: const Duration(milliseconds: 320),
+                  child: child,
+                ),
+                // Reserved whether or not an error is showing, so the CTA
+                // below never jumps when validation fails.
+                SizedBox(
+                  height: 20,
+                  child: error == null
+                      ? null
+                      : Padding(
+                          padding: const EdgeInsets.only(
+                            top: Space.x1,
+                            left: 2,
+                          ),
+                          child: Text(error, style: text.promptError),
+                        ),
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -337,6 +376,7 @@ class _Footer extends StatelessWidget {
     required this.primaryLabel,
     required this.onPrimary,
     required this.primaryEnabled,
+    required this.showPrimary,
     this.secondaryLabel,
     this.onSecondary,
   });
@@ -344,6 +384,7 @@ class _Footer extends StatelessWidget {
   final String primaryLabel;
   final VoidCallback onPrimary;
   final bool primaryEnabled;
+  final bool showPrimary;
   final String? secondaryLabel;
   final VoidCallback? onSecondary;
 
@@ -368,25 +409,26 @@ class _Footer extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Opacity(
-            opacity: primaryEnabled ? 1 : 0.45,
-            child: BounceTap(
-              scaleFactor: 0.975,
-              onTap: primaryEnabled ? onPrimary : null,
-              child: Container(
-                height: AppTheme.controlHeight,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: fill,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusButton),
-                ),
-                child: Text(
-                  primaryLabel,
-                  style: theme.textTheme.promptCta.copyWith(color: label),
+          if (showPrimary)
+            Opacity(
+              opacity: primaryEnabled ? 1 : 0.45,
+              child: BounceTap(
+                scaleFactor: 0.975,
+                onTap: primaryEnabled ? onPrimary : null,
+                child: Container(
+                  height: AppTheme.controlHeight,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: fill,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusButton),
+                  ),
+                  child: Text(
+                    primaryLabel,
+                    style: theme.textTheme.promptCta.copyWith(color: label),
+                  ),
                 ),
               ),
             ),
-          ),
           if (secondaryLabel != null) ...<Widget>[
             const SizedBox(height: Space.x1),
             SizedBox(
@@ -395,7 +437,9 @@ class _Footer extends StatelessWidget {
                 onPressed: onSecondary,
                 child: Text(
                   secondaryLabel!,
-                  style: theme.textTheme.promptHelper(scheme).copyWith(
+                  style: theme.textTheme
+                      .promptHelper(scheme)
+                      .copyWith(
                         fontWeight: FontWeight.w600,
                         color: scheme.onSurface.withValues(alpha: 0.75),
                       ),

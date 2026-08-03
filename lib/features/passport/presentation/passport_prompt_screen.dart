@@ -118,24 +118,24 @@ class _PassportPromptScreenState extends ConsumerState<PassportPromptScreen> {
 
     return switch (step.kind) {
       PromptStepKind.date => PromptDateInput(
-          value: _flow.state.value(step.id),
-          mode: step.id == PassportField.expiryDate
-              ? PromptDateMode.future
-              : PromptDateMode.past,
-          onChanged: (String v) => _flow.setValue(step.id, v),
-        ),
+        value: _flow.state.value(step.id),
+        mode: step.id == PassportField.expiryDate
+            ? PromptDateMode.future
+            : PromptDateMode.past,
+        onChanged: (String v) => _flow.setValue(step.id, v),
+      ),
       PromptStepKind.choice => PromptChoiceList(
-          choices: step.choices,
-          value: _flow.state.value(step.id),
-          onChanged: (String v) => _flow.setValue(step.id, v),
-        ),
+        choices: step.choices,
+        value: _flow.state.value(step.id),
+        onChanged: (String v) => _flow.setValue(step.id, v),
+      ),
       _ => PromptTextInput(
-          step: step,
-          value: _flow.state.value(step.id),
-          hasError: _flow.currentError != null,
-          onChanged: (String v) => _flow.setValue(step.id, v),
-          onSubmitted: _onPrimary,
-        ),
+        step: step,
+        value: _flow.state.value(step.id),
+        hasError: _flow.currentError != null,
+        onChanged: (String v) => _flow.setValue(step.id, v),
+        onSubmitted: _onPrimary,
+      ),
     };
   }
 
@@ -227,10 +227,11 @@ class _PassportPromptScreenState extends ConsumerState<PassportPromptScreen> {
           onPrimary: _onPrimary,
           // The route step is chosen by tapping a tile; a CTA underneath would
           // be a second way to do the same thing with no obvious default.
-          primaryEnabled: !isMethod,
+          showPrimary: !isMethod,
           secondaryLabel: _secondaryLabel,
           onSecondary: _flow.skip,
-          onExit: () => Navigator.of(context).maybePop(),
+          // pop, never maybePop: maybePop re-enters the flow's own PopScope.
+          onExit: () => Navigator.of(context).pop(),
         );
       },
     );

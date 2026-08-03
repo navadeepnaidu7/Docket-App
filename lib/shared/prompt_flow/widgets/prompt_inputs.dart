@@ -76,18 +76,17 @@ class _PromptTextInputState extends State<PromptTextInput> {
       builder: (BuildContext context, Widget? _) {
         final bool focused = _focus.hasFocus;
         return Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Space.x4,
-            vertical: Space.x1,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: Space.x5),
           decoration: BoxDecoration(
             color: AppTokens.fieldFill(scheme, focused: focused),
-            borderRadius: BorderRadius.circular(AppTheme.radiusInput),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: widget.hasError
                   ? AppTheme.danger.withValues(alpha: 0.55)
-                  : AppTokens.fieldBorder(scheme, focused: focused),
-              width: theme.brightness == Brightness.dark ? 0.5 : 1.0,
+                  : focused
+                  ? scheme.primary.withValues(alpha: 0.55)
+                  : AppTokens.separator(scheme),
+              width: focused ? 1.5 : 1.0,
             ),
           ),
           child: TextField(
@@ -109,11 +108,12 @@ class _PromptTextInputState extends State<PromptTextInput> {
               border: InputBorder.none,
               counterText: '',
               hintText: widget.step.placeholder,
-              hintStyle: (mono
-                      ? theme.textTheme.promptInputMono
-                      : theme.textTheme.promptInput)
-                  .copyWith(color: AppTokens.tertiaryLabel(scheme)),
-              contentPadding: const EdgeInsets.symmetric(vertical: Space.x3),
+              hintStyle:
+                  (mono
+                          ? theme.textTheme.promptInputMono
+                          : theme.textTheme.promptInput)
+                      .copyWith(color: AppTokens.tertiaryLabel(scheme)),
+              contentPadding: const EdgeInsets.symmetric(vertical: Space.x5),
             ),
           ),
         );
@@ -247,19 +247,21 @@ class PromptChoiceList extends StatelessWidget {
                 HapticService.select();
                 onChanged(choice.value);
               },
-              child: Container(
-                height: AppTheme.controlHeight,
-                padding: const EdgeInsets.symmetric(horizontal: Space.x4),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                curve: Curves.easeOutCubic,
+                height: 60,
+                padding: const EdgeInsets.symmetric(horizontal: Space.x5),
                 decoration: BoxDecoration(
-                  color: AppTokens.fieldFill(
-                    scheme,
-                    focused: choice.value == value,
-                  ),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusInput),
+                  color: choice.value == value
+                      ? scheme.primary.withValues(alpha: 0.10)
+                      : AppTokens.fieldFill(scheme),
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(
                     color: choice.value == value
-                        ? scheme.primary.withValues(alpha: 0.65)
+                        ? scheme.primary.withValues(alpha: 0.55)
                         : AppTokens.separator(scheme),
+                    width: choice.value == value ? 1.5 : 1.0,
                   ),
                 ),
                 child: Row(
@@ -267,15 +269,15 @@ class PromptChoiceList extends StatelessWidget {
                     Expanded(
                       child: Text(
                         choice.label,
-                        style: theme.textTheme.promptReviewValue,
+                        style: theme.textTheme.promptInput.copyWith(
+                          fontSize: 17,
+                          fontWeight: choice.value == value
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                        ),
                       ),
                     ),
-                    if (choice.value == value)
-                      Icon(
-                        Icons.check_rounded,
-                        size: 20,
-                        color: scheme.primary,
-                      ),
+                    _RadioDot(selected: choice.value == value),
                   ],
                 ),
               ),
@@ -327,22 +329,32 @@ class PromptOptionTile extends StatelessWidget {
           padding: const EdgeInsets.all(Space.x4),
           decoration: BoxDecoration(
             color: background,
-            borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+            borderRadius: BorderRadius.circular(22),
             border: emphasis
                 ? null
                 : Border.all(color: AppTokens.separator(scheme)),
           ),
           child: Row(
             children: <Widget>[
-              Icon(icon, size: 22, color: foreground),
-              const SizedBox(width: Space.x3),
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: foreground.withValues(alpha: emphasis ? 0.18 : 0.08),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(icon, size: 21, color: foreground),
+              ),
+              const SizedBox(width: Space.x4),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
                       title,
-                      style: theme.textTheme.promptReviewValue.copyWith(
+                      style: theme.textTheme.promptInput.copyWith(
+                        fontSize: 17,
                         color: foreground,
                         fontWeight: FontWeight.w600,
                       ),
@@ -350,7 +362,9 @@ class PromptOptionTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: theme.textTheme.promptHelper(scheme).copyWith(
+                      style: theme.textTheme
+                          .promptHelper(scheme)
+                          .copyWith(
                             fontSize: 13,
                             color: foreground.withValues(alpha: 0.7),
                           ),
@@ -418,8 +432,9 @@ class PromptConfirmValue extends StatelessWidget {
           ),
           child: Text(
             value,
-            style:
-                mono ? theme.textTheme.promptInputMono : theme.textTheme.promptInput,
+            style: mono
+                ? theme.textTheme.promptInputMono
+                : theme.textTheme.promptInput,
           ),
         ),
         const SizedBox(height: Space.x3),
@@ -435,7 +450,9 @@ class PromptConfirmValue extends StatelessWidget {
               ),
               child: Text(
                 'Change',
-                style: theme.textTheme.promptHelper(scheme).copyWith(
+                style: theme.textTheme
+                    .promptHelper(scheme)
+                    .copyWith(
                       fontWeight: FontWeight.w600,
                       color: scheme.primary,
                     ),
@@ -462,7 +479,9 @@ class _SourceMarker extends StatelessWidget {
     if (!trusted) {
       return Text(
         'Double-check this one',
-        style: theme.textTheme.promptHelper(scheme).copyWith(
+        style: theme.textTheme
+            .promptHelper(scheme)
+            .copyWith(
               fontSize: 13,
               color: AppTheme.accentOf(theme.brightness),
               fontWeight: FontWeight.w600,
@@ -472,24 +491,55 @@ class _SourceMarker extends StatelessWidget {
 
     return switch (source) {
       FieldSource.chip => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(Icons.nfc_rounded, size: 14, color: scheme.primary),
-            const SizedBox(width: Space.x1),
-            Text(
-              'From the chip',
-              style: theme.textTheme.promptStepCount(scheme).copyWith(
-                    color: scheme.primary,
-                  ),
-            ),
-          ],
-        ),
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(Icons.nfc_rounded, size: 14, color: scheme.primary),
+          const SizedBox(width: Space.x1),
+          Text(
+            'From the chip',
+            style: theme.textTheme
+                .promptStepCount(scheme)
+                .copyWith(color: scheme.primary),
+          ),
+        ],
+      ),
       FieldSource.scanned => Text(
-          'Scanned',
-          style: theme.textTheme.promptStepCount(scheme),
-        ),
+        'Scanned',
+        style: theme.textTheme.promptStepCount(scheme),
+      ),
       // Typed values carry no marker at all — absence is the default.
       FieldSource.typed => const SizedBox.shrink(),
     };
+  }
+}
+
+/// Selection indicator for a choice row. A ring that fills rather than a
+/// checkmark that pops in — the state change reads as continuous.
+class _RadioDot extends StatelessWidget {
+  const _RadioDot({required this.selected});
+
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOutCubic,
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: selected ? scheme.primary : Colors.transparent,
+        border: Border.all(
+          color: selected ? scheme.primary : AppTokens.separator(scheme),
+          width: 1.5,
+        ),
+      ),
+      child: selected
+          ? Icon(Icons.check_rounded, size: 14, color: scheme.onPrimary)
+          : null,
+    );
   }
 }
