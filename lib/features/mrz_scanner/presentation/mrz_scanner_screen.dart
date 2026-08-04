@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/haptics/haptic_service.dart';
-import '../../../shared/widgets/scanner_capture_button.dart';
 import '../../../core/validation/document_validators.dart';
 import '../application/mrz_scanner_service.dart';
 import '../domain/mrz_result.dart';
@@ -24,6 +23,13 @@ class _MrzScannerScreenState extends State<MrzScannerScreen>
     with WidgetsBindingObserver {
   CameraController? _controller;
   bool _isCapturing = false;
+
+  /// Drives the automatic capture loop. The MRZ is a fixed target on a
+  /// flat page, so there is nothing for a shutter button to time better
+  /// than the phone can -- asking the user to press one just meant holding
+  /// the passport steady with one hand and tapping with the other.
+  Timer? _autoScan;
+  int _attempts = 0;
   _ScanState _state = _ScanState.scanning;
   MrzResult? _result;
   String? _capturedImagePath;
@@ -55,6 +61,7 @@ class _MrzScannerScreenState extends State<MrzScannerScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _stopAutoScan();
     _controller?.dispose();
     _nameCtrl.dispose();
     _passportNumCtrl.dispose();
@@ -72,9 +79,14 @@ class _MrzScannerScreenState extends State<MrzScannerScreen>
     if (controller == null || !controller.value.isInitialized) return;
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
+      // Stop the loop too, or it keeps calling takePicture on a paused
+      // preview and burns the attempt budget while the app is in the
+      // background.
+      _stopAutoScan();
       controller.pausePreview();
     } else if (state == AppLifecycleState.resumed) {
       controller.resumePreview();
+      if (_state == _ScanState.scanning) _startAutoScan();
     }
   }
   // ── Permission ─────────────────────────────────────────────────────────────
@@ -110,7 +122,10 @@ class _MrzScannerScreenState extends State<MrzScannerScreen>
     );
     try {
       await _controller!.initialize();
-      if (mounted) setState(() => _state = _ScanState.scanning);
+      if (mounted) {
+        setState(() => _state = _ScanState.scanning);
+        _startAutoScan();
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -123,25 +138,66 @@ class _MrzScannerScreenState extends State<MrzScannerScreen>
 
   // ── Capture ────────────────────────────────────────────────────────────────
 
-  Future<void> _capture() async {
+  /// Polls the camera until the MRZ parses.
+  ///
+  /// Deliberately a timer over takePicture rather than an image stream: the
+  /// existing pipeline reads from a file path, and converting CameraImage
+  /// planes to an ML Kit InputImage is a per-device format problem. This reuses
+  /// the path that already works.
+  void _startAutoScan() {
+    _autoScan?.cancel();
+    _attempts = 0;
+    _autoScan = Timer.periodic(const Duration(milliseconds: 1400), (_) {
+      if (!mounted || _state != _ScanState.scanning || _isCapturing) return;
+      _capture(auto: true);
+    });
+  }
+
+  void _stopAutoScan() {
+    _autoScan?.cancel();
+    _autoScan = null;
+  }
+
+  Future<void> _capture({bool auto = false}) async {
     if (_isCapturing ||
         _controller == null ||
         !_controller!.value.isInitialized)
       return;
     _isCapturing = true;
-    HapticService.impact();
-    setState(() => _state = _ScanState.processing);
+    // An automatic attempt stays silent and stays on the viewfinder: a
+    // failed read just means the page was not in frame yet.
+    if (!auto) {
+      HapticService.impact();
+      setState(() => _state = _ScanState.processing);
+    }
     try {
       final xFile = await _controller!.takePicture();
       _capturedImagePath = xFile.path;
       final result = await MrzScannerService.processImage(xFile.path);
       if (!mounted) return;
       if (result != null) {
-        _populateControllers(result);
-        setState(() {
-          _result = result;
-          _state = _ScanState.preview;
-        });
+        // Return the raw result and let the flow confirm it field by field.
+        // The preview state below is no longer reachable: it was a second
+        // review of the same values, in a hardcoded light-mode layout that
+        // rendered a black title on a black scaffold, and the flow re-asked
+        // everything anyway. Removed wholesale in the cleanup stage.
+        _stopAutoScan();
+        HapticService.success();
+        Navigator.of(context).pop(
+          result.copyWith(capturedImagePath: _capturedImagePath ?? ''),
+        );
+      } else if (auto) {
+        _attempts++;
+        // Give up guiding silently after a while and say something.
+        if (_attempts >= 8) {
+          _stopAutoScan();
+          setState(() {
+            _state = _ScanState.error;
+            _errorMessage =
+                'Could not read the passport.\nLay it flat in good light, '
+                'with the two lines of code at the bottom inside the frame.';
+          });
+        }
       } else {
         setState(() {
           _state = _ScanState.error;
@@ -150,7 +206,7 @@ class _MrzScannerScreenState extends State<MrzScannerScreen>
         });
       }
     } catch (_) {
-      if (mounted) {
+      if (mounted && !auto) {
         setState(() {
           _state = _ScanState.error;
           _errorMessage = 'Capture failed. Please try again.';
@@ -196,6 +252,7 @@ class _MrzScannerScreenState extends State<MrzScannerScreen>
   }
 
   void _retake() {
+    _startAutoScan();
     setState(() {
       _state = _ScanState.scanning;
       _result = null;
@@ -266,12 +323,25 @@ class _MrzScannerScreenState extends State<MrzScannerScreen>
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
-                      'Align passport data page inside the frame',
+                      'Hold the photo page inside the frame',
                       style: TextStyle(color: Colors.white, fontSize: 14),
                     ),
                   ),
-                  const SizedBox(height: 28),
-                  ScannerCaptureButton(onTap: _capture),
+                  const SizedBox(height: 20),
+                  // No shutter: the scan runs itself.
+                  const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white70,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Looking for the code strip',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
                 ],
               ),
             ),

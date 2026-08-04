@@ -10,10 +10,9 @@ import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
 import '../../ids/presentation/add_id_sheet.dart';
 import '../../ids/presentation/id_entry_screen.dart';
-import '../../passport/application/passport_draft_controller.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
-import '../../passport/presentation/passport_entry_screen.dart';
+import '../../passport/presentation/passport_prompt_screen.dart';
 import '../../tickets/presentation/tickets_tab.dart';
 
 import '../../../core/wallet/wallet_backdrop_tilt.dart';
@@ -205,13 +204,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   void _openPassportEntry(bool isEPassport) {
-    ref.read(passportDraftProvider.notifier).reset();
-    ref.read(passportDraftProvider.notifier).updateIsEPassport(isEPassport);
+    // The kind is passed to the screen rather than set as a side effect on a
+    // shared draft beforehand: the chip route only exists for an e-passport,
+    // and the old screen ignored this answer and offered NFC either way.
     Navigator.of(context).push(
       PageRouteBuilder<void>(
         transitionDuration: const Duration(milliseconds: 400),
         reverseTransitionDuration: const Duration(milliseconds: 300),
-        pageBuilder: (_, _, _) => const PassportEntryScreen(),
+        pageBuilder: (_, _, _) => PassportPromptScreen(
+          kind: isEPassport ? PassportKind.ePassport : PassportKind.regular,
+        ),
         transitionsBuilder: (_, Animation<double> animation, _, Widget child) {
           final Animation<double> curved = CurvedAnimation(
             parent: animation,

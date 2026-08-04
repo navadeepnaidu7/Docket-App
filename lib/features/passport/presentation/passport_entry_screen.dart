@@ -54,8 +54,9 @@ class _PassportEntryScreenState extends ConsumerState<PassportEntryScreen> {
     super.initState();
     final PassportProfile profile = ref.read(passportDraftProvider);
     _nameController = TextEditingController(text: profile.name);
-    _passportNumberController =
-        TextEditingController(text: profile.passportNumber);
+    _passportNumberController = TextEditingController(
+      text: profile.passportNumber,
+    );
     _nationalityController = TextEditingController(text: profile.nationality);
     _dateOfBirthController = TextEditingController(text: profile.dateOfBirth);
     _expiryDateController = TextEditingController(text: profile.expiryDate);
@@ -74,8 +75,9 @@ class _PassportEntryScreenState extends ConsumerState<PassportEntryScreen> {
   }
 
   void _syncDraft() {
-    final PassportDraftController controller =
-        ref.read(passportDraftProvider.notifier);
+    final PassportDraftController controller = ref.read(
+      passportDraftProvider.notifier,
+    );
     controller
       ..updateName(_nameController.text)
       ..updatePassportNumber(_passportNumberController.text)
@@ -144,11 +146,13 @@ class _PassportEntryScreenState extends ConsumerState<PassportEntryScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(children: <Widget>[
-          Icon(Icons.check_circle_rounded, color: Colors.white),
-          SizedBox(width: 10),
-          Text('Scanned — review details before saving'),
-        ]),
+        content: const Row(
+          children: <Widget>[
+            Icon(Icons.check_circle_rounded, color: Colors.white),
+            SizedBox(width: 10),
+            Text('Scanned — review details before saving'),
+          ],
+        ),
         backgroundColor: AppTheme.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -178,30 +182,28 @@ class _PassportEntryScreenState extends ConsumerState<PassportEntryScreen> {
     String dobFormatted = _dateOfBirthController.text;
     String expFormatted = _expiryDateController.text;
     if (dobParts.length == 3) {
-      dobFormatted =
-          '${dobParts[0].substring(2)}${dobParts[1]}${dobParts[2]}';
+      dobFormatted = '${dobParts[0].substring(2)}${dobParts[1]}${dobParts[2]}';
     }
     if (expParts.length == 3) {
-      expFormatted =
-          '${expParts[0].substring(2)}${expParts[1]}${expParts[2]}';
+      expFormatted = '${expParts[0].substring(2)}${expParts[1]}${expParts[2]}';
     }
 
     final Map<String, dynamic>? result =
         await showModalBottomSheet<Map<String, dynamic>>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: import_nfc_sheet.NfcScannerSheet(
-          passportNumber: _passportNumberController.text,
-          dateOfBirth: dobFormatted,
-          expiryDate: expFormatted,
-        ),
-      ),
-    );
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (BuildContext context) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: import_nfc_sheet.NfcScannerSheet(
+              passportNumber: _passportNumberController.text,
+              dateOfBirth: dobFormatted,
+              expiryDate: expFormatted,
+            ),
+          ),
+        );
 
     if (result == null || !mounted) return;
 
@@ -210,8 +212,9 @@ class _PassportEntryScreenState extends ConsumerState<PassportEntryScreen> {
       builder: (BuildContext context) {
         final String photoValue = result['photoBase64']?.toString() ?? '';
         final bool hasImage = photoValue.isNotEmpty;
-        final Map<String, dynamic> debugData =
-            Map<String, dynamic>.from(result);
+        final Map<String, dynamic> debugData = Map<String, dynamic>.from(
+          result,
+        );
         if (hasImage) {
           debugData['photoBase64'] =
               '[IMAGE RETRIEVED! Base64 String length: ${photoValue.length}]';
@@ -257,18 +260,20 @@ class _PassportEntryScreenState extends ConsumerState<PassportEntryScreen> {
     });
     _syncDraft();
 
-    final PassportDraftController draftNotifier =
-        ref.read(passportDraftProvider.notifier);
+    final PassportDraftController draftNotifier = ref.read(
+      passportDraftProvider.notifier,
+    );
     if (result['photoBase64'] != null) {
       draftNotifier.updateImagePath(result['photoBase64'].toString());
     }
-    final PassportProfile updatedProfile =
-        ref.read(passportDraftProvider).copyWith(
-              gender: result['gender']?.toString(),
-              placeOfBirth: result['dg11_placeOfBirth']?.toString(),
-              issueDate: result['dg12_dateOfIssue']?.toString(),
-              issuingAuthority: result['dg12_issuingAuthority']?.toString(),
-            );
+    final PassportProfile updatedProfile = ref
+        .read(passportDraftProvider)
+        .copyWith(
+          gender: result['gender']?.toString(),
+          placeOfBirth: result['dg11_placeOfBirth']?.toString(),
+          issueDate: result['dg12_dateOfIssue']?.toString(),
+          issuingAuthority: result['dg12_issuingAuthority']?.toString(),
+        );
     draftNotifier.replaceWith(updatedProfile);
     draftNotifier.updateIsEPassport(true);
     _cameFromScan = true;
@@ -324,7 +329,8 @@ class _PassportEntryScreenState extends ConsumerState<PassportEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool showCta = _step == _PassportStep.details ||
+    final bool showCta =
+        _step == _PassportStep.details ||
         _step == _PassportStep.nfcPrep ||
         _step == _PassportStep.review;
 
@@ -360,35 +366,35 @@ class _PassportEntryScreenState extends ConsumerState<PassportEntryScreen> {
       banner: _bannerError != null ? EntryBanner(message: _bannerError!) : null,
       body: switch (_step) {
         _PassportStep.method => _MethodStep(
-            onScanMrz: _openCameraScanner,
-            onNfc: () => _goTo(_PassportStep.nfcPrep),
-            onManual: () => _goTo(_PassportStep.details),
-          ),
+          onScanMrz: _openCameraScanner,
+          onNfc: () => _goTo(_PassportStep.nfcPrep),
+          onManual: () => _goTo(_PassportStep.details),
+        ),
         _PassportStep.details => _DetailsStep(
-            nameController: _nameController,
-            nationalityController: _nationalityController,
-            passportNumberController: _passportNumberController,
-            dateOfBirthController: _dateOfBirthController,
-            expiryDateController: _expiryDateController,
-            onChanged: () {
-              _syncDraft();
-              if (_bannerError != null) setState(() => _bannerError = null);
-            },
-          ),
+          nameController: _nameController,
+          nationalityController: _nationalityController,
+          passportNumberController: _passportNumberController,
+          dateOfBirthController: _dateOfBirthController,
+          expiryDateController: _expiryDateController,
+          onChanged: () {
+            _syncDraft();
+            if (_bannerError != null) setState(() => _bannerError = null);
+          },
+        ),
         _PassportStep.nfcPrep => _NfcPrepStep(
-            passportNumberController: _passportNumberController,
-            dateOfBirthController: _dateOfBirthController,
-            expiryDateController: _expiryDateController,
-            onChanged: () {
-              _syncDraft();
-              if (_bannerError != null) setState(() => _bannerError = null);
-            },
-          ),
+          passportNumberController: _passportNumberController,
+          dateOfBirthController: _dateOfBirthController,
+          expiryDateController: _expiryDateController,
+          onChanged: () {
+            _syncDraft();
+            if (_bannerError != null) setState(() => _bannerError = null);
+          },
+        ),
         _PassportStep.review => _ReviewStep(
-            profile: ref.watch(passportDraftProvider),
-            onEdit: () => _goTo(_PassportStep.details),
-            onNfc: () => _goTo(_PassportStep.nfcPrep),
-          ),
+          profile: ref.watch(passportDraftProvider),
+          onEdit: () => _goTo(_PassportStep.details),
+          onNfc: () => _goTo(_PassportStep.nfcPrep),
+        ),
       },
     );
   }
@@ -448,10 +454,7 @@ class _MethodStep extends StatelessWidget {
           onTap: onNfc,
         ),
         const SizedBox(height: 8),
-        EntryTextAction(
-          label: 'Enter details manually',
-          onTap: onManual,
-        ),
+        EntryTextAction(label: 'Enter details manually', onTap: onManual),
       ],
     );
   }

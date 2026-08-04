@@ -6,6 +6,7 @@ import android.nfc.Tag
 import android.nfc.tech.IsoDep
 import android.os.Bundle
 import android.util.Base64
+import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -26,6 +27,11 @@ import com.gemalto.jp2.JP2Decoder
 class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
 
     private val CHANNEL = "com.docket/nfc_passport"
+
+    // Lifecycle only. Never log document numbers, dates, MRZ or chip
+    // payloads -- these are somebody's identity documents.
+    private val TAG = "DocketNfc"
+    private val YYMMDD = Regex("^\\d{6}$")
     private var nfcAdapter: NfcAdapter? = null
     
     private var isScanning = false
@@ -48,6 +54,17 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                     return@setMethodCallHandler
                 }
 
+                // BAC dates are YYMMDD. Reject anything else here rather than
+                // letting the chip fail opaquely six APDUs later.
+                if (!dateOfBirth.matches(YYMMDD) || !expiryDate.matches(YYMMDD)) {
+                    result.error(
+                        "INVALID_ARGS",
+                        "Dates for BAC must be YYMMDD",
+                        null
+                    )
+                    return@setMethodCallHandler
+                }
+
                 // Check NFC
                 if (nfcAdapter == null || !nfcAdapter!!.isEnabled) {
                     result.error("NFC_UNAVAILABLE", "NFC is not available or enabled", null)
@@ -58,8 +75,21 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                     result.error("BUSY", "An NFC scan is already in progress", null)
                     return@setMethodCallHandler
                 }
+
+                // Build the key from the three values the caller sent. Built
+                // after the guards so an early return cannot leave a key behind
+                // for a scan that never started.
+                //
+                // This assignment is the whole reason chip reads never worked:
+                // bacKey was declared, nulled on stop, and handed to doBAC, but
+                // never actually built. Every read threw inside doBAC(null) and
+                // surfaced as a generic BAC failure, so the e-passport path
+                // could not succeed even once.
+                bacKey = BACKey(passportNumber.trim().uppercase(), dateOfBirth, expiryDate)
+
                 scanResult = result
                 isScanning = true
+                Log.i(TAG, "startNfcRead: reader mode on, awaiting tag")
 
                 // Enable Reader Mode
                 val options = Bundle()
@@ -79,11 +109,23 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
         }
     }
 
+    /**
+     * Stops reader mode and settles any pending Dart call.
+     *
+     * The pending MethodChannel.Result used to be abandoned here, so backing
+     * out mid-read left the awaiting Dart future hanging forever. Replying
+     * CANCELLED and clearing the field also prevents a second reply landing on
+     * an already-completed result, which throws "Reply already submitted".
+     */
     private fun stopNfcScanning() {
         if (!isScanning) return
         isScanning = false
         bacKey = null
         nfcAdapter?.disableReaderMode(this)
+
+        // No-op when something already answered (a successful read, or an
+        // error). Only a genuinely abandoned scan gets CANCELLED.
+        replyOnce { it.error("CANCELLED", "Scan cancelled", null) }
     }
 
     override fun onPause() {
@@ -91,9 +133,15 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
         super.onPause()
     }
 
+    override fun onDestroy() {
+        stopNfcScanning()
+        super.onDestroy()
+    }
+
     override fun onTagDiscovered(tag: Tag?) {
         if (!isScanning || tag == null) return
 
+        Log.i(TAG, "onTagDiscovered")
         val isoDep = IsoDep.get(tag)
         if (isoDep == null) {
             sendError("ISO_DEP_NOT_SUPPORTED", "Tag does not support IsoDep")
@@ -119,9 +167,16 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                 var bacAuthSuccess = false
                 try {
                     passportService.sendSelectApplet(false)
-                    passportService.doBAC(bacKey)
+                    val key = bacKey
+                    if (key == null) {
+                        sendError("INVALID_ARGS", "No BAC key for this scan")
+                        return@launch
+                    }
+                    passportService.doBAC(key)
                     bacAuthSuccess = true
+                    Log.i(TAG, "BAC succeeded")
                 } catch (e: Exception) {
+                    Log.w(TAG, "BAC failed: ${e.javaClass.simpleName}")
                     sendError("BAC_FAILED", "Basic Access Control failed: ${e.message}")
                     return@launch
                 }
@@ -210,7 +265,7 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                     }
 
                     withContext(Dispatchers.Main) {
-                        scanResult?.success(response)
+                        replyOnce { it.success(response) }
                         stopNfcScanning()
                     }
                 }
@@ -222,8 +277,26 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
 
     private fun sendError(code: String, message: String) {
         CoroutineScope(Dispatchers.Main).launch {
-            scanResult?.error(code, message, null)
+            replyOnce { it.error(code, message, null) }
             stopNfcScanning()
         }
+    }
+
+    /**
+     * Answers the pending Dart call, at most once.
+     *
+     * A MethodChannel.Result may be replied to exactly once; a second reply
+     * throws IllegalStateException and takes the whole app down. Three paths
+     * can reach a reply here -- success, sendError, and the CANCELLED from
+     * stopNfcScanning -- and the success path calls stopNfcScanning
+     * immediately afterwards, so it crashed on every successful chip read.
+     *
+     * Taking the result and clearing the field before replying makes the
+     * second caller a no-op instead of a crash.
+     */
+    private fun replyOnce(reply: (MethodChannel.Result) -> Unit) {
+        val pending = scanResult ?: return
+        scanResult = null
+        reply(pending)
     }
 }
