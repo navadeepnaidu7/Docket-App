@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -11,8 +10,12 @@ import '../../../core/wallet/wallet_card_metrics.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/sound/sound_service.dart';
 import '../../../shared/widgets/card_touch_layer.dart';
+import '../../../shared/widgets/safe_base64_image.dart';
 
 import '../../passport/domain/passport_profile.dart';
+
+/// Shown in place of a field the holder never filled in.
+const String _absent = '—';
 
 /// Portrait-style Indian Passport card with 3D tilt & single-tap flip.
 class WalletPassportCard extends StatefulWidget {
@@ -439,8 +442,18 @@ class _CardBack extends StatelessWidget {
 
   final PassportProfile profile;
 
+  /// Builds the two MRZ lines from the stored fields, or returns `''` when
+  /// there is not enough real data to build them from.
+  ///
+  /// The synthesised lines used to substitute `HOLDER<<NAME`, `IND` and
+  /// `A1234567` for whatever was missing, which produced a well-formed,
+  /// check-digit-correct MRZ for a passport that does not exist. An empty
+  /// return hides the zone instead.
   String _generateMRZ(PassportProfile profile) {
     if (profile.mrzRaw.trim().isNotEmpty) return profile.mrzRaw;
+    if (profile.name.trim().isEmpty || profile.passportNumber.trim().isEmpty) {
+      return '';
+    }
 
     int calcCheckDigit(String str) {
       const weights = [7, 3, 1];
@@ -460,9 +473,11 @@ class _CardBack extends StatelessWidget {
       return sum % 10;
     }
 
-    final country = profile.nationality.isEmpty ? 'IND' : profile.nationality.padRight(3, '<').substring(0, 3).toUpperCase();
-    
-    final nameParts = profile.name.trim().isEmpty ? ['HOLDER', 'NAME'] : profile.name.toUpperCase().split(' ');
+    final country = profile.nationality.trim().isEmpty
+        ? '<<<'
+        : profile.nationality.padRight(3, '<').substring(0, 3).toUpperCase();
+
+    final nameParts = profile.name.toUpperCase().split(' ');
     String nameField;
     if (nameParts.length > 1) {
       final surname = nameParts.last;
@@ -474,7 +489,8 @@ class _CardBack extends StatelessWidget {
     nameField = nameField.padRight(39, '<').substring(0, 39);
     final line1 = 'P<$country$nameField';
 
-    final passNo = profile.passportNumber.isEmpty ? 'A1234567' : profile.passportNumber.padRight(9, '<').substring(0, 9).toUpperCase();
+    final passNo =
+        profile.passportNumber.padRight(9, '<').substring(0, 9).toUpperCase();
     final passCheck = calcCheckDigit(passNo);
     
     String formatYYMMDD(String date) {
@@ -515,7 +531,7 @@ class _CardBack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String formatNiceDate(String date) {
-      if (date.isEmpty) return 'N/A';
+      if (date.isEmpty) return _absent;
       try {
         if (date.contains('-')) {
           final parts = date.split('-');
@@ -564,16 +580,32 @@ class _CardBack extends StatelessWidget {
       return date;
     }
 
-    final String fullName = profile.name.trim().isEmpty ? 'NAVADEEP NAIDU GUDI' : profile.name.toUpperCase();
-    final String dob = profile.dateOfBirth.isEmpty ? '2005 August 10' : formatNiceDate(profile.dateOfBirth);
-    final String expiry = profile.expiryDate.isEmpty ? '2035 October 27' : formatNiceDate(profile.expiryDate);
-    final String gender = profile.gender.isEmpty ? 'MALE' : profile.gender.toUpperCase();
-    final String nationality = profile.nationality.isEmpty ? 'IND' : profile.nationality.toUpperCase();
-    final String placeOfBirth = profile.placeOfBirth.isEmpty ? 'PARIGI, TELANGANA' : profile.placeOfBirth;
-    final String issueDate = profile.issueDate.isEmpty ? '2025 October 28' : formatNiceDate(profile.issueDate);
-    final String issuingAuthority = profile.issuingAuthority.isEmpty ? 'Regional Passport Office, Hyderabad' : profile.issuingAuthority;
-    final String passNum = profile.passportNumber.isEmpty ? 'A1234567' : profile.passportNumber.toUpperCase();
-        
+    // A document wallet must never show identity data the holder did not give
+    // it. Every field below used to fall back to a hardcoded sample -- a real
+    // name, a real place of birth, a real passport number -- so a half-filled
+    // record rendered as a complete stranger's passport, and looked
+    // authoritative while doing it. Missing now reads as missing.
+    String orAbsent(String v) => v.trim().isEmpty ? _absent : v.trim();
+
+    final String fullName = orAbsent(profile.name.toUpperCase());
+    final String dob = profile.dateOfBirth.isEmpty
+        ? _absent
+        : formatNiceDate(profile.dateOfBirth);
+    final String expiry = profile.expiryDate.isEmpty
+        ? _absent
+        : formatNiceDate(profile.expiryDate);
+    final String gender = orAbsent(profile.gender.toUpperCase());
+    final String placeOfBirth = orAbsent(profile.placeOfBirth);
+    final String issueDate = profile.issueDate.isEmpty
+        ? _absent
+        : formatNiceDate(profile.issueDate);
+    final String issuingAuthority = orAbsent(profile.issuingAuthority);
+    final String passNum = orAbsent(profile.passportNumber.toUpperCase());
+
+    // Kept raw, not em-dashed: it also drives the emblem and the flag, both of
+    // which have their own "unknown" branch.
+    final String nationality = profile.nationality.trim().toUpperCase();
+
     final String mrz = _generateMRZ(profile);
 
     return Container(
@@ -679,22 +711,25 @@ class _CardBack extends StatelessWidget {
                           color: Colors.grey.shade200,
                           borderRadius: BorderRadius.circular(12),
                         ),
+                        // The portrait comes from the chip's DG2, which is
+                        // base64. `imagePath` holds a filesystem path to the
+                        // captured data page and is not a portrait -- decoding
+                        // it as base64, which is what this did, threw inside
+                        // build and took the whole wallet down with it.
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: profile.imagePath.isNotEmpty
-                              ? Image.memory(
-                                  base64Decode(profile.imagePath),
-                                  fit: BoxFit.cover,
-                                  width: 100,
-                                  height: 130,
-                                )
-                              : Center(
-                                  child: Icon(
-                                    Icons.person_rounded,
-                                    color: Colors.grey.shade400,
-                                    size: 40,
-                                  ),
-                                ),
+                          child: SafeBase64Image(
+                            base64: profile.photoBase64,
+                            width: 100,
+                            height: 130,
+                            placeholder: Center(
+                              child: Icon(
+                                Icons.person_rounded,
+                                color: Colors.grey.shade400,
+                                size: 40,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -808,7 +843,7 @@ class _CardBack extends StatelessWidget {
                         flex: 1,
                         child: _DetailBlock(
                           label: 'NATIONALITY',
-                          value: nationality,
+                          value: nationality.isEmpty ? _absent : nationality,
                         ),
                       ),
                     ],
@@ -821,7 +856,8 @@ class _CardBack extends StatelessWidget {
                   
                   const Spacer(),
                   
-                  // MRZ Zone
+                  // MRZ Zone -- absent when there is no real MRZ to show.
+                  if (mrz.isNotEmpty)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

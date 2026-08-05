@@ -32,6 +32,18 @@ class IdScanResult {
   final String qrCodeData;
 }
 
+/// ML Kit OCR for the ID cards.
+///
+/// **Ownership contract:** the three detectors below are `static final` — one
+/// instance per app run, shared by every scan. They are therefore owned by the
+/// app, not by whichever screen happened to open first, and **must not be
+/// closed** when a scanner screen is disposed. Closing them left the static
+/// fields pointing at dead native handles, so the second scan of any app run
+/// failed and stayed failed until a restart. `MrzScannerService.dispose` is a
+/// no-op for exactly this reason.
+///
+/// If per-screen lifetimes are ever wanted, make the detectors instance fields
+/// of a scanner-scoped object first; do not reinstate `close()` on statics.
 class IdScannerService {
   IdScannerService._();
 
@@ -307,13 +319,9 @@ class IdScannerService {
       .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
       .join(' ');
 
-  static Future<void> dispose() async {
-    try {
-      await _recognizer.close();
-      await _faceDetector.close();
-      await _barcodeScanner.close();
-    } catch (e) {
-      debugPrint('[IdScannerService] Error during dispose: $e');
-    }
-  }
+  /// Deliberately does nothing. See the ownership note on [IdScannerService].
+  ///
+  /// Kept so callers that already invoke it keep compiling; new code should
+  /// not call it at all.
+  static Future<void> dispose() async {}
 }

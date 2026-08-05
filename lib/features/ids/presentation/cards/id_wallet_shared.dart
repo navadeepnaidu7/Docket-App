@@ -1,9 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 
 import '../../../../core/assets/app_assets.dart';
 import '../../../../core/storage/image_payload.dart';
+import '../../../../shared/widgets/safe_base64_image.dart';
 
 String formatIdDate(String d) {
   if (d.contains('-')) {
@@ -34,9 +33,14 @@ class IdCardFullImageViewer extends StatelessWidget {
             children: [
               Center(
                 child: InteractiveViewer(
-                  child: Image.memory(
-                    base64Decode(base64Image),
+                  child: SafeBase64Image(
+                    base64: base64Image,
                     fit: BoxFit.contain,
+                    placeholder: const Icon(
+                      Icons.broken_image_outlined,
+                      color: Colors.white54,
+                      size: 48,
+                    ),
                   ),
                 ),
               ),

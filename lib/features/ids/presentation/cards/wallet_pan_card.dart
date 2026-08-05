@@ -1,9 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../../shared/widgets/safe_base64_image.dart';
 import '../../domain/id_document.dart';
 import 'id_wallet_shared.dart';
 
@@ -240,9 +239,8 @@ class PanCardFront extends StatelessWidget {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(4),
-                                child: Image.memory(
-                                  base64Decode(document.imagePath),
-                                  fit: BoxFit.cover,
+                                child: SafeBase64Image(
+                                  base64: document.imagePath,
                                   width: 52,
                                   height: 64,
                                 ),

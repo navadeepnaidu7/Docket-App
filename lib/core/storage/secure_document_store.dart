@@ -32,8 +32,9 @@ class SecureDocumentStore {
   static List<String> _decodeList(String raw) {
     try {
       final decoded = jsonDecode(raw);
-      if (decoded is List)
+      if (decoded is List) {
         return decoded.whereType<String>().toList(growable: false);
+      }
     } catch (_) {}
     return const <String>[];
   }

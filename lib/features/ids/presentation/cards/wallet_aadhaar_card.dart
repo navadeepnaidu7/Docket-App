@@ -1,11 +1,10 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../../core/assets/app_assets.dart';
+import '../../../../shared/widgets/safe_base64_image.dart';
 import '../../domain/id_document.dart';
 import 'id_wallet_shared.dart';
 
@@ -221,21 +220,21 @@ class AadhaarCardFront extends StatelessWidget {
                               width: 0.5,
                             ),
                           ),
-                          child: isBase64IdImage(document.imagePath)
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: Image.memory(
-                                    base64Decode(document.imagePath),
-                                    fit: BoxFit.cover,
-                                    width: 68,
-                                    height: 82,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.person,
-                                  size: 40,
-                                  color: Color(0xFFAEA79F),
-                                ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: SafeBase64Image(
+                              base64: isBase64IdImage(document.imagePath)
+                                  ? document.imagePath
+                                  : '',
+                              width: 68,
+                              height: 82,
+                              placeholder: const Icon(
+                                Icons.person,
+                                size: 40,
+                                color: Color(0xFFAEA79F),
+                              ),
+                            ),
+                          ),
                         ),
 
                         const SizedBox(width: 12),
@@ -706,11 +705,10 @@ class AadhaarCardBack extends StatelessWidget {
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(6),
-                              child: Image.memory(
-                                base64Decode(document.imagePath),
+                              child: SafeBase64Image(
+                                base64: document.imagePath,
                                 width: 52,
                                 height: 52,
-                                fit: BoxFit.cover,
                               ),
                             ),
                           ),

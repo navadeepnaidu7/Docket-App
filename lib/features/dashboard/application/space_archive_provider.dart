@@ -84,10 +84,11 @@ final spaceArchiveAnalyticsProvider = Provider<SpaceArchiveData>((Ref ref) {
 
   // Also map IDs and Passports to current month/days if date available
   final DateTime nowNorm = normalizeDate(DateTime.now());
+  // IDs carry no date of their own. `IdDocument.issueDate` used to be read
+  // here, but nothing ever wrote it, so this branch could only ever fall
+  // through to today -- which is what it does now, directly.
   for (final IdDocument idDoc in ids) {
-    DateTime? dt = _parseDateString(idDoc.issueDate);
-    dt ??= nowNorm;
-    dateMap.putIfAbsent(normalizeDate(dt), () => <Object>[]).add(idDoc);
+    dateMap.putIfAbsent(nowNorm, () => <Object>[]).add(idDoc);
   }
 
   for (final PassportProfile passport in passports) {
