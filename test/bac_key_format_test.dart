@@ -33,6 +33,22 @@ void main() {
     });
   });
 
+  group('fromBacDate', () {
+    test('inverts the ISO form with the 50-year century pivot', () {
+      expect(BacKeyFormat.fromBacDate('940312'), '1994-03-12');
+      expect(BacKeyFormat.fromBacDate('320904'), '2032-09-04');
+      expect(BacKeyFormat.fromBacDate('051130'), '2005-11-30');
+      expect(BacKeyFormat.fromBacDate('651201'), '1965-12-01');
+    });
+
+    test('rejects non-YYMMDD input', () {
+      expect(BacKeyFormat.fromBacDate(''), isNull);
+      expect(BacKeyFormat.fromBacDate('1994-03-12'), isNull);
+      expect(BacKeyFormat.fromBacDate('19940312'), isNull);
+      expect(BacKeyFormat.fromBacDate('941399'), isNull);
+    });
+  });
+
   group('document number', () {
     test('normalises case and whitespace', () {
       expect(BacKeyFormat.toBacDocumentNumber(' z3 456 789 '), 'Z3456789');

@@ -220,49 +220,82 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                         e.printStackTrace()
                     }
 
-                    // Prepare response
-                    val response = HashMap<String, Any?>()
-                    response["firstName"] = mrzInfo.secondaryIdentifier?.replace("<", " ")?.trim()
-                    response["lastName"] = mrzInfo.primaryIdentifier?.replace("<", " ")?.trim()
-                    response["nationality"] = mrzInfo.nationality
-                    response["documentNumber"] = mrzInfo.documentNumber
-                    response["gender"] = mrzInfo.gender.toString()
-                    response["dateOfBirth"] = mrzInfo.dateOfBirth
-                    response["dateOfExpiry"] = mrzInfo.dateOfExpiry
-                    response["issuingState"] = mrzInfo.issuingState
-                    response["documentCode"] = mrzInfo.documentCode
-                    response["photoBase64"] = photoBase64
+                    // Prepare response. Only non-null, non-blank values are
+                    // put in the map — Dart's Map.from used to receive null
+                    // photo/place-of-birth entries that then never made it
+                    // onto the card when the save path also dropped them.
+                    val response = HashMap<String, Any>()
+                    fun put(key: String, value: Any?) {
+                        when (value) {
+                            null -> return
+                            is String -> if (value.isNotBlank()) response[key] = value.trim()
+                            else -> response[key] = value
+                        }
+                    }
+
+                    put("firstName", mrzInfo.secondaryIdentifier?.replace("<", " ")?.trim())
+                    put("lastName", mrzInfo.primaryIdentifier?.replace("<", " ")?.trim())
+                    put("nationality", mrzInfo.nationality)
+                    // MRZ document numbers are left-aligned and may be padded
+                    // with '<' to 9 characters; the card should not show them.
+                    put("documentNumber", mrzInfo.documentNumber?.replace("<", "")?.trim())
+                    // Enum name is MALE/FEMALE/UNKNOWN; Dart normalises to M/F/X.
+                    put("gender", mrzInfo.gender?.name ?: mrzInfo.gender?.toString())
+                    put("dateOfBirth", mrzInfo.dateOfBirth)
+                    put("dateOfExpiry", mrzInfo.dateOfExpiry)
+                    put("issuingState", mrzInfo.issuingState)
+                    put("documentCode", mrzInfo.documentCode)
+                    if (!photoBase64.isNullOrBlank()) {
+                        response["photoBase64"] = photoBase64
+                    }
 
                     // Read DG11 (Additional Personal Details - Optional)
                     try {
                         val dg11In = passportService.getInputStream(PassportService.EF_DG11)
                         val dg11File = DG11File(dg11In)
-                        response["dg11_fullName"] = dg11File.nameOfHolder
-                        response["dg11_personalNumber"] = dg11File.personalNumber
-                        response["dg11_placeOfBirth"] = dg11File.placeOfBirth?.joinToString(", ")
-                        response["dg11_permanentAddress"] = dg11File.permanentAddress?.joinToString(", ")
-                        response["dg11_telephone"] = dg11File.telephone
-                        response["dg11_profession"] = dg11File.profession
-                        response["dg11_title"] = dg11File.title
-                        response["dg11_personalSummary"] = dg11File.personalSummary
-                        response["dg11_custodyInformation"] = dg11File.custodyInformation
+                        put("dg11_fullName", dg11File.nameOfHolder)
+                        put("dg11_personalNumber", dg11File.personalNumber)
+                        put(
+                            "dg11_placeOfBirth",
+                            dg11File.placeOfBirth
+                                ?.mapNotNull { it?.trim() }
+                                ?.filter { it.isNotEmpty() }
+                                ?.joinToString(", ")
+                        )
+                        put(
+                            "dg11_permanentAddress",
+                            dg11File.permanentAddress
+                                ?.mapNotNull { it?.trim() }
+                                ?.filter { it.isNotEmpty() }
+                                ?.joinToString(", ")
+                        )
+                        put("dg11_telephone", dg11File.telephone)
+                        put("dg11_profession", dg11File.profession)
+                        put("dg11_title", dg11File.title)
+                        put("dg11_personalSummary", dg11File.personalSummary)
+                        put("dg11_custodyInformation", dg11File.custodyInformation)
                     } catch (e: Exception) {
-                        response["dg11_status"] = "Not Present or Read Error"
+                        Log.i(TAG, "DG11 not present or unreadable")
                     }
 
                     // Read DG12 (Document Details - Optional)
                     try {
                         val dg12In = passportService.getInputStream(PassportService.EF_DG12)
                         val dg12File = DG12File(dg12In)
-                        response["dg12_issuingAuthority"] = dg12File.issuingAuthority
-                        response["dg12_dateOfIssue"] = dg12File.dateOfIssue
-                        response["dg12_endorsementsAndObservations"] = dg12File.endorsementsAndObservations
-                        response["dg12_taxOrExitRequirements"] = dg12File.taxOrExitRequirements
-                        response["dg12_dateAndTimeOfPersonalization"] = dg12File.dateAndTimeOfPersonalization
-                        response["dg12_personalizationSystemSerialNumber"] = dg12File.personalizationSystemSerialNumber
+                        put("dg12_issuingAuthority", dg12File.issuingAuthority)
+                        put("dg12_dateOfIssue", dg12File.dateOfIssue)
+                        put("dg12_endorsementsAndObservations", dg12File.endorsementsAndObservations)
+                        put("dg12_taxOrExitRequirements", dg12File.taxOrExitRequirements)
+                        put("dg12_dateAndTimeOfPersonalization", dg12File.dateAndTimeOfPersonalization)
+                        put("dg12_personalizationSystemSerialNumber", dg12File.personalizationSystemSerialNumber)
                     } catch (e: Exception) {
-                        response["dg12_status"] = "Not Present or Read Error"
+                        Log.i(TAG, "DG12 not present or unreadable")
                     }
+
+                    Log.i(
+                        TAG,
+                        "chip read ok: keys=${response.keys.sorted()} photo=${response.containsKey("photoBase64")}"
+                    )
 
                     withContext(Dispatchers.Main) {
                         replyOnce { it.success(response) }

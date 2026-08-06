@@ -19,11 +19,16 @@ class NfcService {
     required String expiryDate,
   }) async {
     try {
-      final result = await _channel.invokeMethod('startNfcRead', {
+      final result = await _channel.invokeMethod<dynamic>('startNfcRead', {
         'passportNumber': passportNumber,
         'dateOfBirth': dateOfBirth, // format YYMMDD
         'expiryDate': expiryDate, // format YYMMDD
       });
+      // A cancelled/abandoned scan used to hang; it now errors CANCELLED. A
+      // success with a non-map payload is treated as empty rather than throwing
+      // inside Map.from, which would surface as an uncaught exception after a
+      // successful native read.
+      if (result is! Map) return null;
       return Map<String, dynamic>.from(result);
     } on PlatformException catch (e) {
       throw NfcException(

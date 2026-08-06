@@ -12,6 +12,7 @@ import '../../../shared/prompt_flow/widgets/prompt_review.dart';
 import '../../../shared/widgets/completion_celebration.dart';
 import '../../mrz_scanner/domain/mrz_result.dart';
 import '../../nfc/application/bac_key_format.dart';
+import '../../nfc/application/chip_payload.dart';
 import '../../nfc/application/nfc_service.dart';
 import '../../nfc/domain/nfc_failure.dart';
 import '../../nfc/presentation/nfc_prompt_step.dart';
@@ -151,24 +152,13 @@ class _PassportPromptScreenState extends ConsumerState<PassportPromptScreen> {
   /// Folds a chip payload into the flow.
   ///
   /// The chip is the most trustworthy source there is, so its values take over
-  /// from what was typed, and review marks them as chip-sourced. The DG1 fields
-  /// the old screen read and then discarded are what make that possible.
+  /// from what was typed, and review marks them as chip-sourced. Mapping lives
+  /// in [ChipPayload] so every DG field that reaches the card is covered —
+  /// previously DG1 dates, DG2 photo, DG11 place of birth and DG12 issue
+  /// metadata were read natively but only a subset was folded into the flow,
+  /// and even that subset was dropped again on save.
   void _applyChip(Map<String, dynamic> chip) {
-    String str(String key) => (chip[key] ?? '').toString().trim();
-
-    final String name = <String>[
-      str('firstName'),
-      str('lastName'),
-    ].where((String part) => part.isNotEmpty).join(' ');
-
-    _flow.applyScan(<String, String>{
-      if (name.isNotEmpty) PassportField.name: name,
-      PassportField.passportNumber: str('documentNumber'),
-      PassportField.nationality: str('nationality'),
-      PassportField.gender: normaliseGender(str('gender')),
-      'photoBase64': str('photoBase64'),
-      'placeOfBirth': str('dg11_placeOfBirth'),
-    }, source: FieldSource.chip);
+    _flow.applyScan(ChipPayload.toFlowValues(chip), source: FieldSource.chip);
     _flow.setFlag(PassportFlag.chipRead, value: true);
 
     HapticService.success();
@@ -287,6 +277,10 @@ class _PassportPromptScreenState extends ConsumerState<PassportPromptScreen> {
   void _save() {
     final PromptFlowState s = _flow.state;
 
+    // Every field the card paints must come through here. Chip reads used to
+    // land placeOfBirth / issueDate / issuingAuthority / photoBase64 in the
+    // flow and then drop them on this constructor, so the wallet card showed
+    // em-dashes and a placeholder portrait after a successful NFC read.
     final PassportProfile profile = PassportProfile(
       name: s.value(PassportField.name).trim(),
       passportNumber: s.value(PassportField.passportNumber).trim(),
@@ -296,6 +290,9 @@ class _PassportPromptScreenState extends ConsumerState<PassportPromptScreen> {
       imagePath: s.value('capturedImagePath'),
       mrzRaw: s.value('mrzRaw'),
       photoBase64: s.value('photoBase64'),
+      placeOfBirth: s.value('placeOfBirth').trim(),
+      issueDate: s.value('issueDate'),
+      issuingAuthority: s.value('issuingAuthority').trim(),
       gender: normaliseGender(s.value(PassportField.gender)),
       isEPassport: widget.kind == PassportKind.ePassport,
     );
