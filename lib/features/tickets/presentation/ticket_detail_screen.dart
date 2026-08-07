@@ -119,7 +119,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     final Color cardSurface = isDark
         ? AppTheme.elevated(Brightness.dark)
         : Colors.white;
-    final Color border = scheme.onSurface.withValues(alpha: isDark ? 0.08 : 0.06);
+    final Color border =
+        scheme.onSurface.withValues(alpha: isDark ? 0.08 : 0.06);
     final Color ink = scheme.onSurface;
     final Color muted = AppTokens.secondaryLabel(scheme);
 
@@ -221,7 +222,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 }
 
-// ΓöÇΓöÇ Segmented control ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ── Segmented control ─────────────────────────────────────────────────────────
 
 class _SegmentedTabs extends StatelessWidget {
   const _SegmentedTabs({
@@ -239,9 +240,8 @@ class _SegmentedTabs extends StatelessWidget {
     final Color track = isDark
         ? Colors.white.withValues(alpha: 0.08)
         : const Color(0xFFE8E8ED);
-    final Color selected = isDark
-        ? AppTheme.elevated(Brightness.dark)
-        : Colors.white;
+    final Color selected =
+        isDark ? AppTheme.elevated(Brightness.dark) : Colors.white;
     final Color ink = Theme.of(context).colorScheme.onSurface;
 
     return Container(
@@ -298,7 +298,7 @@ class _SegButton extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
+        duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
         alignment: Alignment.center,
         decoration: BoxDecoration(
@@ -314,21 +314,23 @@ class _SegButton extends StatelessWidget {
                 ]
               : null,
         ),
-        child: Text(
-          label,
+        child: AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
           style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
             color: selected ? ink : ink.withValues(alpha: 0.55),
             letterSpacing: -0.15,
           ),
+          child: Text(label),
         ),
       ),
     );
   }
 }
 
-// ΓöÇΓöÇ Details tab ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ── Details tab ───────────────────────────────────────────────────────────────
 
 class _DetailsTab extends StatelessWidget {
   const _DetailsTab({
@@ -351,7 +353,6 @@ class _DetailsTab extends StatelessWidget {
     final MockTicket t = ticket;
     final bool confirmed = t.status == TicketStatus.active;
 
-    // Nested under the parent ListView (ticket face + tabs above).
     return Column(
       key: key,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -381,9 +382,7 @@ class _DetailsTab extends StatelessWidget {
                 value: t.bookingStatus,
                 ink: ink,
                 muted: muted,
-                valueColor: confirmed
-                    ? const Color(0xFF30D158)
-                    : muted,
+                valueColor: confirmed ? const Color(0xFF30D158) : muted,
                 trailing: confirmed
                     ? const Icon(
                         Icons.check_circle_rounded,
@@ -481,22 +480,15 @@ class _DetailsTab extends StatelessWidget {
   }
 }
 
-// ΓöÇΓöÇ Live status tab ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-//
-// Transit-line rail: rounded vertical capsule + evenly spaced markers.
-// 6px white dots ┬╖ 8px current with ring ┬╖ soft flat route colors.
+// ── Live status tab ───────────────────────────────────────────────────────────
+// Citymapper-style journey rail: coloured line spine, station rows with
+// times, intermediate “ride N stops” chips, bottom status dock.
 
-const double _kRailWidth = 20;
-/// Vertical space per station ΓÇö enough for name + subtitle without overflow.
-const double _kStationPitch = 56;
-const double _kDotSize = 6;
-const double _kCurrentDotSize = 8;
-
-// Soft flat route colors (no glossy gradients)
-const Color _kRouteActive = Color(0xFF34C759);
-const Color _kRouteTrackLight = Color(0xFFD8D8DE);
-const Color _kRouteTrackDark = Color(0xFF3A3A3C);
+const Color _kLineBlue = Color(0xFF3B82F6);
+const Color _kLineBlueDeep = Color(0xFF2563EB);
 const Color _kStatusGreen = Color(0xFF30D158);
+const Color _kRouteTrackLight = Color(0xFFE5E5EA);
+const Color _kRouteTrackDark = Color(0xFF2C2C2E);
 
 class _LiveStatusTab extends StatelessWidget {
   const _LiveStatusTab({
@@ -520,35 +512,68 @@ class _LiveStatusTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final MockTicket t = ticket;
     final List<TicketHalt> halts = t.halts;
-    final TicketHalt? next = t.nextHalt;
     final bool completed = t.status == TicketStatus.expired;
+    final int remaining = halts
+        .where((TicketHalt h) => h.state != HaltState.departed)
+        .length;
+    final String etaLabel = completed
+        ? 'Arrived'
+        : remaining <= 1
+            ? 'Near destination'
+            : '${remaining - 1} halt${remaining - 1 == 1 ? '' : 's'} left';
 
-    // Nested under the parent ListView (ticket face + tabs above).
     return Column(
       key: key,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: <Color>[_kLineBlue, _kLineBlueDeep],
+                ),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: _kLineBlue.withValues(alpha: 0.28),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.train_rounded,
+                size: 18,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
                     t.trainTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.2,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.25,
                       color: ink,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 3),
                   Text(
                     t.liveStatusLabel,
                     style: GoogleFonts.inter(
-                      fontSize: 15,
+                      fontSize: 13.5,
                       fontWeight: FontWeight.w500,
                       color: completed ? muted : _kStatusGreen,
                     ),
@@ -557,27 +582,36 @@ class _LiveStatusTab extends StatelessWidget {
               ),
             ),
             if (!completed)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      color: _kStatusGreen,
-                      shape: BoxShape.circle,
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color:
+                      _kStatusGreen.withValues(alpha: isDark ? 0.14 : 0.10),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: _kStatusGreen,
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Updated just now',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: muted,
+                    const SizedBox(width: 5),
+                    Text(
+                      'Live',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _kStatusGreen,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
           ],
         ),
@@ -606,89 +640,36 @@ class _LiveStatusTab extends StatelessWidget {
             surface: cardSurface,
             border: border,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              child: _TransitRailMap(
+              padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
+              child: _JourneyRail(
                 halts: halts,
+                lineColor: _kLineBlue,
                 ink: ink,
                 muted: muted,
                 isDark: isDark,
+                completed: completed,
               ),
             ),
           ),
-        if (next != null && !completed) ...<Widget>[
-          const SizedBox(height: 12),
-          _SurfaceCard(
-            surface: cardSurface,
+        if (halts.isNotEmpty) ...<Widget>[
+          const SizedBox(height: 14),
+          _JourneyDock(
+            leftLabel: etaLabel,
+            rightLabel: completed ? 'Complete' : t.liveStatusLabel,
+            rightTone: completed ? muted : _kStatusGreen,
+            isDark: isDark,
+            cardSurface: cardSurface,
             border: border,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          'Next halt',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: muted,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          next.station,
-                          style: GoogleFonts.inter(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: ink,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${next.time} · ${next.dateLabel}',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: muted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: <Widget>[
-                      Text(
-                        next.state == HaltState.arriving ? 'Arriving' : 'Next',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: _kStatusGreen,
-                        ),
-                      ),
-                      if (next.platform != null)
-                        Text(
-                          next.platform!,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: muted,
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+            ink: ink,
           ),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         Center(
           child: Text(
             'All times are in IST',
             style: GoogleFonts.inter(
               fontSize: 11,
-              color: muted.withValues(alpha: 0.8),
+              color: muted.withValues(alpha: 0.75),
             ),
           ),
         ),
@@ -697,25 +678,109 @@ class _LiveStatusTab extends StatelessWidget {
   }
 }
 
-/// Vertical transit map: capsule rail + station labels (Citymapper-style).
-class _TransitRailMap extends StatefulWidget {
-  const _TransitRailMap({
+/// Bottom dock inspired by transit “X mins left / status” pills.
+class _JourneyDock extends StatelessWidget {
+  const _JourneyDock({
+    required this.leftLabel,
+    required this.rightLabel,
+    required this.rightTone,
+    required this.isDark,
+    required this.cardSurface,
+    required this.border,
+    required this.ink,
+  });
+
+  final String leftLabel;
+  final String rightLabel;
+  final Color rightTone;
+  final bool isDark;
+  final Color cardSurface;
+  final Color border;
+  final Color ink;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      decoration: BoxDecoration(
+        color: cardSurface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: border, width: 0.5),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Text(
+                leftLabel,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.15,
+                  color: ink,
+                ),
+              ),
+            ),
+          ),
+          Flexible(
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: rightTone.withValues(alpha: isDark ? 0.16 : 0.12),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                rightLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: rightTone,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Journey rail (Citymapper-like) ────────────────────────────────────────────
+
+class _JourneyRail extends StatefulWidget {
+  const _JourneyRail({
     required this.halts,
+    required this.lineColor,
     required this.ink,
     required this.muted,
     required this.isDark,
+    required this.completed,
   });
 
   final List<TicketHalt> halts;
+  final Color lineColor;
   final Color ink;
   final Color muted;
   final bool isDark;
+  final bool completed;
 
   @override
-  State<_TransitRailMap> createState() => _TransitRailMapState();
+  State<_JourneyRail> createState() => _JourneyRailState();
 }
 
-class _TransitRailMapState extends State<_TransitRailMap>
+class _JourneyRailState extends State<_JourneyRail>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulse;
 
@@ -724,7 +789,7 @@ class _TransitRailMapState extends State<_TransitRailMap>
     super.initState();
     _pulse = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 1600),
     )..repeat(reverse: true);
   }
 
@@ -747,167 +812,209 @@ class _TransitRailMapState extends State<_TransitRailMap>
     return 0;
   }
 
+  int _rideStopsAfter(int current) {
+    final int n = widget.halts.length;
+    if (current >= n - 1) return 0;
+    return n - current - 1;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final List<TicketHalt> hals = widget.halts;
-    final int n = hals.length;
+    final List<TicketHalt> haltList = widget.halts;
+    final int n = haltList.length;
     if (n == 0) return const SizedBox.shrink();
 
     final int current = _currentIndex;
-    final double totalHeight = n * _kStationPitch;
+    final int rideStops = _rideStopsAfter(current);
+    final bool showRideChip =
+        !widget.completed && rideStops > 1 && current < n - 1;
+
     final Color track =
         widget.isDark ? _kRouteTrackDark : _kRouteTrackLight;
-    final double progressEnd = (current + 0.5) * _kStationPitch;
-    final bool completed =
-        hals.every((TicketHalt h) => h.state == HaltState.departed);
 
-    return SizedBox(
-      height: totalHeight,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          // Capsule rail
-          SizedBox(
-            width: _kRailWidth,
-            child: AnimatedBuilder(
-              animation: _pulse,
-              builder: (BuildContext context, Widget? child) {
-                return CustomPaint(
-                  painter: _TransitCapsulePainter(
-                    stationCount: n,
-                    currentIndex: current,
-                    pitch: _kStationPitch,
-                    trackColor: track,
-                    routeColor: _kRouteActive,
-                    progressEnd: progressEnd,
-                    pulse: _pulse.value,
-                    completed: completed,
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 14),
-          // Labels ΓÇö fixed pitch, single-line safe layout
-          Expanded(
-            child: Column(
-              children: <Widget>[
-                for (int i = 0; i < n; i++)
-                  SizedBox(
-                    height: _kStationPitch,
-                    child: _StationLabel(
-                      halt: hals[i],
-                      isCurrent: i == current && !completed,
-                      ink: widget.ink,
-                      muted: widget.muted,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (BuildContext context, Widget? child) {
+        return Column(
+          children: <Widget>[
+            for (int i = 0; i < n; i++) ...<Widget>[
+              _StationTimelineRow(
+                halt: haltList[i],
+                index: i,
+                total: n,
+                isCurrent: i == current && !widget.completed,
+                isPast: haltList[i].state == HaltState.departed &&
+                    !(i == current && !widget.completed),
+                lineColor: widget.lineColor,
+                trackColor: track,
+                ink: widget.ink,
+                muted: widget.muted,
+                pulse: _pulse.value,
+                isFirst: i == 0,
+                isLast: i == n - 1 && !(showRideChip && i == current),
+              ),
+              if (showRideChip && i == current)
+                _RideSegmentRow(
+                  stops: rideStops,
+                  lineColor: widget.lineColor,
+                  ink: widget.ink,
+                  isDark: widget.isDark,
+                ),
+            ],
+          ],
+        );
+      },
     );
   }
 }
 
-class _StationLabel extends StatelessWidget {
-  const _StationLabel({
+class _StationTimelineRow extends StatelessWidget {
+  const _StationTimelineRow({
     required this.halt,
+    required this.index,
+    required this.total,
     required this.isCurrent,
+    required this.isPast,
+    required this.lineColor,
+    required this.trackColor,
     required this.ink,
     required this.muted,
+    required this.pulse,
+    required this.isFirst,
+    required this.isLast,
   });
 
   final TicketHalt halt;
+  final int index;
+  final int total;
   final bool isCurrent;
+  final bool isPast;
+  final Color lineColor;
+  final Color trackColor;
   final Color ink;
   final Color muted;
+  final double pulse;
+  final bool isFirst;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
-    final String status = switch (halt.state) {
-      HaltState.departed => 'Departed',
-      HaltState.arriving => 'Arriving',
-      HaltState.upcoming => 'Upcoming',
-    };
-    final Color statusColor = switch (halt.state) {
-      HaltState.departed => _kStatusGreen,
-      HaltState.arriving => _kStatusGreen,
-      HaltState.upcoming => muted,
+    final String subtitle = switch (halt.state) {
+      HaltState.departed => [
+          'Departed',
+          if (halt.platform != null) halt.platform!,
+        ].join(' · '),
+      HaltState.arriving => [
+          'Arriving now',
+          if (halt.platform != null) halt.platform!,
+        ].join(' · '),
+      HaltState.upcoming => [
+          if (halt.platform != null) halt.platform!,
+          if (index == total - 1) 'Destination' else halt.dateLabel,
+        ].where((String s) => s.isNotEmpty).join(' · '),
     };
 
-    // Reference-style: station + subtitle left, time right ΓÇö no vertical overflow.
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    final Color nameColor =
+        isPast && !isCurrent ? ink.withValues(alpha: 0.55) : ink;
+    final Color subColor = isCurrent
+        ? lineColor
+        : isPast
+            ? muted.withValues(alpha: 0.85)
+            : muted;
+
+    return IntrinsicHeight(
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  halt.station,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
-                    letterSpacing: -0.2,
-                    color: ink,
-                    height: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  [
-                    status,
-                    if (halt.platform != null) halt.platform!,
-                    halt.dateLabel,
-                  ].join('  ·  '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: statusColor,
-                    height: 1.1,
-                  ),
-                ),
-              ],
+          SizedBox(
+            width: 28,
+            child: CustomPaint(
+              painter: _LineSpinePainter(
+                lineColor: lineColor,
+                trackColor: trackColor,
+                isPast: isPast || isCurrent,
+                isCurrent: isCurrent,
+                isFirst: isFirst,
+                isLast: isLast,
+                pulse: pulse,
+              ),
             ),
           ),
-          const SizedBox(width: 10),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: <Widget>[
-              Text(
-                halt.time,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: ink,
-                  height: 1.1,
-                ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                top: isFirst ? 0 : 10,
+                bottom: isLast ? 8 : 10,
               ),
-              if (halt.actual != null && halt.actual != halt.time) ...<Widget>[
-                const SizedBox(height: 2),
-                Text(
-                  halt.actual!,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: _kStatusGreen,
-                    height: 1.1,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          halt.station,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: isCurrent ? 15.5 : 14.5,
+                            fontWeight:
+                                isCurrent ? FontWeight.w700 : FontWeight.w600,
+                            letterSpacing: -0.2,
+                            color: nameColor,
+                            height: 1.2,
+                          ),
+                        ),
+                        if (subtitle.isNotEmpty) ...<Widget>[
+                          const SizedBox(height: 3),
+                          Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                              color: subColor,
+                              height: 1.15,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ],
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: <Widget>[
+                      Text(
+                        halt.time,
+                        style: GoogleFonts.inter(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          color: nameColor,
+                          height: 1.15,
+                        ),
+                      ),
+                      if (halt.actual != null &&
+                          halt.actual != halt.time) ...<Widget>[
+                        const SizedBox(height: 2),
+                        Text(
+                          halt.actual!,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _kStatusGreen,
+                            height: 1.1,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -915,96 +1022,197 @@ class _StationLabel extends StatelessWidget {
   }
 }
 
-/// Paints the rounded vertical progress capsule + station dots.
-class _TransitCapsulePainter extends CustomPainter {
-  _TransitCapsulePainter({
-    required this.stationCount,
-    required this.currentIndex,
-    required this.pitch,
-    required this.trackColor,
-    required this.routeColor,
-    required this.progressEnd,
-    required this.pulse,
-    required this.completed,
+/// Intermediate chip: “Ride N stops”.
+class _RideSegmentRow extends StatelessWidget {
+  const _RideSegmentRow({
+    required this.stops,
+    required this.lineColor,
+    required this.ink,
+    required this.isDark,
   });
 
-  final int stationCount;
-  final int currentIndex;
-  final double pitch;
-  final Color trackColor;
-  final Color routeColor;
-  final double progressEnd;
-  final double pulse;
-  final bool completed;
+  final int stops;
+  final Color lineColor;
+  final Color ink;
+  final bool isDark;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    // Inset slightly so pulse rings don't clip harshly at edges
-    final RRect capsule = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Radius.circular(size.width / 2),
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          SizedBox(
+            width: 28,
+            child: Center(
+              child: Container(
+                width: 4,
+                decoration: BoxDecoration(
+                  color: lineColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : const Color(0xFFF2F2F7),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : const Color(0xFFE5E5EA),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Icon(Icons.train_rounded, size: 15, color: lineColor),
+                  const SizedBox(width: 7),
+                  Text(
+                    'Ride $stops stops',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.1,
+                      color: ink,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
-
-    canvas.drawRRect(capsule, Paint()..color = trackColor);
-
-    if (progressEnd > 0) {
-      canvas.save();
-      canvas.clipRRect(capsule);
-      canvas.drawRect(
-        Rect.fromLTWH(0, 0, size.width, progressEnd.clamp(0.0, size.height)),
-        Paint()..color = routeColor,
-      );
-      canvas.restore();
-    }
-
-    for (int i = 0; i < stationCount; i++) {
-      final double cy = (i + 0.5) * pitch;
-      final Offset c = Offset(size.width / 2, cy);
-      final bool isCurrent = i == currentIndex && !completed;
-
-      if (isCurrent) {
-        final double ringScale = 1.0 + 0.18 * pulse;
-        final double ringAlpha = 0.40 * (1.0 - pulse * 0.5);
-        canvas.drawCircle(
-          c,
-          (_kCurrentDotSize / 2 + 3.5) * ringScale,
-          Paint()
-            ..color = Colors.white.withValues(alpha: ringAlpha)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.5,
-        );
-        canvas.drawCircle(
-          c,
-          _kCurrentDotSize / 2 + 1.5,
-          Paint()..color = Colors.white.withValues(alpha: 0.20 + 0.10 * pulse),
-        );
-        canvas.drawCircle(
-          c,
-          _kCurrentDotSize / 2,
-          Paint()..color = Colors.white,
-        );
-      } else {
-        canvas.drawCircle(
-          c,
-          _kDotSize / 2,
-          Paint()..color = Colors.white,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _TransitCapsulePainter old) {
-    return old.pulse != pulse ||
-        old.currentIndex != currentIndex ||
-        old.stationCount != stationCount ||
-        old.trackColor != trackColor ||
-        old.progressEnd != progressEnd ||
-        old.completed != completed;
   }
 }
 
-// ΓöÇΓöÇ Shared chrome ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+/// Vertical line spine with station node (badge / pulse / plain dot).
+class _LineSpinePainter extends CustomPainter {
+  _LineSpinePainter({
+    required this.lineColor,
+    required this.trackColor,
+    required this.isPast,
+    required this.isCurrent,
+    required this.isFirst,
+    required this.isLast,
+    required this.pulse,
+  });
+
+  final Color lineColor;
+  final Color trackColor;
+  final bool isPast;
+  final bool isCurrent;
+  final bool isFirst;
+  final bool isLast;
+  final double pulse;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double cx = size.width / 2;
+    final double cy = isFirst ? 10.0 : 18.0;
+    const double lineW = 4.0;
+
+    final Paint pastPaint = Paint()
+      ..color = lineColor
+      ..strokeWidth = lineW
+      ..strokeCap = StrokeCap.round;
+    final Paint futurePaint = Paint()
+      ..color = trackColor
+      ..strokeWidth = lineW
+      ..strokeCap = StrokeCap.round;
+
+    if (!isFirst) {
+      canvas.drawLine(
+        Offset(cx, 0),
+        Offset(cx, cy),
+        isPast || isCurrent ? pastPaint : futurePaint,
+      );
+    }
+    if (!isLast) {
+      final bool segmentDone = isPast && !isCurrent;
+      canvas.drawLine(
+        Offset(cx, cy),
+        Offset(cx, size.height),
+        segmentDone || isCurrent ? pastPaint : futurePaint,
+      );
+    }
+
+    if (isFirst) {
+      final Rect badge = Rect.fromCenter(
+        center: Offset(cx, cy),
+        width: 22,
+        height: 22,
+      );
+      final RRect r = RRect.fromRectAndRadius(badge, const Radius.circular(7));
+      canvas.drawRRect(r, Paint()..color = lineColor);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(cx, cy), width: 8, height: 8),
+          const Radius.circular(2),
+        ),
+        Paint()..color = Colors.white.withValues(alpha: 0.95),
+      );
+    } else if (isCurrent) {
+      final double ring = 1.0 + 0.22 * pulse;
+      final double ringA = 0.35 * (1.0 - pulse * 0.45);
+      canvas.drawCircle(
+        Offset(cx, cy),
+        9 * ring,
+        Paint()
+          ..color = lineColor.withValues(alpha: ringA)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
+      canvas.drawCircle(Offset(cx, cy), 7, Paint()..color = lineColor);
+      canvas.drawCircle(Offset(cx, cy), 3.2, Paint()..color = Colors.white);
+    } else if (isPast) {
+      canvas.drawCircle(Offset(cx, cy), 5.5, Paint()..color = lineColor);
+      canvas.drawCircle(Offset(cx, cy), 2.4, Paint()..color = Colors.white);
+    } else if (isLast) {
+      canvas.drawCircle(
+        Offset(cx, cy),
+        6,
+        Paint()
+          ..color = lineColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.2,
+      );
+      canvas.drawCircle(Offset(cx, cy), 2.5, Paint()..color = lineColor);
+    } else {
+      canvas.drawCircle(Offset(cx, cy), 4.5, Paint()..color = trackColor);
+      canvas.drawCircle(
+        Offset(cx, cy),
+        4.5,
+        Paint()
+          ..color = lineColor.withValues(alpha: 0.35)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _LineSpinePainter old) {
+    return old.pulse != pulse ||
+        old.isCurrent != isCurrent ||
+        old.isPast != isPast ||
+        old.lineColor != lineColor ||
+        old.trackColor != trackColor ||
+        old.isFirst != isFirst ||
+        old.isLast != isLast;
+  }
+}
+
+// ── Shared chrome ─────────────────────────────────────────────────────────────
 
 class _SurfaceCard extends StatelessWidget {
   const _SurfaceCard({
@@ -1180,5 +1388,3 @@ class _InfoRow extends StatelessWidget {
     );
   }
 }
-
-
