@@ -12,7 +12,9 @@ import '../../../shared/widgets/bounce_tap.dart';
 import '../../../shared/widgets/rolling_card_page.dart';
 import '../../dashboard/application/passes_history_provider.dart';
 import '../application/pass_list_provider.dart';
+import '../domain/history_folder.dart';
 import '../domain/pass_catalog.dart';
+import 'history/history_passes_shell.dart';
 import 'wallet_movie_card.dart';
 import 'wallet_ticket_card.dart';
 
@@ -95,6 +97,20 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
               if (filtered.isEmpty) {
                 return _EmptyState(isHistory: showHistory);
               }
+
+              // History: category folders instead of the flat expired carousel.
+              if (showHistory) {
+                final List<HistoryFolderSummary> folders =
+                    buildHistoryFolders(all);
+                if (folders.isEmpty) {
+                  return const _EmptyState(isHistory: true);
+                }
+                return HistoryPassesShell(
+                  key: const ValueKey<String>('history-shell'),
+                  folders: folders,
+                );
+              }
+
               return Stack(
                 children: <Widget>[
                   PageView.builder(
@@ -290,7 +306,7 @@ class _EmptyState extends StatelessWidget {
             ),
           const SizedBox(height: 12),
           Text(
-            isHistory ? 'No past passes' : 'No active passes',
+            isHistory ? 'No archived passes' : 'No active passes',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
