@@ -1,17 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/assets/app_assets.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
-import '../../tickets/domain/movie_pass_models.dart';
-import '../../tickets/domain/pass_catalog.dart';
-import '../../tickets/domain/ticket_models.dart';
 import '../application/space_archive_provider.dart';
 import 'settings_screen.dart';
 
@@ -19,13 +17,25 @@ class UserCardDetailScreen extends ConsumerStatefulWidget {
   const UserCardDetailScreen({super.key});
 
   @override
-  ConsumerState<UserCardDetailScreen> createState() => _UserCardDetailScreenState();
+  ConsumerState<UserCardDetailScreen> createState() =>
+      _UserCardDetailScreenState();
 }
 
 class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
-  int _selectedTab = 0; // 0: Highlights, 1: Activity Calendar
-  DateTime _calendarMonth = DateTime(2026, 7, 1);
-  DateTime? _selectedDate = DateTime(2026, 7, 27);
+  late final PageController _pageController;
+  int _pageIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,20 +49,18 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
     // Match Settings dark chrome (neutral graphite, not blue-tinted navy).
     final Color bg =
         isDark ? const Color(0xFF0A0A0D) : theme.scaffoldBackgroundColor;
-    final Color surface =
-        isDark ? const Color(0xFF16161A) : const Color(0xFFFFFFFF);
     final Color ink =
         isDark ? const Color(0xFFF2F2F7) : const Color(0xFF1C1C1E);
     final Color muted =
-        isDark ? const Color(0xFFAEAEB2) : const Color(0xFF636366);
-    final Color border = ink.withValues(alpha: isDark ? 0.10 : 0.06);
+        isDark ? const Color(0xFF8E8E93) : const Color(0xFFA1A1A6);
+
+    final List<_StoryPage> stories = _buildStories(data, isDark);
 
     return Scaffold(
       backgroundColor: bg,
       body: SafeArea(
         child: Column(
           children: <Widget>[
-            // Top Navigation Bar (Clean Back Button)
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 4, 16, 4),
               child: Row(
@@ -67,13 +75,14 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
                 ],
               ),
             ),
-
-            // Scrollable Content featuring Hero Card prominently on top
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
                 children: <Widget>[
-                  // Prominent Hero Card visible on top
+                  // Membership card — unchanged from settings.
                   SizedBox(
                     height: kSettingsHeroHeight,
                     child: WalletMembershipCard(
@@ -82,20 +91,36 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
                       isDark: isDark,
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 36),
 
-                  // Segmented Switcher directly below hero card
-                  _buildSegmentedControl(surface, ink, muted, border, isDark),
-                  const SizedBox(height: 16),
-
-                  // Content Tabs (Highlights vs Activity Calendar)
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    child: _selectedTab == 0
-                        ? _buildHighlightsTab(data, surface, ink, muted, border, isDark)
-                        : _buildCalendarTab(data, surface, ink, muted, border, isDark),
+                  // Typography story carousel (mockup-inspired).
+                  SizedBox(
+                    height: 280,
+                    child: PageView.builder(
+                      controller: _pageController,
+                      itemCount: stories.length,
+                      onPageChanged: (int i) {
+                        HapticService.select();
+                        setState(() => _pageIndex = i);
+                      },
+                      itemBuilder: (BuildContext context, int index) {
+                        return _StoryTypography(
+                          key: ValueKey<int>(index),
+                          page: stories[index],
+                          ink: ink,
+                          muted: muted,
+                          isDark: isDark,
+                          active: index == _pageIndex,
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _PageDots(
+                    count: stories.length,
+                    index: _pageIndex,
+                    ink: ink,
+                    muted: muted,
                   ),
                 ],
               ),
@@ -106,731 +131,676 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
     );
   }
 
-  Widget _buildSegmentedControl(
-    Color surface,
-    Color ink,
-    Color muted,
-    Color border,
-    bool isDark,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: border),
-      ),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                HapticService.select();
-                setState(() => _selectedTab = 0);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 9),
-                decoration: BoxDecoration(
-                  color: _selectedTab == 0
-                      ? (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA))
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(
-                  child: Text(
-                    'Highlights',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: _selectedTab == 0 ? FontWeight.w700 : FontWeight.w500,
-                      color: _selectedTab == 0 ? ink : muted,
-                    ),
-                  ),
-                ),
+  List<_StoryPage> _buildStories(SpaceArchiveData data, bool isDark) {
+    final int trains = data.categoryCounts['Transit'] ?? 0;
+    final int movies = data.categoryCounts['Cinema'] ?? 0;
+    final int ids = data.totalIdsCount;
+    final int passports = data.totalPassportsCount;
+    final int credentials = ids + passports;
+    final int activityDays = data.dateToPassesMap.length;
+    final int yearsSpan = _yearsSpan(data);
+    final int lifeDays = _lifeDaysEquivalent(trains: trains, movies: movies);
+
+    final String yearsPhrase = yearsSpan <= 1
+        ? 'the past year'
+        : 'the last $yearsSpan years';
+
+    return <_StoryPage>[
+      _StoryPage(
+        lines: <_StoryLine>[
+          _StoryLine(
+            spans: <_StorySpan>[
+              const _StorySpan.muted("You've taken "),
+              _StorySpan.emphasis(_countPhrase(trains, 'trip', 'trips')),
+              _StorySpan.rollingIcon(
+                icon: CupertinoIcons.train_style_one,
+                color: const Color(0xFFE07A2F),
               ),
-            ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                HapticService.select();
-                setState(() => _selectedTab = 1);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 9),
-                decoration: BoxDecoration(
-                  color: _selectedTab == 1
-                      ? (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA))
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(
-                  child: Text(
-                    'Activity Calendar',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: _selectedTab == 1 ? FontWeight.w700 : FontWeight.w500,
-                      color: _selectedTab == 1 ? ink : muted,
-                    ),
-                  ),
-                ),
+              _StorySpan.muted(' in $yearsPhrase, and '),
+              const _StorySpan.muted('caught '),
+              _StorySpan.emphasis(_countPhrase(movies, 'movie', 'movies')),
+              _StorySpan.rollingIcon(
+                icon: Icons.local_movies_rounded,
+                color: const Color(0xFF9E121E),
               ),
-            ),
+              const _StorySpan.muted(' with '),
+              _StorySpan.inlineAsset(
+                assetPath: AppAssets.docketLogo,
+                semanticLabel: 'docket',
+              ),
+              const _StorySpan.muted('. That stacks up to about '),
+              _StorySpan.emphasis(
+                _countPhrase(lifeDays, 'full day', 'full days'),
+              ),
+              const _StorySpan.muted(' of your life, kept in one place.'),
+            ],
           ),
         ],
       ),
-    );
-  }
-
-  // ── Highlights Presentation View ──────────────────────────────────
-  Widget _buildHighlightsTab(
-    SpaceArchiveData data,
-    Color surface,
-    Color ink,
-    Color muted,
-    Color border,
-    bool isDark,
-  ) {
-    return Column(
-      key: const ValueKey<int>(0),
-      children: <Widget>[
-        // Milestone Card with Rich Typography
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: border),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+      _StoryPage(
+        lines: <_StoryLine>[
+          _StoryLine(
+            spans: <_StorySpan>[
+              const _StorySpan.muted('Your wallet holds '),
+              _StorySpan.emphasis(
+                _countPhrase(credentials, 'credential', 'credentials'),
+              ),
+              _StorySpan.rollingIcon(
+                icon: CupertinoIcons.lock_shield_fill,
+                color: const Color(0xFF2A9D6B),
+              ),
+              const _StorySpan.muted(' — '),
+              _StorySpan.emphasis(
+                _countPhrase(passports, 'passport', 'passports'),
+              ),
+              const _StorySpan.muted(' and '),
+              _StorySpan.emphasis(_countPhrase(ids, 'ID', 'IDs')),
+              const _StorySpan.muted(
+                ' — encrypted on-device, never uploaded for storage.',
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: data.topCategoryColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      CupertinoIcons.sparkles,
-                      color: data.topCategoryColor,
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'MILESTONE SUMMARY',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      color: data.topCategoryColor,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                data.milestoneTitle,
-                style: GoogleFonts.inter(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.6,
-                  color: ink,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                data.milestoneSubtitle,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  height: 1.4,
-                  color: muted,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Divider(color: border, height: 1),
-              const SizedBox(height: 18),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: <Widget>[
-                  _buildRichStatBadge(
-                    icon: CupertinoIcons.square_stack_3d_up_fill,
-                    iconColor: isDark
-                        ? const Color(0xFFAEAEB2)
-                        : const Color(0xFF636366),
-                    value: '${data.grandTotal}',
-                    label: 'Total Credentials',
-                    ink: ink,
-                    muted: muted,
-                  ),
-                  _buildRichStatBadge(
-                    icon: CupertinoIcons.ticket_fill,
-                    iconColor: const Color(0xFFE07A2F),
-                    value: '${data.totalPassesCount}',
-                    label: 'Active Passes',
-                    ink: ink,
-                    muted: muted,
-                  ),
-                  _buildRichStatBadge(
-                    icon: CupertinoIcons.calendar,
-                    iconColor: const Color(0xFF2A9D6B),
-                    value: data.peakMonthName.split(' ').first,
-                    label: 'Peak Month',
-                    ink: ink,
-                    muted: muted,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.04, end: 0),
-
-        const SizedBox(height: 16),
-
-        // Category Breakdown Card with Rich Icons
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: data.topCategoryColor.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      data.topCategoryIcon,
-                      color: data.topCategoryColor,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'TOP CATEGORY',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.0,
-                          color: muted,
-                        ),
-                      ),
-                      Text(
-                        data.topCategoryName,
-                        style: GoogleFonts.inter(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: ink,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              ...data.categoryCounts.entries.map((MapEntry<String, int> entry) {
-                final double fraction = data.grandTotal > 0
-                    ? (entry.value / data.grandTotal).clamp(0.05, 1.0)
-                    : 0.0;
-                final IconData catIcon = _getCategoryIcon(entry.key);
-
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          Icon(catIcon, size: 16, color: muted),
-                          const SizedBox(width: 8),
-                          Text(
-                            entry.key,
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: ink,
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            '${entry.value} items',
-                            style: GoogleFonts.robotoMono(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: muted,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: fraction,
-                          minHeight: 6,
-                          backgroundColor: border,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            entry.key == data.topCategoryName
-                                ? data.topCategoryColor
-                                : (isDark ? Colors.white54 : Colors.black45),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-            ],
-          ),
-        ).animate().fadeIn(duration: 450.ms, delay: 80.ms).slideY(begin: 0.04, end: 0),
-
-        const SizedBox(height: 16),
-
-        // Security & Verification Badge Card
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: border),
-          ),
-          child: Row(
-            children: <Widget>[
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF30D158).withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  CupertinoIcons.checkmark_seal_fill,
-                  color: Color(0xFF30D158),
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      '100% Encrypted & On-Device',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: ink,
-                      ),
-                    ),
-                    Text(
-                      'Passes & credentials are authenticated locally.',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: muted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ).animate().fadeIn(duration: 500.ms, delay: 140.ms).slideY(begin: 0.04, end: 0),
-      ],
-    );
-  }
-
-  Widget _buildRichStatBadge({
-    required IconData icon,
-    required Color iconColor,
-    required String value,
-    required String label,
-    required Color ink,
-    required Color muted,
-  }) {
-    return Column(
-      children: <Widget>[
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.14),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: iconColor, size: 20),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: GoogleFonts.inter(
-            fontSize: 19,
-            fontWeight: FontWeight.w800,
-            color: ink,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            color: muted,
-          ),
-        ),
-      ],
-    );
-  }
-
-  IconData _getCategoryIcon(String category) {
-    switch (category) {
-      case 'Cinema':
-        return Icons.movie_filter_rounded;
-      case 'Identity':
-        return Icons.badge_rounded;
-      case 'Passports':
-        return Icons.public_rounded;
-      case 'Transit':
-      default:
-        return Icons.train_rounded;
-    }
-  }
-
-  // ── Activity Calendar View ─────────────────────────────────────────
-  Widget _buildCalendarTab(
-    SpaceArchiveData data,
-    Color surface,
-    Color ink,
-    Color muted,
-    Color border,
-    bool isDark,
-  ) {
-    final int daysInMonth =
-        DateTime(_calendarMonth.year, _calendarMonth.month + 1, 0).day;
-    final int firstWeekday =
-        DateTime(_calendarMonth.year, _calendarMonth.month, 1).weekday;
-
-    final DateTime normSelected = _selectedDate != null
-        ? DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day)
-        : DateTime(2026, 7, 27);
-
-    final List<Object> passesOnSelectedDate =
-        data.dateToPassesMap[normSelected] ?? <Object>[];
-
-    return Column(
-      key: const ValueKey<int>(1),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        // Calendar Grid Card
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: border),
-          ),
-          child: Column(
-            children: <Widget>[
-              // Month Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  Text(
-                    'July 2026',
-                    style: GoogleFonts.inter(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: ink,
-                    ),
-                  ),
-                  Row(
-                    children: <Widget>[
-                      IconButton(
-                        icon: Icon(Icons.chevron_left_rounded, color: ink),
-                        onPressed: () {
-                          HapticService.select();
-                          setState(() {
-                            _calendarMonth = DateTime(
-                                _calendarMonth.year, _calendarMonth.month - 1);
-                          });
-                        },
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.chevron_right_rounded, color: ink),
-                        onPressed: () {
-                          HapticService.select();
-                          setState(() {
-                            _calendarMonth = DateTime(
-                                _calendarMonth.year, _calendarMonth.month + 1);
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Weekday Headers
-              Row(
-                children: <String>['M', 'T', 'W', 'T', 'F', 'S', 'S']
-                    .map((String day) => Expanded(
-                          child: Center(
-                            child: Text(
-                              day,
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: muted,
-                              ),
-                            ),
-                          ),
-                        ))
-                    .toList(),
-              ),
-              const SizedBox(height: 8),
-
-              // Calendar Grid
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: 35,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 7,
-                  mainAxisSpacing: 6,
-                  crossAxisSpacing: 6,
-                ),
-                itemBuilder: (BuildContext context, int index) {
-                  final int dayNum = index - (firstWeekday - 2);
-                  if (dayNum < 1 || dayNum > daysInMonth) {
-                    return const SizedBox.shrink();
-                  }
-
-                  final DateTime date =
-                      DateTime(_calendarMonth.year, _calendarMonth.month, dayNum);
-                  final bool isSelected = date.year == normSelected.year &&
-                      date.month == normSelected.month &&
-                      date.day == normSelected.day;
-
-                  final List<Object>? dayPasses = data.dateToPassesMap[date];
-                  final bool hasPasses = dayPasses != null && dayPasses.isNotEmpty;
-
-                  return GestureDetector(
-                    onTap: () {
-                      HapticService.select();
-                      setState(() => _selectedDate = date);
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? (isDark
-                                ? const Color(0xFFE8E8ED)
-                                : const Color(0xFF1C1C1E))
-                            : (hasPasses
-                                ? (isDark
-                                    ? const Color(0xFF2C2C2E)
-                                    : const Color(0xFFE5E5EA))
-                                : Colors.transparent),
-                        borderRadius: BorderRadius.circular(10),
-                        border: isSelected
-                            ? Border.all(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.35)
-                                    : Colors.black.withValues(alpha: 0.12),
-                                width: 1,
-                              )
-                            : null,
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: <Widget>[
-                          Text(
-                            '$dayNum',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight:
-                                  isSelected ? FontWeight.w800 : FontWeight.w500,
-                              color: isSelected
-                                  ? (isDark
-                                      ? const Color(0xFF0A0A0D)
-                                      : Colors.white)
-                                  : (hasPasses
-                                      ? ink
-                                      : muted.withValues(alpha: 0.6)),
-                            ),
-                          ),
-                          if (hasPasses && !isSelected)
-                            Positioned(
-                              bottom: 4,
-                              child: Container(
-                                width: 4,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? const Color(0xFF8E8E93)
-                                      : const Color(0xFF636366),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.04, end: 0),
-
-        const SizedBox(height: 18),
-
-        // Selected Date Header
-        Text(
-          'Passes on ${_formatDateLabel(normSelected)}',
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: ink,
-          ),
-        ),
-        const SizedBox(height: 8),
-
-        if (passesOnSelectedDate.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: border),
-            ),
-            child: Center(
-              child: Text(
-                'No recorded passes or documents for this date.',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: muted,
-                ),
-              ),
-            ),
-          )
-        else
-          ...passesOnSelectedDate.map((Object item) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _buildPassDetailTile(item, surface, ink, muted, border, isDark),
-            );
-          }),
-      ],
-    );
-  }
-
-  Widget _buildPassDetailTile(
-    Object item,
-    Color surface,
-    Color ink,
-    Color muted,
-    Color border,
-    bool isDark,
-  ) {
-    String title = 'Pass Document';
-    String subtitle = 'Wallet Item';
-    IconData icon = Icons.confirmation_number_rounded;
-    Color accent =
-        isDark ? const Color(0xFFAEAEB2) : const Color(0xFF636366);
-
-    if (item is TrainPassItem) {
-      final TrainPass t = item.ticket;
-      title = '${t.trainNumber} · ${t.trainName}';
-      subtitle = '${t.fromCode} → ${t.toCode} (${t.date})';
-      icon = Icons.train_rounded;
-      accent = const Color(0xFFE07A2F);
-    } else if (item is MoviePassItem) {
-      final MoviePass m = item.pass;
-      title = m.movieTitle;
-      subtitle = '${m.cinemaName} (${m.showDate} ${m.showTime})';
-      icon = Icons.movie_filter_rounded;
-      accent = const Color(0xFF9E121E);
-    } else if (item is IdDocument) {
-      title = item.type == IdDocumentType.pan ? 'PAN Card' : 'Aadhaar Card';
-      subtitle = item.holderName;
-      icon = Icons.badge_rounded;
-      accent = const Color(0xFF2A9D6B);
-    } else if (item is PassportProfile) {
-      title = 'Passport Profile';
-      subtitle = item.name;
-      icon = Icons.public_rounded;
-      accent = const Color(0xFF1E3A8A);
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: border),
+        ],
       ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: accent, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: ink,
-                  ),
+      _StoryPage(
+        lines: <_StoryLine>[
+          _StoryLine(
+            spans: <_StorySpan>[
+              _StorySpan.emphasis(data.topCategoryName),
+              _StorySpan.rollingIcon(
+                icon: data.topCategoryIcon,
+                color: data.topCategoryColor,
+              ),
+              const _StorySpan.muted(' leads your archive with '),
+              _StorySpan.emphasis(
+                _countPhrase(
+                  data.categoryCounts[data.topCategoryName] ?? 0,
+                  'item',
+                  'items',
                 ),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: muted,
+              ),
+              const _StorySpan.muted('. Across '),
+              _StorySpan.emphasis(
+                _countPhrase(activityDays, 'active day', 'active days'),
+              ),
+              const _StorySpan.muted(', your busiest stretch was '),
+              _StorySpan.emphasis(data.peakMonthName),
+              const _StorySpan.muted('.'),
+            ],
+          ),
+        ],
+      ),
+      _StoryPage(
+        lines: <_StoryLine>[
+          _StoryLine(
+            spans: <_StorySpan>[
+              const _StorySpan.muted("You're a "),
+              _StorySpan.emphasis(data.milestoneTitle),
+              _StorySpan.rollingIcon(
+                icon: CupertinoIcons.sparkles,
+                color: isDark
+                    ? const Color(0xFFFFD60A)
+                    : const Color(0xFFB8860B),
+              ),
+              const _StorySpan.muted(' — '),
+              _StorySpan.muted(_polishSubtitle(data.milestoneSubtitle)),
+            ],
+          ),
+        ],
+      ),
+    ];
+  }
+
+  static String _countPhrase(int n, String singular, String plural) {
+    final String word = n == 1 ? singular : plural;
+    return '$n $word';
+  }
+
+  static String _polishSubtitle(String raw) {
+    // Soften internal milestone copy for the narrative card.
+    if (raw.contains('Top 1%')) {
+      return 'among the most active wallets we see, with a rich pass history.';
+    }
+    if (raw.contains('Consistently')) {
+      return 'consistently saving travel and access passes as you go.';
+    }
+    return 'unlocking seamless tickets and digital verification.';
+  }
+
+  static int _yearsSpan(SpaceArchiveData data) {
+    if (data.dateToPassesMap.isEmpty) return 1;
+    final List<DateTime> dates = data.dateToPassesMap.keys.toList()..sort();
+    final int days = dates.last.difference(dates.first).inDays;
+    final int years = (days / 365).ceil();
+    return years.clamp(1, 10);
+  }
+
+  /// Rough “time spent” fun metric: ~2.5h per movie, ~6h per train day.
+  static int _lifeDaysEquivalent({required int trains, required int movies}) {
+    final double hours = (movies * 2.5) + (trains * 6.0);
+    final int days = (hours / 24).round();
+    return days.clamp(0, 999);
+  }
+}
+
+// ── Story model ──────────────────────────────────────────────────────────────
+
+class _StoryPage {
+  const _StoryPage({required this.lines});
+  final List<_StoryLine> lines;
+}
+
+class _StoryLine {
+  const _StoryLine({required this.spans});
+  final List<_StorySpan> spans;
+}
+
+enum _SpanKind { muted, emphasis, icon, asset }
+
+class _StorySpan {
+  const _StorySpan._({
+    required this.kind,
+    this.text,
+    this.icon,
+    this.color,
+    this.assetPath,
+    this.semanticLabel,
+  });
+
+  const _StorySpan.muted(String text)
+      : this._(kind: _SpanKind.muted, text: text);
+
+  const _StorySpan.emphasis(String text)
+      : this._(kind: _SpanKind.emphasis, text: text);
+
+  const _StorySpan.rollingIcon({
+    required IconData icon,
+    required Color color,
+  }) : this._(kind: _SpanKind.icon, icon: icon, color: color);
+
+  const _StorySpan.inlineAsset({
+    required String assetPath,
+    required String semanticLabel,
+  }) : this._(
+          kind: _SpanKind.asset,
+          assetPath: assetPath,
+          semanticLabel: semanticLabel,
+        );
+
+  final _SpanKind kind;
+  final String? text;
+  final IconData? icon;
+  final Color? color;
+  final String? assetPath;
+  final String? semanticLabel;
+}
+
+// ── Typography layout ────────────────────────────────────────────────────────
+
+class _StoryTypography extends StatelessWidget {
+  const _StoryTypography({
+    super.key,
+    required this.page,
+    required this.ink,
+    required this.muted,
+    required this.isDark,
+    required this.active,
+  });
+
+  final _StoryPage page;
+  final Color ink;
+  final Color muted;
+  final bool isDark;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextStyle base = GoogleFonts.inter(
+      fontSize: 28,
+      height: 1.28,
+      letterSpacing: -0.7,
+      fontWeight: FontWeight.w500,
+    );
+
+    return Align(
+      alignment: Alignment.topLeft,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Text.rich(
+          TextSpan(
+            children: <InlineSpan>[
+              for (final _StoryLine line in page.lines)
+                for (final _StorySpan span in line.spans) _buildSpan(span, base),
+            ],
+          ),
+          textAlign: TextAlign.left,
+        ),
+      ),
+    );
+  }
+
+  InlineSpan _buildSpan(_StorySpan span, TextStyle base) {
+    switch (span.kind) {
+      case _SpanKind.muted:
+        return TextSpan(
+          text: span.text,
+          style: base.copyWith(
+            color: muted,
+            fontWeight: FontWeight.w500,
+          ),
+        );
+      case _SpanKind.emphasis:
+        return WidgetSpan(
+          alignment: PlaceholderAlignment.baseline,
+          baseline: TextBaseline.alphabetic,
+          child: _RollingText(
+            text: span.text ?? '',
+            style: base.copyWith(
+              color: ink,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.9,
+            ),
+            play: active,
+          ),
+        );
+      case _SpanKind.icon:
+        return WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            child: _RollingIconChip(
+              icon: span.icon!,
+              color: span.color!,
+              isDark: isDark,
+              play: active,
+            ),
+          ),
+        );
+      case _SpanKind.asset:
+        return WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: _RollingAssetChip(
+              assetPath: span.assetPath!,
+              label: span.semanticLabel ?? '',
+              isDark: isDark,
+              play: active,
+            ),
+          ),
+        );
+    }
+  }
+}
+
+// ── Rolling transitions (Codex / Waterlemon style) ───────────────────────────
+
+/// Vertical “roll” for emphasized numbers & words.
+class _RollingText extends StatefulWidget {
+  const _RollingText({
+    required this.text,
+    required this.style,
+    required this.play,
+  });
+
+  final String text;
+  final TextStyle style;
+  final bool play;
+
+  @override
+  State<_RollingText> createState() => _RollingTextState();
+}
+
+class _RollingTextState extends State<_RollingText>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _t;
+  String _shown = '';
+  String _incoming = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _shown = widget.text;
+    _incoming = widget.text;
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    );
+    _t = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOutCubic);
+    if (widget.play) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _ctrl.forward(from: 0);
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _RollingText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text) {
+      _shown = oldWidget.text;
+      _incoming = widget.text;
+      _ctrl.forward(from: 0).whenComplete(() {
+        if (!mounted) return;
+        setState(() => _shown = _incoming);
+      });
+    } else if (!oldWidget.play && widget.play) {
+      _ctrl.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Measure tallest line for stable layout.
+    final TextPainter measure = TextPainter(
+      text: TextSpan(text: widget.text, style: widget.style),
+      textDirection: TextDirection.ltr,
+      maxLines: 2,
+    )..layout();
+
+    final double h = measure.height;
+    final double w = measure.width;
+
+    return AnimatedBuilder(
+      animation: _t,
+      builder: (BuildContext context, Widget? child) {
+        final double p = _t.value;
+        // Outgoing rolls up & fades; incoming rolls in from below.
+        final double outY = -h * p;
+        final double inY = h * (1 - p);
+        final double outOp = (1 - p).clamp(0.0, 1.0);
+        final double inOp = p.clamp(0.0, 1.0);
+
+        return SizedBox(
+          width: w + 2,
+          height: h,
+          child: ClipRect(
+            child: Stack(
+              clipBehavior: Clip.hardEdge,
+              children: <Widget>[
+                if (p < 1)
+                  Transform.translate(
+                    offset: Offset(0, outY),
+                    child: Opacity(
+                      opacity: outOp,
+                      child: Text(_shown, style: widget.style),
+                    ),
+                  ),
+                Transform.translate(
+                  offset: Offset(0, inY),
+                  child: Opacity(
+                    opacity: inOp == 0 && p == 0 ? 1 : inOp,
+                    child: Text(
+                      p == 0 ? _shown : _incoming,
+                      style: widget.style,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
-        ],
-      ),
+        );
+      },
     );
   }
+}
 
-  String _formatDateLabel(DateTime dt) {
-    final List<String> months = <String>[
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+class _RollingIconChip extends StatefulWidget {
+  const _RollingIconChip({
+    required this.icon,
+    required this.color,
+    required this.isDark,
+    required this.play,
+  });
+
+  final IconData icon;
+  final Color color;
+  final bool isDark;
+  final bool play;
+
+  @override
+  State<_RollingIconChip> createState() => _RollingIconChipState();
+}
+
+class _RollingIconChipState extends State<_RollingIconChip>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _t;
+  IconData _shown = Icons.circle;
+  IconData _incoming = Icons.circle;
+  Color _shownColor = Colors.grey;
+  Color _incomingColor = Colors.grey;
+
+  @override
+  void initState() {
+    super.initState();
+    _shown = widget.icon;
+    _incoming = widget.icon;
+    _shownColor = widget.color;
+    _incomingColor = widget.color;
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 480),
+    );
+    _t = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOutCubic);
+    if (widget.play) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _ctrl.forward(from: 0);
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _RollingIconChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.icon != widget.icon || oldWidget.color != widget.color) {
+      _shown = oldWidget.icon;
+      _shownColor = oldWidget.color;
+      _incoming = widget.icon;
+      _incomingColor = widget.color;
+      _ctrl.forward(from: 0).whenComplete(() {
+        if (!mounted) return;
+        setState(() {
+          _shown = _incoming;
+          _shownColor = _incomingColor;
+        });
+      });
+    } else if (!oldWidget.play && widget.play) {
+      _ctrl.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const double size = 30;
+    return AnimatedBuilder(
+      animation: _t,
+      builder: (BuildContext context, Widget? child) {
+        final double p = _t.value;
+        final double outY = -size * p;
+        final double inY = size * (1 - p);
+
+        return Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: widget.color.withValues(alpha: widget.isDark ? 0.22 : 0.14),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            alignment: Alignment.center,
+            children: <Widget>[
+              if (p < 1)
+                Transform.translate(
+                  offset: Offset(0, outY),
+                  child: Opacity(
+                    opacity: (1 - p).clamp(0.0, 1.0),
+                    child: Icon(_shown, size: 17, color: _shownColor),
+                  ),
+                ),
+              Transform.translate(
+                offset: Offset(0, p == 0 ? 0 : inY),
+                child: Opacity(
+                  opacity: p == 0 ? 1 : p.clamp(0.0, 1.0),
+                  child: Icon(
+                    p == 0 ? _shown : _incoming,
+                    size: 17,
+                    color: p == 0 ? _shownColor : _incomingColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _RollingAssetChip extends StatefulWidget {
+  const _RollingAssetChip({
+    required this.assetPath,
+    required this.label,
+    required this.isDark,
+    required this.play,
+  });
+
+  final String assetPath;
+  final String label;
+  final bool isDark;
+  final bool play;
+
+  @override
+  State<_RollingAssetChip> createState() => _RollingAssetChipState();
+}
+
+class _RollingAssetChipState extends State<_RollingAssetChip>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    );
+    _t = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOutCubic);
+    if (widget.play) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _ctrl.forward(from: 0);
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _RollingAssetChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.play && widget.play) {
+      _ctrl.forward(from: 0);
+    } else if (oldWidget.assetPath != widget.assetPath) {
+      _ctrl.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const double size = 28;
+    return AnimatedBuilder(
+      animation: _t,
+      builder: (BuildContext context, Widget? child) {
+        final double p = _t.value;
+        // Subtle vertical roll + scale on entry.
+        final double y = size * (1 - p) * 0.55;
+        final double scale = 0.86 + (0.14 * p);
+        final double opacity = p == 0 ? 1.0 : p.clamp(0.0, 1.0);
+
+        return Transform.translate(
+          offset: Offset(0, p == 0 ? 0 : y),
+          child: Transform.scale(
+            scale: p == 0 ? 1 : scale,
+            child: Opacity(
+              opacity: opacity,
+              child: Semantics(
+                label: widget.label,
+                child: Container(
+                  width: size,
+                  height: size,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: widget.isDark
+                        ? const Color(0xFF2C2C2E)
+                        : const Color(0xFFF2F2F7),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SvgPicture.asset(
+                    widget.assetPath,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Page dots ────────────────────────────────────────────────────────────────
+
+class _PageDots extends StatelessWidget {
+  const _PageDots({
+    required this.count,
+    required this.index,
+    required this.ink,
+    required this.muted,
+  });
+
+  final int count;
+  final int index;
+  final Color ink;
+  final Color muted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List<Widget>.generate(count, (int i) {
+        final bool on = i == index;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: on ? 8 : 6,
+          height: on ? 8 : 6,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: on ? ink.withValues(alpha: 0.85) : muted.withValues(alpha: 0.45),
+          ),
+        );
+      }),
+    );
   }
 }
