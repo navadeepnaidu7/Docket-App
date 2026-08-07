@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../core/motion/entry_reveal.dart';
 import '../../../../core/wallet/wallet_layout.dart';
 import '../../domain/history_folder.dart';
 import 'history_folder_tile.dart';
@@ -27,7 +26,6 @@ class HistoryFoldersView extends StatelessWidget {
         isDark ? const Color(0xFFF2F2F7) : const Color(0xFF1C1C1E);
     final double fabClearance = WalletLayout.fabClearance(context);
 
-    // Transparent — sits on the dashboard backdrop (no nested black route).
     return CustomScrollView(
       physics: const BouncingScrollPhysics(
         parent: AlwaysScrollableScrollPhysics(),
@@ -36,17 +34,13 @@ class HistoryFoldersView extends StatelessWidget {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-            child: EntryReveal(
-              slideY: 10,
-              duration: const Duration(milliseconds: 380),
-              child: Text(
-                'Archived Passes',
-                style: GoogleFonts.inter(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.5,
-                  color: ink,
-                ),
+            child: Text(
+              'Archived Passes',
+              style: GoogleFonts.inter(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.5,
+                color: ink,
               ),
             ),
           ),
@@ -78,15 +72,10 @@ class HistoryFoldersView extends StatelessWidget {
               delegate: SliverChildBuilderDelegate(
                 (BuildContext context, int index) {
                   final HistoryFolderSummary folder = folders[index];
-                  return EntryReveal(
-                    delay: Duration(milliseconds: 50 + index * 55),
-                    duration: const Duration(milliseconds: 460),
-                    slideY: 16,
-                    child: HistoryFolderTile(
-                      key: ValueKey<String>(folder.category.name),
-                      folder: folder,
-                      onTap: () => onOpenFolder(folder),
-                    ),
+                  return HistoryFolderTile(
+                    key: ValueKey<String>(folder.category.name),
+                    folder: folder,
+                    onTap: () => onOpenFolder(folder),
                   );
                 },
                 childCount: folders.length,

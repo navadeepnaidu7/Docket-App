@@ -7,11 +7,9 @@ import '../../../../core/haptics/haptic_service.dart';
 import '../../../../shared/widgets/bounce_tap.dart';
 import '../../domain/history_folder.dart';
 import '../../domain/pass_history_category.dart';
+import 'history_visuals.dart';
 
 /// Rich folder tile for the history categories grid.
-///
-/// Custom-painted folder chrome (tab + body + sheen) so each category can
-/// recolor without shipping per-type bitmaps.
 class HistoryFolderTile extends StatelessWidget {
   const HistoryFolderTile({
     super.key,
@@ -24,13 +22,11 @@ class HistoryFolderTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Brightness brightness = Theme.of(context).brightness;
-    final bool isDark = brightness == Brightness.dark;
     final PassHistoryCategory category = folder.category;
-
-    final Color face = category.folderFace(brightness);
-    final Color body = category.folderBody(brightness);
-    final Color ink = isDark ? Colors.white : Colors.white;
+    final HistoryStripLook look = HistoryStripLook.forCategory(category);
+    final Color face = look.gradient.first;
+    final Color body = look.gradient.last;
+    const Color ink = Colors.white;
     final Color muted = ink.withValues(alpha: 0.78);
 
     return BounceTap(
@@ -38,7 +34,7 @@ class HistoryFolderTile extends StatelessWidget {
         HapticService.select();
         onTap();
       },
-      scaleFactor: 0.96,
+      scaleFactor: 0.97,
       child: _FolderChrome(
         face: face,
         body: body,
@@ -50,17 +46,18 @@ class HistoryFolderTile extends StatelessWidget {
               Align(
                 alignment: Alignment.topRight,
                 child: Container(
-                  width: 28,
-                  height: 28,
+                  width: 30,
+                  height: 30,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.22),
+                    color: Colors.white.withValues(alpha: 0.18),
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.28),
                     ),
                   ),
-                  child: Icon(
-                    category.icon,
+                  alignment: Alignment.center,
+                  child: HistoryCategoryMark(
+                    category: category,
                     size: 15,
                     color: ink.withValues(alpha: 0.95),
                   ),
@@ -147,11 +144,9 @@ class _FolderPainter extends CustomPainter {
     final double tabH = h * 0.14;
     final double tabW = w * 0.42;
 
-    // Soft drop shadow
     final Path shadowPath = _folderPath(w, h, r, tabH, tabW);
     canvas.drawShadow(shadowPath, Colors.black.withValues(alpha: 0.28), 10, true);
 
-    // Body fill (slightly deeper)
     final Paint bodyPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
@@ -161,7 +156,6 @@ class _FolderPainter extends CustomPainter {
 
     canvas.drawPath(_folderPath(w, h, r, tabH, tabW), bodyPaint);
 
-    // Top sheen on the main panel
     final Rect sheenRect = Rect.fromLTWH(0, tabH * 0.55, w, h - tabH * 0.55);
     final Paint sheen = Paint()
       ..shader = LinearGradient(
@@ -178,7 +172,6 @@ class _FolderPainter extends CustomPainter {
     canvas.drawRect(sheenRect, sheen);
     canvas.restore();
 
-    // Subtle inner highlight along the tab edge
     final Paint edge = Paint()
       ..color = Colors.white.withValues(alpha: 0.18)
       ..style = PaintingStyle.stroke
@@ -195,12 +188,8 @@ class _FolderPainter extends CustomPainter {
   ) {
     final double tabR = lerpDouble(8, r, 0.35)!;
     final Path path = Path();
-
-    // Start at bottom-left of tab join
     path.moveTo(0, tabH + r);
     path.quadraticBezierTo(0, tabH, r, tabH);
-
-    // Into tab neck then tab top
     path.lineTo(tabW - tabR, tabH);
     path.quadraticBezierTo(tabW, tabH, tabW + 4, tabH * 0.55);
     path.quadraticBezierTo(tabW + 8, 0, tabW + 8 + tabR, 0);

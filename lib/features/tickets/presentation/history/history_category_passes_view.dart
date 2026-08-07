@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/haptics/haptic_service.dart';
-import '../../../../core/motion/entry_reveal.dart';
 import '../../../../core/wallet/wallet_layout.dart';
 import '../../../../shared/widgets/bounce_tap.dart';
 import '../../domain/history_folder.dart';
@@ -33,7 +32,6 @@ class HistoryCategoryPassesView extends StatelessWidget {
     final PassHistoryCategory category = folder.category;
     final List<WalletPassItem> items = folder.items;
 
-    // Transparent column over the dashboard backdrop — no solid black page.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -100,21 +98,17 @@ class HistoryCategoryPassesView extends StatelessWidget {
                   physics: const BouncingScrollPhysics(
                     parent: AlwaysScrollableScrollPhysics(),
                   ),
+                  // No staggered EntryReveal — it stacked on the shell
+                  // cross-fade and felt jerky.
                   padding: EdgeInsets.fromLTRB(16, 12, 16, fabClearance),
                   itemCount: items.length,
                   separatorBuilder: (BuildContext context, int index) =>
                       const SizedBox(height: 12),
                   itemBuilder: (BuildContext context, int index) {
                     final WalletPassItem item = items[index];
-                    return EntryReveal(
-                      delay: Duration(milliseconds: 40 + index * 45),
-                      duration: const Duration(milliseconds: 420),
-                      slideY: 14,
-                      child: HistoryPassStrip(
-                        key: ValueKey<String>(item.id),
-                        item: item,
-                        category: category,
-                      ),
+                    return HistoryPassStrip(
+                      key: ValueKey<String>(item.id),
+                      item: item,
                     );
                   },
                 ),
