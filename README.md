@@ -1,129 +1,99 @@
-# Docket 📇
+# Docket
 
-A premium, high-fidelity digital wallet application for iOS and Android built with Flutter. **Docket** serves as a secure, local-first repository for your physical passports, national ID cards, and ticketing passes. It features dynamic interactive UI designs, offline OCR document extraction, and secure hardware-level NFC chip communication.
+Docket is a Flutter wallet app for storing personal documents on-device. It supports passports, national IDs, and ticket passes with a local-first architecture.
 
-Developed with Clean Architecture principles, Docket delivers native-grade performance with custom 3D card tilt gestures, responsive shine effects, custom audio triggers, and tactile haptic feedback.
+Docket was previously named `SlickPort` / `passport_app` in older docs.
 
-> **Status:** documents (passports, IDs) are complete and fully local. The Passes tab (train + movie) runs on **mock fixtures** — the `docket_server` backend is built but not yet wired up. See [`docs/current_state.md`](docs/current_state.md).
->
-> Formerly named *SlickPort* / `passport_app`; some older docs still use that name.
+## Current status
 
----
+- Passport and ID flows are implemented and stored locally in encrypted storage.
+- MRZ scanning and Android NFC passport chip reading are implemented.
+- Passes UI (train and movie) is implemented.
+- Passes backend integration is still in progress; mock fixtures are the default data source.
 
-## 🚀 Key Features
+Details: [`docs/current_state.md`](docs/current_state.md)
 
-*   **Interactive 3D Document Cards**: Fully-customized cards simulating official booklets (such as the Indian Passport, Aadhaar ID, and transit tickets) with single-tap flip gestures, interactive drag-tilt reactions, custom-drawn holographic security lines, and reflective overlays.
-*   **Secure NFC Passport Verification**: Direct hardware integration to read and decrypt international biometric passport chips over Basic Access Control (BAC), using a MethodChannel into JMRTD to extract personal records and raw chip portraits from Data Group 1 (`DG1`), Data Group 2 (`DG2`), and the optional `DG11`/`DG12` detail groups. Android only today; PACE is not implemented.
-*   **Offline OCR Document Scanning**: Real-time scanner processing powered by Google ML Kit to read and parse Machine Readable Zones (MRZ) on passports and scan QR codes or texts on identity documents completely offline.
-*   **Robust Multi-Document Wallet**: Categorized dashboard layout supporting passport records, national IDs, and entertainment/travel tickets with drag-and-drop ordering, category filters, and archive/trash capabilities.
-*   **Immersive Sensory Design**: Integrated tactile touch events using a dedicated haptics configuration and custom sound design triggers synchronized with user actions.
-*   **Secure Local Storage**: Hardware-level encryption powered by secure preferences storing credentials with zero remote telemetry.
+## Features
 
----
+### Documents (local-first)
+- Passport records with manual entry, MRZ scan, and Android NFC chip read flows.
+- ID records for Aadhaar and PAN.
+- Encrypted on-device persistence using `flutter_secure_storage`.
 
-## 🛠️ Technology Stack
+### Wallet experience
+- Interactive card-based dashboard with reorder, filters, archive, and trash flows.
+- Light and dark themes with a custom transition system.
+- Haptics and sound hooks integrated into key interactions.
 
-*   **Framework**: [Flutter](https://flutter.dev) (Dart SDK `^3.11.5`)
-*   **State Management**: [Riverpod](https://pub.dev/packages/flutter_riverpod) (`^2.6.1`) for reactive data bindings
-*   **Animation System**: Custom motion curves ([EntryReveal](lib/core/motion/entry_reveal.dart)) and [Flutter Animate](https://pub.dev/packages/flutter_animate)
-*   **Local Storage**: [Flutter Secure Storage](https://pub.dev/packages/flutter_secure_storage) with `encryptedSharedPreferences` enabled on Android and Keychain on iOS
-*   **OCR & Scanning**: [Google ML Kit Text Recognition](https://pub.dev/packages/google_mlkit_text_recognition), [Barcode Scanning](https://pub.dev/packages/google_mlkit_barcode_scanning), and [Face Detection](https://pub.dev/packages/google_mlkit_face_detection)
-*   **Typography**: Inter and Outfit families fetched dynamically via [Google Fonts](https://pub.dev/packages/google_fonts) with fallback safety for offline setups
-*   **Platform Integrations**: MethodChannel interfaces mapped to native Android/iOS SDK libraries (such as JMRTD for biometric document parsing)
+### Passes
+- Train and movie pass card layouts and detail screens.
+- Movie posters fetched through the backend image proxy with cache support.
+- Mock/remote switching through dev flags.
 
----
+## Tech stack
 
-## 📂 Architecture Tour
+- Flutter (Dart SDK `^3.11.5`)
+- Riverpod 2
+- Flutter Secure Storage
+- Google ML Kit (text, face, barcode)
+- Cached Network Image
 
-Docket strictly implements a **Clean Architecture** framework, cleanly partitioning features into three domains:
-*   **Presentation Layer**: Direct UI representation, custom canvas graphics, and interactive touch listeners.
-*   **Domain Layer**: Pure business logic models and validation rules.
-*   **Data/Application Layer**: State synchronization controllers, OCR processing engines, and local persistence.
+## Requirements
 
-```mermaid
-graph TD
-    A[App Entry / Main] --> B[MaterialApp / Router]
-    B --> C[Dashboard Screen]
-    C --> D[Wallet Tabs: Passports, IDs, Tickets]
-    
-    subgraph Data & Core Services
-        E[Secure Document Store]
-        F[NFC Hardware Interface]
-        G[OCR Scanner Service]
-    end
-    
-    D -->|Read/Write| E
-    D -->|Read Chip| F
-    D -->|Extract MRZ| G
+- Flutter SDK compatible with Dart `^3.11.5`
+- Android `minSdk 26`
+- iOS 13+
+
+## Getting started
+
+```bash
+flutter pub get
+flutter run
 ```
 
-### Key Modules & Directories:
+### Useful commands
 
-*   📂 **[`lib/core/`](lib/core)**: Global utilities, layout definitions, and shared resources.
-    *   [haptics/](lib/core/haptics): Wraps system-wide tactile vibration setups.
-    *   [sound/](lib/core/sound): Manages short audio playback triggers.
-    *   [storage/](lib/core/storage): [SecureDocumentStore](lib/core/storage/secure_document_store.dart) for AES-256 local document storage.
-    *   [motion/](lib/core/motion): Custom curve interpolations like `_EaseOutQuint` and `EntryReveal` screen entrances.
-    *   [theme/](lib/core/theme): Custom layout tokens, color schemes, and dark/light configuration.
-*   📂 **[`lib/features/`](lib/features)**: Functional vertical slices of features.
-    *   [dashboard/](lib/features/dashboard): Wallet list interfaces, filters, drag-to-reorder layout controller, and application settings.
-    *   [passport/](lib/features/passport): Domain models representing passport profiles and forms.
-    *   [nfc/](lib/features/nfc): Host communication for read requests.
-    *   [mrz_scanner/](lib/features/mrz_scanner): Custom camera overlays and ML Kit text processors.
-    *   [ids/](lib/features/ids): Identification form validator schemas and scanner components.
-    *   [tickets/](lib/features/tickets): Transit and event card formats.
-    *   [onboarding/](lib/features/onboarding): Welcome wizard screens for first-time application configuration.
-*   📂 **[`lib/shared/`](lib/shared)**: Modular custom UI components.
-    *   [widgets/](lib/shared/widgets): Core styling blocks, including 3D card shine borders, custom bottom sheets, and capture buttons.
+```bash
+flutter analyze
+flutter test
+flutter build apk --release
+```
 
----
+### Run against a local backend (Android emulator)
 
-## 🛠️ Getting Started & Installation
+```bash
+flutter run \
+  --dart-define=USE_MOCK_PASSES=false \
+  --dart-define=API_BASE_URL=http://10.0.2.2:8080
+```
 
-### Prerequisites
+More on flags: [`docs/dev-flags.md`](docs/dev-flags.md)
 
-1.  **Flutter SDK**: Installed and configured on your path.
-    ```bash
-    flutter --version # Target >= 3.11.5
-    ```
-2.  **Target Platform SDKs**:
-    *   **Android**: Android SDK supporting API Level 26 (Oreo) or higher. NFC hardware is required for chip reading.
-    *   **iOS**: CocoaPods installed, targeting iOS 13.0 or higher. Apple Developer Account configured for NFC Capability (if deploying on a physical device).
+## Project layout
 
-### Quick Setup
+```text
+lib/
+  core/         app-wide services (dev flags, storage, theme, wallet primitives)
+  features/     feature-first modules (dashboard, passport, ids, tickets, nfc, mrz)
+  shared/       shared UI widgets
+```
 
-1.  Clone the repository and navigate to the project directory:
-    ```bash
-    cd docket_app
-    ```
-2.  Install dependencies:
-    ```bash
-    flutter pub get
-    ```
-3.  Check platform-specific setup and device connections:
-    ```bash
-    flutter doctor
-    ```
-4.  Run the application in developer mode:
-    ```bash
-    flutter run
-    ```
+## Security and privacy
 
----
+- Personal document data is intended to stay on device.
+- Sensitive document payloads must not be logged.
+- Storage is encrypted through platform-secure mechanisms.
 
-## 🔒 Security & Privacy Guidelines
+## Release plan
 
-*   **No Cloud Storage**: All records, OCR captures, and NFC biometric outputs remain within the secure enclave of the local device.
-*   **Encrypted Preferences**: Personal details stored in [SecureDocumentStore](lib/core/storage/secure_document_store.dart) are written directly to encrypted partitions.
-*   **Sanitized Telemetry**: Emojis are strictly banned from system logs. Zero user credentials or identity records are compiled in execution traces or console streams.
-*   **Cryptographic BAC Generation**: Access to biometric microchips requires the exact document number, birthdate, and expiration date to initialize the session key (BAC) local to the device's chip interface.
+The project is preparing for public distribution:
 
----
+- GitHub Releases are planned soon for versioned release artifacts and notes.
+- Google Play Store release preparation is in progress.
 
-## 📝 Coding Standards
+## Documentation
 
-To maintain production-grade performance and Clean Architecture boundaries:
-*   Ensure UI widgets stay small, modular, and use `const` constructor instances where possible.
-*   Keep business logic isolated in Riverpod StateNotifiers; the UI layer should only observe state.
-*   Avoid generating or printing emojis inside application source code, exceptions, or console logs.
-*   Use local isolates or background threads when parsing large image buffers or complex payloads to avoid UI stutter.
+- [`docs/current_state.md`](docs/current_state.md): implementation status and verification notes
+- [`docs/api/passes.md`](docs/api/passes.md): passes API contract
+- [`docs/dev-flags.md`](docs/dev-flags.md): mock vs remote configuration
+- [`CLAUDE.md`](CLAUDE.md): repository-specific contributor guidance
