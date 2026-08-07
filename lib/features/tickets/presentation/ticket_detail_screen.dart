@@ -164,7 +164,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     useBrandColors: true,
                     onOpenCodes: () => _openCodes(context, t),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 20),
                   _SegmentedTabs(
                     index: _tab,
                     onChanged: (int i) {
@@ -173,11 +173,25 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     },
                     isDark: isDark,
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
                   AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
+                    duration: const Duration(milliseconds: 320),
                     switchInCurve: Curves.easeOutCubic,
                     switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                      final Animation<Offset> slide = Tween<Offset>(
+                        begin: const Offset(0, 0.04),
+                        end: Offset.zero,
+                      ).animate(animation);
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: slide,
+                          child: child,
+                        ),
+                      );
+                    },
                     child: _tab == 0
                         ? _DetailsTab(
                             key: const ValueKey<String>('details'),
