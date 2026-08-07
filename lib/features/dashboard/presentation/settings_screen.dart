@@ -23,6 +23,7 @@ import '../../passport/domain/passport_profile.dart';
 import '../../tickets/application/pass_list_provider.dart';
 import '../application/auth_session_provider.dart';
 import '../application/card_shine_border_provider.dart';
+import '../application/profile_avatar_shape_provider.dart';
 import '../application/wallet_filter_provider.dart';
 import '../application/nav_icon_style_provider.dart';
 import '../application/nav_labels_provider.dart';
@@ -174,6 +175,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               ref.read(hapticsEnabledProvider);
                           if (enabled) HapticService.select();
                           ref.read(hapticsEnabledProvider.notifier).toggle();
+                        },
+                      ),
+                      const _SettingsDivider(),
+                      _ProfileAvatarShapeRow(
+                        shape: ref.watch(profileAvatarShapeProvider),
+                        onTap: () {
+                          HapticService.select();
+                          ref.read(profileAvatarShapeProvider.notifier).toggle();
                         },
                       ),
                     ],
@@ -1782,6 +1791,84 @@ class _AnimatedPressScaleState extends State<_AnimatedPressScale> {
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOutCubic,
         child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Cycles profile mesh shape: Rounded (squircle) ↔ Circle.
+class _ProfileAvatarShapeRow extends StatelessWidget {
+  const _ProfileAvatarShapeRow({
+    required this.shape,
+    required this.onTap,
+  });
+
+  final ProfileAvatarShape shape;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color ink = Theme.of(context).colorScheme.onSurface;
+    final Color muted = ink.withValues(alpha: isDark ? 0.45 : 0.55);
+
+    return _AnimatedPressScale(
+      onTap: onTap,
+      child: SizedBox(
+        height: 58,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: <Widget>[
+              _SettingsRowIcon(
+                icon: shape == ProfileAvatarShape.circle
+                    ? Icons.circle_outlined
+                    : Icons.rounded_corner_rounded,
+                color: const Color(0xFFAF52DE),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'Profile icon shape',
+                      style: GoogleFonts.inter(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -0.2,
+                        color: ink,
+                      ),
+                    ),
+                    Text(
+                      'Top bar account control',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w400,
+                        color: muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                shape.label,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: muted,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: muted.withValues(alpha: 0.40),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

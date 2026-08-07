@@ -2,14 +2,13 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/assets/app_assets.dart';
-import '../../../../core/dev/dev_flags.dart';
 import '../../../../shared/widgets/bounce_tap.dart';
-import '../../../ids/domain/id_document.dart';
-import '../../../passport/domain/passport_profile.dart';
+import '../../application/profile_avatar_shape_provider.dart';
 import '../dashboard_screen.dart' show DashboardViewMode;
 import 'membership_mesh.dart';
 
@@ -260,11 +259,14 @@ class HistoryHeaderButton extends StatelessWidget {
   }
 }
 
-/// Squircle membership-mesh profile control (Top Bar design reference).
+/// Mesh profile control for the top bar.
 ///
 /// Always paints the mesh. [AuthSession.photoBase64] may be stored for later
 /// but must not be rendered here until product chooses to use it.
-class ProfileMeshButton extends StatefulWidget {
+///
+/// Size is 10% under the original 44pt control (39.6). Shape is
+/// [profileAvatarShapeProvider] — rounded (default) or circle.
+class ProfileMeshButton extends ConsumerStatefulWidget {
   const ProfileMeshButton({
     super.key,
     required this.meshSeed,
@@ -276,28 +278,47 @@ class ProfileMeshButton extends StatefulWidget {
   final List<Color> washes;
   final VoidCallback onTap;
 
+  /// Original design size before the 10% reduction.
+  static const double designSize = 44;
+
+  /// Rendered edge length (10% smaller than [designSize]).
+  static const double size = designSize * 0.9; // 39.6
+
+  /// Squircle corner radius scaled with [size].
+  static const double roundedRadius = 13 * 0.9; // 11.7
+
   @override
-  State<ProfileMeshButton> createState() => _ProfileMeshButtonState();
+  ConsumerState<ProfileMeshButton> createState() => _ProfileMeshButtonState();
 }
 
-class _ProfileMeshButtonState extends State<ProfileMeshButton> {
+class _ProfileMeshButtonState extends ConsumerState<ProfileMeshButton> {
   bool _pressed = false;
-
-  static const double _size = 44;
-  static const double _radius = 13;
 
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final List<Color> baseWashes = widget.washes.isEmpty
-        ? walletWashColors(
-            passports: const <PassportProfile>[],
-            idDocs: const <IdDocument>[],
-            scheme: CardFluidScheme.auto,
-          )
-        : widget.washes;
-    final List<Color> washes = personalizeWashes(baseWashes, widget.meshSeed);
+    final ProfileAvatarShape shape = ref.watch(profileAvatarShapeProvider);
+    final bool isCircle = shape == ProfileAvatarShape.circle;
+    final double size = ProfileMeshButton.size;
+    final double radius =
+        isCircle ? size / 2 : ProfileMeshButton.roundedRadius;
+
+    final List<Color> colors = avatarMeshColors(
+      seed: widget.meshSeed,
+      washes: widget.washes,
+    );
     final double phase = meshPhaseForSeed(widget.meshSeed);
+
+    // Defined rim like the reference: cool silver edge that reads on both
+    // light and dark backgrounds (thin white alone disappeared into the mesh).
+    final Color strokeOuter = isDark
+        ? Colors.white.withValues(alpha: 0.55)
+        : const Color(0xFFB8B8C0);
+    final Color strokeInner = isDark
+        ? Colors.white.withValues(alpha: 0.22)
+        : Colors.white.withValues(alpha: 0.70);
+
+    final BorderRadius clipRadius = BorderRadius.circular(radius);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -309,38 +330,49 @@ class _ProfileMeshButtonState extends State<ProfileMeshButton> {
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOutCubic,
         scale: _pressed ? 0.96 : 1.0,
-        child: Container(
-          width: _size,
-          height: _size,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          width: size,
+          height: size,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(_radius),
+            borderRadius: clipRadius,
             boxShadow: <BoxShadow>[
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
+                color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.14),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: colors.first.withValues(alpha: 0.22),
+                blurRadius: 14,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(_radius),
+            borderRadius: clipRadius,
             child: Stack(
               fit: StackFit.expand,
               children: <Widget>[
-                MembershipMeshBackground(
-                  washes: washes,
-                  phase: phase,
-                  empty: widget.washes.isEmpty,
-                  richAvatar: true,
+                CustomPaint(
+                  painter: AvatarMeshPainter(colors: colors, phase: phase),
                 ),
+                // Outer defined stroke + inner highlight (double rim).
                 DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(_radius),
-                    border: Border.all(
-                      color: Colors.white.withValues(
-                        alpha: isDark ? 0.22 : 0.55,
+                    borderRadius: clipRadius,
+                    border: Border.all(color: strokeOuter, width: 1.5),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(1.5),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(
+                        (radius - 1.5).clamp(0.0, radius),
                       ),
-                      width: 1.0,
+                      border: Border.all(color: strokeInner, width: 0.8),
                     ),
                   ),
                 ),

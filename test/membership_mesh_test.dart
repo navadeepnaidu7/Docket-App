@@ -24,4 +24,30 @@ void main() {
       expect(a, isNot(equals(b)));
     });
   });
+
+  group('avatarMeshColors', () {
+    test('returns multiple distinct hues for the squircle', () {
+      final List<Color> colors = avatarMeshColors(seed: 'alex@docket.app');
+      expect(colors.length, greaterThanOrEqualTo(4));
+      // Not a flat monochrome — at least two hues should differ by >20°.
+      final List<double> hues = colors
+          .map((Color c) => HSLColor.fromColor(c).hue)
+          .toList();
+      double maxSpread = 0;
+      for (int i = 0; i < hues.length; i++) {
+        for (int j = i + 1; j < hues.length; j++) {
+          final double d = (hues[i] - hues[j]).abs();
+          final double spread = d > 180 ? 360 - d : d;
+          if (spread > maxSpread) maxSpread = spread;
+        }
+      }
+      expect(maxSpread, greaterThan(40));
+    });
+
+    test('different seeds yield different palettes', () {
+      final List<Color> a = avatarMeshColors(seed: 'user-a');
+      final List<Color> b = avatarMeshColors(seed: 'user-b');
+      expect(a, isNot(equals(b)));
+    });
+  });
 }

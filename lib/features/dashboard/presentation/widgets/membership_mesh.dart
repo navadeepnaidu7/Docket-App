@@ -135,6 +135,208 @@ List<Color> personalizeWashes(List<Color> washes, String seed) {
   }).toList();
 }
 
+/// Vibrant mesh palette for the small profile squircle.
+///
+/// The membership card deliberately washes colors toward titanium so text
+/// stays readable. On a 44px avatar that same treatment collapses to a flat
+/// tint. This builds a reference-style multi-hue set (peach → rose → violet →
+/// soft gold), still personalized by [seed] and nudged by wallet washes.
+List<Color> avatarMeshColors({
+  required String seed,
+  List<Color> washes = const <Color>[],
+}) {
+  // Reference-like anchors (soft mesh, not neon neon).
+  const List<Color> anchors = <Color>[
+    Color(0xFFFFB07A), // warm peach
+    Color(0xFFFF7A9A), // rose
+    Color(0xFFC084FC), // soft violet
+    Color(0xFF818CF8), // periwinkle
+    Color(0xFFFFE08A), // soft gold
+  ];
+
+  final int hash = meshSeedHash(seed.isEmpty ? 'docket-guest' : seed);
+  final double shift = (hash % 360).toDouble();
+  final int start = hash % anchors.length;
+
+  final List<Color> palette = <Color>[];
+  for (int i = 0; i < anchors.length; i++) {
+    final Color base = anchors[(start + i) % anchors.length];
+    HSLColor hsl = HSLColor.fromColor(base);
+    hsl = hsl.withHue((hsl.hue + shift * 0.35) % 360.0);
+    // Keep saturation high enough that blooms stay distinct at 44px.
+    hsl = hsl.withSaturation(hsl.saturation.clamp(0.55, 0.88));
+    hsl = hsl.withLightness(hsl.lightness.clamp(0.58, 0.78));
+    palette.add(hsl.toColor());
+  }
+
+  // Fold in up to two wallet washes so the avatar still relates to docs.
+  if (washes.isNotEmpty) {
+    final Color w0 = toWashAccent(washes.first, isDark: false);
+    palette[1] = Color.lerp(palette[1], w0, 0.45)!;
+    if (washes.length > 1) {
+      final Color w1 = toWashAccent(washes[1], isDark: false);
+      palette[3] = Color.lerp(palette[3], w1, 0.40)!;
+    }
+  }
+
+  return palette;
+}
+
+/// Soft multi-blob mesh tuned for the profile squircle (reference-like).
+///
+/// Large overlapping radials with high alpha so the eye reads several colors
+/// at once — not a single flat wash.
+class AvatarMeshPainter extends CustomPainter {
+  AvatarMeshPainter({
+    required this.colors,
+    required this.phase,
+  });
+
+  final List<Color> colors;
+  final double phase;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (colors.isEmpty) return;
+
+    final double w = size.width;
+    final double h = size.height;
+    final double twoPi = 6.28318530718;
+    final double angle = phase * twoPi;
+
+    // Soft warm base so voids between blooms stay luminous (reference cream).
+    final Paint base = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment(
+          -0.9 + 0.15 * math.sin(angle),
+          -1.0,
+        ),
+        end: Alignment(
+          1.0,
+          0.9 + 0.12 * math.cos(angle * 0.8),
+        ),
+        colors: <Color>[
+          Color.lerp(colors[0], const Color(0xFFFFF6EC), 0.35)!,
+          Color.lerp(
+            colors.length > 2 ? colors[2] : colors[0],
+            const Color(0xFFF5EEFF),
+            0.40,
+          )!,
+          Color.lerp(
+            colors.length > 1 ? colors[1] : colors[0],
+            const Color(0xFFFFE8F0),
+            0.30,
+          )!,
+        ],
+        stops: const <double>[0.0, 0.48, 1.0],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, base);
+
+    // Bloom layout: positions are fixed-ish, nudged by phase so each user
+    // seed lands on a different arrangement without looking random/noisy.
+    final List<_Bloom> blooms = <_Bloom>[
+      _Bloom(
+        Alignment(
+          -0.55 + 0.12 * math.sin(angle),
+          -0.60 + 0.10 * math.cos(angle * 0.9),
+        ),
+        colors[0],
+        0.95,
+        0.92,
+      ),
+      _Bloom(
+        Alignment(
+          0.70 + 0.10 * math.cos(angle * 0.75),
+          -0.25 + 0.12 * math.sin(angle * 1.1),
+        ),
+        colors.length > 2 ? colors[2] : colors[0],
+        0.88,
+        0.90,
+      ),
+      _Bloom(
+        Alignment(
+          0.35 + 0.08 * math.sin(angle * 0.6),
+          0.75 + 0.08 * math.cos(angle * 0.7),
+        ),
+        colors.length > 1 ? colors[1] : colors[0],
+        0.82,
+        0.88,
+      ),
+      _Bloom(
+        Alignment(
+          -0.65 + 0.10 * math.cos(angle * 1.2),
+          0.55 + 0.10 * math.sin(angle * 0.85),
+        ),
+        colors.length > 3 ? colors[3] : colors[0],
+        0.78,
+        0.75,
+      ),
+      if (colors.length > 4)
+        _Bloom(
+          Alignment(
+            0.05 + 0.15 * math.sin(angle * 0.5),
+            0.05 + 0.12 * math.cos(angle * 0.55),
+          ),
+          colors[4],
+          0.70,
+          0.55,
+        ),
+    ];
+
+    for (final _Bloom b in blooms) {
+      final Offset center = Offset(
+        w * (b.align.x * 0.5 + 0.5),
+        h * (b.align.y * 0.5 + 0.5),
+      );
+      final double radius = size.shortestSide * b.radiusFactor;
+      final Paint paint = Paint()
+        ..shader = RadialGradient(
+          colors: <Color>[
+            b.color.withValues(alpha: b.alpha),
+            b.color.withValues(alpha: b.alpha * 0.55),
+            b.color.withValues(alpha: 0.0),
+          ],
+          stops: const <double>[0.0, 0.42, 1.0],
+        ).createShader(Rect.fromCircle(center: center, radius: radius));
+      canvas.drawCircle(center, radius, paint);
+    }
+
+    // Gentle diagonal sheen so it doesn't read as flat matte.
+    final Paint sheen = Paint()
+      ..shader = LinearGradient(
+        begin: const Alignment(-1.0, -1.0),
+        end: const Alignment(0.6, 0.8),
+        colors: <Color>[
+          Colors.white.withValues(alpha: 0.28),
+          Colors.white.withValues(alpha: 0.0),
+          Colors.black.withValues(alpha: 0.04),
+        ],
+        stops: const <double>[0.0, 0.45, 1.0],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, sheen);
+  }
+
+  @override
+  bool shouldRepaint(covariant AvatarMeshPainter oldDelegate) {
+    if (oldDelegate.phase != phase ||
+        oldDelegate.colors.length != colors.length) {
+      return true;
+    }
+    for (int i = 0; i < colors.length; i++) {
+      if (oldDelegate.colors[i] != colors[i]) return true;
+    }
+    return false;
+  }
+}
+
+class _Bloom {
+  const _Bloom(this.align, this.color, this.radiusFactor, this.alpha);
+  final Alignment align;
+  final Color color;
+  final double radiusFactor;
+  final double alpha;
+}
+
 /// Soft radial color washes (membership card + profile avatar).
 class MembershipWashPainter extends CustomPainter {
   MembershipWashPainter({
