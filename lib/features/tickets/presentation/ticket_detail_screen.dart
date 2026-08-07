@@ -532,9 +532,11 @@ class _LiveStatusTab extends StatelessWidget {
         .length;
     final String etaLeft = completed
         ? 'Journey complete'
-        : remainingStops <= 1
-            ? 'Final stop ahead'
-            : '${remainingStops - 1} halt${remainingStops - 1 == 1 ? '' : 's'} remaining';
+        : remainingStops == 0
+            ? 'All stops completed'
+            : remainingStops <= 1
+                ? 'Final stop ahead'
+                : '${remainingStops - 1} halt${remainingStops - 1 == 1 ? '' : 's'} remaining';
 
     return Column(
       key: key,
@@ -656,7 +658,7 @@ class _LiveStatusTab extends StatelessWidget {
                         Text(
                           t.duration,
                           style: GoogleFonts.inter(
-                            color: Colors.white.withValues(alpha: 0.45),
+                            color: Colors.white.withValues(alpha: 0.7),
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
@@ -794,7 +796,7 @@ class _DarkEndpoint extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           textAlign: alignEnd ? TextAlign.right : TextAlign.left,
           style: GoogleFonts.inter(
-            color: Colors.white.withValues(alpha: 0.48),
+            color: Colors.white.withValues(alpha: 0.7),
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),

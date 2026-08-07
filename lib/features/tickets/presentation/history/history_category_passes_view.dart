@@ -40,19 +40,23 @@ class HistoryCategoryPassesView extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              BounceTap(
-                onTap: () {
-                  HapticService.select();
-                  onBack();
-                },
-                scaleFactor: 0.92,
-                child: SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 18,
-                    color: ink.withValues(alpha: 0.88),
+              Semantics(
+                button: true,
+                label: 'Back',
+                child: BounceTap(
+                  onTap: () {
+                    HapticService.select();
+                    onBack();
+                  },
+                  scaleFactor: 0.92,
+                  child: SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      size: 18,
+                      color: ink.withValues(alpha: 0.88),
+                    ),
                   ),
                 ),
               ),

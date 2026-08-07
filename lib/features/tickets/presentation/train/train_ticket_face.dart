@@ -273,7 +273,7 @@ class _TicketBody extends StatelessWidget {
                     'Passenger',
                     style: GoogleFonts.inter(
                       color: style.muted,
-                      fontSize: 11.5 * scale.clamp(0.9, 1.15),
+                      fontSize: 11.5 * scale.clamp(0.9, 1.15).toDouble(),
                       fontWeight: FontWeight.w500,
                       letterSpacing: 0.15,
                       height: 1.0,
@@ -371,7 +371,7 @@ class _TicketBody extends StatelessWidget {
                       'Indian Railways',
                       style: GoogleFonts.inter(
                         color: style.footerInk.withValues(alpha: 0.85),
-                        fontSize: 12.5 * scale.clamp(0.9, 1.1),
+                        fontSize: 12.5 * scale.clamp(0.9, 1.1).toDouble(),
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.2,
                       ),
@@ -398,9 +398,6 @@ class _TicketBody extends StatelessWidget {
     if (u.contains('3') && (u.contains('AC') || u.contains('3A'))) return '3A';
     if (u.contains('SL')) return 'SL';
     if (u.contains('CC')) return 'CC';
-    if (ticketClass.contains('2')) return '2A';
-    if (ticketClass.contains('1')) return '1A';
-    if (ticketClass.contains('3')) return '3A';
     return ticketClass;
   }
 
@@ -581,7 +578,7 @@ class _RouteTimeline extends StatelessWidget {
               doneColor: style.trackDone,
               pendingColor: style.track,
               accent: style.accent,
-              progress: t.progressFraction.clamp(0.18, 0.82),
+              progress: t.progressFraction.clamp(0.18, 0.82).toDouble(),
             ),
             size: Size(double.infinity, 22 * scale),
           ),
@@ -675,7 +672,7 @@ class _RouteTrackPainter extends CustomPainter {
     final double cy = size.height / 2;
     final double left = 5;
     final double right = size.width - 5;
-    final double trainX = left + (right - left) * progress.clamp(0.15, 0.85);
+    final double trainX = left + (right - left) * progress.clamp(0.15, 0.85).toDouble();
 
     // End dots
     canvas.drawCircle(
@@ -783,7 +780,7 @@ class _ReferenceBlock extends StatelessWidget {
           label,
           style: GoogleFonts.inter(
             color: style.muted,
-            fontSize: 11.5 * scale.clamp(0.9, 1.15),
+            fontSize: 11.5 * scale.clamp(0.9, 1.15).toDouble(),
             fontWeight: FontWeight.w500,
             letterSpacing: 0.1,
           ),

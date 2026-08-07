@@ -119,7 +119,7 @@ class _HistoryPassesShellState extends State<HistoryPassesShell>
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
+      canPop: _openFolder == null,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (didPop) return;
         if (_openFolder != null) {

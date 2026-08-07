@@ -66,6 +66,7 @@ class ManageAccountScreen extends ConsumerWidget {
                       size: 18,
                       color: ink,
                     ),
+                    tooltip: 'Back',
                     onPressed: () {
                       HapticService.select();
                       Navigator.of(context).pop();
@@ -401,7 +402,7 @@ class _Field extends StatelessWidget {
                           fontSize: 16,
                           fontWeight: FontWeight.w400,
                           letterSpacing: -0.2,
-                          color: filled ? placeholder : placeholder.withValues(alpha: 0.75),
+                          color: filled ? ink : placeholder.withValues(alpha: 0.75),
                         ),
                       ),
                     ),
@@ -481,7 +482,11 @@ Future<void> _editDateOfBirth(
     final String next = controller.text.trim();
     if (next.isEmpty) return;
     HapticService.success();
-    await ref.read(accountProfileProvider.notifier).setDateOfBirth(next);
+    try {
+      await ref.read(accountProfileProvider.notifier).setDateOfBirth(next);
+    } catch (_) {
+      HapticService.error();
+    }
   } finally {
     // Date sheet may still listen during the pop animation — dispose next frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -522,7 +527,11 @@ Future<void> _editText(
 
   if (result == null || !context.mounted) return;
   HapticService.success();
-  await onSave(result);
+  try {
+    await onSave(result);
+  } catch (_) {
+    HapticService.error();
+  }
 }
 
 /// Owns its [TextEditingController] for the duration of the modal route.

@@ -65,7 +65,7 @@ class HistoryStripLook {
       gradient: style.bodyGradient,
       shadow: style.glow,
       logoAsset: style.logoAsset ?? style.footerLogoAsset,
-      logoTint: style.logoTint ?? Colors.white,
+      logoTint: style.logoTint,
       glyph: HistoryGlyphKind.movie,
     );
   }

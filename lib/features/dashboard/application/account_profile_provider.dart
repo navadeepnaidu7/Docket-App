@@ -19,15 +19,26 @@ class AccountProfileNotifier extends StateNotifier<AccountProfile> {
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
 
+  bool _hydrated = false;
+
   Future<void> _load() async {
     final String? raw = await _storage.read(key: _kAccountProfileKey);
     if (raw == null || raw.isEmpty) return;
+    if (_hydrated || !mounted) return;
     state = AccountProfile.fromJson(raw);
   }
 
   Future<void> _persist(AccountProfile next) async {
+    final AccountProfile previous = state;
     state = next;
-    await _storage.write(key: _kAccountProfileKey, value: next.toJson());
+    _hydrated = true;
+    try {
+      await _storage.write(key: _kAccountProfileKey, value: next.toJson());
+    } catch (e) {
+      state = previous;
+      _hydrated = false;
+      rethrow;
+    }
   }
 
   Future<void> update(AccountProfile Function(AccountProfile) fn) async {
@@ -50,6 +61,7 @@ class AccountProfileNotifier extends StateNotifier<AccountProfile> {
 
   Future<void> clear() async {
     state = AccountProfile.empty;
+    _hydrated = true;
     await _storage.delete(key: _kAccountProfileKey);
   }
 }

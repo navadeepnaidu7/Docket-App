@@ -49,10 +49,13 @@ class HistoryPassStrip extends StatelessWidget {
     final String subtitle = HistoryPassPresentation.subtitle(item);
     final Color lead = look.gradient.first;
 
-    return BounceTap(
-      onTap: () => _open(context),
-      scaleFactor: 0.98,
-      child: Container(
+    return Semantics(
+      button: true,
+      label: title,
+      child: BounceTap(
+        onTap: () => _open(context),
+        scaleFactor: 0.98,
+        child: Container(
         height: height,
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -155,6 +158,7 @@ class HistoryPassStrip extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }
