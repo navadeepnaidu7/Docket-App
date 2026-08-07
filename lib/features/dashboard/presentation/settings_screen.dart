@@ -27,6 +27,7 @@ import '../application/profile_avatar_shape_provider.dart';
 import '../application/wallet_filter_provider.dart';
 import '../application/nav_icon_style_provider.dart';
 import '../application/nav_labels_provider.dart';
+import 'manage_account_screen.dart';
 import 'user_card_detail_screen.dart';
 import 'widgets/membership_mesh.dart';
 
@@ -298,7 +299,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           iconColor: const Color(0xFF2F6FED),
                           title: 'Manage account',
                           subtitle: session.email,
-                          onTap: () => _showAccountComingSoon(context),
+                          onTap: () {
+                            HapticService.select();
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const ManageAccountScreen(),
+                              ),
+                            );
+                          },
                         ),
                         const _SettingsDivider(),
                         _SettingsLinkRow(
@@ -422,31 +430,6 @@ Future<void> _openDeveloperLink(BuildContext context, String url) async {
       content: Text('Link copied — couldn’t open the browser'),
       behavior: SnackBarBehavior.floating,
     ),
-  );
-}
-
-Future<void> _showAccountComingSoon(BuildContext context) async {
-  await showDialog<void>(
-    context: context,
-    builder: (BuildContext dialogContext) {
-      final ThemeData theme = Theme.of(dialogContext);
-      return AlertDialog(
-        title: const Text('Coming soon'),
-        content: const Text(
-          'Account management will connect to your Google account in a '
-          'future update.',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(
-              'Got it',
-              style: TextStyle(color: theme.colorScheme.primary),
-            ),
-          ),
-        ],
-      );
-    },
   );
 }
 
