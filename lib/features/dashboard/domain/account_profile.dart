@@ -10,7 +10,6 @@ class AccountProfile {
     this.phone = '',
     this.nationality = '',
     this.city = '',
-    this.notes = '',
   });
 
   static const AccountProfile empty = AccountProfile();
@@ -23,27 +22,21 @@ class AccountProfile {
   final String nationality;
   final String city;
 
-  /// Short free-form note the user chooses to keep on their account.
-  final String notes;
-
   bool get isEmpty =>
       dateOfBirth.trim().isEmpty &&
       phone.trim().isEmpty &&
       nationality.trim().isEmpty &&
-      city.trim().isEmpty &&
-      notes.trim().isEmpty;
+      city.trim().isEmpty;
 
   AccountProfile copyWith({
     String? dateOfBirth,
     String? phone,
     String? nationality,
     String? city,
-    String? notes,
     bool clearDateOfBirth = false,
     bool clearPhone = false,
     bool clearNationality = false,
     bool clearCity = false,
-    bool clearNotes = false,
   }) {
     return AccountProfile(
       dateOfBirth:
@@ -52,7 +45,6 @@ class AccountProfile {
       nationality:
           clearNationality ? '' : (nationality ?? this.nationality),
       city: clearCity ? '' : (city ?? this.city),
-      notes: clearNotes ? '' : (notes ?? this.notes),
     );
   }
 
@@ -61,7 +53,6 @@ class AccountProfile {
         'phone': phone,
         'nationality': nationality,
         'city': city,
-        'notes': notes,
       };
 
   factory AccountProfile.fromMap(Map<String, dynamic> map) {
@@ -70,7 +61,6 @@ class AccountProfile {
       phone: (map['phone'] as String?) ?? '',
       nationality: (map['nationality'] as String?) ?? '',
       city: (map['city'] as String?) ?? '',
-      notes: (map['notes'] as String?) ?? '',
     );
   }
 

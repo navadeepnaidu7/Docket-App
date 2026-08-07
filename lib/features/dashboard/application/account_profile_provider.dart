@@ -40,14 +40,13 @@ class AccountProfileNotifier extends StateNotifier<AccountProfile> {
   Future<void> setPhone(String value) =>
       update((AccountProfile p) => p.copyWith(phone: value.trim()));
 
-  Future<void> setNationality(String value) =>
-      update((AccountProfile p) => p.copyWith(nationality: value.trim().toUpperCase()));
+  Future<void> setNationality(String value) => update(
+        (AccountProfile p) =>
+            p.copyWith(nationality: value.trim().toUpperCase()),
+      );
 
   Future<void> setCity(String value) =>
       update((AccountProfile p) => p.copyWith(city: value.trim()));
-
-  Future<void> setNotes(String value) =>
-      update((AccountProfile p) => p.copyWith(notes: value.trim()));
 
   Future<void> clear() async {
     state = AccountProfile.empty;
