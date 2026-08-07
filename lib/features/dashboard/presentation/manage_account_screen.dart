@@ -469,22 +469,25 @@ Future<void> _editDateOfBirth(
   final TextEditingController controller = TextEditingController(
     text: profile.dateOfBirth,
   );
-  await showDocumentDatePicker(
-    context: context,
-    controller: controller,
-    kind: DocumentDateKind.dateOfBirth,
-    title: 'Birthday',
-    onChanged: () {},
-  );
-  if (!context.mounted) {
-    controller.dispose();
-    return;
+  try {
+    await showDocumentDatePicker(
+      context: context,
+      controller: controller,
+      kind: DocumentDateKind.dateOfBirth,
+      title: 'Birthday',
+      onChanged: () {},
+    );
+    if (!context.mounted) return;
+    final String next = controller.text.trim();
+    if (next.isEmpty) return;
+    HapticService.success();
+    await ref.read(accountProfileProvider.notifier).setDateOfBirth(next);
+  } finally {
+    // Date sheet may still listen during the pop animation — dispose next frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.dispose();
+    });
   }
-  final String next = controller.text.trim();
-  controller.dispose();
-  if (next.isEmpty) return;
-  HapticService.success();
-  await ref.read(accountProfileProvider.notifier).setDateOfBirth(next);
 }
 
 Future<void> _editText(
@@ -496,115 +499,172 @@ Future<void> _editText(
   required Future<void> Function(String) onSave,
   TextCapitalization textCapitalization = TextCapitalization.none,
   int? maxLength,
+  int maxLines = 1,
 }) async {
-  final TextEditingController controller = TextEditingController(text: initial);
+  // Controller lives inside [_AccountTextEditSheet] so it is only disposed
+  // after the TextField unmounts (not while the sheet is still animating out).
   final String? result = await showModalBottomSheet<String>(
     context: context,
     useSafeArea: true,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (BuildContext ctx) {
-      final bool isDark = Theme.of(ctx).brightness == Brightness.dark;
-      final Color ink =
-          isDark ? const Color(0xFFF2F2F7) : const Color(0xFF1C1C1E);
-
-      return Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: AppleSheet(
-          title: title,
-          showDragHandle: true,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  keyboardType: keyboard,
-                  textCapitalization: textCapitalization,
-                  textInputAction: TextInputAction.done,
-                  maxLength: maxLength,
-                  onSubmitted: (String v) => Navigator.of(ctx).pop(v),
-                  inputFormatters: maxLength == 3
-                      ? <TextInputFormatter>[
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'[A-Za-z]'),
-                          ),
-                          LengthLimitingTextInputFormatter(3),
-                        ]
-                      : null,
-                  style: GoogleFonts.inter(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w400,
-                    letterSpacing: -0.2,
-                    color: ink,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: title,
-                    hintStyle: GoogleFonts.inter(
-                      color: const Color(0xFF8E8E93),
-                    ),
-                    counterText: '',
-                    filled: true,
-                    fillColor: isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : const Color(0xFFF2F2F7),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 14,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: <Widget>[
-                    if (initial.trim().isNotEmpty)
-                      TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(''),
-                        child: Text(
-                          'Clear',
-                          style: TextStyle(
-                            color: Theme.of(ctx).colorScheme.error,
-                          ),
-                        ),
-                      ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      child: Text(
-                        'Cancel',
-                        style: TextStyle(color: ink.withValues(alpha: 0.55)),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () =>
-                          Navigator.of(ctx).pop(controller.text),
-                      child: Text(
-                        'Done',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(ctx).colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+      return _AccountTextEditSheet(
+        title: title,
+        initial: initial,
+        keyboard: keyboard,
+        textCapitalization: textCapitalization,
+        maxLength: maxLength,
+        maxLines: maxLines,
       );
     },
   );
 
-  controller.dispose();
   if (result == null || !context.mounted) return;
   HapticService.success();
   await onSave(result);
+}
+
+/// Owns its [TextEditingController] for the duration of the modal route.
+class _AccountTextEditSheet extends StatefulWidget {
+  const _AccountTextEditSheet({
+    required this.title,
+    required this.initial,
+    required this.keyboard,
+    required this.textCapitalization,
+    this.maxLength,
+    this.maxLines = 1,
+  });
+
+  final String title;
+  final String initial;
+  final TextInputType keyboard;
+  final TextCapitalization textCapitalization;
+  final int? maxLength;
+  final int maxLines;
+
+  @override
+  State<_AccountTextEditSheet> createState() => _AccountTextEditSheetState();
+}
+
+class _AccountTextEditSheetState extends State<_AccountTextEditSheet> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initial);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color ink =
+        isDark ? const Color(0xFFF2F2F7) : const Color(0xFF1C1C1E);
+    final double bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: AppleSheet(
+        title: widget.title,
+        showDragHandle: true,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              TextField(
+                controller: _controller,
+                autofocus: true,
+                keyboardType: widget.keyboard,
+                textCapitalization: widget.textCapitalization,
+                textInputAction: widget.maxLines > 1
+                    ? TextInputAction.newline
+                    : TextInputAction.done,
+                maxLength: widget.maxLength,
+                maxLines: widget.maxLines,
+                minLines: widget.maxLines > 1 ? 3 : 1,
+                onSubmitted: widget.maxLines > 1
+                    ? null
+                    : (String v) => Navigator.of(context).pop(v),
+                inputFormatters: widget.maxLength == 3
+                    ? <TextInputFormatter>[
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[A-Za-z]'),
+                        ),
+                        LengthLimitingTextInputFormatter(3),
+                      ]
+                    : null,
+                style: GoogleFonts.inter(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: -0.2,
+                  color: ink,
+                ),
+                decoration: InputDecoration(
+                  hintText: widget.title,
+                  hintStyle: GoogleFonts.inter(
+                    color: const Color(0xFF8E8E93),
+                  ),
+                  counterText: '',
+                  filled: true,
+                  fillColor: isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : const Color(0xFFF2F2F7),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: <Widget>[
+                  if (widget.initial.trim().isNotEmpty)
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(''),
+                      child: Text(
+                        'Clear',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(color: ink.withValues(alpha: 0.55)),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        Navigator.of(context).pop(_controller.text),
+                    child: Text(
+                      'Done',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
