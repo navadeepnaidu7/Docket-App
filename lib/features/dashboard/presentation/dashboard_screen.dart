@@ -18,6 +18,9 @@ import '../../tickets/presentation/tickets_tab.dart';
 import '../../../core/wallet/wallet_backdrop_tilt.dart';
 import '../../../core/wallet/wallet_filter.dart';
 import '../../../core/wallet/wallet_items.dart';
+import '../../../core/dev/dev_flags_provider.dart';
+import '../application/auth_session_provider.dart';
+import '../application/passes_history_provider.dart';
 import '../application/wallet_filter_provider.dart';
 import '../application/trash_provider.dart';
 import '../application/wallet_order_provider.dart';
@@ -31,6 +34,7 @@ import 'widgets/easter_egg_drawer.dart';
 import 'widgets/easter_egg_sheet_motion.dart';
 import 'widgets/ids_tab.dart';
 import 'widgets/manage_cards_view.dart';
+import 'widgets/membership_mesh.dart';
 import 'widgets/pill_tab_bar.dart';
 import 'settings_screen.dart';
 import 'widgets/trash_view.dart';
@@ -453,7 +457,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         ? filterWalletItems(items: items, category: filterCategory)
         : items;
 
-    final String currentName = passports.isNotEmpty ? passports.first.name : '';
+    final AuthSession session = ref.watch(authSessionProvider);
+    final String meshSeed = _profileMeshSeed(
+      session: session,
+      passports: passports,
+      idDocs: idDocs,
+    );
+    final List<Color> meshWashes = walletWashColors(
+      passports: passports,
+      idDocs: idDocs,
+      scheme: ref.watch(devFlagsProvider).cardFluidScheme,
+    );
+    final bool historySelected = ref.watch(passesHistoryFilterProvider);
 
     // Continuous backdrop / card animations keep burning GPU while Settings (or
     // any other route) covers the dashboard. Mute tickers while covered so the
@@ -624,8 +639,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                                           currentMode,
                                                           _,
                                                         ) {
+                                                          final bool onPasses =
+                                                              _tabCtrl.index ==
+                                                              1;
+                                                          final bool showHistory =
+                                                              currentMode ==
+                                                                  DashboardViewMode
+                                                                      .home &&
+                                                              onPasses;
                                                           return DashboardHeader(
-                                                            name: currentName,
+                                                            meshSeed: meshSeed,
+                                                            washes: meshWashes,
                                                             isMenuOpen:
                                                                 isMenuOpen,
                                                             currentMode:
@@ -640,6 +664,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                                                 _openSettings,
                                                             headerTitleLink:
                                                                 _headerTitleLink,
+                                                            showHistoryButton:
+                                                                showHistory,
+                                                            historySelected:
+                                                                historySelected,
+                                                            onHistoryTap:
+                                                                showHistory
+                                                                ? () {
+                                                                    ref
+                                                                        .read(
+                                                                          passesHistoryFilterProvider
+                                                                              .notifier,
+                                                                        )
+                                                                        .state = !ref
+                                                                        .read(
+                                                                          passesHistoryFilterProvider,
+                                                                        );
+                                                                  }
+                                                                : null,
                                                           );
                                                         },
                                                   );
@@ -857,6 +899,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       child: scaffold,
     );
   }
+}
+
+/// Stable seed for the top-bar mesh: prefer account identity, then wallet docs.
+String _profileMeshSeed({
+  required AuthSession session,
+  required List<PassportProfile> passports,
+  required List<IdDocument> idDocs,
+}) {
+  final String? email = session.email?.trim();
+  if (email != null && email.isNotEmpty) return email.toLowerCase();
+  final String? accountName = session.displayName?.trim();
+  if (accountName != null && accountName.isNotEmpty) {
+    return accountName.toLowerCase();
+  }
+  if (passports.isNotEmpty) {
+    final PassportProfile p = passports.first;
+    final String n = p.name.trim();
+    if (n.isNotEmpty) return '${p.id}:$n';
+    return p.id;
+  }
+  if (idDocs.isNotEmpty) {
+    final IdDocument d = idDocs.first;
+    final String n = d.holderName.trim();
+    if (n.isNotEmpty) return '${d.id}:$n';
+    return d.id;
+  }
+  return 'docket-guest';
 }
 
 /// Crossfade + soft lateral slide between IDs and Passes, locked to the

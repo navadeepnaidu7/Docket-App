@@ -10,6 +10,7 @@ import '../../../core/dev/dev_flags_provider.dart';
 import '../../../core/wallet/wallet_layout.dart';
 import '../../../shared/widgets/bounce_tap.dart';
 import '../../../shared/widgets/rolling_card_page.dart';
+import '../../dashboard/application/passes_history_provider.dart';
 import '../application/pass_list_provider.dart';
 import '../domain/pass_catalog.dart';
 import 'wallet_movie_card.dart';
@@ -23,9 +24,8 @@ class TicketsTab extends ConsumerStatefulWidget {
 }
 
 class _TicketsTabState extends ConsumerState<TicketsTab> {
-  /// false = active passes, true = history (expired).
-  bool _showHistory = false;
   late final PageController _pageCtrl;
+  bool? _lastHistory;
 
   @override
   void initState() {
@@ -39,17 +39,10 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
     super.dispose();
   }
 
-  void _toggleHistory() {
-    setState(() {
-      _showHistory = !_showHistory;
-      if (_pageCtrl.hasClients) _pageCtrl.jumpToPage(0);
-    });
-  }
-
-  List<WalletPassItem> _filter(List<WalletPassItem> all) {
+  List<WalletPassItem> _filter(List<WalletPassItem> all, {required bool history}) {
     return all
         .where(
-          (WalletPassItem p) => _showHistory
+          (WalletPassItem p) => history
               ? p.status == TicketStatus.expired
               : p.status == TicketStatus.active,
         )
@@ -60,26 +53,29 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
   Widget build(BuildContext context) {
     final AsyncValue<List<WalletPassItem>> asyncPasses =
         ref.watch(passListProvider);
+    final bool showHistory = ref.watch(passesHistoryFilterProvider);
+    // Reset page when the top-bar History control flips the filter.
+    if (_lastHistory != null && _lastHistory != showHistory && _pageCtrl.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_pageCtrl.hasClients) _pageCtrl.jumpToPage(0);
+      });
+    }
+    _lastHistory = showHistory;
+
     final bool showMockBadge = DevConfig.showDevMenu &&
         ref.watch(devFlagsProvider).isMockPassesActive;
     final double fabClearance = WalletLayout.fabClearance(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 6, 20, 0),
-          child: Row(
-            children: <Widget>[
-              _HistoryIconButton(
-                selected: _showHistory,
-                onTap: _toggleHistory,
-              ),
-              const Spacer(),
-              if (showMockBadge) _MockBadge(),
-            ],
+        if (showMockBadge)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 20, 0),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: _MockBadge(),
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
         Expanded(
           child: asyncPasses.when(
             loading: () => const Center(
@@ -94,9 +90,10 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
               onRetry: () => ref.read(passListProvider.notifier).refresh(),
             ),
             data: (List<WalletPassItem> all) {
-              final List<WalletPassItem> filtered = _filter(all);
+              final List<WalletPassItem> filtered =
+                  _filter(all, history: showHistory);
               if (filtered.isEmpty) {
-                return _EmptyState(isHistory: _showHistory);
+                return _EmptyState(isHistory: showHistory);
               }
               return Stack(
                 children: <Widget>[
@@ -252,106 +249,6 @@ class _MockBadge extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.6,
-        ),
-      ),
-    );
-  }
-}
-
-// ── History button ────────────────────────────────────────────────────────────
-
-class _HistoryIconButton extends StatelessWidget {
-  const _HistoryIconButton({
-    required this.selected,
-    required this.onTap,
-  });
-
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final bool isDark = theme.brightness == Brightness.dark;
-
-    // Neutral graphite chrome (Settings-aligned) — no electric blue.
-    final Color idleBg =
-        isDark ? const Color(0xFF1C1C1E) : const Color(0xFFFFFFFF);
-    final Color idleBorder = isDark
-        ? Colors.white.withValues(alpha: 0.14)
-        : Colors.black.withValues(alpha: 0.10);
-    final Color idleFg =
-        isDark ? const Color(0xFFE8E8ED) : const Color(0xFF1C1C1E);
-
-    final Color selectedBg =
-        isDark ? const Color(0xFFE8E8ED) : const Color(0xFF1F3A60);
-    final Color selectedFg =
-        isDark ? const Color(0xFF0A0A0D) : Colors.white;
-
-    final Color bg = selected ? selectedBg : idleBg;
-    final Color border = selected ? selectedBg : idleBorder;
-    final Color fg = selected ? selectedFg : idleFg;
-
-    return BounceTap(
-      onTap: onTap,
-      scaleFactor: 0.92,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-        height: 40,
-        padding: EdgeInsets.symmetric(
-          horizontal: selected ? 14 : 11,
-        ),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: border, width: 1.5),
-          boxShadow: selected
-              ? <BoxShadow>[
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.14),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
-              : <BoxShadow>[
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            SvgPicture.asset(
-              AppAssets.passesHistory,
-              width: 18,
-              height: 18,
-              colorFilter: ColorFilter.mode(fg, BlendMode.srcIn),
-            ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
-              alignment: Alignment.centerLeft,
-              child: selected
-                  ? Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Text(
-                        'History',
-                        style: TextStyle(
-                          color: fg,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.15,
-                          height: 1.0,
-                        ),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ],
         ),
       ),
     );

@@ -1,10 +1,17 @@
 import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/assets/app_assets.dart';
+import '../../../../core/dev/dev_flags.dart';
 import '../../../../shared/widgets/bounce_tap.dart';
+import '../../../ids/domain/id_document.dart';
+import '../../../passport/domain/passport_profile.dart';
 import '../dashboard_screen.dart' show DashboardViewMode;
+import 'membership_mesh.dart';
 
 TextStyle dashboardNavTitleStyle(Color ink, {required bool selected}) {
   return GoogleFonts.inter(
@@ -75,20 +82,31 @@ class _GlassIconButtonState extends State<GlassIconButton> {
 class DashboardHeader extends StatelessWidget {
   const DashboardHeader({
     super.key,
-    required this.name,
+    required this.meshSeed,
+    required this.washes,
     required this.isMenuOpen,
     required this.currentMode,
     required this.onHomeTap,
     required this.onAvatarTap,
     required this.headerTitleLink,
+    this.showHistoryButton = false,
+    this.historySelected = false,
+    this.onHistoryTap,
   });
 
-  final String name;
+  /// Stable identity string for a user-unique mesh (email, name, or fallback).
+  final String meshSeed;
+  final List<Color> washes;
   final bool isMenuOpen;
   final DashboardViewMode currentMode;
   final VoidCallback onHomeTap;
   final VoidCallback onAvatarTap;
   final LayerLink headerTitleLink;
+
+  /// Passes-tab History control, shown left of the profile mesh.
+  final bool showHistoryButton;
+  final bool historySelected;
+  final VoidCallback? onHistoryTap;
 
   @override
   Widget build(BuildContext context) {
@@ -149,29 +167,137 @@ class DashboardHeader extends StatelessWidget {
           ),
         ),
         const Spacer(),
-        AvatarButton(name: name, onTap: onAvatarTap),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.centerRight,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              if (showHistoryButton && onHistoryTap != null) ...<Widget>[
+                HistoryHeaderButton(
+                  selected: historySelected,
+                  onTap: onHistoryTap!,
+                ),
+                const SizedBox(width: 10),
+              ],
+              ProfileMeshButton(
+                meshSeed: meshSeed,
+                washes: washes,
+                onTap: onAvatarTap,
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
 }
 
-class AvatarButton extends StatefulWidget {
-  const AvatarButton({super.key, required this.name, required this.onTap});
-  final String name;
+/// Compact History control for the top bar (moved off the Passes tab row).
+class HistoryHeaderButton extends StatelessWidget {
+  const HistoryHeaderButton({
+    super.key,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final bool selected;
   final VoidCallback onTap;
 
   @override
-  State<AvatarButton> createState() => _AvatarButtonState();
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+
+    final Color idleBg =
+        isDark ? const Color(0xFF1C1C1E) : const Color(0xFFFFFFFF);
+    final Color idleBorder = isDark
+        ? Colors.white.withValues(alpha: 0.14)
+        : Colors.black.withValues(alpha: 0.10);
+    final Color idleFg =
+        isDark ? const Color(0xFFE8E8ED) : const Color(0xFF1C1C1E);
+
+    final Color selectedBg =
+        isDark ? const Color(0xFFE8E8ED) : const Color(0xFF1F3A60);
+    final Color selectedFg =
+        isDark ? const Color(0xFF0A0A0D) : Colors.white;
+
+    final Color bg = selected ? selectedBg : idleBg;
+    final Color border = selected ? selectedBg : idleBorder;
+    final Color fg = selected ? selectedFg : idleFg;
+
+    return BounceTap(
+      onTap: onTap,
+      scaleFactor: 0.92,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: border, width: 1.5),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
+              blurRadius: selected ? 10 : 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Center(
+          child: SvgPicture.asset(
+            AppAssets.passesHistory,
+            width: 20,
+            height: 20,
+            colorFilter: ColorFilter.mode(fg, BlendMode.srcIn),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _AvatarButtonState extends State<AvatarButton> {
+/// Squircle membership-mesh profile control (Top Bar design reference).
+///
+/// Always paints the mesh. [AuthSession.photoBase64] may be stored for later
+/// but must not be rendered here until product chooses to use it.
+class ProfileMeshButton extends StatefulWidget {
+  const ProfileMeshButton({
+    super.key,
+    required this.meshSeed,
+    required this.washes,
+    required this.onTap,
+  });
+
+  final String meshSeed;
+  final List<Color> washes;
+  final VoidCallback onTap;
+
+  @override
+  State<ProfileMeshButton> createState() => _ProfileMeshButtonState();
+}
+
+class _ProfileMeshButtonState extends State<ProfileMeshButton> {
   bool _pressed = false;
+
+  static const double _size = 44;
+  static const double _radius = 13;
 
   @override
   Widget build(BuildContext context) {
-    final String initial = widget.name.isNotEmpty
-        ? widget.name.trim()[0].toUpperCase()
-        : '?';
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final List<Color> baseWashes = widget.washes.isEmpty
+        ? walletWashColors(
+            passports: const <PassportProfile>[],
+            idDocs: const <IdDocument>[],
+            scheme: CardFluidScheme.auto,
+          )
+        : widget.washes;
+    final List<Color> washes = personalizeWashes(baseWashes, widget.meshSeed);
+    final double phase = meshPhaseForSeed(widget.meshSeed);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -183,35 +309,42 @@ class _AvatarButtonState extends State<AvatarButton> {
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOutCubic,
         scale: _pressed ? 0.96 : 1.0,
-        child: ClipOval(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white.withValues(alpha: 0.10)
-                    : const Color(0xFF1C1C1E).withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.75),
-                  width: 0.5,
-                ),
+        child: Container(
+          width: _size,
+          height: _size,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(_radius),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
-              child: Center(
-                child: Text(
-                  initial,
-                  style: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? const Color(0xFFF0F4FF)
-                        : const Color(0xFF1C1C1E),
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(_radius),
+            child: Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                MembershipMeshBackground(
+                  washes: washes,
+                  phase: phase,
+                  empty: widget.washes.isEmpty,
+                  richAvatar: true,
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(_radius),
+                    border: Border.all(
+                      color: Colors.white.withValues(
+                        alpha: isDark ? 0.22 : 0.55,
+                      ),
+                      width: 1.0,
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ),

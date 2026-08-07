@@ -14,6 +14,7 @@ class AuthSession {
     required this.isSignedIn,
     this.displayName,
     this.email,
+    this.photoBase64,
   });
 
   static const AuthSession signedOut = AuthSession(isSignedIn: false);
@@ -28,6 +29,27 @@ class AuthSession {
   final bool isSignedIn;
   final String? displayName;
   final String? email;
+
+  /// Optional account photo (e.g. Google avatar), base64-encoded.
+  ///
+  /// Stored for a future decision on when to show it. The dashboard profile
+  /// control always paints the membership mesh today and must not read this.
+  final String? photoBase64;
+
+  AuthSession copyWith({
+    bool? isSignedIn,
+    String? displayName,
+    String? email,
+    String? photoBase64,
+    bool clearPhoto = false,
+  }) {
+    return AuthSession(
+      isSignedIn: isSignedIn ?? this.isSignedIn,
+      displayName: displayName ?? this.displayName,
+      email: email ?? this.email,
+      photoBase64: clearPhoto ? null : (photoBase64 ?? this.photoBase64),
+    );
+  }
 }
 
 /// Effective account session for Settings / membership card.

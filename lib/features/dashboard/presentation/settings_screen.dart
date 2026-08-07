@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
-import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -18,7 +16,6 @@ import '../../../core/haptics/haptic_service.dart';
 import '../../../core/haptics/haptics_provider.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../core/theme/theme_time_picker.dart';
-import '../../../core/wallet/wallet_palette.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
 import '../../passport/application/passport_list_provider.dart';
@@ -30,6 +27,7 @@ import '../application/wallet_filter_provider.dart';
 import '../application/nav_icon_style_provider.dart';
 import '../application/nav_labels_provider.dart';
 import 'user_card_detail_screen.dart';
+import 'widgets/membership_mesh.dart';
 
 /// Apple Card–like hero dimensions (scrolls with the settings list).
 const double kSettingsHeroHeight = 226.0;
@@ -467,85 +465,7 @@ Future<void> _handleGoogleSignInTap(BuildContext context, WidgetRef ref) async {
 }
 
 // ── Apple Card–inspired wallet membership surface ────────────────────────────
-//
-// Light: white titanium + soft pastel washes.
-// Dark: deep slate titanium + richer luminous washes.
-// Motion: slow drifting gradient angle + orbiting color blooms.
-
-Color _toWashAccent(Color source, {required bool isDark}) {
-  final HSLColor hsl = HSLColor.fromColor(source);
-  return hsl
-      .withSaturation((hsl.saturation * 0.70).clamp(0.40, 0.85))
-      .withLightness(0.68)
-      .toColor();
-}
-
-List<Color> _walletWashColors({
-  required List<PassportProfile> passports,
-  required List<IdDocument> idDocs,
-  required CardFluidScheme scheme,
-}) {
-  switch (scheme) {
-    case CardFluidScheme.titaniumClassic:
-      return const <Color>[Color(0xFF8E8E93), Color(0xFF636366), Color(0xFFAEAEE2)];
-    case CardFluidScheme.emerald:
-      return const <Color>[Color(0xFF2A9D6B), Color(0xFF34D399), Color(0xFF059669)];
-    case CardFluidScheme.vibrantSunset:
-      return const <Color>[Color(0xFFE07A2F), Color(0xFFEC4899), Color(0xFF8B5CF6)];
-    case CardFluidScheme.neonAurora:
-      return const <Color>[Color(0xFF38BDF8), Color(0xFF818CF8), Color(0xFFC084FC)];
-    case CardFluidScheme.goldenHour:
-      return const <Color>[Color(0xFFF59E0B), Color(0xFFF43F5E), Color(0xFFD97706)];
-    case CardFluidScheme.auto:
-      final List<Object> items = <Object>[...passports, ...idDocs];
-      if (items.isEmpty) {
-        // Iconic Apple Card spending heatmap colors (coral orange, magenta pink, cyan, lime mint, violet)
-        return const <Color>[
-          Color(0xFFFF7A00),
-          Color(0xFFEC4899),
-          Color(0xFF00C8FF),
-          Color(0xFF10B981),
-          Color(0xFF8B5CF6),
-        ];
-      }
-
-      final List<Color> washes = <Color>[];
-      final Set<int> seenHueBuckets = <int>{};
-
-      for (final Object item in items) {
-        final Color raw = WalletPalette.forItem(item).primary;
-        final Color wash = _toWashAccent(raw, isDark: false);
-        final int bucket = (HSLColor.fromColor(wash).hue / 28).round();
-        if (seenHueBuckets.add(bucket) || washes.length < 2) {
-          washes.add(wash);
-        }
-        if (washes.length >= 5) break;
-      }
-
-      if (washes.length < 2 && items.length > 1) {
-        for (final Object item in items) {
-          washes.add(
-            _toWashAccent(WalletPalette.forItem(item).secondary, isDark: false),
-          );
-          if (washes.length >= 3) break;
-        }
-      }
-
-      return washes;
-  }
-}
-
-List<Color> _membershipBaseColors(List<Color> washes) {
-  const Color whiteBase = Color(0xFFFAFAFC);
-  const Color silverMid = Color(0xFFF2F3F7);
-  const Color titaniumLift = Color(0xFFE8EBF0);
-  if (washes.isEmpty) return const <Color>[whiteBase, silverMid, titaniumLift];
-  return <Color>[
-    Color.lerp(whiteBase, washes.first, 0.12)!,
-    Color.lerp(silverMid, washes.length > 1 ? washes[1] : washes.first, 0.10)!,
-    Color.lerp(titaniumLift, washes.length > 2 ? washes[2] : washes.first, 0.08)!,
-  ];
-}
+// Wash palette + painter live in membership_mesh.dart (shared with profile).
 
 class WalletMembershipCard extends ConsumerStatefulWidget {
   const WalletMembershipCard({
@@ -661,12 +581,11 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
         widget.idDocs.isNotEmpty ? widget.idDocs.first : null;
 
     final String name = _resolveName(session, primaryPassport, primaryId);
-    final List<Color> washes = _walletWashColors(
+    final List<Color> washes = walletWashColors(
       passports: widget.passports,
       idDocs: widget.idDocs,
       scheme: devFlags.cardFluidScheme,
     );
-    final List<Color> baseColors = _membershipBaseColors(washes);
 
     // Crisp Light Titanium Apple Card styling (dark charcoal text for maximum contrast on white titanium)
     const Color ink = Color(0xFF1C1C1E);
@@ -703,37 +622,10 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
               child: ValueListenableBuilder<double>(
                 valueListenable: _phase,
                 builder: (BuildContext context, double phase, _) {
-                  final double angle = phase * 6.28318530718;
-                  final Alignment begin = Alignment(
-                    -0.95 + 0.18 * math.sin(angle),
-                    -0.90 + 0.14 * math.cos(angle * 0.85),
-                  );
-                  final Alignment end = Alignment(
-                    0.95 + 0.12 * math.cos(angle * 0.7),
-                    1.05 + 0.10 * math.sin(angle * 0.9),
-                  );
-                  return Stack(
-                    fit: StackFit.expand,
-                    children: <Widget>[
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: begin,
-                            end: end,
-                            colors: baseColors,
-                            stops: const <double>[0.0, 0.5, 1.0],
-                          ),
-                        ),
-                      ),
-                      CustomPaint(
-                        painter: _MembershipWashPainter(
-                          washes: washes,
-                          phase: phase,
-                          isDark: false,
-                          empty: !hasDocs,
-                        ),
-                      ),
-                    ],
+                  return MembershipMeshBackground(
+                    washes: washes,
+                    phase: phase,
+                    empty: !hasDocs,
                   );
                 },
               ),
@@ -867,91 +759,6 @@ class _GoogleSignInOnCardButton extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-/// Soft radial color washes with slow orbital motion.
-class _MembershipWashPainter extends CustomPainter {
-  _MembershipWashPainter({
-    required this.washes,
-    required this.phase,
-    required this.isDark,
-    required this.empty,
-  });
-
-  final List<Color> washes;
-  final double phase;
-  final bool isDark;
-  final bool empty;
-
-  static const List<Alignment> _anchors = <Alignment>[
-    Alignment(0.85, -0.40),
-    Alignment(-0.80, 0.70),
-    Alignment(0.65, 0.85),
-    Alignment(-0.45, -0.75),
-    Alignment(0.10, 0.15),
-  ];
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Cap blooms — each radial shader is expensive on Impeller/Android.
-    final List<Color> layers = washes.take(3).toList();
-    if (layers.isEmpty) return;
-
-    final double twoPi = 6.28318530718;
-    final double angle = phase * twoPi;
-
-    for (int i = 0; i < layers.length; i++) {
-      final Alignment base = _anchors[i % _anchors.length];
-      // Each bloom orbits at a slightly different rate/radius.
-      final double speed = 0.55 + i * 0.18;
-      final double orbit = 0.12 + i * 0.02;
-      final double ax =
-          (base.x + orbit * math.sin(angle * speed + i)).clamp(-1.15, 1.15);
-      final double ay =
-          (base.y + orbit * math.cos(angle * speed * 0.85 + i * 0.7))
-              .clamp(-1.15, 1.15);
-
-      final Offset center = Offset(
-        size.width * (ax * 0.5 + 0.5),
-        size.height * (ay * 0.5 + 0.5),
-      );
-
-      final double pulse =
-          0.92 + 0.08 * math.sin(angle * (0.9 + i * 0.15) + i);
-      final double richness = empty
-          ? (isDark ? 0.22 : 0.16)
-          : ((isDark ? 0.38 : 0.30) + layers.length * 0.03).clamp(0.20, 0.48);
-      final double radius = size.shortestSide *
-          lerpDouble(1.50, 0.95, i / layers.length.clamp(1, 5))! *
-          pulse;
-
-      final Paint paint = Paint()
-        ..shader = RadialGradient(
-          colors: <Color>[
-            layers[i].withValues(alpha: richness * 0.65),
-            layers[i].withValues(alpha: richness * 0.25),
-            layers[i].withValues(alpha: 0),
-          ],
-          stops: const <double>[0.0, 0.55, 1.0],
-        ).createShader(Rect.fromCircle(center: center, radius: radius));
-
-      canvas.drawCircle(center, radius, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _MembershipWashPainter oldDelegate) {
-    if (oldDelegate.phase != phase ||
-        oldDelegate.isDark != isDark ||
-        oldDelegate.empty != empty ||
-        oldDelegate.washes.length != washes.length) {
-      return true;
-    }
-    for (int i = 0; i < washes.length; i++) {
-      if (oldDelegate.washes[i] != washes[i]) return true;
-    }
-    return false;
   }
 }
 
