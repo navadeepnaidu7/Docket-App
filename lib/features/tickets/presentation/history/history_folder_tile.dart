@@ -17,14 +17,10 @@ class HistoryFolderTile extends StatelessWidget {
     super.key,
     required this.folder,
     required this.onTap,
-    this.heroTag,
   });
 
   final HistoryFolderSummary folder;
   final VoidCallback onTap;
-
-  /// Optional Hero tag shared with the category header.
-  final Object? heroTag;
 
   @override
   Widget build(BuildContext context) {
@@ -37,91 +33,79 @@ class HistoryFolderTile extends StatelessWidget {
     final Color ink = isDark ? Colors.white : Colors.white;
     final Color muted = ink.withValues(alpha: 0.78);
 
-    Widget chrome = _FolderChrome(
-      face: face,
-      body: body,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 28, 14, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Align(
-              alignment: Alignment.topRight,
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.22),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.28),
-                  ),
-                ),
-                child: Icon(
-                  category.icon,
-                  size: 15,
-                  color: ink.withValues(alpha: 0.95),
-                ),
-              ),
-            ),
-            const Spacer(),
-            Text(
-              category.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.3,
-                color: ink,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              folder.countLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: muted,
-              ),
-            ),
-            if (folder.lastAddedLabel != null) ...<Widget>[
-              const SizedBox(height: 6),
-              Text(
-                folder.lastAddedLabel!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                  color: muted.withValues(alpha: 0.85),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-
-    if (heroTag != null) {
-      chrome = Hero(
-        tag: heroTag!,
-        child: Material(
-          type: MaterialType.transparency,
-          child: chrome,
-        ),
-      );
-    }
-
     return BounceTap(
       onTap: () {
         HapticService.select();
         onTap();
       },
       scaleFactor: 0.96,
-      child: chrome,
+      child: _FolderChrome(
+        face: face,
+        body: body,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 28, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Align(
+                alignment: Alignment.topRight,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: isDark ? 0.14 : 0.22),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.28),
+                    ),
+                  ),
+                  child: Icon(
+                    category.icon,
+                    size: 15,
+                    color: ink.withValues(alpha: 0.95),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                category.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                  color: ink,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                folder.countLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: muted,
+                ),
+              ),
+              if (folder.lastAddedLabel != null) ...<Widget>[
+                const SizedBox(height: 6),
+                Text(
+                  folder.lastAddedLabel!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: muted.withValues(alpha: 0.85),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

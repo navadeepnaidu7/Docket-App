@@ -85,7 +85,6 @@ class HistoryFoldersView extends StatelessWidget {
                     child: HistoryFolderTile(
                       key: ValueKey<String>(folder.category.name),
                       folder: folder,
-                      heroTag: 'history-folder-${folder.category.name}',
                       onTap: () => onOpenFolder(folder),
                     ),
                   );
