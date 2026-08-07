@@ -35,8 +35,15 @@ const double kSettingsHeroHeight = 226.0;
 const double kSettingsHeroRadius = 22.0;
 
 /// Credits shown under Settings → About (edit freely).
-const String kDeveloperDisplayName = 'Navad';
+const String kDeveloperDisplayName = 'Navadeep Naidu';
 const String kDeveloperEmail = 'hello@docket.app';
+const String kDeveloperGithubUrl = 'https://github.com/navadeepnaidu7';
+const String kDeveloperWebsiteUrl = 'https://navadeepnaidu.com';
+const String kDeveloperBlogUrl = 'https://blog.navadeepnaidu.com';
+const String kDeveloperXUrl = 'https://x.com/navadeep_naidu7';
+
+/// App version label (keep in sync with `pubspec.yaml` `version:`).
+const String kAppVersion = '1.0.0';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -389,6 +396,30 @@ Future<void> _mailToDeveloper(BuildContext context) async {
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(
       content: Text('Email copied — no mail app available'),
+      behavior: SnackBarBehavior.floating,
+    ),
+  );
+}
+
+Future<void> _openDeveloperLink(BuildContext context, String url) async {
+  HapticService.tap();
+  final Uri uri = Uri.parse(url);
+  try {
+    final bool launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+    if (launched || !context.mounted) return;
+  } catch (_) {
+    // Fall through to clipboard fallback.
+  }
+
+  if (!context.mounted) return;
+  await Clipboard.setData(ClipboardData(text: url));
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Link copied — couldn’t open the browser'),
       behavior: SnackBarBehavior.floating,
     ),
   );
@@ -2038,25 +2069,41 @@ class _DocketSettingsWatermark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color wash = ink.withValues(alpha: isDark ? 0.075 : 0.055);
+    final Color versionWash = ink.withValues(alpha: isDark ? 0.10 : 0.08);
 
     return IgnorePointer(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(4, 48, 4, 20),
-        child: Center(
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              'Docket',
-              maxLines: 1,
-              style: GoogleFonts.inter(
-                fontSize: 72,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -3.2,
-                height: 1.0,
-                color: wash,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Docket',
+                  maxLines: 1,
+                  style: GoogleFonts.inter(
+                    fontSize: 72,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -3.2,
+                    height: 1.0,
+                    color: wash,
+                  ),
+                ),
               ),
             ),
-          ),
+            const SizedBox(height: 6),
+            Text(
+              'v$kAppVersion',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.4,
+                color: versionWash,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -2106,7 +2153,7 @@ class AboutDocketScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Version 1.0.0',
+                    'Version $kAppVersion',
                     style: theme.textTheme.bodyMedium?.copyWith(color: muted),
                   ),
                   const SizedBox(height: 20),
@@ -2211,6 +2258,44 @@ class AboutDeveloperScreen extends StatelessWidget {
                     borderColor: borderColor,
                     isDark: isDark,
                     children: <Widget>[
+                      _SettingsLinkRow(
+                        icon: Icons.language_rounded,
+                        iconColor: const Color(0xFF2F6FED),
+                        title: 'Website',
+                        subtitle: 'navadeepnaidu.com',
+                        onTap: () => _openDeveloperLink(
+                          context,
+                          kDeveloperWebsiteUrl,
+                        ),
+                      ),
+                      const _SettingsDivider(),
+                      _SettingsLinkRow(
+                        icon: Icons.article_outlined,
+                        iconColor: const Color(0xFFE07A2F),
+                        title: 'Blog',
+                        subtitle: 'blog.navadeepnaidu.com',
+                        onTap: () =>
+                            _openDeveloperLink(context, kDeveloperBlogUrl),
+                      ),
+                      const _SettingsDivider(),
+                      _SettingsLinkRow(
+                        icon: Icons.code_rounded,
+                        iconColor: const Color(0xFF6E7681),
+                        title: 'GitHub',
+                        subtitle: 'github.com/navadeepnaidu7',
+                        onTap: () =>
+                            _openDeveloperLink(context, kDeveloperGithubUrl),
+                      ),
+                      const _SettingsDivider(),
+                      _SettingsLinkRow(
+                        icon: Icons.alternate_email_rounded,
+                        iconColor: const Color(0xFF1DA1F2),
+                        title: 'X',
+                        subtitle: '@navadeep_naidu7',
+                        onTap: () =>
+                            _openDeveloperLink(context, kDeveloperXUrl),
+                      ),
+                      const _SettingsDivider(),
                       _SettingsLinkRow(
                         icon: Icons.mail_outline_rounded,
                         iconColor: const Color(0xFF8E8E93),
