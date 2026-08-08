@@ -102,3 +102,7 @@ app.*.map.json
 *.pfx
 *.pem
 *.key
+
+# Local design references (do not commit)
+tool/train_ref.png
+
