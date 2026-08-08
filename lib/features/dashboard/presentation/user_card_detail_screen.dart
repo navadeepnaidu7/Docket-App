@@ -75,54 +75,53 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
                 ],
               ),
             ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
-                physics: const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: RepaintBoundary(
+                child: SizedBox(
+                  height: kSettingsHeroHeight,
+                  child: WalletMembershipCard(
+                    passports: passports,
+                    idDocs: idDocs,
+                    isDark: isDark,
+                  ),
                 ),
-                children: <Widget>[
-                  // Membership card — unchanged from settings.
-                  SizedBox(
-                    height: kSettingsHeroHeight,
-                    child: WalletMembershipCard(
-                      passports: passports,
-                      idDocs: idDocs,
-                      isDark: isDark,
-                    ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: RepaintBoundary(
+                  child: PageView.builder(
+                    controller: _pageController,
+                    itemCount: stories.length,
+                    onPageChanged: (int i) {
+                      HapticService.select();
+                      setState(() => _pageIndex = i);
+                    },
+                    itemBuilder: (BuildContext context, int index) {
+                      return _StoryTypography(
+                        key: ValueKey<int>(index),
+                        page: stories[index],
+                        ink: ink,
+                        muted: muted,
+                        isDark: isDark,
+                        active: index == _pageIndex,
+                      );
+                    },
                   ),
-                  const SizedBox(height: 36),
-
-                  // Typography story carousel (mockup-inspired).
-                  SizedBox(
-                    height: 280,
-                    child: PageView.builder(
-                      controller: _pageController,
-                      itemCount: stories.length,
-                      onPageChanged: (int i) {
-                        HapticService.select();
-                        setState(() => _pageIndex = i);
-                      },
-                      itemBuilder: (BuildContext context, int index) {
-                        return _StoryTypography(
-                          key: ValueKey<int>(index),
-                          page: stories[index],
-                          ink: ink,
-                          muted: muted,
-                          isDark: isDark,
-                          active: index == _pageIndex,
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  _PageDots(
-                    count: stories.length,
-                    index: _pageIndex,
-                    ink: ink,
-                    muted: muted,
-                  ),
-                ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: _PageDots(
+                count: stories.length,
+                index: _pageIndex,
+                ink: ink,
+                muted: muted,
               ),
             ),
           ],
@@ -362,18 +361,39 @@ class _StoryTypography extends StatelessWidget {
       fontWeight: FontWeight.w500,
     );
 
-    return Align(
-      alignment: Alignment.topLeft,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Text.rich(
-          TextSpan(
-            children: <InlineSpan>[
-              for (final _StoryLine line in page.lines)
-                for (final _StorySpan span in line.spans) _buildSpan(span, base),
-            ],
+    final Color cardSurface =
+        isDark ? const Color(0xFF141418) : const Color(0xFFFFFFFF);
+    final Color cardBorder = ink.withValues(alpha: isDark ? 0.08 : 0.06);
+
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+      decoration: BoxDecoration(
+        color: cardSurface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: cardBorder, width: 1.0),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
-          textAlign: TextAlign.left,
+        ],
+      ),
+      child: Center(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Text.rich(
+            TextSpan(
+              children: <InlineSpan>[
+                for (final _StoryLine line in page.lines)
+                  for (final _StorySpan span in line.spans)
+                    _buildSpan(span, base),
+              ],
+            ),
+            textAlign: TextAlign.left,
+          ),
         ),
       ),
     );
