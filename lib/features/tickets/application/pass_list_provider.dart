@@ -65,14 +65,3 @@ final activePassesProvider = Provider<AsyncValue<List<WalletPassItem>>>((
             .toList(growable: false),
       );
 });
-
-/// Convenience: expired-only slice.
-final expiredPassesProvider = Provider<AsyncValue<List<WalletPassItem>>>((
-  Ref ref,
-) {
-  return ref.watch(passListProvider).whenData(
-        (List<WalletPassItem> items) => items
-            .where((WalletPassItem p) => p.status == TicketStatus.expired)
-            .toList(growable: false),
-      );
-});

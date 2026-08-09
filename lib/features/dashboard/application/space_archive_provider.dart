@@ -6,9 +6,8 @@ import '../../ids/domain/id_document.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../tickets/application/pass_list_provider.dart';
-import '../../tickets/domain/movie_pass_models.dart';
+import '../../tickets/domain/pass_activity_date.dart';
 import '../../tickets/domain/pass_catalog.dart';
-import '../../tickets/domain/ticket_models.dart';
 
 class SpaceArchiveData {
   const SpaceArchiveData({
@@ -57,28 +56,13 @@ final spaceArchiveAnalyticsProvider = Provider<SpaceArchiveData>((Ref ref) {
   for (final WalletPassItem item in passes) {
     if (item is TrainPassItem) {
       trainCount++;
-      final TrainPass t = item.ticket;
-      DateTime? dt;
-      if (t.departAt != null) {
-        dt = DateTime.tryParse(t.departAt!);
-      }
-      dt ??= _parseDateString(t.date);
-      if (dt != null) {
-        final DateTime norm = normalizeDate(dt);
-        dateMap.putIfAbsent(norm, () => <Object>[]).add(item);
-      }
     } else if (item is MoviePassItem) {
       movieCount++;
-      final MoviePass m = item.pass;
-      DateTime? dt;
-      if (m.showAt != null) {
-        dt = DateTime.tryParse(m.showAt!);
-      }
-      dt ??= _parseDateString(m.showDate);
-      if (dt != null) {
-        final DateTime norm = normalizeDate(dt);
-        dateMap.putIfAbsent(norm, () => <Object>[]).add(item);
-      }
+    }
+    // Prefers the ISO field, falls through to the display string.
+    final DateTime? dt = PassActivityDate.of(item);
+    if (dt != null) {
+      dateMap.putIfAbsent(normalizeDate(dt), () => <Object>[]).add(item);
     }
   }
 
@@ -174,21 +158,4 @@ final spaceArchiveAnalyticsProvider = Provider<SpaceArchiveData>((Ref ref) {
   );
 });
 
-DateTime? _parseDateString(String raw) {
-  if (raw.trim().isEmpty) return null;
-  DateTime? dt = DateTime.tryParse(raw);
-  if (dt != null) return dt;
-
-  try {
-    final List<String> parts = raw.trim().split(RegExp(r'[\s,\/\-]'));
-    if (parts.length >= 3) {
-      int? year = int.tryParse(parts.last);
-      int? day = int.tryParse(parts.first);
-      int month = 7;
-      if (year != null && day != null) {
-        return DateTime(year, month, day);
-      }
-    }
-  } catch (_) {}
-  return null;
-}
+DateTime? _parseDateString(String raw) => PassActivityDate.parse(raw);
