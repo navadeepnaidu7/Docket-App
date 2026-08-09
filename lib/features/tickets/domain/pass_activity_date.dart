@@ -70,6 +70,7 @@ abstract final class PassActivityDate {
 
   static final RegExp _digits = RegExp(r'^\d+$');
   static final RegExp _separators = RegExp(r'[\s,]+');
+  static final RegExp _isoDate = RegExp(r'^(\d{4})-(\d{2})-(\d{2})');
 
   /// Best-effort activity instant for a pass, or null when nothing parses.
   ///
@@ -93,7 +94,16 @@ abstract final class PassActivityDate {
     // ISO fields win. Convert to local: a `...T20:00:00Z` show time bucketed as
     // UTC would land in the wrong month for a user near a month boundary.
     final DateTime? iso = DateTime.tryParse(trimmed);
-    if (iso != null) return iso.toLocal();
+    if (iso != null) {
+      // DateTime.parse rolls overflow dates over silently, so '2024-02-31'
+      // comes back as 2 Mar 2024 and files the pass under the wrong month.
+      // Round-trip the literal calendar fields rather than the parsed value:
+      // a UTC offset can legitimately move `...T01:00:00+05:30` onto the
+      // previous day, and that is not the failure being caught here.
+      final Match? ymd = _isoDate.firstMatch(trimmed);
+      if (ymd != null && !_isRealDate(ymd)) return null;
+      return iso.toLocal();
+    }
 
     final List<String> tokens = trimmed
         .split(_separators)
@@ -121,6 +131,15 @@ abstract final class PassActivityDate {
   /// Full day label, e.g. "10 Jan 2024".
   static String dayLabel(DateTime date) =>
       '${date.day} ${_monthsShort[date.month - 1]} ${date.year}';
+
+  /// True when the `YYYY-MM-DD` fields in [ymd] name a day that exists.
+  static bool _isRealDate(Match ymd) {
+    final int y = int.parse(ymd.group(1)!);
+    final int m = int.parse(ymd.group(2)!);
+    final int d = int.parse(ymd.group(3)!);
+    final DateTime probe = DateTime.utc(y, m, d);
+    return probe.year == y && probe.month == m && probe.day == d;
+  }
 
   static bool _isWeekday(String token) {
     if (token.length < 3) return false;

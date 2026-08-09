@@ -87,7 +87,7 @@ flutter analyze
 
 ```bash
 flutter test
-# 163 tests, All tests passed! (~15s)
+# 263 tests, All tests passed! (~26s)
 ```
 
 | Suite | Covers | Result |
@@ -95,16 +95,15 @@ flutter test
 | `test/passes_json_test.dart` | Train/movie JSON round-trips over fixtures, envelope parsing, brand fallback, poster URL resolution (null / blank / trimmed / round-tripped) and fixture poster hygiene | pass |
 | `test/wallet_card_responsive_test.dart` | Card layout across device sizes down to 320×568, incl. short viewports (split screen) and `WalletCardMetrics.resolve` | pass |
 | `test/movie_hero_band_test.dart` | Hero band: brand chip + status pill present for all three brands (the dead-branch regression), gradient fallback with no network request when no poster, `CachedNetworkImage` when there is one, bundled asset still wins | pass |
-| `test/widget_test.dart` | Boot through onboarding into the dashboard shell | **hangs** |
+| `test/pass_activity_date_test.dart` | Display and ISO date parsing, incl. rejection of overflow calendar dates (`2024-02-31`) that `DateTime.parse` silently rolls into the next month | pass |
+| `test/pass_history_folders_test.dart` / `test/archive_layout_test.dart` | Archive foldering and layout | pass |
+| `test/account_profile_provider_test.dart` | Profile persistence against a stubbed store: hydration, rejected read / write / delete, rollback, and write serialization | pass |
+| `test/widget_test.dart` | Boot through onboarding into the dashboard shell | pass |
 
-> ⚠️ **`flutter test` (whole suite) does not terminate.** `widget_test.dart` runs for 5+ minutes
-> at full CPU and does not finish, even with `--timeout 90s`. It calls `pumpAndSettle()` three
-> times against screens that have continuous animation (onboarding background, shine, theme
-> lerp), and `pumpAndSettle` spins until the frame queue is empty — which never happens. Run the
-> other two suites explicitly until this is fixed (replace the `pumpAndSettle()` calls with
-> bounded `pump(Duration)` loops, as the earlier part of the same test already does).
+The whole suite terminates — the old `widget_test.dart` hang (unbounded `pumpAndSettle()` against
+continuously animating screens) is fixed.
 
-Coverage is thin regardless: providers, secure storage, MRZ parsing, and the NFC bridge have
+Coverage is still thin below that: `SecureDocumentStore`, MRZ parsing, and the NFC bridge have
 **no automated tests**.
 
 ---

@@ -3,13 +3,26 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Android storage options shared by every Docket secure store.
+///
+/// Builds up to 9.2.4 wrote with `RSA_ECB_PKCS1Padding` + `AES_CBC_PKCS7Padding`.
+/// The 10.x line re-encrypts that data with the modern ciphers on first read,
+/// and only after an install has run a 10.x build is it safe to move to v11 —
+/// which drops the old ciphers outright. `migrateWithBackup` keeps a recovery
+/// copy while that one-time rewrite runs, because the records being re-encrypted
+/// are passports and IDs the user cannot regenerate from anywhere else.
+const AndroidOptions kDocketAndroidOptions = AndroidOptions(
+  migrateOnAlgorithmChange: true,
+  migrateWithBackup: true,
+);
+
 /// Encrypted storage for document records, with one-time migration from the
 /// legacy SharedPreferences lists used by earlier Docket builds.
 class SecureDocumentStore {
   SecureDocumentStore._();
 
   static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(),
+    aOptions: kDocketAndroidOptions,
   );
 
   static Future<List<String>> readList(String key) async {

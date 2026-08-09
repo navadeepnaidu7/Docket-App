@@ -9,7 +9,16 @@ class HapticService {
 
   static Future<void> _fire(Future<void> Function() action) async {
     if (!enabled) return;
-    await action();
+    try {
+      await action();
+    } on PlatformException catch (_) {
+      // Haptics are decorative. Nearly every call site fires and forgets, so a
+      // device that cannot vibrate would otherwise raise unhandled async
+      // errors from all over the app. Swallow it here, once, rather than
+      // making 80-odd callers each guard the same non-event.
+    } on MissingPluginException catch (_) {
+      // Same reasoning for hosts with no platform channel, such as tests.
+    }
   }
 
   /// Button press — use on touch down.

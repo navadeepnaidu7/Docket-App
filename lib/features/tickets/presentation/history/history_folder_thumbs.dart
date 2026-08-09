@@ -131,7 +131,7 @@ class _PosterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     // Fixtures may pin a bundled asset; everything else comes from the backend's
     // TMDB image proxy. Either may be absent — "no poster" is a normal state.
-    final String? asset = pass.posterAsset;
+    final String? asset = pass.resolvedPosterAsset;
     final String? url = pass.resolvedPosterUrl;
 
     return Stack(

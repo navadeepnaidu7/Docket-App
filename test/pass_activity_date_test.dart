@@ -118,6 +118,22 @@ void main() {
       expect(PassActivityDate.parse('31 Feb 2024'), isNull);
     });
 
+    test('ISO overflow dates do not roll over into the next month', () {
+      // DateTime.parse('2024-02-31') is silently 2 Mar 2024, which would file
+      // the pass under March.
+      expect(PassActivityDate.parse('2024-02-31'), isNull);
+      expect(PassActivityDate.parse('2023-02-29'), isNull);
+      expect(PassActivityDate.parse('2024-13-01'), isNull);
+      expect(PassActivityDate.parse('2024-02-31T10:00:00Z'), isNull);
+    });
+
+    test('a UTC offset may legitimately shift the day', () {
+      // 01:00 +05:30 is the previous day in UTC. That is a real instant, not
+      // an overflow, so it must survive the calendar check.
+      expect(PassActivityDate.parse('2024-02-10T01:00:00+05:30'), isNotNull);
+      expect(PassActivityDate.parse('2024-02-29'), isNotNull);
+    });
+
     test('non-numeric day and malformed year', () {
       expect(PassActivityDate.parse('+5 Jan 2024'), isNull);
       expect(PassActivityDate.parse('10 Jan 20x4'), isNull);

@@ -505,7 +505,7 @@ class _HeroBand extends StatelessWidget {
   Widget build(BuildContext context) {
     // Fixtures may pin a bundled asset; everything else comes from the backend's TMDB
     // image proxy. Either may be absent, in which case the gradient backdrop is the art.
-    final String? asset = pass.posterAsset;
+    final String? asset = pass.resolvedPosterAsset;
     final String? url = pass.resolvedPosterUrl;
 
     return ClipRRect(

@@ -207,30 +207,34 @@ class HistoryHeaderButton extends StatelessWidget {
     final Color fg =
         isDark ? const Color(0xFFE8E8ED) : const Color(0xFF1C1C1E);
 
-    return BounceTap(
-      onTap: onTap,
-      scaleFactor: 0.92,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: border, width: 1.5),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    return Semantics(
+      button: true,
+      label: 'Open archive',
+      child: BounceTap(
+        onTap: onTap,
+        scaleFactor: 0.92,
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: border, width: 1.5),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Center(
+            child: SvgPicture.asset(
+              AppAssets.passesHistory,
+              width: 20,
+              height: 20,
+              colorFilter: ColorFilter.mode(fg, BlendMode.srcIn),
             ),
-          ],
-        ),
-        child: Center(
-          child: SvgPicture.asset(
-            AppAssets.passesHistory,
-            width: 20,
-            height: 20,
-            colorFilter: ColorFilter.mode(fg, BlendMode.srcIn),
           ),
         ),
       ),
