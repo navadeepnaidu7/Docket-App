@@ -23,7 +23,16 @@ class PassportListController extends StateNotifier<List<PassportProfile>> {
   Future<void> _saveQueue = Future<void>.value();
 
   Future<void> loadPassports() async {
-    final savedData = await SecureDocumentStore.readList(_storageKey);
+    final List<String> savedData;
+    try {
+      savedData = await SecureDocumentStore.readList(_storageKey);
+    } catch (_) {
+      // The records exist but would not decrypt. Clear the spinner so the shell
+      // is usable; the store now refuses writes for this key, so an add made in
+      // this session cannot overwrite what is still on disk.
+      ref.read(passportLoadingProvider.notifier).state = false;
+      return;
+    }
 
     bool migrated = false;
     final List<PassportProfile> loaded = <PassportProfile>[];

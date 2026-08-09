@@ -95,7 +95,7 @@ void main() {
         (HistoryFolderSummary f) => f.category == PassHistoryCategory.train,
       );
       expect(trains.lastAddedLabel, isNotNull);
-      expect(trains.lastAddedLabel, startsWith('Last added '));
+      expect(trains.lastAddedLabel, startsWith('Most recent '));
     });
 
     test('orders folder items newest first by resolved date', () {
@@ -124,7 +124,9 @@ void main() {
       );
     });
 
-    test('last-added label reports the newest pass, not the oldest', () {
+    // "Most recent", not "Last added": the sort key is the journey date, and no
+    // pass model records when it was imported.
+    test('activity label reports the newest pass, not the oldest', () {
       final List<HistoryFolderSummary> folders = buildHistoryFolders(
         buildWalletPassCatalog(
           trains: mockTrainPasses,
@@ -134,7 +136,7 @@ void main() {
       final HistoryFolderSummary trains = folders.firstWhere(
         (HistoryFolderSummary f) => f.category == PassHistoryCategory.train,
       );
-      expect(trains.lastAddedLabel, 'Last added 10 Jan 2024');
+      expect(trains.lastAddedLabel, 'Most recent 10 Jan 2024');
     });
   });
 

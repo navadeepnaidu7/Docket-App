@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../../core/assets/app_assets.dart';
 import '../../domain/movie_pass_models.dart';
 import '../../domain/pass_catalog.dart';
 import '../../domain/pass_history_category.dart';
@@ -158,15 +157,9 @@ class HistoryCategoryMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Movies folder uses a soft dual-brand cue (BMS mark) when space allows.
-    if (category == PassHistoryCategory.movie) {
-      return SvgPicture.asset(
-        AppAssets.bookMyShowLogo,
-        width: size,
-        height: size,
-        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-      );
-    }
+    // Every category gets the neutral glyph, movies included. The folder groups
+    // whatever the user archived - District and BookMyShow passes sit in the
+    // same one - so stamping it with a single ticketing brand mislabels it.
     return CustomPaint(
       size: Size.square(size),
       painter: _HistoryGlyphPainter(

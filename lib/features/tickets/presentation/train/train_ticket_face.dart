@@ -323,11 +323,12 @@ class _TicketBody extends StatelessWidget {
                         label: 'Train',
                         value: t.trainNumber,
                       ),
+                      // Never a bare passenger count here: '3' under a "Seat"
+                      // label reads as seat number 3. The detail face has room
+                      // for the actual numbers; the glance face says how many.
                       _StatItem(
-                        label: 'Seat',
-                        value: t.passengerCount == 1
-                            ? t.passengers.first.seat
-                            : '${t.passengerCount}',
+                        label: t.passengerCount == 1 ? 'Seat' : 'Seats',
+                        value: _detail ? t.seatsListLabel : t.seatSummary,
                       ),
                     ],
                   ),

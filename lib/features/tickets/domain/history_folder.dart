@@ -204,16 +204,22 @@ List<WalletPassItem> _sortByActivityDateDesc(List<WalletPassItem> items) {
       .toList();
 }
 
-/// `Last added <date>` from the newest pass, or null when none has a date.
+/// `Most recent <date>` from the newest pass, or null when none has a date.
+///
+/// Deliberately not "Last added": [ordered] is sorted by journey or show time,
+/// and no pass model carries an added-at timestamp. A ticket imported today for
+/// a trip taken in January is the most recent activity in the folder, not the
+/// most recent import, and saying otherwise would be wrong on exactly the passes
+/// an archive is full of.
 String? _lastAddedLabel(List<WalletPassItem> ordered) {
   for (final WalletPassItem item in ordered) {
     final DateTime? resolved = PassActivityDate.of(item);
     if (resolved != null) {
-      return 'Last added ${PassActivityDate.dayLabel(resolved)}';
+      return 'Most recent ${PassActivityDate.dayLabel(resolved)}';
     }
   }
   final String? raw = ordered.isEmpty
       ? null
       : HistoryPassPresentation.activityDateLabel(ordered.first);
-  return raw == null ? null : 'Last added $raw';
+  return raw == null ? null : 'Most recent $raw';
 }

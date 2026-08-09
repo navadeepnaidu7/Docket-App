@@ -153,6 +153,13 @@ Pass JSON models are hand-written (`ticket_models.dart`, `movie_pass_models.dart
   them. The 10.x line re-encrypts that data on first read (`kDocketAndroidOptions` sets
   `migrateOnAlgorithmChange` + `migrateWithBackup`). Only move to v11 once shipped installs
   have run a 10.x build, and test it by installing **over** an old build, never a clean one.
+- `kDocketAndroidOptions` also sets `resetOnError: false`, and it must stay that way. On
+  Android the plugin implements `resetOnError` as "any exception on any operation calls
+  `deleteAll()` and returns success" — the Dart side never sees the error. It defaulted to
+  false in 9.2.4 and true from 10.x, so leaving it implicit silently arms a full wipe of every
+  passport and ID. `SecureDocumentStore` pairs this with a write interlock: a key whose read
+  threw is marked unreadable and `writeList` refuses it, so an empty list can never be saved
+  over records that are still on disk.
 - `reconcileWalletOrder` must be called whenever items are added/removed, or the persisted
   carousel order drifts and unknown ids sort to the end.
 - `terminals/` and `build/` are scratch/output, not source. `tool/` holds the launcher-icon
