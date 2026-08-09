@@ -58,37 +58,34 @@ void main() {
   }
 
   group('movie hero band', () {
-    // The brand chip and status pill previously sat in an unreachable else-branch: the guard
-    // tested all three MoviePassBrand values, so no movie pass ever showed them. These are
-    // the regression tests for that.
     for (final MoviePassBrand brand in MoviePassBrand.values) {
-      testWidgets('renders the brand chip and status pill for ${brand.name}',
+      testWidgets('does not render brand chip or status pill for ${brand.name}',
           (WidgetTester tester) async {
         final MoviePass pass = buildPass(brand: brand);
         await pumpFace(tester, pass);
 
-        expect(find.text('Active'), findsOneWidget,
-            reason: 'status pill missing for ${brand.name}');
-        expect(find.text(MovieBrandStyle.forPass(pass).chipLabel), findsWidgets,
-            reason: 'brand chip missing for ${brand.name}');
+        expect(find.text('Active'), findsNothing,
+            reason: 'status pill should be removed for ${brand.name}');
+        expect(find.text(MovieBrandStyle.forPass(pass).chipLabel), findsNothing,
+            reason: 'brand chip should be removed for ${brand.name}');
       });
     }
 
-    testWidgets('shows the expired pill for an expired pass', (WidgetTester tester) async {
+    testWidgets('does not show expired pill for an expired pass', (WidgetTester tester) async {
       await pumpFace(
         tester,
         buildPass(brand: MoviePassBrand.bookMyShow, status: TicketStatus.expired),
       );
-      expect(find.text('Expired'), findsOneWidget);
+      expect(find.text('Expired'), findsNothing);
     });
 
-    // No poster must mean the gradient fallback, with no network request attempted.
+    // No poster must mean the gradient fallback, with no network request attempted and no play overlay icon.
     testWidgets('requests no image when there is no poster URL', (WidgetTester tester) async {
       await pumpFace(tester, buildPass(brand: MoviePassBrand.bookMyShow));
 
       expect(find.byType(CachedNetworkImage), findsNothing);
       expect(find.byType(Image), findsNothing);
-      expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.play_arrow_rounded), findsNothing);
     });
 
     testWidgets('uses a cached network image when a poster URL is present',

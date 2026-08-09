@@ -16,7 +16,7 @@ class AccountProfileNotifier extends StateNotifier<AccountProfile> {
   }
 
   static const FlutterSecureStorage _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(),
   );
 
   bool _hydrated = false;

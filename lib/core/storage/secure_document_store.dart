@@ -9,7 +9,7 @@ class SecureDocumentStore {
   SecureDocumentStore._();
 
   static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(),
   );
 
   static Future<List<String>> readList(String key) async {
