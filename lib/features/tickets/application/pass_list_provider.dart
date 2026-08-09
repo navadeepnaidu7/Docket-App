@@ -50,7 +50,11 @@ class PassListNotifier extends AsyncNotifier<List<WalletPassItem>> {
 
   /// Pull-to-refresh / retry.
   Future<void> refresh({TicketStatus? status}) async {
-    state = const AsyncLoading<List<WalletPassItem>>();
+    // Carry the current list into the loading state. A bare AsyncLoading has no
+    // value, and every derived provider that maps over this one (the archive
+    // folders, the active-passes slice) would then hand its screen a spinner
+    // instead of the list it is already showing, resetting scroll position.
+    state = const AsyncLoading<List<WalletPassItem>>().copyWithPrevious(state);
     state = await AsyncValue.guard(() => _load(status: status));
   }
 }

@@ -471,19 +471,23 @@ Future<void> _editDateOfBirth(
     text: profile.dateOfBirth,
   );
   try {
-    await showDocumentDatePicker(
+    // showActions: this sheet is the commit point, so spinning the wheel and
+    // then dragging the sheet away must not save. allowClear gives Birthday the
+    // same escape route the three text fields already have.
+    final String? next = await showDocumentDatePicker(
       context: context,
       controller: controller,
       kind: DocumentDateKind.dateOfBirth,
       title: 'Birthday',
-      onChanged: () {},
+      showActions: true,
+      allowClear: profile.dateOfBirth.trim().isNotEmpty,
     );
-    if (!context.mounted) return;
-    final String next = controller.text.trim();
-    if (next.isEmpty) return;
+    if (next == null || !context.mounted) return;
     HapticService.success();
     try {
-      await ref.read(accountProfileProvider.notifier).setDateOfBirth(next);
+      await ref
+          .read(accountProfileProvider.notifier)
+          .setDateOfBirth(next.trim());
     } catch (_) {
       HapticService.error();
     }
