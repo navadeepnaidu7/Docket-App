@@ -355,35 +355,17 @@ class _StoryTypography extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final TextStyle base = GoogleFonts.inter(
-      fontSize: 28,
-      height: 1.28,
-      letterSpacing: -0.7,
+      fontSize: 32,
+      height: 1.24,
+      letterSpacing: -0.9,
       fontWeight: FontWeight.w500,
     );
 
-    final Color cardSurface =
-        isDark ? const Color(0xFF141418) : const Color(0xFFFFFFFF);
-    final Color cardBorder = ink.withValues(alpha: isDark ? 0.08 : 0.06);
-
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
-      decoration: BoxDecoration(
-        color: cardSurface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: cardBorder, width: 1.0),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
+    return SizedBox.expand(
       child: Center(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(8, 24, 8, 24),
           child: Text.rich(
             TextSpan(
               children: <InlineSpan>[
