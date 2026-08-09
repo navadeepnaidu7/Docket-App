@@ -19,7 +19,15 @@ class IdListController extends StateNotifier<List<IdDocument>> {
   Future<void> _saveQueue = Future<void>.value();
 
   Future<void> loadDocuments() async {
-    final saved = await SecureDocumentStore.readList(_storageKey);
+    final List<String> saved;
+    try {
+      saved = await SecureDocumentStore.readList(_storageKey);
+    } catch (_) {
+      // See PassportListController.loadPassports: fail visible-but-harmless
+      // rather than letting an empty list get saved over real documents.
+      ref.read(idLoadingProvider.notifier).state = false;
+      return;
+    }
     state = saved.map(_tryParse).whereType<IdDocument>().toList();
     ref.read(idLoadingProvider.notifier).state = false;
   }
