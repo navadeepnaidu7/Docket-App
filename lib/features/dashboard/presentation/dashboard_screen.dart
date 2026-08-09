@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/haptics/haptic_service.dart';
+import '../../../core/motion/studio_page_route.dart';
 
 import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
@@ -13,6 +14,7 @@ import '../../ids/presentation/id_entry_screen.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../passport/presentation/passport_prompt_screen.dart';
+import '../../tickets/presentation/history/passes_archive_screen.dart';
 import '../../tickets/presentation/tickets_tab.dart';
 
 import '../../../core/wallet/wallet_backdrop_tilt.dart';
@@ -20,7 +22,6 @@ import '../../../core/wallet/wallet_filter.dart';
 import '../../../core/wallet/wallet_items.dart';
 import '../../../core/dev/dev_flags_provider.dart';
 import '../application/auth_session_provider.dart';
-import '../application/passes_history_provider.dart';
 import '../application/wallet_filter_provider.dart';
 import '../application/trash_provider.dart';
 import '../application/wallet_order_provider.dart';
@@ -36,7 +37,7 @@ import 'widgets/ids_tab.dart';
 import 'widgets/manage_cards_view.dart';
 import 'widgets/membership_mesh.dart';
 import 'widgets/pill_tab_bar.dart';
-import 'settings_screen.dart';
+import 'settings_route.dart';
 import 'widgets/trash_view.dart';
 import 'widgets/view_picker.dart';
 import 'widgets/wallet_backdrop.dart';
@@ -212,55 +213,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     // shared draft beforehand: the chip route only exists for an e-passport,
     // and the old screen ignored this answer and offered NFC either way.
     Navigator.of(context).push(
-      PageRouteBuilder<void>(
-        transitionDuration: const Duration(milliseconds: 400),
-        reverseTransitionDuration: const Duration(milliseconds: 300),
-        pageBuilder: (_, _, _) => PassportPromptScreen(
+      studioPageRoute<void>(
+        builder: (_) => PassportPromptScreen(
           kind: isEPassport ? PassportKind.ePassport : PassportKind.regular,
         ),
-        transitionsBuilder: (_, Animation<double> animation, _, Widget child) {
-          final Animation<double> curved = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutQuint,
-          );
-          return FadeTransition(
-            opacity: curved,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.04),
-                end: Offset.zero,
-              ).animate(curved),
-              child: child,
-            ),
-          );
-        },
       ),
     );
   }
 
   void _openIdEntry(IdDocumentType type) {
     Navigator.of(context).push(
-      PageRouteBuilder<void>(
-        transitionDuration: const Duration(milliseconds: 400),
-        reverseTransitionDuration: const Duration(milliseconds: 300),
-        pageBuilder: (_, _, _) => IdEntryScreen(type: type),
-        transitionsBuilder: (_, Animation<double> animation, _, Widget child) {
-          final Animation<double> curved = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutQuint,
-          );
-          return FadeTransition(
-            opacity: curved,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.04),
-                end: Offset.zero,
-              ).animate(curved),
-              child: child,
-            ),
-          );
-        },
-      ),
+      studioPageRoute<void>(builder: (_) => IdEntryScreen(type: type)),
     );
   }
 
@@ -331,16 +294,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   void _openSettings() {
-    HapticService.confirm();
     // Never leave the home-menu barrier open under a pushed route.
     if (_showHomeMenu.value) {
       _showHomeMenu.value = false;
     }
-    // Same modal transition as pass/ticket card detail (slide up / dismiss down).
+    openSettingsRoute(context);
+  }
+
+  /// Pushed on this Navigator, not the root one: the dashboard mutes its own
+  /// tickers via [ModalRoute.secondaryAnimation], so a local push pauses the
+  /// backdrop and card animations while the archive covers them.
+  void _openArchive(String meshSeed, List<Color> washes) {
+    HapticService.select();
+    if (_showHomeMenu.value) {
+      _showHomeMenu.value = false;
+    }
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => const SettingsScreen(),
+      studioPageRoute<void>(
+        builder: (_) => PassesArchiveScreen(meshSeed: meshSeed, washes: washes),
       ),
     );
   }
@@ -468,7 +439,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       idDocs: idDocs,
       scheme: ref.watch(devFlagsProvider).cardFluidScheme,
     );
-    final bool historySelected = ref.watch(passesHistoryFilterProvider);
 
     // Continuous backdrop / card animations keep burning GPU while Settings (or
     // any other route) covers the dashboard. Mute tickers while covered so the
@@ -666,21 +636,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                                                 _headerTitleLink,
                                                             showHistoryButton:
                                                                 showHistory,
-                                                            historySelected:
-                                                                historySelected,
                                                             onHistoryTap:
                                                                 showHistory
-                                                                ? () {
-                                                                    ref
-                                                                        .read(
-                                                                          passesHistoryFilterProvider
-                                                                              .notifier,
-                                                                        )
-                                                                        .state = !ref
-                                                                        .read(
-                                                                          passesHistoryFilterProvider,
-                                                                        );
-                                                                  }
+                                                                ? () =>
+                                                                      _openArchive(
+                                                                        meshSeed,
+                                                                        meshWashes,
+                                                                      )
                                                                 : null,
                                                           );
                                                         },

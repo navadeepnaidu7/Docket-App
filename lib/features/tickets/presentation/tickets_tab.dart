@@ -2,15 +2,12 @@ import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../core/assets/app_assets.dart';
 import '../../../core/dev/dev_config.dart';
 import '../../../core/dev/dev_flags_provider.dart';
 import '../../../core/wallet/wallet_layout.dart';
 import '../../../shared/widgets/bounce_tap.dart';
 import '../../../shared/widgets/rolling_card_page.dart';
-import '../../dashboard/application/passes_history_provider.dart';
 import '../application/pass_list_provider.dart';
 import '../domain/pass_catalog.dart';
 import 'wallet_movie_card.dart';
@@ -25,7 +22,6 @@ class TicketsTab extends ConsumerStatefulWidget {
 
 class _TicketsTabState extends ConsumerState<TicketsTab> {
   late final PageController _pageCtrl;
-  bool? _lastHistory;
 
   @override
   void initState() {
@@ -39,28 +35,11 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
     super.dispose();
   }
 
-  List<WalletPassItem> _filter(List<WalletPassItem> all, {required bool history}) {
-    return all
-        .where(
-          (WalletPassItem p) => history
-              ? p.status == TicketStatus.expired
-              : p.status == TicketStatus.active,
-        )
-        .toList();
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Archived passes live on their own screen; this tab is active passes only.
     final AsyncValue<List<WalletPassItem>> asyncPasses =
-        ref.watch(passListProvider);
-    final bool showHistory = ref.watch(passesHistoryFilterProvider);
-    // Reset page when the top-bar History control flips the filter.
-    if (_lastHistory != null && _lastHistory != showHistory && _pageCtrl.hasClients) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_pageCtrl.hasClients) _pageCtrl.jumpToPage(0);
-      });
-    }
-    _lastHistory = showHistory;
+        ref.watch(activePassesProvider);
 
     final bool showMockBadge = DevConfig.showDevMenu &&
         ref.watch(devFlagsProvider).isMockPassesActive;
@@ -89,12 +68,11 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
               message: err.toString(),
               onRetry: () => ref.read(passListProvider.notifier).refresh(),
             ),
-            data: (List<WalletPassItem> all) {
-              final List<WalletPassItem> filtered =
-                  _filter(all, history: showHistory);
+            data: (List<WalletPassItem> filtered) {
               if (filtered.isEmpty) {
-                return _EmptyState(isHistory: showHistory);
+                return const _EmptyState();
               }
+
               return Stack(
                 children: <Widget>[
                   PageView.builder(
@@ -258,8 +236,7 @@ class _MockBadge extends StatelessWidget {
 // ── Empty / error ─────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.isHistory});
-  final bool isHistory;
+  const _EmptyState();
 
   @override
   Widget build(BuildContext context) {
@@ -272,25 +249,14 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          if (isHistory)
-            SvgPicture.asset(
-              AppAssets.passesHistory,
-              width: 40,
-              height: 40,
-              colorFilter: ColorFilter.mode(
-                contentColor.withValues(alpha: 0.58),
-                BlendMode.srcIn,
-              ),
-            )
-          else
-            Icon(
-              Icons.confirmation_number_outlined,
-              size: 44,
-              color: contentColor.withValues(alpha: 0.58),
-            ),
+          Icon(
+            Icons.confirmation_number_outlined,
+            size: 44,
+            color: contentColor.withValues(alpha: 0.58),
+          ),
           const SizedBox(height: 12),
           Text(
-            isHistory ? 'No past passes' : 'No active passes',
+            'No active passes',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,

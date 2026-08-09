@@ -146,6 +146,13 @@ Pass JSON models are hand-written (`ticket_models.dart`, `movie_pass_models.dart
   exists in debug/profile (or with `--dart-define=FORCE_DEV_MENU=true`).
 - `SecureDocumentStore.readList` silently migrates legacy `SharedPreferences` string lists
   into secure storage on first read and deletes the plaintext copy — keep that path intact.
+- `flutter_secure_storage` is held at `>=10.3.1 <11.0.0` on purpose; it is not a stale
+  constraint. v11 deleted the `RSA_ECB_PKCS1Padding` / `AES_CBC_PKCS7Padding` ciphers that
+  9.2.4 wrote with, so a 9 -> 11 jump makes existing passport, ID, wallet-order and trash
+  records unreadable — `readList` then reports an empty list and the next save overwrites
+  them. The 10.x line re-encrypts that data on first read (`kDocketAndroidOptions` sets
+  `migrateOnAlgorithmChange` + `migrateWithBackup`). Only move to v11 once shipped installs
+  have run a 10.x build, and test it by installing **over** an old build, never a clean one.
 - `reconcileWalletOrder` must be called whenever items are added/removed, or the persisted
   carousel order drifts and unknown ids sort to the end.
 - `terminals/` and `build/` are scratch/output, not source. `tool/` holds the launcher-icon

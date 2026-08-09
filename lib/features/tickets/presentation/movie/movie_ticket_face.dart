@@ -188,8 +188,6 @@ class _TicketBody extends StatelessWidget {
               ),
               child: _HeroBand(
                 pass: pass,
-                style: style,
-                isActive: isActive,
                 height: (_detail ? 260.0 : 190.0) * scale,
                 detail: _detail,
               ),
@@ -495,15 +493,11 @@ class _TicketCodes extends StatelessWidget {
 class _HeroBand extends StatelessWidget {
   const _HeroBand({
     required this.pass,
-    required this.style,
-    required this.isActive,
     required this.height,
     required this.detail,
   });
 
   final MoviePass pass;
-  final MovieBrandStyle style;
-  final bool isActive;
   final double height;
   final bool detail;
 
@@ -511,7 +505,7 @@ class _HeroBand extends StatelessWidget {
   Widget build(BuildContext context) {
     // Fixtures may pin a bundled asset; everything else comes from the backend's TMDB
     // image proxy. Either may be absent, in which case the gradient backdrop is the art.
-    final String? asset = pass.posterAsset;
+    final String? asset = pass.resolvedPosterAsset;
     final String? url = pass.resolvedPosterUrl;
 
     return ClipRRect(
@@ -530,7 +524,7 @@ class _HeroBand extends StatelessWidget {
                 asset,
                 fit: BoxFit.cover,
                 errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
-                    _buildPlayOverlay(),
+                    const SizedBox.shrink(),
               )
             else if (url != null)
               LayoutBuilder(
@@ -542,26 +536,13 @@ class _HeroBand extends StatelessWidget {
                     memCacheWidth: _decodeWidth(context, constraints.maxWidth),
                     placeholder: (BuildContext context, String url) => const _PosterShimmer(),
                     errorWidget: (BuildContext context, String url, Object error) =>
-                        _buildPlayOverlay(),
+                        const SizedBox.shrink(),
                   );
                 },
               )
             else
-              _buildPlayOverlay(),
-            // The chips sit over real poster art now, so they need a scrim to stay legible
-            // against a bright poster.
-            _buildChipScrim(),
+              const SizedBox.shrink(),
             if (detail) _buildDetailScreenOverlay(),
-            Positioned(
-              top: 10,
-              left: 10,
-              child: _BrandChip(style: style),
-            ),
-            Positioned(
-              top: 10,
-              right: 10,
-              child: _StatusPill(isActive: isActive),
-            ),
           ],
         ),
       ),
@@ -583,29 +564,6 @@ class _HeroBand extends StatelessWidget {
     return math.min((logicalWidth * canvasUpscale * dpr).round(), 780);
   }
 
-  Widget _buildChipScrim() {
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 64,
-      child: IgnorePointer(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: <Color>[
-                Colors.black.withValues(alpha: 0.45),
-                Colors.transparent,
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildGradientBackdrop() {
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -613,27 +571,6 @@ class _HeroBand extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: pass.posterHint.gradient,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlayOverlay() {
-    return Center(
-      child: Container(
-        width: detail ? 56 : 48,
-        height: detail ? 56 : 48,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.black.withValues(alpha: 0.28),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.18),
-          ),
-        ),
-        child: Icon(
-          Icons.play_arrow_rounded,
-          size: detail ? 32 : 28,
-          color: Colors.white.withValues(alpha: 0.90),
         ),
       ),
     );
@@ -738,91 +675,7 @@ class _PosterShimmerState extends State<_PosterShimmer>
   }
 }
 
-class _BrandChip extends StatelessWidget {
-  const _BrandChip({required this.style});
-  final MovieBrandStyle style;
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        color: style.chipBackground,
-        borderRadius: BorderRadius.circular(7),
-        border: style.chipBorder != null
-            ? Border.all(
-                color: style.chipBorder!.withValues(alpha: 0.60),
-              )
-            : null,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          if (style.logoAsset != null) ...<Widget>[
-            SvgPicture.asset(
-              style.logoAsset!,
-              width: 11,
-              height: 11,
-              colorFilter: ColorFilter.mode(
-                style.logoTint ?? Colors.white,
-                BlendMode.srcIn,
-              ),
-            ),
-            const SizedBox(width: 4),
-          ],
-          Text(
-            style.chipLabel,
-            style: GoogleFonts.inter(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.isActive});
-  final bool isActive;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.40),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: isActive
-                  ? const Color(0xFF30D158)
-                  : const Color(0xFF8E8E93),
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            isActive ? 'Active' : 'Expired',
-            style: GoogleFonts.inter(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _Field extends StatelessWidget {
   const _Field({

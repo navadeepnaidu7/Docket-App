@@ -89,7 +89,6 @@ class DashboardHeader extends StatelessWidget {
     required this.onAvatarTap,
     required this.headerTitleLink,
     this.showHistoryButton = false,
-    this.historySelected = false,
     this.onHistoryTap,
   });
 
@@ -102,9 +101,8 @@ class DashboardHeader extends StatelessWidget {
   final VoidCallback onAvatarTap;
   final LayerLink headerTitleLink;
 
-  /// Passes-tab History control, shown left of the profile mesh.
+  /// Passes-tab Archive control, shown left of the profile mesh.
   final bool showHistoryButton;
-  final bool historySelected;
   final VoidCallback? onHistoryTap;
 
   @override
@@ -174,10 +172,7 @@ class DashboardHeader extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               if (showHistoryButton && onHistoryTap != null) ...<Widget>[
-                HistoryHeaderButton(
-                  selected: historySelected,
-                  onTap: onHistoryTap!,
-                ),
+                HistoryHeaderButton(onTap: onHistoryTap!),
                 const SizedBox(width: 10),
               ],
               ProfileMeshButton(
@@ -193,15 +188,10 @@ class DashboardHeader extends StatelessWidget {
   }
 }
 
-/// Compact History control for the top bar (moved off the Passes tab row).
+/// Compact Archive control for the top bar. Opens the archive screen.
 class HistoryHeaderButton extends StatelessWidget {
-  const HistoryHeaderButton({
-    super.key,
-    required this.selected,
-    required this.onTap,
-  });
+  const HistoryHeaderButton({super.key, required this.onTap});
 
-  final bool selected;
   final VoidCallback onTap;
 
   @override
@@ -209,49 +199,42 @@ class HistoryHeaderButton extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
 
-    final Color idleBg =
+    final Color bg =
         isDark ? const Color(0xFF1C1C1E) : const Color(0xFFFFFFFF);
-    final Color idleBorder = isDark
+    final Color border = isDark
         ? Colors.white.withValues(alpha: 0.14)
         : Colors.black.withValues(alpha: 0.10);
-    final Color idleFg =
+    final Color fg =
         isDark ? const Color(0xFFE8E8ED) : const Color(0xFF1C1C1E);
 
-    final Color selectedBg =
-        isDark ? const Color(0xFFE8E8ED) : const Color(0xFF1F3A60);
-    final Color selectedFg =
-        isDark ? const Color(0xFF0A0A0D) : Colors.white;
-
-    final Color bg = selected ? selectedBg : idleBg;
-    final Color border = selected ? selectedBg : idleBorder;
-    final Color fg = selected ? selectedFg : idleFg;
-
-    return BounceTap(
-      onTap: onTap,
-      scaleFactor: 0.92,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: border, width: 1.5),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
-              blurRadius: selected ? 10 : 8,
-              offset: const Offset(0, 2),
+    return Semantics(
+      button: true,
+      label: 'Open archive',
+      child: BounceTap(
+        onTap: onTap,
+        scaleFactor: 0.92,
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: border, width: 1.5),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Center(
+            child: SvgPicture.asset(
+              AppAssets.passesHistory,
+              width: 20,
+              height: 20,
+              colorFilter: ColorFilter.mode(fg, BlendMode.srcIn),
             ),
-          ],
-        ),
-        child: Center(
-          child: SvgPicture.asset(
-            AppAssets.passesHistory,
-            width: 20,
-            height: 20,
-            colorFilter: ColorFilter.mode(fg, BlendMode.srcIn),
           ),
         ),
       ),

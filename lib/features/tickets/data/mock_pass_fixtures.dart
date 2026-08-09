@@ -461,6 +461,30 @@ final List<MoviePass> mockMoviePasses = <MoviePass>[
     runtime: '3h 01m',
     posterUrl: _mockPosterUrl('gTGYNTiTfLYSGGwbAKgrJIrCPmO.jpg'),
   ),
+  MoviePass(
+    id: 'movie_dist_2',
+    brand: MoviePassBrand.district,
+    movieTitle: 'Pushpa 2: The Rule',
+    movieSubtitle: 'Action · UA',
+    cinemaName: 'PVR Forum Mall',
+    cinemaAddress: 'Koramangala, Bengaluru',
+    screen: 'Audi 7',
+    showDate: 'Sat, 14 Dec 2024',
+    showTime: '9:45 PM',
+    format: 'IMAX 2D',
+    language: 'Telugu',
+    seats: const <MovieSeat>[
+      MovieSeat(row: 'K', number: '18'),
+      MovieSeat(row: 'K', number: '19'),
+    ],
+    bookingId: 'DST-9C2E11A0',
+    orderId: 'DZM4419082',
+    status: TicketStatus.expired,
+    posterHint: MoviePosterHint.action,
+    certification: 'UA',
+    runtime: '3h 20m',
+    posterUrl: _mockPosterUrl('2cxhvwyXc9XPd7RQA0mzS6WHRJi.jpg'),
+  ),
 ];
 
 /// @deprecated Use [mockTrainPasses].

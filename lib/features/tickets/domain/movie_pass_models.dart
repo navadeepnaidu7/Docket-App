@@ -285,6 +285,16 @@ class MoviePass {
     return (url == null || url.isEmpty) ? null : url;
   }
 
+  /// Bundled poster to render, or null when no fixture pinned one.
+  ///
+  /// Normalised for the same reason as [resolvedPosterUrl]: an empty
+  /// [posterAsset] is absent, not a path, and taking the asset branch on one
+  /// hides a perfectly good [resolvedPosterUrl] behind a blank frame.
+  String? get resolvedPosterAsset {
+    final String? asset = posterAsset?.trim();
+    return (asset == null || asset.isEmpty) ? null : asset;
+  }
+
   factory MoviePass.fromJson(Map<String, dynamic> json) {
     final List<dynamic> seatsRaw =
         json['seats'] is List ? json['seats'] as List : const [];

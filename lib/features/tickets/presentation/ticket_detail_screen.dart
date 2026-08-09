@@ -33,7 +33,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       context: context,
       backgroundColor: theme.scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (BuildContext ctx) {
         return SafeArea(
@@ -52,44 +52,47 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Ticket QR',
+                  'Boarding code',
                   style: GoogleFonts.inter(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
                     color: ink,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
                 Container(
-                  width: 180,
-                  height: 180,
+                  width: 188,
+                  height: 188,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
                     border: isDark
                         ? null
-                        : Border.all(color: Colors.black.withValues(alpha: 0.06)),
+                        : Border.all(
+                            color: Colors.black.withValues(alpha: 0.05),
+                          ),
                     boxShadow: <BoxShadow>[
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
+                        color: _kMint.withValues(alpha: 0.18),
+                        blurRadius: 24,
+                        offset: const Offset(0, 10),
                       ),
                     ],
                   ),
                   child: const Icon(
                     Icons.qr_code_2_rounded,
-                    size: 140,
-                    color: Colors.black,
+                    size: 148,
+                    color: Color(0xFF0F1410),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 Text(
                   t.pnr,
                   style: GoogleFonts.inter(
                     fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 2,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2.2,
                     color: ink,
                   ),
                 ),
@@ -116,9 +119,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     final bool isDark = theme.brightness == Brightness.dark;
     final MockTicket t = widget.ticket;
 
-    final Color cardSurface = isDark
-        ? AppTheme.elevated(Brightness.dark)
-        : Colors.white;
+    final Color cardSurface =
+        isDark ? AppTheme.elevated(Brightness.dark) : Colors.white;
     final Color border =
         scheme.onSurface.withValues(alpha: isDark ? 0.08 : 0.06);
     final Color ink = scheme.onSurface;
@@ -165,7 +167,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     useBrandColors: true,
                     onOpenCodes: () => _openCodes(context, t),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 22),
                   _SegmentedTabs(
                     index: _tab,
                     onChanged: (int i) {
@@ -176,13 +178,23 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   ),
                   const SizedBox(height: 16),
                   AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 320),
+                    duration: const Duration(milliseconds: 340),
                     switchInCurve: Curves.easeOutCubic,
                     switchOutCurve: Curves.easeInCubic,
+                    layoutBuilder:
+                        (Widget? current, List<Widget> previous) {
+                      return Stack(
+                        alignment: Alignment.topCenter,
+                        children: <Widget>[
+                          ...previous,
+                          ?current,
+                        ],
+                      );
+                    },
                     transitionBuilder:
                         (Widget child, Animation<double> animation) {
                       final Animation<Offset> slide = Tween<Offset>(
-                        begin: const Offset(0, 0.04),
+                        begin: const Offset(0, 0.035),
                         end: Offset.zero,
                       ).animate(animation);
                       return FadeTransition(
@@ -201,6 +213,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                             border: border,
                             ink: ink,
                             muted: muted,
+                            isDark: isDark,
                           )
                         : _LiveStatusTab(
                             key: const ValueKey<String>('live'),
@@ -222,6 +235,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 }
 
+// ── Palette ───────────────────────────────────────────────────────────────────
+
+const Color _kMint = Color(0xFF1FBF75);
+const Color _kMintSoft = Color(0xFFD8F5E6);
+const Color _kCharcoal = Color(0xFF0F1410);
+
 // ── Segmented control ─────────────────────────────────────────────────────────
 
 class _SegmentedTabs extends StatelessWidget {
@@ -239,17 +258,17 @@ class _SegmentedTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color track = isDark
         ? Colors.white.withValues(alpha: 0.08)
-        : const Color(0xFFE8E8ED);
+        : const Color(0xFFEEF1EE);
     final Color selected =
         isDark ? AppTheme.elevated(Brightness.dark) : Colors.white;
     final Color ink = Theme.of(context).colorScheme.onSurface;
 
     return Container(
-      height: 40,
+      height: 42,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: track,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: <Widget>[
@@ -298,18 +317,18 @@ class _SegButton extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? selectedBg : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(11),
           boxShadow: selected
               ? <BoxShadow>[
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 6,
-                    offset: const Offset(0, 1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ]
               : null,
@@ -319,8 +338,8 @@ class _SegButton extends StatelessWidget {
           curve: Curves.easeOutCubic,
           style: GoogleFonts.inter(
             fontSize: 14,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-            color: selected ? ink : ink.withValues(alpha: 0.55),
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected ? ink : ink.withValues(alpha: 0.48),
             letterSpacing: -0.15,
           ),
           child: Text(label),
@@ -340,6 +359,7 @@ class _DetailsTab extends StatelessWidget {
     required this.border,
     required this.ink,
     required this.muted,
+    required this.isDark,
   });
 
   final MockTicket ticket;
@@ -347,6 +367,7 @@ class _DetailsTab extends StatelessWidget {
   final Color border;
   final Color ink;
   final Color muted;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
@@ -382,12 +403,12 @@ class _DetailsTab extends StatelessWidget {
                 value: t.bookingStatus,
                 ink: ink,
                 muted: muted,
-                valueColor: confirmed ? const Color(0xFF30D158) : muted,
+                valueColor: confirmed ? _kMint : muted,
                 trailing: confirmed
                     ? const Icon(
                         Icons.check_circle_rounded,
                         size: 16,
-                        color: Color(0xFF30D158),
+                        color: _kMint,
                       )
                     : null,
               ),
@@ -480,15 +501,8 @@ class _DetailsTab extends StatelessWidget {
   }
 }
 
-// ── Live status tab ───────────────────────────────────────────────────────────
-// Citymapper-style journey rail: coloured line spine, station rows with
-// times, intermediate “ride N stops” chips, bottom status dock.
-
-const Color _kLineBlue = Color(0xFF3B82F6);
-const Color _kLineBlueDeep = Color(0xFF2563EB);
-const Color _kStatusGreen = Color(0xFF30D158);
-const Color _kRouteTrackLight = Color(0xFFE5E5EA);
-const Color _kRouteTrackDark = Color(0xFF2C2C2E);
+// ── Live status ───────────────────────────────────────────────────────────────
+// Clean journey board: mint progress, charcoal stations, soft paper card.
 
 class _LiveStatusTab extends StatelessWidget {
   const _LiveStatusTab({
@@ -513,109 +527,179 @@ class _LiveStatusTab extends StatelessWidget {
     final MockTicket t = ticket;
     final List<TicketHalt> halts = t.halts;
     final bool completed = t.status == TicketStatus.expired;
-    final int remaining = halts
+    final int remainingStops = halts
         .where((TicketHalt h) => h.state != HaltState.departed)
         .length;
-    final String etaLabel = completed
-        ? 'Arrived'
-        : remaining <= 1
-            ? 'Near destination'
-            : '${remaining - 1} halt${remaining - 1 == 1 ? '' : 's'} left';
+    final String etaLeft = completed
+        ? 'Journey complete'
+        : remainingStops == 0
+            ? 'All stops completed'
+            : remainingStops <= 1
+                ? 'Final stop ahead'
+                : '${remainingStops - 1} halt${remainingStops - 1 == 1 ? '' : 's'} remaining';
 
     return Column(
       key: key,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: <Color>[_kLineBlue, _kLineBlueDeep],
-                ),
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color: _kLineBlue.withValues(alpha: 0.28),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.train_rounded,
-                size: 18,
-                color: Colors.white,
-              ),
+        // Dark journey summary card (left-panel vibe from reference)
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDark
+                  ? <Color>[
+                      const Color(0xFF1A1F1B),
+                      const Color(0xFF0F1410),
+                    ]
+                  : <Color>[
+                      const Color(0xFF152018),
+                      const Color(0xFF0C120E),
+                    ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: _kMint.withValues(alpha: 0.12),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
                 children: <Widget>[
-                  Text(
-                    t.trainTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.25,
-                      color: ink,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _kMint.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      t.trainNumber,
+                      style: GoogleFonts.inter(
+                        color: _kMint,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    t.liveStatusLabel,
-                    style: GoogleFonts.inter(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w500,
-                      color: completed ? muted : _kStatusGreen,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      t.trainName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.15,
+                      ),
+                    ),
+                  ),
+                  if (!completed)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _kMint.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: _kMint,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            'Live',
+                            style: GoogleFonts.inter(
+                              color: _kMint,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: _DarkEndpoint(
+                      time: t.departTime,
+                      place: t.fromName,
+                      alignEnd: false,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Column(
+                      children: <Widget>[
+                        Text(
+                          t.duration,
+                          style: GoogleFonts.inter(
+                            color: Colors.white.withValues(alpha: 0.7),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        SizedBox(
+                          width: 72,
+                          height: 16,
+                          child: CustomPaint(
+                            painter: _MiniTrackPainter(
+                              progress: t.progressFraction.clamp(0.08, 0.92),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: _DarkEndpoint(
+                      time: t.arriveTime,
+                      place: t.toName,
+                      alignEnd: true,
                     ),
                   ),
                 ],
               ),
-            ),
-            if (!completed)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                decoration: BoxDecoration(
-                  color:
-                      _kStatusGreen.withValues(alpha: isDark ? 0.14 : 0.10),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        color: _kStatusGreen,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      'Live',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: _kStatusGreen,
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 14),
+              Text(
+                t.liveStatusLabel,
+                style: GoogleFonts.inter(
+                  color: completed
+                      ? Colors.white.withValues(alpha: 0.45)
+                      : _kMint,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         if (halts.isEmpty)
           _SurfaceCard(
             surface: cardSurface,
@@ -640,10 +724,9 @@ class _LiveStatusTab extends StatelessWidget {
             surface: cardSurface,
             border: border,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
-              child: _JourneyRail(
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
+              child: _JourneyTimeline(
                 halts: halts,
-                lineColor: _kLineBlue,
                 ink: ink,
                 muted: muted,
                 isDark: isDark,
@@ -653,14 +736,15 @@ class _LiveStatusTab extends StatelessWidget {
           ),
         if (halts.isNotEmpty) ...<Widget>[
           const SizedBox(height: 14),
-          _JourneyDock(
-            leftLabel: etaLabel,
-            rightLabel: completed ? 'Complete' : t.liveStatusLabel,
-            rightTone: completed ? muted : _kStatusGreen,
+          _StatusDock(
+            left: etaLeft,
+            right: completed ? 'Complete' : t.liveStatusLabel,
+            ink: ink,
+            muted: muted,
             isDark: isDark,
             cardSurface: cardSurface,
             border: border,
-            ink: ink,
+            completed: completed,
           ),
         ],
         const SizedBox(height: 14),
@@ -678,38 +762,128 @@ class _LiveStatusTab extends StatelessWidget {
   }
 }
 
-/// Bottom dock inspired by transit “X mins left / status” pills.
-class _JourneyDock extends StatelessWidget {
-  const _JourneyDock({
-    required this.leftLabel,
-    required this.rightLabel,
-    required this.rightTone,
+class _DarkEndpoint extends StatelessWidget {
+  const _DarkEndpoint({
+    required this.time,
+    required this.place,
+    required this.alignEnd,
+  });
+
+  final String time;
+  final String place;
+  final bool alignEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment:
+          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          time,
+          style: GoogleFonts.inter(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.3,
+            height: 1.0,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          place,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+          style: GoogleFonts.inter(
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MiniTrackPainter extends CustomPainter {
+  _MiniTrackPainter({required this.progress});
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double cy = size.height / 2;
+    final Paint base = Paint()
+      ..color = Colors.white.withValues(alpha: 0.18)
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    final Paint done = Paint()
+      ..color = _kMint
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(Offset(0, cy), Offset(size.width, cy), base);
+    canvas.drawLine(
+      Offset(0, cy),
+      Offset(size.width * progress, cy),
+      done,
+    );
+    canvas.drawCircle(const Offset(0, 0) + Offset(0, cy), 3, done);
+    canvas.drawCircle(
+      Offset(size.width * progress, cy),
+      4.5,
+      Paint()..color = Colors.white,
+    );
+    canvas.drawCircle(
+      Offset(size.width * progress, cy),
+      3,
+      Paint()..color = _kMint,
+    );
+    canvas.drawCircle(
+      Offset(size.width, cy),
+      3,
+      Paint()..color = Colors.white.withValues(alpha: 0.35),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _MiniTrackPainter old) =>
+      old.progress != progress;
+}
+
+class _StatusDock extends StatelessWidget {
+  const _StatusDock({
+    required this.left,
+    required this.right,
+    required this.ink,
+    required this.muted,
     required this.isDark,
     required this.cardSurface,
     required this.border,
-    required this.ink,
+    required this.completed,
   });
 
-  final String leftLabel;
-  final String rightLabel;
-  final Color rightTone;
+  final String left;
+  final String right;
+  final Color ink;
+  final Color muted;
   final bool isDark;
   final Color cardSurface;
   final Color border;
-  final Color ink;
+  final bool completed;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
       decoration: BoxDecoration(
         color: cardSurface,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: border, width: 0.5),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.05),
-            blurRadius: 16,
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+            blurRadius: 14,
             offset: const Offset(0, 4),
           ),
         ],
@@ -718,12 +892,11 @@ class _JourneyDock extends StatelessWidget {
         children: <Widget>[
           Expanded(
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Text(
-                leftLabel,
+                left,
                 style: GoogleFonts.inter(
-                  fontSize: 14,
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w600,
                   letterSpacing: -0.15,
                   color: ink,
@@ -731,23 +904,25 @@ class _JourneyDock extends StatelessWidget {
               ),
             ),
           ),
-          Flexible(
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: rightTone.withValues(alpha: isDark ? 0.16 : 0.12),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                rightLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: rightTone,
-                ),
+          Container(
+            constraints: const BoxConstraints(maxWidth: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: completed
+                  ? muted.withValues(alpha: isDark ? 0.16 : 0.12)
+                  : (isDark
+                      ? _kMint.withValues(alpha: 0.18)
+                      : _kMintSoft),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: completed ? muted : (isDark ? _kMint : _kCharcoal),
               ),
             ),
           ),
@@ -757,12 +932,11 @@ class _JourneyDock extends StatelessWidget {
   }
 }
 
-// ── Journey rail (Citymapper-like) ────────────────────────────────────────────
+// ── Station timeline ──────────────────────────────────────────────────────────
 
-class _JourneyRail extends StatefulWidget {
-  const _JourneyRail({
+class _JourneyTimeline extends StatefulWidget {
+  const _JourneyTimeline({
     required this.halts,
-    required this.lineColor,
     required this.ink,
     required this.muted,
     required this.isDark,
@@ -770,17 +944,16 @@ class _JourneyRail extends StatefulWidget {
   });
 
   final List<TicketHalt> halts;
-  final Color lineColor;
   final Color ink;
   final Color muted;
   final bool isDark;
   final bool completed;
 
   @override
-  State<_JourneyRail> createState() => _JourneyRailState();
+  State<_JourneyTimeline> createState() => _JourneyTimelineState();
 }
 
-class _JourneyRailState extends State<_JourneyRail>
+class _JourneyTimelineState extends State<_JourneyTimeline>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulse;
 
@@ -789,7 +962,7 @@ class _JourneyRailState extends State<_JourneyRail>
     super.initState();
     _pulse = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
   }
 
@@ -812,25 +985,17 @@ class _JourneyRailState extends State<_JourneyRail>
     return 0;
   }
 
-  int _rideStopsAfter(int current) {
-    final int n = widget.halts.length;
-    if (current >= n - 1) return 0;
-    return n - current - 1;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final List<TicketHalt> haltList = widget.halts;
-    final int n = haltList.length;
+    final List<TicketHalt> list = widget.halts;
+    final int n = list.length;
     if (n == 0) return const SizedBox.shrink();
 
     final int current = _currentIndex;
-    final int rideStops = _rideStopsAfter(current);
-    final bool showRideChip =
+    final int rideStops =
+        current < n - 1 ? n - current - 1 : 0;
+    final bool showRide =
         !widget.completed && rideStops > 1 && current < n - 1;
-
-    final Color track =
-        widget.isDark ? _kRouteTrackDark : _kRouteTrackLight;
 
     return AnimatedBuilder(
       animation: _pulse,
@@ -838,25 +1003,23 @@ class _JourneyRailState extends State<_JourneyRail>
         return Column(
           children: <Widget>[
             for (int i = 0; i < n; i++) ...<Widget>[
-              _StationTimelineRow(
-                halt: haltList[i],
+              _HaltRow(
+                halt: list[i],
                 index: i,
                 total: n,
                 isCurrent: i == current && !widget.completed,
-                isPast: haltList[i].state == HaltState.departed &&
+                isPast: list[i].state == HaltState.departed &&
                     !(i == current && !widget.completed),
-                lineColor: widget.lineColor,
-                trackColor: track,
                 ink: widget.ink,
                 muted: widget.muted,
+                isDark: widget.isDark,
                 pulse: _pulse.value,
                 isFirst: i == 0,
-                isLast: i == n - 1 && !(showRideChip && i == current),
+                isLast: i == n - 1 && !(showRide && i == current),
               ),
-              if (showRideChip && i == current)
-                _RideSegmentRow(
+              if (showRide && i == current)
+                _RideChip(
                   stops: rideStops,
-                  lineColor: widget.lineColor,
                   ink: widget.ink,
                   isDark: widget.isDark,
                 ),
@@ -868,17 +1031,16 @@ class _JourneyRailState extends State<_JourneyRail>
   }
 }
 
-class _StationTimelineRow extends StatelessWidget {
-  const _StationTimelineRow({
+class _HaltRow extends StatelessWidget {
+  const _HaltRow({
     required this.halt,
     required this.index,
     required this.total,
     required this.isCurrent,
     required this.isPast,
-    required this.lineColor,
-    required this.trackColor,
     required this.ink,
     required this.muted,
+    required this.isDark,
     required this.pulse,
     required this.isFirst,
     required this.isLast,
@@ -889,10 +1051,9 @@ class _StationTimelineRow extends StatelessWidget {
   final int total;
   final bool isCurrent;
   final bool isPast;
-  final Color lineColor;
-  final Color trackColor;
   final Color ink;
   final Color muted;
+  final bool isDark;
   final double pulse;
   final bool isFirst;
   final bool isLast;
@@ -915,11 +1076,11 @@ class _StationTimelineRow extends StatelessWidget {
     };
 
     final Color nameColor =
-        isPast && !isCurrent ? ink.withValues(alpha: 0.55) : ink;
+        isPast && !isCurrent ? ink.withValues(alpha: 0.45) : ink;
     final Color subColor = isCurrent
-        ? lineColor
+        ? _kMint
         : isPast
-            ? muted.withValues(alpha: 0.85)
+            ? muted.withValues(alpha: 0.8)
             : muted;
 
     return IntrinsicHeight(
@@ -927,25 +1088,24 @@ class _StationTimelineRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           SizedBox(
-            width: 28,
+            width: 24,
             child: CustomPaint(
-              painter: _LineSpinePainter(
-                lineColor: lineColor,
-                trackColor: trackColor,
+              painter: _MintSpinePainter(
                 isPast: isPast || isCurrent,
                 isCurrent: isCurrent,
                 isFirst: isFirst,
                 isLast: isLast,
                 pulse: pulse,
+                isDark: isDark,
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Padding(
               padding: EdgeInsets.only(
-                top: isFirst ? 0 : 10,
-                bottom: isLast ? 8 : 10,
+                top: isFirst ? 0 : 11,
+                bottom: isLast ? 6 : 11,
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -959,7 +1119,7 @@ class _StationTimelineRow extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.inter(
-                            fontSize: isCurrent ? 15.5 : 14.5,
+                            fontSize: isCurrent ? 15 : 14,
                             fontWeight:
                                 isCurrent ? FontWeight.w700 : FontWeight.w600,
                             letterSpacing: -0.2,
@@ -974,7 +1134,7 @@ class _StationTimelineRow extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.inter(
-                              fontSize: 12.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: subColor,
                               height: 1.15,
@@ -992,7 +1152,7 @@ class _StationTimelineRow extends StatelessWidget {
                         halt.time,
                         style: GoogleFonts.inter(
                           fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           color: nameColor,
                           height: 1.15,
                         ),
@@ -1004,8 +1164,8 @@ class _StationTimelineRow extends StatelessWidget {
                           halt.actual!,
                           style: GoogleFonts.inter(
                             fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: _kStatusGreen,
+                            fontWeight: FontWeight.w700,
+                            color: _kMint,
                             height: 1.1,
                           ),
                         ),
@@ -1022,17 +1182,14 @@ class _StationTimelineRow extends StatelessWidget {
   }
 }
 
-/// Intermediate chip: “Ride N stops”.
-class _RideSegmentRow extends StatelessWidget {
-  const _RideSegmentRow({
+class _RideChip extends StatelessWidget {
+  const _RideChip({
     required this.stops,
-    required this.lineColor,
     required this.ink,
     required this.isDark,
   });
 
   final int stops;
-  final Color lineColor;
   final Color ink;
   final bool isDark;
 
@@ -1043,46 +1200,41 @@ class _RideSegmentRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           SizedBox(
-            width: 28,
+            width: 24,
             child: Center(
               child: Container(
-                width: 4,
+                width: 3,
                 decoration: BoxDecoration(
-                  color: lineColor,
+                  color: _kMint,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             child: Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : const Color(0xFFF2F2F7),
+                    ? _kMint.withValues(alpha: 0.12)
+                    : _kMintSoft,
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : const Color(0xFFE5E5EA),
-                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  Icon(Icons.train_rounded, size: 15, color: lineColor),
+                  const Icon(Icons.train_rounded, size: 15, color: _kMint),
                   const SizedBox(width: 7),
                   Text(
                     'Ride $stops stops',
                     style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
                       letterSpacing: -0.1,
-                      color: ink,
+                      color: isDark ? Colors.white : _kCharcoal,
                     ),
                   ),
                 ],
@@ -1095,120 +1247,103 @@ class _RideSegmentRow extends StatelessWidget {
   }
 }
 
-/// Vertical line spine with station node (badge / pulse / plain dot).
-class _LineSpinePainter extends CustomPainter {
-  _LineSpinePainter({
-    required this.lineColor,
-    required this.trackColor,
+class _MintSpinePainter extends CustomPainter {
+  _MintSpinePainter({
     required this.isPast,
     required this.isCurrent,
     required this.isFirst,
     required this.isLast,
     required this.pulse,
+    required this.isDark,
   });
 
-  final Color lineColor;
-  final Color trackColor;
   final bool isPast;
   final bool isCurrent;
   final bool isFirst;
   final bool isLast;
   final double pulse;
+  final bool isDark;
 
   @override
   void paint(Canvas canvas, Size size) {
     final double cx = size.width / 2;
-    final double cy = isFirst ? 10.0 : 18.0;
-    const double lineW = 4.0;
+    final double cy = isFirst ? 8.0 : 16.0;
+    final Color track =
+        isDark ? const Color(0xFF3A3F3B) : const Color(0xFFDCE3DC);
 
-    final Paint pastPaint = Paint()
-      ..color = lineColor
-      ..strokeWidth = lineW
+    final Paint active = Paint()
+      ..color = _kMint
+      ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
-    final Paint futurePaint = Paint()
-      ..color = trackColor
-      ..strokeWidth = lineW
+    final Paint idle = Paint()
+      ..color = track
+      ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
 
     if (!isFirst) {
       canvas.drawLine(
         Offset(cx, 0),
         Offset(cx, cy),
-        isPast || isCurrent ? pastPaint : futurePaint,
+        isPast || isCurrent ? active : idle,
       );
     }
     if (!isLast) {
-      final bool segmentDone = isPast && !isCurrent;
       canvas.drawLine(
         Offset(cx, cy),
         Offset(cx, size.height),
-        segmentDone || isCurrent ? pastPaint : futurePaint,
+        (isPast && !isCurrent) || isCurrent ? active : idle,
       );
     }
 
     if (isFirst) {
-      final Rect badge = Rect.fromCenter(
-        center: Offset(cx, cy),
-        width: 22,
-        height: 22,
-      );
-      final RRect r = RRect.fromRectAndRadius(badge, const Radius.circular(7));
-      canvas.drawRRect(r, Paint()..color = lineColor);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset(cx, cy), width: 8, height: 8),
-          const Radius.circular(2),
-        ),
-        Paint()..color = Colors.white.withValues(alpha: 0.95),
-      );
+      canvas.drawCircle(Offset(cx, cy), 6, Paint()..color = _kMint);
+      canvas.drawCircle(Offset(cx, cy), 2.5, Paint()..color = Colors.white);
     } else if (isCurrent) {
-      final double ring = 1.0 + 0.22 * pulse;
-      final double ringA = 0.35 * (1.0 - pulse * 0.45);
+      final double ring = 1.0 + 0.2 * pulse;
       canvas.drawCircle(
         Offset(cx, cy),
         9 * ring,
         Paint()
-          ..color = lineColor.withValues(alpha: ringA)
+          ..color = _kMint.withValues(alpha: 0.28 * (1 - pulse * 0.4))
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2,
       );
-      canvas.drawCircle(Offset(cx, cy), 7, Paint()..color = lineColor);
-      canvas.drawCircle(Offset(cx, cy), 3.2, Paint()..color = Colors.white);
+      canvas.drawCircle(Offset(cx, cy), 7, Paint()..color = _kMint);
+      canvas.drawCircle(Offset(cx, cy), 3, Paint()..color = Colors.white);
     } else if (isPast) {
-      canvas.drawCircle(Offset(cx, cy), 5.5, Paint()..color = lineColor);
-      canvas.drawCircle(Offset(cx, cy), 2.4, Paint()..color = Colors.white);
+      canvas.drawCircle(Offset(cx, cy), 5, Paint()..color = _kMint);
+      canvas.drawCircle(Offset(cx, cy), 2, Paint()..color = Colors.white);
     } else if (isLast) {
       canvas.drawCircle(
         Offset(cx, cy),
         6,
         Paint()
-          ..color = lineColor
+          ..color = _kMint
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.2,
       );
-      canvas.drawCircle(Offset(cx, cy), 2.5, Paint()..color = lineColor);
+      canvas.drawCircle(Offset(cx, cy), 2.4, Paint()..color = _kMint);
     } else {
-      canvas.drawCircle(Offset(cx, cy), 4.5, Paint()..color = trackColor);
+      canvas.drawCircle(Offset(cx, cy), 4.2, Paint()..color = track);
       canvas.drawCircle(
         Offset(cx, cy),
-        4.5,
+        4.2,
         Paint()
-          ..color = lineColor.withValues(alpha: 0.35)
+          ..color = _kMint.withValues(alpha: 0.35)
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5,
+          ..strokeWidth = 1.4,
       );
     }
   }
 
   @override
-  bool shouldRepaint(covariant _LineSpinePainter old) {
+  bool shouldRepaint(covariant _MintSpinePainter old) {
     return old.pulse != pulse ||
         old.isCurrent != isCurrent ||
         old.isPast != isPast ||
-        old.lineColor != lineColor ||
-        old.trackColor != trackColor ||
         old.isFirst != isFirst ||
-        old.isLast != isLast;
+        old.isLast != isLast ||
+        old.isDark != isDark;
   }
 }
 
@@ -1230,11 +1365,11 @@ class _SurfaceCard extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: border, width: 0.5),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         child: child,
       ),
     );
