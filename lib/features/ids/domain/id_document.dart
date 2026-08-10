@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'id_attachment.dart';
+
 enum IdDocumentType { pan, aadhaar }
 
 String _generateId() {
@@ -21,6 +23,7 @@ class IdDocument {
     this.gender = '',
     this.imagePath = '',
     this.qrImageBase64 = '',
+    this.attachments = const <IdAttachment>[],
   }) : id = id ?? _generateId();
 
   IdDocument.empty(IdDocumentType docType)
@@ -33,7 +36,8 @@ class IdDocument {
         address = '',
         gender = '',
         imagePath = '',
-        qrImageBase64 = '';
+        qrImageBase64 = '',
+        attachments = const <IdAttachment>[];
 
   final String id;
   final IdDocumentType type;
@@ -45,6 +49,7 @@ class IdDocument {
   final String gender;       // Aadhaar-specific
   final String imagePath;
   final String qrImageBase64;
+  final List<IdAttachment> attachments;
 
   IdDocument copyWith({
     String? id,
@@ -57,6 +62,7 @@ class IdDocument {
     String? gender,
     String? imagePath,
     String? qrImageBase64,
+    List<IdAttachment>? attachments,
   }) {
     return IdDocument(
       id: id ?? this.id,
@@ -69,6 +75,7 @@ class IdDocument {
       gender: gender ?? this.gender,
       imagePath: imagePath ?? this.imagePath,
       qrImageBase64: qrImageBase64 ?? this.qrImageBase64,
+      attachments: attachments ?? this.attachments,
     );
   }
 
@@ -83,23 +90,43 @@ class IdDocument {
         'gender': gender,
         'imagePath': imagePath,
         'qrImageBase64': qrImageBase64,
+        'attachments': attachments.map((a) => a.toMap()).toList(),
       };
 
-  factory IdDocument.fromMap(Map<String, dynamic> map) => IdDocument(
-        id: map['id'] as String?,
-        type: IdDocumentType.values.firstWhere(
-          (e) => e.name == map['type'],
-          orElse: () => IdDocumentType.pan,
-        ),
-        holderName: map['holderName'] ?? '',
-        documentNumber: map['documentNumber'] ?? '',
-        dateOfBirth: map['dateOfBirth'] ?? '',
-        fatherName: map['fatherName'] ?? '',
-        address: map['address'] ?? '',
-        gender: map['gender'] ?? '',
-        imagePath: map['imagePath'] ?? '',
-        qrImageBase64: map['qrImageBase64'] ?? '',
-      );
+  factory IdDocument.fromMap(Map<String, dynamic> map) {
+    List<IdAttachment> decodedAttachments = const <IdAttachment>[];
+    final rawAttachments = map['attachments'];
+    if (rawAttachments is List) {
+      final parsed = <IdAttachment>[];
+      for (final item in rawAttachments) {
+        if (item is Map) {
+          try {
+            parsed.add(IdAttachment.fromMap(Map<String, dynamic>.from(item)));
+          } catch (_) {
+            // Degrade malformed single entries safely.
+          }
+        }
+      }
+      decodedAttachments = parsed;
+    }
+
+    return IdDocument(
+      id: map['id'] as String?,
+      type: IdDocumentType.values.firstWhere(
+        (e) => e.name == map['type'],
+        orElse: () => IdDocumentType.pan,
+      ),
+      holderName: map['holderName'] ?? '',
+      documentNumber: map['documentNumber'] ?? '',
+      dateOfBirth: map['dateOfBirth'] ?? '',
+      fatherName: map['fatherName'] ?? '',
+      address: map['address'] ?? '',
+      gender: map['gender'] ?? '',
+      imagePath: map['imagePath'] ?? '',
+      qrImageBase64: map['qrImageBase64'] ?? '',
+      attachments: decodedAttachments,
+    );
+  }
 
   String toJson() => json.encode(toMap());
   factory IdDocument.fromJson(String source) =>
