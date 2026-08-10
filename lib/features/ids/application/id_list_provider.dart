@@ -12,7 +12,7 @@ import 'attachment_providers.dart';
 final idListProvider =
     StateNotifierProvider<IdListController, List<IdDocument>>((ref) {
       final controller = IdListController(ref);
-      controller.loadDocuments();
+      controller.loaded = controller.loadDocuments();
       return controller;
     });
 
@@ -22,6 +22,14 @@ class IdListController extends StateNotifier<List<IdDocument>> {
 
   static const _storageKey = 'saved_id_documents';
   Future<void> _saveQueue = Future<void>.value();
+
+  /// Completes when the initial read has finished, successfully or not.
+  ///
+  /// Anything that reasons about "every document that exists" -- the attachment
+  /// orphan sweep in particular -- has to wait on this. Acting on the empty
+  /// list this controller starts with would read as "there are no documents"
+  /// and delete real files.
+  late final Future<void> loaded;
 
   Future<void> loadDocuments() async {
     final List<String> saved;

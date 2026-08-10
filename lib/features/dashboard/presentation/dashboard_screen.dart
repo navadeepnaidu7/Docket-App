@@ -10,6 +10,8 @@ import '../../../core/motion/studio_page_route.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
 import '../../ids/presentation/add_id_sheet.dart';
+import '../../ids/application/attachment_providers.dart';
+import '../../ids/presentation/attachments/id_attachment_sheet.dart';
 import '../../ids/presentation/id_entry_screen.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
@@ -107,6 +109,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   @override
   void initState() {
     super.initState();
+    // Fire and forget: the sweep waits on both document lists itself and is a
+    // no-op unless it can account for every record, so it must not gate paint.
+    sweepAttachmentOrphans(ref);
     _showHomeMenu.addListener(_onMenuToggle);
     _docPage = ValueNotifier(0.0);
     _backdropTilt = WalletBackdropTilt();
@@ -349,38 +354,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
+  /// Long-pressing an ID opens the attachment tray above the remove sheet,
+  /// so the dimmed space over the card is where document copies are managed.
+  ///
+  /// The removal itself is untouched: trash, then wallet order. Dropping
+  /// `updateOrderOnItemRemoved` here would leave the carousel order holding a
+  /// dead id, which sorts unknown entries to the end on the next reconcile.
   void _showDeleteIdDialog(IdDocument doc) {
     HapticService.destructive();
-    final String label = doc.holderName.isEmpty
-        ? 'this card'
-        : "${doc.holderName}'s";
-    final String type = doc.type == IdDocumentType.pan
-        ? 'PAN Card'
-        : 'Aadhaar Card';
-    showCupertinoModalPopup<void>(
-      context: context,
-      builder: (BuildContext ctx) => CupertinoActionSheet(
-        title: const Text('Remove ID Card?'),
-        message: Text('This will remove $label $type from your wallet.'),
-        actions: <CupertinoActionSheetAction>[
-          CupertinoActionSheetAction(
-            isDestructiveAction: true,
-            onPressed: () {
-              ref.read(idListProvider.notifier).removeDocument(doc.id);
-              ref.read(trashProvider.notifier).moveToTrash(doc);
-              ref
-                  .read(walletOrderProvider.notifier)
-                  .updateOrderOnItemRemoved(doc.id);
-              Navigator.of(ctx).pop();
-            },
-            child: const Text('Remove'),
-          ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('Cancel'),
-        ),
-      ),
+    showIdAttachmentSheet(
+      context,
+      document: doc,
+      onRemove: () {
+        ref.read(idListProvider.notifier).removeDocument(doc.id);
+        ref.read(trashProvider.notifier).moveToTrash(doc);
+        ref
+            .read(walletOrderProvider.notifier)
+            .updateOrderOnItemRemoved(doc.id);
+      },
     );
   }
 

@@ -33,6 +33,11 @@ class TrashController extends StateNotifier<TrashState> {
   static const _passportsKey = 'trash_passports';
   static const _idsKey = 'trash_ids';
 
+  /// Completes when the initial read has finished. See [IdListController.loaded]
+  /// -- trashed records still own their attachment files, so a sweep that ran
+  /// before this settled would delete them and make restore lossy.
+  late final Future<void> loaded;
+
   Future<void> loadTrash() async {
     final pData = await SecureDocumentStore.readList(_passportsKey);
     final idData = await SecureDocumentStore.readList(_idsKey);
@@ -134,6 +139,6 @@ class TrashController extends StateNotifier<TrashState> {
 final trashProvider =
     StateNotifierProvider<TrashController, TrashState>((ref) {
   final controller = TrashController(ref);
-  controller.loadTrash();
+  controller.loaded = controller.loadTrash();
   return controller;
 });
