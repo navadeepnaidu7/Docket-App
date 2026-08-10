@@ -10,6 +10,7 @@ import '../../../core/motion/studio_page_route.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
 import '../../ids/presentation/add_id_sheet.dart';
+import '../../ids/application/attachment_open_service.dart';
 import '../../ids/application/attachment_providers.dart';
 import '../../ids/presentation/attachments/id_attachment_sheet.dart';
 import '../../ids/presentation/id_entry_screen.dart';
@@ -112,6 +113,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     // Fire and forget: the sweep waits on both document lists itself and is a
     // no-op unless it can account for every record, so it must not gate paint.
     sweepAttachmentOrphans(ref);
+    // Clears any decrypted copy left in the cache by an external PDF view that
+    // was interrupted before the sheet could close.
+    AttachmentOpenService.purge();
     _showHomeMenu.addListener(_onMenuToggle);
     _docPage = ValueNotifier(0.0);
     _backdropTilt = WalletBackdropTilt();

@@ -8,11 +8,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/haptics/haptic_service.dart';
 import '../../../../core/motion/smooth_curves.dart';
+import '../../application/attachment_open_service.dart';
 import '../../application/attachment_providers.dart';
 import '../../application/id_list_provider.dart';
 import '../../domain/attachment_limits.dart';
 import '../../domain/id_attachment.dart';
 import '../../domain/id_document.dart';
+import 'attachment_full_screen_viewer.dart';
 import 'id_attachment_tray.dart';
 
 /// Opens the long-press sheet for an ID card: the attachment tray above, the
@@ -167,6 +169,42 @@ class _IdAttachmentSheetState extends ConsumerState<_IdAttachmentSheet> {
     );
   }
 
+  /// An image opens a zoomable viewer in-app; a PDF goes out to the device's
+  /// own viewer, which is the only way to get page scrolling and text
+  /// selection without rebuilding a reader here.
+  Future<void> _handleOpen(IdAttachment attachment) async {
+    HapticService.tap();
+
+    if (attachment.kind == IdAttachmentKind.image) {
+      await showAttachmentFullScreen(
+        context,
+        attachment: attachment,
+        resolveBytes: _resolveBytes,
+      );
+      return;
+    }
+
+    final String? failure = await AttachmentOpenService.openExternally(
+      store: ref.read(attachmentStoreProvider),
+      docId: widget.documentId,
+      attachment: attachment,
+      fileExtension: 'pdf',
+    );
+
+    if (!mounted || failure == null) return;
+    HapticService.error();
+    _showRejection(failure);
+  }
+
+  @override
+  void dispose() {
+    // The external viewer works from a decrypted copy in the cache. Closing the
+    // sheet is the natural end of that viewing session, so drop it here rather
+    // than leaving it for the next app start.
+    AttachmentOpenService.purge();
+    super.dispose();
+  }
+
   Future<void> _confirmRemoveAttachment(IdAttachment attachment) async {
     HapticService.destructive();
     final bool? confirmed = await showCupertinoModalPopup<bool>(
@@ -238,6 +276,10 @@ class _IdAttachmentSheetState extends ConsumerState<_IdAttachmentSheet> {
         if (i < 0 || i >= attachments.length) return;
         _confirmRemoveAttachment(attachments[i]);
       },
+      onOpenRequested: (int i) {
+        if (i < 0 || i >= attachments.length) return;
+        _handleOpen(attachments[i]);
+      },
       canAddMore: canAddMore,
     );
 
@@ -258,7 +300,14 @@ class _IdAttachmentSheetState extends ConsumerState<_IdAttachmentSheet> {
             Expanded(
               child: _TrayEntrance(
                 animation: animation,
-                child: Center(child: tray),
+                // Sits below centre rather than at it. Dead-centring leaves the
+                // tray floating in the empty upper half; nudging it down closes
+                // the gap to the action sheet and keeps the whole composition
+                // in the lower two thirds, nearer the thumb.
+                child: Align(
+                  alignment: const Alignment(0, 0.45),
+                  child: tray,
+                ),
               ),
             ),
             const SizedBox(height: 24),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/haptics/haptic_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/bounce_tap.dart';
 import '../../domain/id_attachment.dart';
 import 'attachment_preview.dart';
 
@@ -17,6 +18,7 @@ class AttachmentHeroPager extends StatefulWidget {
     required this.currentIndex,
     required this.resolveBytes,
     required this.onPageChanged,
+    required this.onOpenRequested,
     this.height = 216.0,
   });
 
@@ -24,6 +26,7 @@ class AttachmentHeroPager extends StatefulWidget {
   final int currentIndex;
   final Future<Uint8List> Function(IdAttachment) resolveBytes;
   final ValueChanged<int> onPageChanged;
+  final ValueChanged<int> onOpenRequested;
   final double height;
 
   @override
@@ -99,11 +102,14 @@ class _AttachmentHeroPagerState extends State<AttachmentHeroPager> {
                   opacity: opacity,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                    child: AttachmentPreview(
-                      attachment: widget.attachments[index],
-                      resolveBytes: widget.resolveBytes,
-                      fit: BoxFit.contain,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                    child: BounceTap(
+                      onTap: () => widget.onOpenRequested(index),
+                      child: AttachmentPreview(
+                        attachment: widget.attachments[index],
+                        resolveBytes: widget.resolveBytes,
+                        fit: BoxFit.contain,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+                      ),
                     ),
                   ),
                 ),

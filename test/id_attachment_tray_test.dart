@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:docket/core/theme/app_theme.dart';
 import 'package:docket/features/ids/domain/id_attachment.dart';
 import 'package:docket/features/ids/presentation/attachments/attachment_add_tile.dart';
+import 'package:docket/features/ids/presentation/attachments/attachment_hero_pager.dart';
 import 'package:docket/features/ids/presentation/attachments/attachment_thumb_strip.dart';
 import 'package:docket/features/ids/presentation/attachments/id_attachment_tray.dart';
 import 'package:flutter/material.dart';
@@ -75,6 +76,7 @@ void main() {
           resolveBytes: fakeResolver,
           onAdd: () {},
           onRemoveRequested: (_) {},
+          onOpenRequested: (_) {},
           canAddMore: true,
         ),
       ),
@@ -95,6 +97,7 @@ void main() {
           resolveBytes: fakeResolver,
           onAdd: () {},
           onRemoveRequested: (_) {},
+          onOpenRequested: (_) {},
           canAddMore: true,
         ),
       ),
@@ -125,6 +128,7 @@ void main() {
           resolveBytes: fakeResolver,
           onAdd: () {},
           onRemoveRequested: (_) {},
+          onOpenRequested: (_) {},
           canAddMore: false,
         ),
       ),
@@ -147,6 +151,7 @@ void main() {
           onRemoveRequested: (idx) {
             removedIndex = idx;
           },
+          onOpenRequested: (_) {},
           canAddMore: true,
         ),
       ),
@@ -172,6 +177,7 @@ void main() {
           resolveBytes: fakeResolver,
           onAdd: () {},
           onRemoveRequested: (_) {},
+          onOpenRequested: (_) {},
           canAddMore: true,
         ),
       ),
@@ -180,5 +186,33 @@ void main() {
 
     expect(find.text('PDF'), findsWidgets);
     expect(find.byIcon(Icons.picture_as_pdf_rounded), findsWidgets);
+  });
+
+  testWidgets('Tapping the hero preview fires onOpenRequested with current index', (tester) async {
+    int? openedIndex;
+
+    await tester.pumpWidget(
+      buildTestApp(
+        IdAttachmentTray(
+          attachments: [sampleImage1, sampleImage2],
+          resolveBytes: fakeResolver,
+          onAdd: () {},
+          onRemoveRequested: (_) {},
+          onOpenRequested: (idx) {
+            openedIndex = idx;
+          },
+          canAddMore: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final heroFinder = find.byType(AttachmentHeroPager);
+    expect(heroFinder, findsOneWidget);
+
+    await tester.tap(heroFinder);
+    await tester.pumpAndSettle();
+
+    expect(openedIndex, equals(0));
   });
 }

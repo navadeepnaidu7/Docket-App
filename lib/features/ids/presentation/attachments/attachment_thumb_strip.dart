@@ -7,8 +7,8 @@ import '../../domain/id_attachment.dart';
 import 'attachment_add_tile.dart';
 import 'attachment_preview.dart';
 
-/// Horizontal row of attachment thumbnails with an optional trailing add tile.
-class AttachmentThumbStrip extends StatelessWidget {
+/// Horizontal row of attachment thumbnails with smooth scroll positioning and implicit animations.
+class AttachmentThumbStrip extends StatefulWidget {
   const AttachmentThumbStrip({
     super.key,
     required this.attachments,
@@ -29,12 +29,66 @@ class AttachmentThumbStrip extends StatelessWidget {
   final bool canAddMore;
 
   @override
+  State<AttachmentThumbStrip> createState() => _AttachmentThumbStripState();
+}
+
+class _AttachmentThumbStripState extends State<AttachmentThumbStrip> {
+  late final ScrollController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _scrollToSelected();
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant AttachmentThumbStrip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedIndex != widget.selectedIndex) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _scrollToSelected();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// Calculates scroll offset to center the selected thumbnail within the viewport.
+  void _scrollToSelected() {
+    if (!_controller.hasClients) return;
+    final double viewportWidth = _controller.position.viewportDimension;
+    // Geometry: thumb width 86 + gap 12 = 98pt pitch.
+    final double itemLeft = widget.selectedIndex * 98.0;
+    const double thumbWidth = 86.0;
+    final double targetOffset = (itemLeft + (thumbWidth / 2.0) - (viewportWidth / 2.0)).clamp(
+      _controller.position.minScrollExtent,
+      _controller.position.maxScrollExtent,
+    );
+    _controller.animateTo(
+      targetOffset,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
 
     final children = <Widget>[];
 
-    for (int i = 0; i < attachments.length; i++) {
+    for (int i = 0; i < widget.attachments.length; i++) {
       if (children.isNotEmpty) {
         children.add(const SizedBox(width: 12.0));
       }
@@ -42,31 +96,29 @@ class AttachmentThumbStrip extends StatelessWidget {
         _buildThumb(
           context,
           index: i,
-          attachment: attachments[i],
-          isActive: i == selectedIndex,
+          attachment: widget.attachments[i],
+          isActive: i == widget.selectedIndex,
           brightness: brightness,
         ),
       );
     }
 
-    if (canAddMore) {
+    if (widget.canAddMore) {
       if (children.isNotEmpty) {
         children.add(const SizedBox(width: 12.0));
       }
       children.add(
         AttachmentAddTile(
           variant: AttachmentAddTileVariant.strip,
-          onTap: onAdd,
+          onTap: widget.onAdd,
         ),
       );
     }
 
-    // 54pt thumb plus the 2pt inset the active ring is drawn in. Sizing this
-    // to the bare thumb instead squeezes the selected one down to 50pt, so the
-    // active item reads as smaller than its neighbours rather than ringed.
     return SizedBox(
       height: 58.0,
       child: SingleChildScrollView(
+        controller: _controller,
         scrollDirection: Axis.horizontal,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -91,42 +143,38 @@ class AttachmentThumbStrip extends StatelessWidget {
       height: 54.0,
       child: AttachmentPreview(
         attachment: attachment,
-        resolveBytes: resolveBytes,
+        resolveBytes: widget.resolveBytes,
         fit: BoxFit.cover,
         borderRadius: BorderRadius.circular(AppTheme.radiusControl),
       ),
     );
 
-    Widget content;
-    if (isActive) {
-      content = CustomPaint(
-        painter: DashedRRectPainter(
-          color: accentColor,
-          borderRadius: AppTheme.radiusControl + 2.0,
-          strokeWidth: 1.5,
-          dashLength: 6.0,
-          gapLength: 5.0,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(2.0),
+    final content = AnimatedScale(
+      scale: isActive ? 1.0 : 0.94,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      child: AnimatedOpacity(
+        opacity: isActive ? 1.0 : 0.55,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppTheme.radiusControl + 2.0),
+            border: Border.all(
+              color: isActive ? accentColor : Colors.transparent,
+              width: 2.0,
+            ),
+          ),
           child: preview,
         ),
-      );
-    } else {
-      // Matches the active tile's 2pt ring inset so selection changes the ring,
-      // not the size of the thumbnail underneath it.
-      content = Padding(
-        padding: const EdgeInsets.all(2.0),
-        child: Opacity(
-          opacity: 0.60,
-          child: preview,
-        ),
-      );
-    }
+      ),
+    );
 
     return BounceTap(
-      onTap: () => onSelect(index),
-      onLongPress: () => onRemoveRequested(index),
+      onTap: () => widget.onSelect(index),
+      onLongPress: () => widget.onRemoveRequested(index),
       child: content,
     );
   }

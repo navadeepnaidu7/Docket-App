@@ -60,6 +60,10 @@ dependencies:
   image_picker: ^1.1.2
   # Renders PDF first-page thumbnails and hero previews directly from decrypted bytes in memory.
   pdfx: ^2.6.0
+  # Hands a PDF to whichever viewer the device already has. That needs a real
+  # file on disk, so see AttachmentOpenService for the decrypt-open-purge
+  # lifecycle that keeps the plaintext window as short as possible.
+  open_filex: ^4.7.0
   # Movie posters come from the backend's TMDB image proxy. Image.network has no disk
   # cache, so every cold start would re-download; the proxy serves posters as immutable,
   # which flutter_cache_manager honours indefinitely.

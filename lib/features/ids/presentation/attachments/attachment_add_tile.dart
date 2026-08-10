@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
@@ -6,11 +5,12 @@ import '../../../../shared/widgets/bounce_tap.dart';
 
 enum AttachmentAddTileVariant { hero, strip }
 
-/// Dashed rounded placeholder tile for adding new attachments.
+/// Restrained, composed placeholder tile for adding new attachments.
 ///
 /// Supports two visual layouts:
-/// - [AttachmentAddTileVariant.hero]: Large dashed card with "+" and "add image/pdf" caption.
-/// - [AttachmentAddTileVariant.strip]: Small dashed 54x56 thumbnail tile with a centered "+".
+/// - [AttachmentAddTileVariant.hero]: Card with subtle vertical gradient, solid hairline border,
+///   and a centred accent circle chip with action text.
+/// - [AttachmentAddTileVariant.strip]: Compact 56x54 thumbnail tile with a centred "+" icon.
 class AttachmentAddTile extends StatelessWidget {
   const AttachmentAddTile({
     super.key,
@@ -27,115 +27,92 @@ class AttachmentAddTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     final accentColor = AppTheme.accentOf(brightness);
+    final inkColor = AppTheme.ink(brightness);
     final isHero = variant == AttachmentAddTileVariant.hero;
     final borderRadius = isHero ? AppTheme.radiusCard : AppTheme.radiusControl;
 
-    final tileChild = CustomPaint(
-      painter: DashedRRectPainter(
-        color: accentColor,
-        borderRadius: borderRadius,
-        strokeWidth: 1.5,
-        dashLength: 6.0,
-        gapLength: 5.0,
+    final tileDecoration = BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: <Color>[
+          AppTheme.surface(brightness),
+          AppTheme.elevated(brightness),
+        ],
       ),
-      child: Container(
-        width: isHero ? double.infinity : 56.0,
-        height: isHero ? (height ?? 216.0) : 54.0,
-        decoration: BoxDecoration(
-          color: accentColor.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(borderRadius),
+      border: Border.all(
+        color: inkColor.withValues(alpha: 0.10),
+        width: 1.0,
+      ),
+      borderRadius: BorderRadius.circular(borderRadius),
+      boxShadow: <BoxShadow>[
+        BoxShadow(
+          color: Colors.black.withValues(
+            alpha: brightness == Brightness.dark ? 0.30 : 0.06,
+          ),
+          blurRadius: 18,
+          offset: const Offset(0, 6),
         ),
-        child: isHero
-            ? Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.add_rounded,
-                    size: 36,
-                    color: accentColor,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'add image/pdf',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppTheme.ink(brightness).withValues(alpha: 0.60),
-                    ),
-                  ),
-                ],
-              )
-            : Center(
-                child: Icon(
-                  Icons.add_rounded,
-                  size: 24,
-                  color: accentColor,
-                ),
-              ),
-      ),
+      ],
     );
+
+    final Widget tileContent;
+    if (isHero) {
+      tileContent = Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Container(
+            width: 56.0,
+            height: 56.0,
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.add_rounded,
+              size: 26,
+              color: accentColor,
+            ),
+          ),
+          const SizedBox(height: 14.0),
+          Text(
+            'Add image or PDF',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: inkColor.withValues(alpha: 0.85),
+            ),
+          ),
+          const SizedBox(height: 4.0),
+          Text(
+            'Up to 3 images and 1 PDF',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
+              color: inkColor.withValues(alpha: 0.45),
+            ),
+          ),
+        ],
+      );
+    } else {
+      tileContent = Center(
+        child: Icon(
+          Icons.add_rounded,
+          size: 22,
+          color: accentColor,
+        ),
+      );
+    }
 
     return BounceTap(
       onTap: onTap,
-      child: tileChild,
+      child: Container(
+        width: isHero ? double.infinity : 56.0,
+        height: isHero ? (height ?? 216.0) : 54.0,
+        decoration: tileDecoration,
+        child: tileContent,
+      ),
     );
-  }
-}
-
-/// CustomPainter for drawing a dashed rounded rectangle outline.
-class DashedRRectPainter extends CustomPainter {
-  const DashedRRectPainter({
-    required this.color,
-    required this.borderRadius,
-    this.strokeWidth = 1.5,
-    this.dashLength = 6.0,
-    this.gapLength = 5.0,
-  });
-
-  final Color color;
-  final double borderRadius;
-  final double strokeWidth;
-  final double dashLength;
-  final double gapLength;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
-
-    final rrect = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(borderRadius),
-    );
-
-    final path = Path()..addRRect(rrect);
-    final dashPath = Path();
-
-    for (final PathMetric metric in path.computeMetrics()) {
-      double distance = 0.0;
-      while (distance < metric.length) {
-        final double len = (distance + dashLength < metric.length)
-            ? dashLength
-            : metric.length - distance;
-        dashPath.addPath(
-          metric.extractPath(distance, distance + len),
-          Offset.zero,
-        );
-        distance += dashLength + gapLength;
-      }
-    }
-
-    canvas.drawPath(dashPath, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant DashedRRectPainter oldDelegate) {
-    return oldDelegate.color != color ||
-        oldDelegate.borderRadius != borderRadius ||
-        oldDelegate.strokeWidth != strokeWidth ||
-        oldDelegate.dashLength != dashLength ||
-        oldDelegate.gapLength != gapLength;
   }
 }

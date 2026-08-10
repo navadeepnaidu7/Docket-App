@@ -20,6 +20,7 @@ class IdAttachmentTray extends StatefulWidget {
     required this.resolveBytes,
     required this.onAdd,
     required this.onRemoveRequested,
+    required this.onOpenRequested,
     required this.canAddMore,
   });
 
@@ -27,6 +28,7 @@ class IdAttachmentTray extends StatefulWidget {
   final Future<Uint8List> Function(IdAttachment) resolveBytes;
   final VoidCallback onAdd;
   final ValueChanged<int> onRemoveRequested;
+  final ValueChanged<int> onOpenRequested;
   final bool canAddMore;
 
   @override
@@ -100,6 +102,7 @@ class _IdAttachmentTrayState extends State<IdAttachmentTray> {
                 onPageChanged: (page) {
                   setState(() => _currentPage = page);
                 },
+                onOpenRequested: widget.onOpenRequested,
                 height: heroHeight,
               ),
 
