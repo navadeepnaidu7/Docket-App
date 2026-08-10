@@ -63,8 +63,11 @@ class _IdAttachmentTrayState extends State<IdAttachmentTray> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableHeight = constraints.maxHeight;
-        final heroHeight = AttachmentTrayLayout.heroHeight(availableHeight);
         final count = widget.attachments.length;
+        final heroHeight = AttachmentTrayLayout.heroHeight(
+          availableHeight: availableHeight,
+          attachmentCount: count,
+        );
 
         final showCounter = AttachmentTrayLayout.shouldShowCounter(count);
         final showSwipeHint = AttachmentTrayLayout.shouldShowSwipeHint(

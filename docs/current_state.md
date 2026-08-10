@@ -2,7 +2,7 @@
 
 What is built and verified in `docket_app`.
 
-**Snapshot:** 2 Aug 2026 · branch `master` (head `a66c039`) · `flutter analyze` clean (4 info-level lints) · 109 tests pass, 1 suite hangs (§3.2) · release APK builds at **59.0 MB** (universal, arm32 + arm64).
+**Snapshot:** 10 Aug 2026 · branch `feature/id-media-attachments` · `flutter analyze` clean (5 info-level lints) · 301 tests pass, no suite hangs (§3.2) · release APK builds at **93.0 MB** — inflated by an `x86_64` slice that the `abiFilters` pin is currently failing to drop; see the gotcha in `CLAUDE.md`.
 
 The app is **feature-complete on local documents and fully mock-driven on server-backed passes**. Nothing talks to `docket_server` yet.
 
@@ -50,6 +50,14 @@ Android `minSdk 26`, `applicationId`/`namespace` `com.example.docket`, NFC via `
 ### 1.7 Release build — size-optimised
 Landed in `a3fe742` + `a66c039`. Universal release APK measured at **59.0 MB**, down from 90.3 MB.
 
+> **Regressed as of 10 Aug 2026.** A release build on that date produced a
+> **93.0 MB** APK still containing `lib/x86_64/` (engine, ML Kit OCR,
+> `libopenjpeg.so`). `build.gradle.kts` is unchanged and the filter is still
+> written as described below, so this is an environment or toolchain change
+> rather than a config edit — most likely the Flutter Gradle plugin's
+> evaluation order no longer matching what the filter depends on. Check the ABI
+> list inside the APK before trusting a release size. Tracked in `CLAUDE.md`.
+
 - R8 runs on release (`isMinifyEnabled` + `isShrinkResources`) with `android/app/proguard-rules.pro` keeping the reflection-heavy JMRTD / scuba / BouncyCastle / JP2 stack and ML Kit whole.
 - ABI filtering pins `armeabi-v7a` + `arm64-v8a`, dropping a 33 MB `x86_64` slice. **This must sit on the `release` build type and call `abiFilters.clear()` first** — `FlutterPlugin.kt` clears the build type's filters and re-adds `DEFAULT_PLATFORMS` (arm32, arm64, **x86_64**) at `apply()` time, and AGP unions that with `defaultConfig`, so a `defaultConfig`-only filter is silently a no-op. Debug keeps x86_64 so emulators still work.
 - ML Kit **face detection** and **barcode scanning** are excluded in favour of the `play-services-mlkit-*` variants, so their models are fetched by Play Services rather than bundled. **Text recognition stays bundled** (`assets/mlkit-google-ocr-models`, 1.3 MB + an 11.6 MB native pipeline per ABI) so MRZ/OCR works offline on a fresh install. `AndroidManifest.xml` declares `com.google.mlkit.vision.DEPENDENCIES = face,barcode` to prefetch at install.
@@ -81,14 +89,16 @@ Landed in `a3fe742` + `a66c039`. Universal release APK measured at **59.0 MB**, 
 ```bash
 flutter analyze
 ```
-3 issues, all `info` level `curly_braces_in_flow_control_structures`
-(`secure_document_store.dart:36`, `id_scanner_screen.dart:128`, `mrz_scanner_screen.dart:130`). No warnings or errors.
+5 issues, all `info` level and all pre-dating the attachments work: two
+`deprecated_member_use` (`settings_screen.dart:131`, `manage_cards_view.dart:174`)
+and three `use_null_aware_elements` (`chip_payload.dart:75-79`). No warnings or
+errors.
 
 ### 3.2 Tests
 
 ```bash
 flutter test
-# 293 tests, All tests passed! (~18s)
+# 301 tests, All tests passed! (~20s)
 ```
 
 | Suite | Covers | Result |

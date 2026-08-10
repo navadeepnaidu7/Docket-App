@@ -249,5 +249,57 @@ void main() {
         );
       },
     );
+
+    test(
+      'interlock: an absent key beside existing ciphertext is refused',
+      () async {
+        AttachmentStore.resetKeyStateForTest();
+
+        // No key in storage, but encrypted files are already on disk. That is
+        // not a first run -- it is a restore, a cleared keystore, or a read
+        // that returned null instead of throwing. Minting a key here would
+        // leave the planted file undecryptable forever.
+        final Directory docDir = Directory(
+          _join(tempDir.path, 'id_attachments', 'doc_existing'),
+        );
+        await docDir.create(recursive: true);
+        final File planted = File(_join(docDir.path, 'planted.enc'));
+        await planted.writeAsBytes(Uint8List.fromList(List<int>.filled(64, 7)));
+
+        final sourceFile = File(_join(tempDir.path, 'new.jpg'));
+        await sourceFile.writeAsBytes(Uint8List.fromList([1, 2, 3]));
+
+        await expectLater(
+          store.save(
+            docId: 'doc_existing',
+            file: sourceFile,
+            kind: IdAttachmentKind.image,
+          ),
+          throwsA(isA<StateError>()),
+        );
+
+        expect(await planted.exists(), isTrue);
+        expect(await fakeStorage.read(key: 'attachment_key_v1'), isNull);
+      },
+    );
+
+    test('resolveBytes never mints a key', () async {
+      AttachmentStore.resetKeyStateForTest();
+
+      // A read path that creates a key would let merely previewing a broken
+      // attachment destroy every other one on the device.
+      final attachment = IdAttachment(
+        id: 'missing',
+        kind: IdAttachmentKind.image,
+        fileName: 'missing.enc',
+        sizeBytes: 10,
+      );
+
+      await expectLater(
+        store.resolveBytes('doc_none', attachment),
+        throwsA(isA<StateError>()),
+      );
+      expect(await fakeStorage.read(key: 'attachment_key_v1'), isNull);
+    });
   });
 }

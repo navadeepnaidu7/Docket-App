@@ -126,8 +126,12 @@ class _IdAttachmentSheetState extends ConsumerState<_IdAttachmentSheet> {
         withData: false,
       );
 
-      final String? path = picked?.files.single.path;
-      if (path == null) return;
+      // Not `files.single`: that throws when a non-null result carries an
+      // empty list, which some platforms return on cancel.
+      final List<PlatformFile> files = picked?.files ?? const <PlatformFile>[];
+      if (files.isEmpty) return;
+      final String? path = files.first.path;
+      if (path == null || path.isEmpty) return;
 
       final AttachResult result = await ref
           .read(idListProvider.notifier)
@@ -142,6 +146,13 @@ class _IdAttachmentSheetState extends ConsumerState<_IdAttachmentSheet> {
           HapticService.error();
           _showRejection(message);
       }
+    } catch (_) {
+      // The store refuses writes when its key cannot be read, and the picker
+      // itself can fail. Without this the throw escapes an unawaited callback
+      // and the user is left with a tray that simply did nothing.
+      if (!mounted) return;
+      HapticService.error();
+      _showRejection('Could not attach the file.');
     } finally {
       _picking = false;
     }

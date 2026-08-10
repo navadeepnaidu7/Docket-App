@@ -115,16 +115,28 @@ class _AttachmentThumbStripState extends State<AttachmentThumbStrip> {
       );
     }
 
+    // The Row is sized to its children, so on its own `mainAxisAlignment` has
+    // no free space to work with and the scroll view pins it to the left. With
+    // one or two thumbs that left-aligned the strip under a centred hero.
+    // Forcing a minimum width of the viewport gives the centring something to
+    // distribute, without affecting the overflowing case.
     return SizedBox(
       height: 58.0,
-      child: SingleChildScrollView(
-        controller: _controller,
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: children,
-        ),
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          return SingleChildScrollView(
+            controller: _controller,
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: children,
+              ),
+            ),
+          );
+        },
       ),
     );
   }

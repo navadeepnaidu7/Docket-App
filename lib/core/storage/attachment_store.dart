@@ -253,7 +253,22 @@ class AttachmentStore {
       return decoded;
     }
 
-    // Key missing: generate 32 random bytes (256-bit key)
+    // A read that returns null is the fourth way this can go wrong, and until
+    // now it was the unguarded one: the throw, the bad decode and the wrong
+    // length all arm the interlock, but a plain missing entry looked like a
+    // first run. It is not, if ciphertext is already on disk -- a restored
+    // backup, a plugin-level clear, or a keystore entry that resolves to null
+    // instead of throwing all land here. Minting a key then would leave every
+    // existing attachment undecryptable with no way back.
+    if (await _hasExistingAttachmentFiles()) {
+      _keyUnreadable = true;
+      throw StateError(
+        'Refusing attachment store operation: attachment_key_v1 is absent but '
+        'encrypted attachment files exist.',
+      );
+    }
+
+    // Key missing and no ciphertext to orphan: a genuine first run.
     final keyBytes = Uint8List(32);
     final random = Random.secure();
     for (int i = 0; i < 32; i++) {
@@ -274,6 +289,80 @@ class AttachmentStore {
 
     _cachedKeyBytes = keyBytes;
     return keyBytes;
+  }
+
+  /// True when at least one encrypted attachment file is already on disk.
+  ///
+  /// Cheap enough to run only on the key-generation path, which happens once
+  /// per install.
+  Future<bool> _hasExistingAttachmentFiles() async {
+    try {
+      final Directory base = await _getAttachmentsBaseDir();
+      await for (final FileSystemEntity entity
+          in base.list(recursive: true, followLinks: false)) {
+        if (entity is File) return true;
+      }
+    } catch (_) {
+      // If the directory cannot be inspected, assume the worst and treat it as
+      // populated. Refusing is always recoverable; orphaning is not.
+      return true;
+    }
+    return false;
+  }
+
+  /// Loads the key without ever creating one.
+  ///
+  /// Read paths must use this. Going through [_getOrCreateKey] would let a
+  /// pure read mint and persist a key as a side effect, which is how a preview
+  /// of a broken attachment could quietly destroy every other one.
+  Future<Uint8List> _requireKey() async {
+    if (_keyUnreadable) {
+      throw StateError(
+        'Refusing attachment store read: attachment_key_v1 could not be read '
+        'previously.',
+      );
+    }
+
+    final Uint8List? cached = _cachedKeyBytes;
+    if (cached != null) return cached;
+
+    final String? stored;
+    try {
+      stored = await _storage.read(key: 'attachment_key_v1');
+    } catch (_) {
+      _keyUnreadable = true;
+      throw StateError(
+        'Refusing attachment store read: failed to read attachment_key_v1 '
+        'from secure storage.',
+      );
+    }
+
+    if (stored == null || stored.isEmpty) {
+      throw StateError(
+        'Refusing attachment store read: attachment_key_v1 is not available.',
+      );
+    }
+
+    final Uint8List decoded;
+    try {
+      decoded = base64Decode(stored);
+    } catch (_) {
+      _keyUnreadable = true;
+      throw StateError(
+        'Refusing attachment store read: stored attachment_key_v1 is corrupted.',
+      );
+    }
+
+    if (decoded.length != 32) {
+      _keyUnreadable = true;
+      throw StateError(
+        'Refusing attachment store read: stored attachment_key_v1 is not a '
+        '256-bit key.',
+      );
+    }
+
+    _cachedKeyBytes = decoded;
+    return decoded;
   }
 
   /// Encrypts and saves [file] into app storage under [docId].
@@ -355,7 +444,7 @@ class AttachmentStore {
       return cached;
     }
 
-    final keyBytes = await _getOrCreateKey();
+    final keyBytes = await _requireKey();
     final docDir = await _dirFor(docId);
     final file = File(_joinPath(docDir.path, a.fileName));
 

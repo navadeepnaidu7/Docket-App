@@ -98,9 +98,12 @@ Three phone photos plus a PDF is roughly **6–15 MB of base64**. Consequences:
 
 **Therefore:** bytes go to app-private storage; only metadata goes in the record.
 
+```text
+<app documents>/id_attachments/<idDocumentId>/<attachmentId>.enc
 ```
-<app documents>/id_attachments/<idDocumentId>/<attachmentId>.<ext>
-```
+
+The extension is always `.enc`, never the source file's: what lands on disk is
+ciphertext (§3.1a), and the original kind is carried in the record's metadata.
 
 Both platforms sandbox this directory to the app. It is excluded from backup on Android
 (`android:allowBackup` review below) and gets `NSFileProtectionComplete` on iOS.

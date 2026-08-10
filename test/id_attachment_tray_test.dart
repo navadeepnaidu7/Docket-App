@@ -215,4 +215,51 @@ void main() {
 
     expect(openedIndex, equals(0));
   });
+
+  // The tray previously switched to compact geometry only below 300pt, while
+  // the full layout needs roughly 378pt. Anything in that band laid out a
+  // 216pt hero it did not have room for and overflowed. These heights sit on
+  // either side of the old threshold and inside the old dead band.
+  for (final double height in <double>[240, 280, 320, 360]) {
+    testWidgets('lays out without overflow at ${height}pt', (tester) async {
+      await tester.pumpWidget(
+        buildTestApp(
+          IdAttachmentTray(
+            attachments: [sampleImage1, sampleImage2, samplePdf],
+            resolveBytes: fakeResolver,
+            onAdd: () {},
+            onRemoveRequested: (_) {},
+            onOpenRequested: (_) {},
+            canAddMore: true,
+          ),
+          height: height,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      // The hint is the first thing dropped when space is short.
+      expect(find.text('Swipe to see more'), findsNothing);
+    });
+  }
+
+  testWidgets('keeps the swipe hint when there is room for it', (tester) async {
+    await tester.pumpWidget(
+      buildTestApp(
+        IdAttachmentTray(
+          attachments: [sampleImage1, sampleImage2],
+          resolveBytes: fakeResolver,
+          onAdd: () {},
+          onRemoveRequested: (_) {},
+          onOpenRequested: (_) {},
+          canAddMore: true,
+        ),
+        height: 600,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Swipe to see more'), findsOneWidget);
+  });
 }

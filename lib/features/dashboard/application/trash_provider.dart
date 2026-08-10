@@ -38,6 +38,10 @@ class TrashController extends StateNotifier<TrashState> {
   /// before this settled would delete them and make restore lossy.
   late final Future<void> loaded;
 
+  /// The current trash contents, readable from outside the notifier.
+  /// See [IdListController.documents] for why this exists.
+  TrashState get contents => state;
+
   Future<void> loadTrash() async {
     final pData = await SecureDocumentStore.readList(_passportsKey);
     final idData = await SecureDocumentStore.readList(_idsKey);

@@ -30,9 +30,25 @@ final attachmentStoreProvider =
 ///  - Trashed records count as live. They still own their files; deleting them
 ///    would make restore lossy, which is the whole reason trash keeps them.
 Future<void> sweepAttachmentOrphans(WidgetRef ref) async {
+  // Every handle is captured before the first await. This runs fire-and-forget
+  // from the dashboard's initState, so the widget can unmount while the load
+  // futures are still pending -- and `WidgetRef.read` throws once disposed,
+  // which here would surface as an unhandled async error rather than a caught
+  // one.
+  final IdListController idController;
+  final TrashController trashController;
+  final AttachmentStore store;
   try {
-    await ref.read(idListProvider.notifier).loaded;
-    await ref.read(trashProvider.notifier).loaded;
+    idController = ref.read(idListProvider.notifier);
+    trashController = ref.read(trashProvider.notifier);
+    store = ref.read(attachmentStoreProvider);
+  } catch (_) {
+    return;
+  }
+
+  try {
+    await idController.loaded;
+    await trashController.loaded;
   } catch (_) {
     // A load that threw leaves us with no trustworthy picture of what exists.
     return;
@@ -44,12 +60,12 @@ Future<void> sweepAttachmentOrphans(WidgetRef ref) async {
   }
 
   final List<IdDocument> known = <IdDocument>[
-    ...ref.read(idListProvider),
-    ...ref.read(trashProvider).idDocs,
+    ...idController.documents,
+    ...trashController.contents.idDocs,
   ];
 
   try {
-    await ref.read(attachmentStoreProvider).sweepOrphans(known);
+    await store.sweepOrphans(known);
   } catch (_) {
     // Cleanup is best effort; it must never break start-up.
   }
