@@ -22,6 +22,7 @@ The app is **feature-complete on local documents and fully mock-driven on server
 - **MRZ scanning** (`features/mrz_scanner/`): ML Kit text recognition, `MrzParser` as the authoritative source for document number / DOB / expiry, plus `FullPageExtractor` regex heuristics for name, issuing country, date of issue, place of birth from the visual zone.
 - **NFC e-passport** (`features/nfc/` + `MainActivity.kt`): BAC using number + DOB + expiry, reads **DG1** (MRZ), **DG2** (face image, JP2 decoded to JPEG then base64), **DG11**/**DG12** (additional personal and document details). Returns a flat map the passport draft consumes, including `photoBase64` for the card portrait.
 - **ID documents** (`features/ids/`): Aadhaar and PAN, each with a bespoke card face and rendered QR (`qr_flutter`). `IdScannerService` combines barcode, text, and face detection; records persist under `saved_id_documents`.
+- **ID media attachments** (`features/ids/presentation/attachments/`, issue #11): up to 3 images + 1 PDF per ID, reached by long-pressing the card — the tray occupies the dimmed space above the existing remove sheet. Add from the system picker, swipe between attachments, long-press a thumbnail to remove. The scanner's captured original is attached automatically on save. Bytes are **AES-GCM files** under `<app documents>/id_attachments/<docId>/`, keyed from `attachment_key_v1`; only metadata rides in `saved_id_documents`. PDFs render page one in-app from decrypted bytes via `pdfx` — nothing plaintext is ever written to disk. Design decisions in `docs/features/id-media-attachments.md`.
 - **Wallet organisation**: drag-to-reorder in Manage Cards (`ReorderableListView`), persisted order reconciled on add/remove, trash with restore/permanent delete, category filter, and a "Space" archive screen with counts, top category, milestones and peak month.
 
 ### 1.3 Passes — UI complete, data mocked
@@ -87,7 +88,7 @@ flutter analyze
 
 ```bash
 flutter test
-# 263 tests, All tests passed! (~26s)
+# 293 tests, All tests passed! (~18s)
 ```
 
 | Suite | Covers | Result |
@@ -99,12 +100,34 @@ flutter test
 | `test/pass_history_folders_test.dart` / `test/archive_layout_test.dart` | Archive foldering and layout | pass |
 | `test/account_profile_provider_test.dart` | Profile persistence against a stubbed store: hydration, rejected read / write / delete, rollback, and write serialization | pass |
 | `test/widget_test.dart` | Boot through onboarding into the dashboard shell | pass |
+| `test/attachment_store_test.dart` | Encrypted attachment save/resolve round-trip, delete, `deleteAllFor`, orphan sweep keeping referenced files, and the key interlock — including a stored key of the wrong length being refused rather than replaced | pass |
+| `test/id_attachment_limits_test.dart` | 3 images + 1 PDF counted independently, over-limit and oversize rejection, extension-to-kind mapping | pass |
+| `test/id_attachment_model_test.dart` / `test/id_document_attachments_test.dart` | Attachment JSON round-trip and back-compat: a record written **without** the `attachments` key, and a malformed non-list value, both decode to an empty list | pass |
+| `test/id_attachment_tray_test.dart` | Tray states: empty, counter at 2 attachments, add tile hidden at capacity, long-press remove callback, PDF placeholder | pass |
 
 The whole suite terminates — the old `widget_test.dart` hang (unbounded `pumpAndSettle()` against
 continuously animating screens) is fixed.
 
 Coverage is still thin below that: `SecureDocumentStore`, MRZ parsing, and the NFC bridge have
 **no automated tests**.
+
+### 3.3 On-device — ID media attachments (10 Aug 2026)
+
+Confirmed by the maintainer on hardware, which is the only place these paths are real: the
+tray appears on long-press, images and PDFs can both be added from the picker, and the
+scanner's captured original is attached to the new record. Functionally complete and in use.
+
+Two things that still have not been exercised, so they should not be read as covered:
+
+- **Install over an existing build.** This branch adds a new secure-storage key
+  (`attachment_key_v1`) beside the existing passport and ID records. Per the gotcha in
+  `CLAUDE.md`, secure-storage regressions only ever surface on an upgrade install, never on a
+  clean one. Worth doing once before this reaches anyone else's device.
+- **Restore from trash with attachments.** Trashed records deliberately keep their files so
+  restore stays lossless; the logic is unit-tested but the round trip has not been walked
+  through in the app.
+
+Visual refinements are tracked separately and do not affect the above.
 
 ---
 
