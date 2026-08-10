@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -17,6 +18,7 @@ import '../../../shared/widgets/entry/entry_review_summary.dart';
 import '../../../shared/widgets/studio_field.dart';
 import '../../../shared/widgets/studio_section.dart';
 import '../../dashboard/application/wallet_order_provider.dart';
+import '../domain/attachment_limits.dart';
 import '../application/id_draft_controller.dart';
 import '../application/id_list_provider.dart';
 import '../application/id_scanner_service.dart';
@@ -46,6 +48,15 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
   _IdStep _step = _IdStep.method;
   String? _bannerError;
   bool _cameFromScan = false;
+
+  /// Path of the photo the scanner captured, kept so the original can be
+  /// attached to the saved record.
+  ///
+  /// The card face renders a base64 copy of this image, but that field is a
+  /// thumbnail for the card, not the document copy the user came for. The file
+  /// itself lives in a temp directory the OS may reap, so it is only good until
+  /// save, which is when the attachment store copies it.
+  String? _scanCapturedPath;
 
   bool get _isPan => widget.type == IdDocumentType.pan;
 
@@ -137,6 +148,9 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
     });
     _syncDraft();
     ref.read(idDraftProvider.notifier).updateQrImageBase64(result.qrCodeData);
+    _scanCapturedPath = result.capturedImagePath.isEmpty
+        ? null
+        : result.capturedImagePath;
     if (result.capturedImagePath.isNotEmpty) {
       try {
         final List<int> bytes =
@@ -217,7 +231,31 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
     SoundService.success();
     ref.read(idListProvider.notifier).addDocument(doc);
     ref.read(walletOrderProvider.notifier).updateOrderOnItemAdded(doc.id);
+    _attachScanOriginal(doc.id);
     showWalletSaveCelebration(context);
+  }
+
+  /// Keeps the scanned original as the record's first attachment.
+  ///
+  /// Deliberately not awaited: the ID is already saved and the celebration
+  /// should not wait on an encrypt-and-copy. A failure here is silent by
+  /// design -- the card saved fine, and there is nothing the user could
+  /// usefully do about a copy that did not stick. They can still add it by
+  /// hand from the tray.
+  void _attachScanOriginal(String docId) {
+    final String? path = _scanCapturedPath;
+    if (path == null) return;
+    _scanCapturedPath = null;
+
+    unawaited(
+      ref
+          .read(idListProvider.notifier)
+          .addAttachment(docId, File(path), source: 'scan')
+          .catchError((_) => const AttachFailure(
+                AttachRejection.ioError,
+                'Could not attach the scanned copy.',
+              )),
+    );
   }
 
   @override

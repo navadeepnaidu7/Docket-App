@@ -39,6 +39,8 @@ dependencies:
   google_fonts: ^8.1.0
   flutter_svg: ^2.0.17
   shared_preferences: ^2.5.5
+  path_provider: ^2.1.5
+  cryptography: ^2.7.2
   # Held at 10.x on purpose. v11 removed the RSA_ECB_PKCS1Padding /
   # AES_CBC_PKCS7Padding ciphers that 9.2.4 wrote with, so jumping 9 -> 11
   # leaves existing passport, ID, wallet-order and trash records unreadable.
@@ -52,6 +54,16 @@ dependencies:
   qr_flutter: ^4.1.0
   permission_handler: ^13.0.0
   url_launcher: ^6.3.2
+  # File picking for attaching PDF documents and images manually from system storage.
+  file_picker: ^8.1.7
+  # Photo library access for picking document images on iOS and Android.
+  image_picker: ^1.1.2
+  # Renders PDF first-page thumbnails and hero previews directly from decrypted bytes in memory.
+  pdfx: ^2.6.0
+  # Hands a PDF to whichever viewer the device already has. That needs a real
+  # file on disk, so see AttachmentOpenService for the decrypt-open-purge
+  # lifecycle that keeps the plaintext window as short as possible.
+  open_filex: ^4.7.0
   # Movie posters come from the backend's TMDB image proxy. Image.network has no disk
   # cache, so every cold start would re-download; the proxy serves posters as immutable,
   # which flutter_cache_manager honours indefinitely.

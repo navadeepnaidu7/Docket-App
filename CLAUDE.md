@@ -127,6 +127,58 @@ Pass JSON models are hand-written (`ticket_models.dart`, `movie_pass_models.dart
   they're warmed in `main()` and font loading is capped at 900 ms so offline start still works.
 - Heavy image/buffer parsing belongs off the UI isolate.
 
+## Working style
+
+### Read the graph before reading files
+
+This repo is indexed by CodeGraph (`.codegraph/`). Reach for it **before** grep/Read when
+locating code or tracing a flow — it returns verbatim source plus callers and blast radius in
+one round trip.
+
+The MCP tool is named **`mcp__codegraph__codegraph_explore`**. If it is deferred, load it with
+that *exact* name (`ToolSearch("select:mcp__codegraph__codegraph_explore")`) — the bare name
+`codegraph_explore` matches nothing, and the `codegraph` shell binary is not on PATH on this
+machine. A session already lost the tool to that and fell back to a grep/Read loop for the
+whole run.
+
+### Delegating code to `agy`
+
+Bulk code can go to the Antigravity CLI (`agy`), but two rules are load-bearing:
+
+1. **Tell it explicitly to write code only and run no commands.** Left to itself it will start
+   `flutter analyze`, then emit "waiting for analyze to finish" until it times out, producing
+   nothing. With the instruction it reports promptly.
+2. **Its self-report is not evidence.** It has reported "zero deviations" while shipping
+   invented Flutter identifiers that do not compile, and a fixed-size widget that collapsed at
+   thumbnail scale. Every claim needs independent verification.
+
+Split the work by **how a mistake fails**, not by difficulty:
+
+| Failure is | Example | Who writes it |
+|---|---|---|
+| Loud — compiler or a test catches it | widgets, test bodies, boilerplate | `agy` |
+| Silent — wrong code still looks right | crypto, storage lifecycle, caching, perf | you |
+
+Every serious bug delegated work has produced here was in the silent column: a key that
+regenerated itself over encrypted data, a preview that re-decrypted every frame, an orphan
+sweep that would have deleted trashed users' files. No test would have caught any of them.
+
+A precise brief costs ~800 words, so below roughly 200 lines of output it is cheaper to write
+the code than to delegate it. **Read everything that comes back** — if that is too much to
+read, the task was too big to delegate.
+
+### Verification is yours
+
+`flutter analyze` and `flutter test` results only count when you ran them. Report what the
+output actually said, and name what is still unverified — on-device behaviour and the
+install-over-an-existing-build check cannot be done from a dev machine.
+
+### Plans belong on disk
+
+Write feature plans into `docs/features/<name>.md` before building, not only into the session.
+A previous session planned this feature entirely in conversation, was lost, and left a branch
+with zero commits and nothing to resume from.
+
 ## Docs
 
 | Doc | Contents |
@@ -135,6 +187,7 @@ Pass JSON models are hand-written (`ticket_models.dart`, `movie_pass_models.dart
 | `README.md` | Product overview, feature list, stack, setup |
 | `docs/api/passes.md` | Passes API contract — field-by-field train/movie shapes |
 | `docs/dev-flags.md` | Mock vs remote switching, dart-defines, Settings → Developer |
+| `docs/features/id-media-attachments.md` | ID attachments (#11) — storage/encryption decisions, tray geometry, lifecycle |
 | `PLAN.md` | Original phased build plan (historical; predates tickets/passes) |
 | `../docket_server/docs/architecture.md` | Backend design, pass taxonomy |
 
@@ -162,14 +215,33 @@ Pass JSON models are hand-written (`ticket_models.dart`, `movie_pass_models.dart
   over records that are still on disk.
 - `reconcileWalletOrder` must be called whenever items are added/removed, or the persisted
   carousel order drifts and unknown ids sort to the end.
+- ID **attachments** never go in secure storage — only their metadata does. Bytes are AES-GCM
+  files under `<app documents>/id_attachments/<docId>/`, keyed from `attachment_key_v1`.
+  Putting 6-15 MB of base64 back into `saved_id_documents` would drag it through every
+  `readList` and through the 10.x re-encryption pass. `AttachmentStore` carries the same
+  refuse-don't-regenerate interlock as `SecureDocumentStore`: a key that fails to read, fails
+  to decode, **or is the wrong length** blocks further writes rather than minting a new key
+  over files encrypted with the old one.
+- `sweepAttachmentOrphans` deletes files no record points at, and is dangerous by nature. It
+  must not run until both `idListProvider` and `trashProvider` report `loaded`, and must skip
+  entirely when either key is `SecureDocumentStore.isUnreadable` — both lists start empty and
+  a failed decrypt also surfaces as empty, so an ungated sweep deletes every attachment on the
+  device. Trashed records count as live: they still own their files, and restore must stay
+  lossless.
 - `terminals/` and `build/` are scratch/output, not source. `tool/` holds the launcher-icon
   generator (Python) and `tool/design_src/` holds design masters (the full-resolution
   `emblem_of_india.svg`, logo shape variants) that are versioned but never bundled.
 - Release builds run R8 (`isMinifyEnabled`/`isShrinkResources`). `android/app/proguard-rules.pro`
   keeps the JMRTD/scuba/BouncyCastle/JP2 stack whole because it resolves reflectively —
   test an NFC read against a real passport after touching those rules.
-- `defaultConfig.ndk.abiFilters` pins armeabi-v7a + arm64-v8a. Flutter's `--target-platform`
-  only constrains the engine; without the filter, plugin AARs re-add an x86_64 slice.
+- `abiFilters` pins armeabi-v7a + arm64-v8a on the **release build type** (not `defaultConfig`,
+  which AGP unions with what `FlutterPlugin.kt` re-adds at apply time). Flutter's
+  `--target-platform` only constrains the engine; without the filter, plugin AARs re-add an
+  x86_64 slice.
+  **Currently not taking effect** — a release APK built 10 Aug 2026 contains `lib/x86_64/`
+  (engine, ML Kit OCR, `libopenjpeg.so`), roughly a third of a 93 MB APK. `build.gradle.kts`
+  is unchanged, so this is an environment/toolchain regression, not a config edit. Verify the
+  ABI list in the APK before trusting the size of a release build.
 - `android.permission.INTERNET` is now declared explicitly in the **main** manifest. It used to
   reach release builds only because ML Kit / Play Services manifests merged it in — too fragile
   once network images became a core feature. Don't remove it.
