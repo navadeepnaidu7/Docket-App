@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/storage/secure_document_store.dart';
-import '../../passport/domain/passport_profile.dart';
-import '../../passport/application/passport_list_provider.dart';
-import '../../ids/domain/id_document.dart';
+import '../../ids/application/attachment_providers.dart';
 import '../../ids/application/id_list_provider.dart';
+import '../../ids/domain/id_document.dart';
+import '../../passport/application/passport_list_provider.dart';
+import '../../passport/domain/passport_profile.dart';
 import 'wallet_order_provider.dart';
 
 class TrashState {
@@ -24,7 +25,10 @@ class TrashState {
 }
 
 class TrashController extends StateNotifier<TrashState> {
-  TrashController() : super(const TrashState(passports: [], idDocs: []));
+  TrashController(this.ref)
+      : super(const TrashState(passports: [], idDocs: []));
+
+  final Ref ref;
 
   static const _passportsKey = 'trash_passports';
   static const _idsKey = 'trash_ids';
@@ -116,12 +120,20 @@ class TrashController extends StateNotifier<TrashState> {
         _idsKey,
         updated.map((d) => d.toJson()).toList(),
       );
+
+      // Clean up encrypted attachment files for permanently deleted ID document
+      try {
+        await ref.read(attachmentStoreProvider).deleteAllFor(item.id);
+      } catch (_) {
+        // Swallowed so storage cleanup failures do not prevent trash item removal
+      }
     }
   }
 }
 
-final trashProvider = StateNotifierProvider<TrashController, TrashState>((ref) {
-  final controller = TrashController();
+final trashProvider =
+    StateNotifierProvider<TrashController, TrashState>((ref) {
+  final controller = TrashController(ref);
   controller.loadTrash();
   return controller;
 });
