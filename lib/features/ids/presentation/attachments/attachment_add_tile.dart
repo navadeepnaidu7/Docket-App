@@ -105,14 +105,44 @@ class AttachmentAddTile extends StatelessWidget {
       );
     }
 
-    return BounceTap(
-      onTap: onTap,
-      child: Container(
-        width: isHero ? double.infinity : 56.0,
-        height: isHero ? (height ?? 216.0) : 54.0,
-        decoration: tileDecoration,
-        child: tileContent,
-      ),
+    if (!isHero) {
+      return BounceTap(
+        onTap: onTap,
+        child: Container(
+          width: 56.0,
+          height: 54.0,
+          decoration: tileDecoration,
+          child: tileContent,
+        ),
+      );
+    }
+
+    // The empty slot stands in for a document, so it should read as a card
+    // sitting in the tray rather than a panel spanning the sheet. Stretching to
+    // the full width made it touch both edges and lose that shape; the
+    // populated hero never does, since the pager insets its pages.
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double available = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : 360.0;
+        final double tileWidth = (available * 0.78).clamp(200.0, 320.0);
+
+        // Height follows the width so the tile keeps a card-like proportion on
+        // a narrow phone instead of turning into a tall box.
+        final double requested = height ?? 216.0;
+        final double tileHeight = requested.clamp(140.0, tileWidth / 1.30);
+
+        return BounceTap(
+          onTap: onTap,
+          child: Container(
+            width: tileWidth,
+            height: tileHeight,
+            decoration: tileDecoration,
+            child: tileContent,
+          ),
+        );
+      },
     );
   }
 }
