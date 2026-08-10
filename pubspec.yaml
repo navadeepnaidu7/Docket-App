@@ -54,6 +54,12 @@ dependencies:
   qr_flutter: ^4.1.0
   permission_handler: ^13.0.0
   url_launcher: ^6.3.2
+  # File picking for attaching PDF documents and images manually from system storage.
+  file_picker: ^8.1.7
+  # Photo library access for picking document images on iOS and Android.
+  image_picker: ^1.1.2
+  # Renders PDF first-page thumbnails and hero previews directly from decrypted bytes in memory.
+  pdfx: ^2.6.0
   # Movie posters come from the backend's TMDB image proxy. Image.network has no disk
   # cache, so every cold start would re-download; the proxy serves posters as immutable,
   # which flutter_cache_manager honours indefinitely.
