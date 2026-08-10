@@ -61,8 +61,11 @@ class AttachmentThumbStrip extends StatelessWidget {
       );
     }
 
+    // 54pt thumb plus the 2pt inset the active ring is drawn in. Sizing this
+    // to the bare thumb instead squeezes the selected one down to 50pt, so the
+    // active item reads as smaller than its neighbours rather than ringed.
     return SizedBox(
-      height: 54.0,
+      height: 58.0,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -110,9 +113,14 @@ class AttachmentThumbStrip extends StatelessWidget {
         ),
       );
     } else {
-      content = Opacity(
-        opacity: 0.60,
-        child: preview,
+      // Matches the active tile's 2pt ring inset so selection changes the ring,
+      // not the size of the thumbnail underneath it.
+      content = Padding(
+        padding: const EdgeInsets.all(2.0),
+        child: Opacity(
+          opacity: 0.60,
+          child: preview,
+        ),
       );
     }
 
