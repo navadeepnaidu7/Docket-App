@@ -77,6 +77,6 @@ class AttachmentTrayLayout {
           attachmentCount: attachmentCount,
           availableHeight: availableHeight,
         );
-    return free.clamp(minHeroHeight, ceiling);
+    return free.clamp(minHeroHeight, ceiling).toDouble();
   }
 }
