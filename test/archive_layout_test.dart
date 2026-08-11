@@ -108,7 +108,7 @@ void main() {
       expect(takeLayoutError(), isNull);
       expect(find.text('Movies'), findsOneWidget);
       expect(find.text('3 passes'), findsOneWidget);
-      expect(find.text('Last added 10 Feb 2025'), findsOneWidget);
+      expect(find.text('Last added 10 Feb 2025'), findsNothing);
     });
 
     testWidgets('renders train route chips', (WidgetTester t) async {
@@ -150,7 +150,7 @@ void main() {
       expect(takeLayoutError(), isNull);
     });
 
-    testWidgets('drops the last-added line at large text scale', (
+    testWidgets('keeps the label block compact at large text scale', (
       WidgetTester t,
     ) async {
       await pumpTile(
@@ -159,7 +159,7 @@ void main() {
           MoviePassItem(movie(id: 'a', title: 'Scaled')),
           MoviePassItem(movie(id: 'b', title: 'Up')),
         ]),
-        textScale: 1.3,
+        textScale: 2.0,
       );
 
       expect(takeLayoutError(), isNull);

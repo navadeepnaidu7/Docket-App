@@ -39,8 +39,9 @@ class PassesArchiveScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<HistoryFolderSummary>> folders =
-        ref.watch(historyFoldersProvider);
+    final AsyncValue<List<HistoryFolderSummary>> folders = ref.watch(
+      historyFoldersProvider,
+    );
 
     return ArchiveScaffold(
       title: 'Archive',
@@ -59,7 +60,12 @@ class PassesArchiveScreen extends ConsumerWidget {
           detail: err.toString(),
         ),
         data: (List<HistoryFolderSummary> list) => list.isEmpty
-            ? const ArchiveNotice(message: 'No archived passes')
+            ? ArchiveNotice(
+                message: 'No archived passes yet',
+                detail: 'Finished journeys and shows will appear here.',
+                actionLabel: 'View active passes',
+                onAction: () => Navigator.of(context).maybePop(),
+              )
             : _FolderGrid(
                 folders: list,
                 onOpen: (HistoryFolderSummary f) => _openCategory(context, f),
@@ -99,17 +105,17 @@ class _FolderGrid extends StatelessWidget {
                 crossAxisSpacing: 16,
                 childAspectRatio: HistoryFolderTile.aspectRatio,
               ),
-              delegate: SliverChildBuilderDelegate(
-                (BuildContext context, int index) {
-                  final HistoryFolderSummary folder = folders[index];
-                  return HistoryFolderTile(
-                    key: ValueKey<String>(folder.category.name),
-                    folder: folder,
-                    onTap: () => onOpen(folder),
-                  );
-                },
-                childCount: folders.length,
-              ),
+              delegate: SliverChildBuilderDelegate((
+                BuildContext context,
+                int index,
+              ) {
+                final HistoryFolderSummary folder = folders[index];
+                return HistoryFolderTile(
+                  key: ValueKey<String>(folder.category.name),
+                  folder: folder,
+                  onTap: () => onOpen(folder),
+                );
+              }, childCount: folders.length),
             ),
           ),
         ],
@@ -120,10 +126,18 @@ class _FolderGrid extends StatelessWidget {
 
 /// Centred empty / error message shared by both archive screens.
 class ArchiveNotice extends StatelessWidget {
-  const ArchiveNotice({super.key, required this.message, this.detail});
+  const ArchiveNotice({
+    super.key,
+    required this.message,
+    this.detail,
+    this.actionLabel,
+    this.onAction,
+  });
 
   final String message;
   final String? detail;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -167,6 +181,14 @@ class ArchiveNotice extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                   color: AppTokens.tertiaryLabel(scheme),
                 ),
+              ),
+            ],
+            if (actionLabel != null && onAction != null) ...<Widget>[
+              const SizedBox(height: Space.x4),
+              TextButton.icon(
+                onPressed: onAction,
+                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                label: Text(actionLabel!),
               ),
             ],
           ],
