@@ -92,18 +92,9 @@ class _FolderGrid extends StatelessWidget {
         ),
         slivers: <Widget>[
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
-              Space.gutter,
-              Space.x4,
-              Space.gutter,
-              Space.x5,
-            ),
-            sliver: SliverToBoxAdapter(child: _ArchiveIntro(folders: folders)),
-          ),
-          SliverPadding(
             padding: EdgeInsets.fromLTRB(
               Space.gutter,
-              0,
+              Space.x3,
               Space.gutter,
               MediaQuery.paddingOf(context).bottom + Space.x6,
             ),
@@ -128,79 +119,6 @@ class _FolderGrid extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ArchiveIntro extends StatelessWidget {
-  const _ArchiveIntro({required this.folders});
-
-  final List<HistoryFolderSummary> folders;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-    final int passCount = folders.fold<int>(
-      0,
-      (int total, HistoryFolderSummary folder) => total + folder.count,
-    );
-    final String categoryLabel = folders.length == 1
-        ? 'category'
-        : 'categories';
-    final String passLabel = passCount == 1 ? 'pass' : 'passes';
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.onSurface.withValues(alpha: 0.045),
-        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-        border: Border.all(color: AppTokens.hairline(scheme)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(Space.x4),
-        child: Row(
-          children: <Widget>[
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: scheme.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(13),
-              ),
-              child: Icon(
-                Icons.inventory_2_outlined,
-                size: 20,
-                color: scheme.primary,
-              ),
-            ),
-            const SizedBox(width: Space.x3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    'Past passes',
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.3,
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '$passCount $passLabel across ${folders.length} $categoryLabel',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: AppTokens.secondaryLabel(scheme),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
