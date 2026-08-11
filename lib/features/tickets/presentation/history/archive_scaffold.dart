@@ -46,21 +46,28 @@ class ArchiveScaffold extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(4, 4, 12, 0),
                   child: SizedBox(
                     height: AppTheme.controlHeightSm,
-                    child: Row(
+                    child: Stack(
+                      alignment: Alignment.center,
                       children: <Widget>[
-                        IconButton(
-                          icon: Icon(
-                            Icons.arrow_back_ios_new_rounded,
-                            size: 18,
-                            color: ink,
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              size: 18,
+                              color: ink,
+                            ),
+                            tooltip: 'Back',
+                            onPressed: () {
+                              HapticService.select();
+                              Navigator.of(context).pop();
+                            },
                           ),
-                          tooltip: 'Back',
-                          onPressed: () {
-                            HapticService.select();
-                            Navigator.of(context).pop();
-                          },
                         ),
-                        Expanded(
+                        Padding(
+                          // Keep long names clear of the two 44pt controls while
+                          // centring the title in the screen, not the leftover row.
+                          padding: const EdgeInsets.symmetric(horizontal: 52),
                           child: Text(
                             title,
                             textAlign: TextAlign.center,
@@ -74,10 +81,13 @@ class ArchiveScaffold extends StatelessWidget {
                             ),
                           ),
                         ),
-                        ProfileMeshButton(
-                          meshSeed: meshSeed,
-                          washes: washes,
-                          onTap: () => openSettingsRoute(context),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ProfileMeshButton(
+                            meshSeed: meshSeed,
+                            washes: washes,
+                            onTap: () => openSettingsRoute(context),
+                          ),
                         ),
                       ],
                     ),

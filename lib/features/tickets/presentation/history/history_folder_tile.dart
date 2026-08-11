@@ -102,16 +102,20 @@ class HistoryFolderTile extends StatelessWidget {
                       isDark: isDark,
                     ),
                   ),
-                  // The tab glyph rides above the back panel it sits on.
+                  // The tab glyph is the continuity point for the folder-to-list
+                  // transition on the next screen.
                   Positioned(
                     left: 14,
                     top: 0,
                     height: tabHeight,
                     child: Center(
-                      child: HistoryCategoryMark(
-                        category: folder.category,
-                        size: 13,
-                        color: Colors.white,
+                      child: Hero(
+                        tag: 'history-category-${folder.category.name}',
+                        child: HistoryCategoryMark(
+                          category: folder.category,
+                          size: 13,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -142,10 +146,6 @@ class _FolderFront extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme scheme = Theme.of(context).colorScheme;
-    // At large text scales the third line pushes the block out of the panel.
-    final bool showLastAdded = folder.lastAddedLabel != null &&
-        MediaQuery.textScalerOf(context).scale(12) <= 14.5;
-
     return DecoratedBox(
       decoration: BoxDecoration(
         color: fill,
@@ -178,36 +178,23 @@ class _FolderFront extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.3,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.35,
                       color: scheme.onSurface,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     folder.countLabel,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: AppTokens.secondaryLabel(scheme),
                     ),
                   ),
-                  if (showLastAdded) ...<Widget>[
-                    const SizedBox(height: 4),
-                    Text(
-                      folder.lastAddedLabel!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: AppTokens.tertiaryLabel(scheme),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
