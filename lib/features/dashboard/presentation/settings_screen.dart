@@ -24,9 +24,8 @@ import '../../tickets/application/pass_list_provider.dart';
 import '../application/auth_session_provider.dart';
 import '../application/card_shine_border_provider.dart';
 import '../application/profile_avatar_shape_provider.dart';
-import '../application/wallet_filter_provider.dart';
-import '../application/nav_icon_style_provider.dart';
 import '../application/nav_labels_provider.dart';
+import '../application/wallet_filter_provider.dart';
 import 'manage_account_screen.dart';
 import 'user_card_detail_screen.dart';
 import 'widgets/membership_mesh.dart';
@@ -210,42 +209,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         onChanged: (_) {
                           HapticService.select();
                           ref.read(showNavLabelsProvider.notifier).toggle();
-                        },
-                      ),
-                      const _SettingsDivider(),
-                      _NavIconStyleRow(
-                        icon: CupertinoIcons.creditcard_fill,
-                        iconColor: const Color(0xFF2A9D6B),
-                        title: 'IDs icons',
-                        style: ref.watch(navIconStylesProvider).ids,
-                        onTap: () {
-                          HapticService.select();
-                          final NavIconStyle current =
-                              ref.read(navIconStylesProvider).ids;
-                          ref.read(navIconStylesProvider.notifier).setIdsStyle(
-                                current == NavIconStyle.classic
-                                    ? NavIconStyle.vertical
-                                    : NavIconStyle.classic,
-                              );
-                        },
-                      ),
-                      const _SettingsDivider(),
-                      _NavIconStyleRow(
-                        icon: CupertinoIcons.ticket_fill,
-                        iconColor: const Color(0xFF1A9BB5),
-                        title: 'Passes icons',
-                        style: ref.watch(navIconStylesProvider).passes,
-                        onTap: () {
-                          HapticService.select();
-                          final NavIconStyle current =
-                              ref.read(navIconStylesProvider).passes;
-                          ref
-                              .read(navIconStylesProvider.notifier)
-                              .setPassesStyle(
-                                current == NavIconStyle.classic
-                                    ? NavIconStyle.vertical
-                                    : NavIconStyle.classic,
-                              );
                         },
                       ),
                     ],
@@ -1868,72 +1831,6 @@ class _ProfileAvatarShapeRow extends StatelessWidget {
               ),
               Text(
                 shape.label,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: muted,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: muted.withValues(alpha: 0.40),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavIconStyleRow extends StatelessWidget {
-  const _NavIconStyleRow({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.style,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final NavIconStyle style;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color ink = Theme.of(context).colorScheme.onSurface;
-    final Color muted = ink.withValues(alpha: isDark ? 0.45 : 0.55);
-    final String value =
-        style == NavIconStyle.classic ? 'Classic' : 'Vertical';
-
-    return _AnimatedPressScale(
-      onTap: onTap,
-      child: SizedBox(
-        height: 58,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Row(
-            children: <Widget>[
-              _SettingsRowIcon(icon: icon, color: iconColor),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: -0.2,
-                    color: ink,
-                  ),
-                ),
-              ),
-              Text(
-                value,
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
