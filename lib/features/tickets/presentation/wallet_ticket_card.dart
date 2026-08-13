@@ -60,7 +60,7 @@ class _WalletTicketCardState extends State<WalletTicketCard>
         // short viewports. Pin it to a canvas and scale that to fit instead.
         final Size card = WalletCardMetrics.resolve(
           constraints,
-          WalletCardMetrics.ticketAspect,
+          WalletCardMetrics.trainAspect,
         );
 
         return GestureDetector(
@@ -74,7 +74,7 @@ class _WalletTicketCardState extends State<WalletTicketCard>
               width: card.width,
               height: card.height,
               child: WalletCardCanvas(
-                designSize: WalletCardMetrics.ticketCanvas,
+                designSize: WalletCardMetrics.trainCanvas,
                 child: TrainTicketFace(
                   ticket: widget.ticket,
                   density: TrainTicketDensity.glance,

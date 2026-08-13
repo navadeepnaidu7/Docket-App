@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/wallet/wallet_card_metrics.dart';
 import '../domain/ticket_models.dart';
 import 'train/train_ticket_face.dart';
 
@@ -161,11 +162,21 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                 physics: const BouncingScrollPhysics(),
                 children: <Widget>[
-                  TrainTicketFace(
-                    ticket: t,
-                    density: TrainTicketDensity.detail,
-                    useBrandColors: true,
-                    onOpenCodes: () => _openCodes(context, t),
+                  // The face is authored at a fixed 366x630 canvas, so it needs
+                  // the same scale-to-fit wrapper the wallet card uses. Dropped
+                  // in raw it would render at its design size and overflow on
+                  // anything narrower than 366dp.
+                  AspectRatio(
+                    aspectRatio: WalletCardMetrics.trainAspect,
+                    child: WalletCardCanvas(
+                      designSize: WalletCardMetrics.trainCanvas,
+                      child: TrainTicketFace(
+                        ticket: t,
+                        density: TrainTicketDensity.detail,
+                        useBrandColors: true,
+                        onOpenCodes: () => _openCodes(context, t),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 22),
                   _SegmentedTabs(

@@ -18,6 +18,38 @@ const String _mockPosterOrigin = String.fromEnvironment('MOCK_POSTER_ORIGIN');
 String? _mockPosterUrl(String file) =>
     _mockPosterOrigin.isEmpty ? null : '$_mockPosterOrigin/img/poster/w500/$file';
 
+// ── Demo journey dates ────────────────────────────────────────────────────────
+//
+// The *active* train fixtures date themselves relative to launch. Hardcoded
+// dates rot: the wallet card's status band exists to show a countdown, and a
+// pinned 2025 date makes every "upcoming" mock pass render as a completed
+// journey a few months after it was written. The expired fixtures keep their
+// fixed dates on purpose — the archive tests group them by month and assert the
+// order.
+
+const List<String> _monthsShort = <String>[
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+DateTime get _today {
+  final DateTime now = DateTime.now();
+  return DateTime(now.year, now.month, now.day);
+}
+
+/// Display date [days] from today, e.g. "16 Aug 2026".
+String _dateIn(int days) {
+  final DateTime d = _today.add(Duration(days: days));
+  final String dd = d.day.toString().padLeft(2, '0');
+  return '$dd ${_monthsShort[d.month - 1]} ${d.year}';
+}
+
+/// Machine-readable departure [days] from today at [hour]:[minute], local.
+String _departsIn(int days, int hour, int minute) {
+  final DateTime d = _today.add(Duration(days: days));
+  return DateTime(d.year, d.month, d.day, hour, minute).toIso8601String();
+}
+
 /// Demo train bookings (same content as the previous mock catalogue).
 final List<TrainPass> mockTrainPasses = <TrainPass>[
   TrainPass(
@@ -31,8 +63,9 @@ final List<TrainPass> mockTrainPasses = <TrainPass>[
     toName: 'Bengaluru',
     departTime: '07:10 AM',
     arriveTime: '02:40 PM',
-    date: '20 Jul 2025',
-    arrivalDate: '20 Jul 2025',
+    date: _dateIn(3),
+    arrivalDate: _dateIn(3),
+    departAt: _departsIn(3, 7, 10),
     duration: '7h 30m',
     ticketClass: 'AC 2 Tier',
     passengers: const <TicketPassenger>[
@@ -65,7 +98,9 @@ final List<TrainPass> mockTrainPasses = <TrainPass>[
     bookingId: 'IRCTC1234567890',
     status: TicketStatus.active,
     progressFraction: 0.48,
-    liveStatusLabel: 'Running on time',
+    liveStatusLabel: 'Running 45 minutes late',
+    runState: TrainRunState.delayed,
+    delayMinutes: 45,
     halts: const <TicketHalt>[
       TicketHalt(
         time: '07:10',
@@ -116,8 +151,9 @@ final List<TrainPass> mockTrainPasses = <TrainPass>[
     toName: 'New Delhi',
     departTime: '20:00',
     arriveTime: '06:00',
-    date: '02 Jun 2024',
-    arrivalDate: '04 Jun 2024',
+    date: _dateIn(1),
+    arrivalDate: _dateIn(2),
+    departAt: _departsIn(1, 20, 0),
     duration: '34h 00m',
     ticketClass: 'AC 1 Tier',
     passengers: const <TicketPassenger>[
@@ -135,6 +171,8 @@ final List<TrainPass> mockTrainPasses = <TrainPass>[
     status: TicketStatus.active,
     progressFraction: 0.12,
     liveStatusLabel: 'Running on time',
+    runState: TrainRunState.onTime,
+    delayMinutes: 0,
     halts: const <TicketHalt>[
       TicketHalt(
         time: '20:00',
@@ -178,8 +216,9 @@ final List<TrainPass> mockTrainPasses = <TrainPass>[
     toName: 'Chennai Central',
     departTime: '22:30',
     arriveTime: '19:45',
-    date: '15 Jun 2024',
-    arrivalDate: '16 Jun 2024',
+    date: _dateIn(9),
+    arrivalDate: _dateIn(10),
+    departAt: _departsIn(9, 22, 30),
     duration: '21h 15m',
     ticketClass: 'AC 2 Tier',
     passengers: const <TicketPassenger>[
@@ -225,6 +264,7 @@ final List<TrainPass> mockTrainPasses = <TrainPass>[
     status: TicketStatus.active,
     progressFraction: 0.0,
     liveStatusLabel: 'Scheduled',
+    runState: TrainRunState.scheduled,
     chartStatus: 'Chart not prepared',
     bookingStatus: 'Confirmed',
     halts: const <TicketHalt>[
@@ -278,6 +318,7 @@ final List<TrainPass> mockTrainPasses = <TrainPass>[
     status: TicketStatus.expired,
     bookingStatus: 'Completed',
     liveStatusLabel: 'Journey completed',
+    runState: TrainRunState.arrived,
     progressFraction: 1.0,
     halts: const <TicketHalt>[
       TicketHalt(
@@ -324,6 +365,7 @@ final List<TrainPass> mockTrainPasses = <TrainPass>[
     status: TicketStatus.expired,
     bookingStatus: 'Completed',
     liveStatusLabel: 'Journey completed',
+    runState: TrainRunState.arrived,
     progressFraction: 1.0,
   ),
   TrainPass(
@@ -354,6 +396,7 @@ final List<TrainPass> mockTrainPasses = <TrainPass>[
     status: TicketStatus.expired,
     bookingStatus: 'Completed',
     liveStatusLabel: 'Journey completed',
+    runState: TrainRunState.arrived,
     progressFraction: 1.0,
   ),
 ];

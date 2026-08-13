@@ -2,7 +2,7 @@
 
 import 'pass_status.dart';
 
-export 'pass_status.dart' show TicketStatus, PassKind;
+export 'pass_status.dart' show TicketStatus, PassKind, TrainRunState;
 
 enum HaltState {
   departed,
@@ -129,6 +129,8 @@ class TrainPass {
     this.bookingStatus = 'Confirmed',
     this.chartStatus = 'Chart Prepared',
     this.liveStatusLabel = 'Running on time',
+    this.runState = TrainRunState.scheduled,
+    this.delayMinutes,
     this.progressFraction = 0.45,
     this.halts = const <TicketHalt>[],
     this.departAt,
@@ -160,6 +162,17 @@ class TrainPass {
   final String bookingStatus;
   final String chartStatus;
   final String liveStatusLabel;
+
+  /// Structured counterpart to [liveStatusLabel], which is free text and so
+  /// cannot drive styling or the wallet card's status band.
+  final TrainRunState runState;
+
+  /// Minutes late, or null when the backend has not said.
+  ///
+  /// Null and 0 are different answers: null is "unknown", 0 is "running to
+  /// schedule". Never coalesce one into the other.
+  final int? delayMinutes;
+
   final double progressFraction;
   final List<TicketHalt> halts;
 
@@ -220,6 +233,24 @@ class TrainPass {
     return uniqueCoaches.join('/');
   }
 
+  /// True when the train is late by a known, positive amount.
+  bool get isDelayed => (delayMinutes ?? 0) > 0;
+
+  /// Platform to stand on, or null when no halt carries one.
+  ///
+  /// Before the train moves that is the origin halt; once it is underway the
+  /// only useful platform is the one it is pulling into next.
+  String? get platformLabel {
+    final TicketHalt? origin = halts.isEmpty ? null : halts.first;
+    final bool underway =
+        origin != null && origin.state == HaltState.departed;
+    final String? raw =
+        underway ? nextHalt?.platform : (origin?.platform ?? nextHalt?.platform);
+    if (raw == null) return null;
+    final String trimmed = raw.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
   TicketHalt? get nextHalt {
     for (final TicketHalt h in halts) {
       if (h.state == HaltState.arriving || h.state == HaltState.upcoming) {
@@ -277,6 +308,16 @@ class TrainPass {
       chartStatus: json['chartStatus']?.toString() ?? 'Chart Prepared',
       liveStatusLabel:
           json['liveStatusLabel']?.toString() ?? 'Running on time',
+      // Absent means "the backend did not say", which is not the same as
+      // "scheduled with no delay" -- but scheduled is the only safe default,
+      // and delayMinutes stays null so the band shows a countdown rather than
+      // claiming the train is on time.
+      runState: json.containsKey('runState')
+          ? TrainRunState.fromJson(json['runState'])
+          : TrainRunState.scheduled,
+      delayMinutes: (json['delayMinutes'] is num)
+          ? (json['delayMinutes'] as num).round()
+          : int.tryParse(json['delayMinutes']?.toString() ?? ''),
       progressFraction: (json['progressFraction'] is num)
           ? (json['progressFraction'] as num).toDouble()
           : double.tryParse(json['progressFraction']?.toString() ?? '') ??
@@ -315,6 +356,8 @@ class TrainPass {
         'bookingStatus': bookingStatus,
         'chartStatus': chartStatus,
         'liveStatusLabel': liveStatusLabel,
+        'runState': runState.toJson(),
+        if (delayMinutes != null) 'delayMinutes': delayMinutes,
         'progressFraction': progressFraction,
         'halts': halts.map((TicketHalt h) => h.toJson()).toList(),
         if (departAt != null) 'departAt': departAt,

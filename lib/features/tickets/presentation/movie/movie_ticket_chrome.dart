@@ -16,6 +16,15 @@ abstract final class MovieTicketMetrics {
   static const double cornerR = 24;
   static const double notchR = 10;
 
+  /// Standard one-sheet poster ratio (width / height), which is what TMDB
+  /// serves — a `w500` poster is 500x750.
+  ///
+  /// The detail screen sizes the hero by this so the art is shown whole. The
+  /// glance card deliberately does not: a full-height poster there would push
+  /// the ticket's actual information off a card that has to read at a glance,
+  /// so it keeps a fixed-height crop.
+  static const double posterAspect = 2 / 3;
+
   static const double tearHeight = 20;
   static const double barcodeHeight = 40;
   static const double footerPadTop = 8;

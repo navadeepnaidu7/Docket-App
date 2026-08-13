@@ -45,6 +45,11 @@ class MovieTicketFace extends StatelessWidget {
 
   bool get _isGlance => density == MovieTicketDensity.glance;
 
+  /// The poster frame. Keyed because the two densities size it differently and
+  /// that difference is deliberate — a test asserts it.
+  @visibleForTesting
+  static const Key heroKey = Key('movie_pass.hero');
+
   /// Shared stub height so notch + tear align for every brand.
   static double footerBodyHeight({required bool detail, required double scale}) =>
       (detail ? 82.0 : 64.0) * scale;
@@ -187,9 +192,13 @@ class _TicketBody extends StatelessWidget {
                 0,
               ),
               child: _HeroBand(
+                key: MovieTicketFace.heroKey,
                 pass: pass,
-                height: (_detail ? 260.0 : 190.0) * scale,
                 detail: _detail,
+                // Detail shows the whole one-sheet; the glance card keeps a
+                // fixed-height crop so the ticket detail below it still fits.
+                height: _detail ? null : 190.0 * scale,
+                aspectRatio: _detail ? MovieTicketMetrics.posterAspect : null,
               ),
             ),
             Padding(
@@ -492,14 +501,24 @@ class _TicketCodes extends StatelessWidget {
 
 class _HeroBand extends StatelessWidget {
   const _HeroBand({
+    super.key,
     required this.pass,
-    required this.height,
     required this.detail,
-  });
+    this.height,
+    this.aspectRatio,
+  }) : assert(
+          (height == null) != (aspectRatio == null),
+          'Size the hero by exactly one of height or aspectRatio',
+        );
 
   final MoviePass pass;
-  final double height;
   final bool detail;
+
+  /// Fixed height — the glance card's crop.
+  final double? height;
+
+  /// Width / height — the detail screen's whole-poster frame.
+  final double? aspectRatio;
 
   @override
   Widget build(BuildContext context) {
@@ -508,44 +527,44 @@ class _HeroBand extends StatelessWidget {
     final String? asset = pass.resolvedPosterAsset;
     final String? url = pass.resolvedPosterUrl;
 
+    final Widget art = Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        // Painted first and never removed, so it shows through while the poster
+        // loads and remains as the fallback if the poster fails.
+        _buildGradientBackdrop(),
+        if (asset != null)
+          Image.asset(
+            asset,
+            fit: BoxFit.cover,
+            errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
+                const SizedBox.shrink(),
+          )
+        else if (url != null)
+          LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              return CachedNetworkImage(
+                imageUrl: url,
+                fit: BoxFit.cover,
+                fadeInDuration: const Duration(milliseconds: 220),
+                memCacheWidth: _decodeWidth(context, constraints.maxWidth),
+                placeholder: (BuildContext context, String url) => const _PosterShimmer(),
+                errorWidget: (BuildContext context, String url, Object error) =>
+                    const SizedBox.shrink(),
+              );
+            },
+          )
+        else
+          const SizedBox.shrink(),
+        if (detail) _buildDetailScreenOverlay(),
+      ],
+    );
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
-      child: SizedBox(
-        height: height,
-        width: double.infinity,
-        child: Stack(
-          fit: StackFit.expand,
-          children: <Widget>[
-            // Painted first and never removed, so it shows through while the poster
-            // loads and remains as the fallback if the poster fails.
-            _buildGradientBackdrop(),
-            if (asset != null)
-              Image.asset(
-                asset,
-                fit: BoxFit.cover,
-                errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
-                    const SizedBox.shrink(),
-              )
-            else if (url != null)
-              LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) {
-                  return CachedNetworkImage(
-                    imageUrl: url,
-                    fit: BoxFit.cover,
-                    fadeInDuration: const Duration(milliseconds: 220),
-                    memCacheWidth: _decodeWidth(context, constraints.maxWidth),
-                    placeholder: (BuildContext context, String url) => const _PosterShimmer(),
-                    errorWidget: (BuildContext context, String url, Object error) =>
-                        const SizedBox.shrink(),
-                  );
-                },
-              )
-            else
-              const SizedBox.shrink(),
-            if (detail) _buildDetailScreenOverlay(),
-          ],
-        ),
-      ),
+      child: aspectRatio != null
+          ? AspectRatio(aspectRatio: aspectRatio!, child: art)
+          : SizedBox(height: height, width: double.infinity, child: art),
     );
   }
 
