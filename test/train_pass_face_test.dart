@@ -152,4 +152,119 @@ void main() {
       expect(fromMask.top, lessThan(fromCode.top + TrainPassMetrics.connectorY));
     });
   });
+
+  _backendPayloadTests();
+}
+
+// ── Backend payload resilience ────────────────────────────────────────────────
+
+/// Collects overflow/assertion errors raised while rendering.
+Future<List<String>> _renderAndCollect(
+  WidgetTester tester,
+  TrainPass pass,
+) async {
+  final List<String> errors = <String>[];
+  final void Function(FlutterErrorDetails)? previous = FlutterError.onError;
+  FlutterError.onError = (FlutterErrorDetails d) => errors.add(d.toString());
+  await _pumpFace(tester, pass);
+  FlutterError.onError = previous;
+  return errors;
+}
+
+void _backendPayloadTests() {
+  group('renders a backend payload', () {
+    test('unknown runState degrades to scheduled, not a crash', () {
+      final TrainPass p = TrainPass.fromJson(<String, dynamic>{
+        'id': 'x',
+        'runState': 'signal_failure_at_junction',
+      });
+      expect(p.runState, TrainRunState.scheduled);
+    });
+
+    test('delayMinutes survives a stringly-typed backend', () {
+      expect(
+        TrainPass.fromJson(<String, dynamic>{'delayMinutes': '45'}).delayMinutes,
+        45,
+      );
+      expect(
+        TrainPass.fromJson(<String, dynamic>{'delayMinutes': 45.0}).delayMinutes,
+        45,
+      );
+      // Garbage is unknown, not zero.
+      expect(
+        TrainPass.fromJson(<String, dynamic>{'delayMinutes': 'soon'})
+            .delayMinutes,
+        isNull,
+      );
+      expect(TrainPass.fromJson(<String, dynamic>{}).delayMinutes, isNull);
+    });
+
+    testWidgets('a near-empty payload renders without overflow',
+        (WidgetTester tester) async {
+      // Everything optional omitted: no codes, no names, no passengers, no
+      // halts, no dates. fromJson has to fill the gaps and the face has to
+      // draw something honest rather than blanks or a red box.
+      final TrainPass sparse = TrainPass.fromJson(<String, dynamic>{'id': 'x'});
+
+      final List<String> errors = await _renderAndCollect(tester, sparse);
+      expect(errors, isEmpty, reason: errors.join(' | '));
+
+      // Missing values read as missing.
+      expect(find.text('—'), findsWidgets);
+    });
+
+    testWidgets('overlong strings ellipsize instead of overflowing',
+        (WidgetTester tester) async {
+      final TrainPass wordy = TrainPass.fromJson(<String, dynamic>{
+        'id': 'x',
+        'trainName': 'Chhatrapati Shivaji Maharaj Terminus Rajdhani Superfast',
+        'fromName': 'Kaziranga National Park Halt Junction',
+        'toName': 'Thiruvananthapuram Central Junction',
+        'ticketClass': 'Air Conditioned Three Tier Economy Sleeper',
+        'pnr': '1234567890',
+        'date': '16 Aug 2026',
+        'passengers': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'name': 'Venkataraman Subrahmanyan Chandrasekhar',
+            'coach': 'B12',
+            'seat': '64',
+            'berth': 'Side Upper',
+          },
+        ],
+      });
+
+      final List<String> errors = await _renderAndCollect(tester, wordy);
+      expect(errors, isEmpty, reason: errors.join(' | '));
+    });
+
+    testWidgets('a full payload drives the band', (WidgetTester tester) async {
+      final TrainPass live = TrainPass.fromJson(<String, dynamic>{
+        'id': 'x',
+        'fromCode': 'HYB',
+        'toCode': 'BLR',
+        'date': '16 Aug 2026',
+        'departTime': '07:10 AM',
+        'runState': 'delayed',
+        'delayMinutes': 45,
+        'halts': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'time': '07:10',
+            'station': 'Hyderabad',
+            'state': 'upcoming',
+            'platform': 'PF 5',
+          },
+        ],
+      });
+
+      expect(live.runState, TrainRunState.delayed);
+      expect(live.isDelayed, isTrue);
+      expect(live.platformLabel, 'PF 5');
+
+      final List<String> errors = await _renderAndCollect(tester, live);
+      expect(errors, isEmpty, reason: errors.join(' | '));
+      expect(find.text('45 mins delayed'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  });
 }
