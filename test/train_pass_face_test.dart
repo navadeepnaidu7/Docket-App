@@ -149,7 +149,11 @@ void main() {
         moreOrLessEquals(TrainPassMetrics.codeConnectorGap, epsilon: 1),
       );
       // ...and covers the rule's row, or it would not mask anything.
-      expect(fromMask.top, lessThan(fromCode.top + TrainPassMetrics.connectorY));
+      final Rect card = tester.getRect(find.byType(TrainTicketFace));
+      expect(
+        fromMask.top,
+        lessThan(card.top + TrainPassMetrics.connectorY),
+      );
     });
   });
 

@@ -2,7 +2,7 @@
 
 What is built and verified in `docket_app`.
 
-**Snapshot:** 10 Aug 2026 · branch `feature/id-media-attachments` · `flutter analyze` clean (5 info-level lints) · 301 tests pass, no suite hangs (§3.2) · release APK builds at **93.0 MB** — inflated by an `x86_64` slice that the `abiFilters` pin is currently failing to drop; see the gotcha in `CLAUDE.md`.
+**Snapshot:** 13 Aug 2026 · branch `feature/id-media-attachments` · `flutter analyze` clean (5 info-level lints) · 326 tests pass, no suite hangs (§3.2) · release APK builds at **93.0 MB** — inflated by an `x86_64` slice that the `abiFilters` pin is currently failing to drop; see the gotcha in `CLAUDE.md`.
 
 The app is **feature-complete on local documents and fully mock-driven on server-backed passes**. Nothing talks to `docket_server` yet.
 

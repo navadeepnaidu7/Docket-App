@@ -273,7 +273,16 @@ class _TrainStatusBandState extends State<TrainStatusBand> {
   @override
   void didUpdateWidget(covariant TrainStatusBand oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.pass != widget.pass || oldWidget.dwell != widget.dwell) {
+    // Only refresh when fields resolveTrainBandMessages actually reads change.
+    final bool passChanged = oldWidget.pass.runState != widget.pass.runState ||
+        oldWidget.pass.status != widget.pass.status ||
+        oldWidget.pass.delayMinutes != widget.pass.delayMinutes ||
+        oldWidget.pass.platformLabel != widget.pass.platformLabel ||
+        oldWidget.pass.departAt != widget.pass.departAt ||
+        oldWidget.pass.date != widget.pass.date ||
+        oldWidget.pass.departTime != widget.pass.departTime ||
+        oldWidget.pass.halts != widget.pass.halts;
+    if (passChanged || oldWidget.dwell != widget.dwell) {
       _refresh(resetIndex: true);
       _restartCycle();
     }

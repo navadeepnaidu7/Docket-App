@@ -52,8 +52,8 @@ class TrainTicketFace extends StatelessWidget {
 
   bool get _detail => density == TrainTicketDensity.detail;
 
-  /// The dashed rule between the station codes. Its position is derived from
-  /// the measured code widths, so a test needs to find it to assert clearance.
+  /// The dashed rule between the station codes. Painted full-width across the
+  /// content, then masked by each station code's opaque background swatch.
   @visibleForTesting
   static const Key connectorKey = Key('train_pass.connector');
 
