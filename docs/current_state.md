@@ -28,6 +28,10 @@ The app is **feature-complete on local documents and fully mock-driven on server
 ### 1.3 Passes — UI complete, data mocked
 - Sealed `WalletPassItem` (`TrainPassItem | MoviePassItem`) with hand-written JSON models; parsers accept both the `{kind, train|movie: {...}}` envelope and a bare nested object.
 - Train: wallet card, detail screen, ticket face with passengers, halts, live-status label and progress.
+- **Train pass face rebuilt to the Figma export** (issue #20, spec in `docs/features/train-pass-redesign.md`): warm blush card on its own 366×630 canvas (`WalletCardMetrics.trainCanvas`), Instrument Serif station codes over Geist, two-column data grid, decorative code block. Absolute baseline layout — positions in `TrainPassMetrics` came off the export's path coordinates, not a screenshot. The same face now serves both the wallet card and the detail screen.
+  - The old footer lockup is now a **dynamic status band**: a blurred operator wordmark bled off the bottom edge, with delay / platform / countdown / on-time messages cross-fading over it. Message selection is a pure function (`resolveTrainBandMessages`) over the pass and an injected clock, so it is unit-tested rather than eyeballed.
+  - Backed by two new optional wire fields, `runState` and `delayMinutes` (see `docs/api/passes.md`). `liveStatusLabel` stays free text for the Live tab. A payload omitting both renders exactly as before.
+  - Active train fixtures now date themselves relative to launch, so the countdown stays demonstrable instead of rotting into "Journey complete". Expired fixtures keep fixed dates — the archive tests assert their order.
 - Movie: brand chrome for `bookMyShow` / `district` / `universal` (unknown brand → universal), ticket face, and a gate-code screen.
 - **Movie posters come from the backend's TMDB image proxy**, rendered with `cached_network_image` (disk-cached; the proxy serves `immutable`). The three bundled poster JPEGs and the hardcoded Wikipedia URL table are gone. `MoviePass.resolvedPosterUrl` is nullable — no poster means the `posterHint` gradient, which is now painted permanently beneath the image rather than swapped in on error. A shimmer covers the download.
   - Fixed while here: the hero band's brand guard covered every `MoviePassBrand` value, so its `else` branch was unreachable and `_BrandChip` / `_StatusPill` — which had no other call site — never rendered on any movie pass. Both now show, over a scrim so they stay legible on bright art.
@@ -98,7 +102,7 @@ errors.
 
 ```bash
 flutter test
-# 301 tests, All tests passed! (~20s)
+# 326 tests, All tests passed! (~28s)   # 13 Aug 2026
 ```
 
 | Suite | Covers | Result |
@@ -106,6 +110,8 @@ flutter test
 | `test/passes_json_test.dart` | Train/movie JSON round-trips over fixtures, envelope parsing, brand fallback, poster URL resolution (null / blank / trimmed / round-tripped) and fixture poster hygiene | pass |
 | `test/wallet_card_responsive_test.dart` | Card layout across device sizes down to 320×568, incl. short viewports (split screen) and `WalletCardMetrics.resolve` | pass |
 | `test/movie_hero_band_test.dart` | Hero band: brand chip + status pill present for all three brands (the dead-branch regression), gradient fallback with no network request when no poster, `CachedNetworkImage` when there is one, bundled asset still wins | pass |
+| `test/train_pass_face_test.dart` | Station header anchoring (origin left, destination right, long names still flush to the content edge) and the connector rule's span + masking. Pins a silent layout bug: `RenderBaseline` lays its child out loose and pins it flush left, so `width` + `textAlign: right` did nothing and the destination column rendered from the wrong edge with no overflow reported | pass |
+| `test/train_status_band_test.dart` | Status-band message resolution: cancelled suppresses everything, arrived/expired collapse to one line, delay wording and ordering, `delayMinutes: 0` is not a delay, "On time" only when claimed, platform normalisation and hand-off to `nextHalt`, countdown thresholds and the boarding grace window, `departAt` preferred over display strings, unparseable date yields no countdown. Widget: cycling, no timer for a single message | pass |
 | `test/pass_activity_date_test.dart` | Display and ISO date parsing, incl. rejection of overflow calendar dates (`2024-02-31`) that `DateTime.parse` silently rolls into the next month | pass |
 | `test/pass_history_folders_test.dart` / `test/archive_layout_test.dart` | Archive foldering and layout | pass |
 | `test/account_profile_provider_test.dart` | Profile persistence against a stubbed store: hydration, rejected read / write / delete, rollback, and write serialization | pass |

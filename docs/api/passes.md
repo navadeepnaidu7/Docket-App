@@ -93,13 +93,37 @@ Either the same envelope as one list item, or the nested object only. Client acc
 | `status` | string | yes | `active` \| `expired` |
 | `bookingStatus` | string | no | default Confirmed |
 | `chartStatus` | string | no | |
-| `liveStatusLabel` | string | no | live tab |
+| `liveStatusLabel` | string | no | live tab, free text |
+| `runState` | string | no | `scheduled` \| `onTime` \| `delayed` \| `arrived` \| `cancelled` |
+| `delayMinutes` | integer | no | minutes late; **omit when unknown** |
 | `progressFraction` | number | no | 0–1 |
 | `halts` | array | no | live timeline |
 | `departAt` / `arriveAt` | string (ISO-8601) | no | preferred machine times |
 | `codeType` / `codePayload` | string | no | future scannable QR |
 
 \*Client currently shows string fields; ISO fields are optional until formatters land.
+
+### Live running state
+
+`liveStatusLabel` is free text and stays that way — the detail screen's Live tab
+prints it verbatim. It cannot drive styling, so the wallet card's status band reads
+`runState` and `delayMinutes` instead.
+
+- **`delayMinutes` absent and `0` are different answers.** Absent means the server has
+  no live data; `0` means the train is running to schedule. The client never coalesces
+  one into the other, and only draws the amber "delayed" line when the value is
+  present and greater than zero.
+- **`onTime` is a claim, not a default.** The card shows "On time" only when
+  `runState` says so. A missing `runState` falls back to `scheduled`, and the band
+  shows a countdown rather than asserting punctuality the server never reported.
+- `cancelled` suppresses every other band message — a platform number or a countdown
+  next to a cancelled train is worse than silence.
+- Platform for the band comes from `halts[].platform`: the origin halt before
+  departure, `nextHalt` once the origin reads `departed`. `"PF 3"`, `"3"` and
+  `"Platform 3"` all normalise to `"Platform 3"`.
+
+Both fields are optional, and a payload omitting them renders exactly as it did before
+they existed.
 
 ### Passenger
 
@@ -250,6 +274,8 @@ normal and render the `posterHint` gradient — never substitute a placeholder f
     "bookingId": "IRCTC1234567890",
     "status": "active",
     "liveStatusLabel": "Running on time",
+    "runState": "onTime",
+    "delayMinutes": 0,
     "progressFraction": 0.48,
     "halts": []
   }

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'core/theme/app_theme.dart';
+import 'features/tickets/presentation/train/train_pass_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,6 +27,12 @@ void main() async {
   // Touch cached getters so MaterialApp does not pay GoogleFonts cost mid-build.
   AppTheme.lightTheme;
   AppTheme.darkTheme;
+
+  // The train pass face sets its type in Geist and Instrument Serif, neither of
+  // which the theme touches. Requesting them here puts them in the same
+  // pendingFonts() wait below, so the card is not the one surface that renders
+  // in the fallback face and reflows a frame later.
+  TrainPassType.warmUp();
 
   final SharedPreferences prefs = await prefsFuture;
   await orientationFuture;

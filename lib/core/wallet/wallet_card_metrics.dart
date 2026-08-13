@@ -49,6 +49,24 @@ class WalletCardMetrics {
   /// Portrait ticket ratio, kept in step with [ticketCanvas].
   static const double ticketAspect = _ticketW / _ticketH;
 
+  /// Design canvas for the train pass face.
+  ///
+  /// Taken straight from the Figma export rather than reusing [ticketCanvas]:
+  /// the train card is narrower and taller (0.581 vs 0.616) and its layout is
+  /// absolutely positioned, so it cannot be poured into a differently-shaped
+  /// box without breaking every measured baseline. Retuning [ticketCanvas]
+  /// instead would have dragged the movie face along with it.
+  ///
+  /// Train and movie passes therefore have different aspect ratios, which is
+  /// safe: `tickets_tab.dart` gives each pass its own `PageView` page and
+  /// [resolve] centres the card inside it, so pages need not match heights.
+  static const double _trainW = 366;
+  static const double _trainH = 630;
+  static const Size trainCanvas = Size(_trainW, _trainH);
+
+  /// Train pass ratio, kept in step with [trainCanvas].
+  static const double trainAspect = _trainW / _trainH;
+
   /// Resolve the card box for the space available, honouring both axes and the
   /// tablet cap. Using only `maxWidth` (the previous behaviour) produced cards
   /// taller than the viewport in landscape and on short screens.

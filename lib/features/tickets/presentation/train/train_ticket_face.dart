@@ -1,95 +1,29 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../domain/ticket_models.dart';
-import '../movie/movie_ticket_chrome.dart';
+import 'train_pass_theme.dart';
+import 'train_status_band.dart';
 
 /// How dense the shared train e-ticket face should render.
+///
+/// Both densities now draw the *same* face on the same
+/// [TrainPassMetrics.canvas]; the enum survives because the detail screen needs
+/// its QR to be tappable and the glance card does not.
 enum TrainTicketDensity {
-  /// Passes stack — compact ticket stub.
+  /// Passes stack — the card in the wallet carousel.
   glance,
 
-  /// Fullscreen detail — roomier type and QR.
+  /// Fullscreen detail — identical layout, scaled up, live QR.
   detail,
 }
 
-/// Visual policy for the train pass face.
+/// Train pass face — warm blush card, serif station codes, dynamic status band.
 ///
-/// Inspired by premium rail booking product design: warm paper surface,
-/// charcoal type, and a single mint accent — not a gradient poster.
-@immutable
-class TrainTicketStyle {
-  const TrainTicketStyle({
-    required this.surface,
-    required this.surfaceDeep,
-    required this.ink,
-    required this.muted,
-    required this.accent,
-    required this.accentSoft,
-    required this.track,
-    required this.trackDone,
-    required this.chipFill,
-    required this.divider,
-    required this.shadow,
-    required this.footerInk,
-  });
-
-  final Color surface;
-  final Color surfaceDeep;
-  final Color ink;
-  final Color muted;
-  final Color accent;
-  final Color accentSoft;
-  final Color track;
-  final Color trackDone;
-  final Color chipFill;
-  final Color divider;
-  final Color shadow;
-  final Color footerInk;
-
-  static const TrainTicketStyle active = TrainTicketStyle(
-    surface: Color(0xFFFFFDF9),
-    surfaceDeep: Color(0xFFF4F7F2),
-    ink: Color(0xFF0F1410),
-    muted: Color(0xFF6B736C),
-    accent: Color(0xFF1FBF75),
-    accentSoft: Color(0xFFD8F5E6),
-    track: Color(0xFFD5DBD6),
-    trackDone: Color(0xFF0F1410),
-    chipFill: Color(0xFFF2F5F1),
-    divider: Color(0xFFE4E9E3),
-    shadow: Color(0xFF1FBF75),
-    footerInk: Color(0xFF3A433C),
-  );
-
-  static const TrainTicketStyle expired = TrainTicketStyle(
-    surface: Color(0xFFF7F7F7),
-    surfaceDeep: Color(0xFFEEEEEE),
-    ink: Color(0xFF3A3A3C),
-    muted: Color(0xFF8E8E93),
-    accent: Color(0xFF8E8E93),
-    accentSoft: Color(0xFFE8E8ED),
-    track: Color(0xFFD1D1D6),
-    trackDone: Color(0xFF8E8E93),
-    chipFill: Color(0xFFF0F0F2),
-    divider: Color(0xFFE0E0E4),
-    shadow: Color(0xFF636366),
-    footerInk: Color(0xFF636366),
-  );
-
-  static TrainTicketStyle forTicket(
-    MockTicket ticket, {
-    bool useBrandColors = false,
-  }) {
-    final bool active =
-        useBrandColors || ticket.status == TicketStatus.active;
-    return active ? TrainTicketStyle.active : TrainTicketStyle.expired;
-  }
-}
-
-/// Single train e-ticket face for wallet + detail screens.
+/// Laid out by absolute baseline against a fixed 366 x 630 canvas so it matches
+/// the Figma export exactly; [WalletCardCanvas] scales that canvas to whatever
+/// box the device gives it. Positions come from [TrainPassMetrics] — do not
+/// re-measure them from a screenshot, they were taken off the export's path
+/// coordinates.
 class TrainTicketFace extends StatelessWidget {
   const TrainTicketFace({
     super.key,
@@ -98,1005 +32,654 @@ class TrainTicketFace extends StatelessWidget {
     this.useBrandColors = false,
     this.widthFactor,
     this.onOpenCodes,
+    this.clock = DateTime.now,
   });
 
   final MockTicket ticket;
   final TrainTicketDensity density;
+
+  /// Force the live palette on a pass the wallet considers expired.
   final bool useBrandColors;
+
+  /// Retained for callers that inset the face inside its box. The canvas now
+  /// matches the card exactly, so the default is no inset.
   final double? widthFactor;
+
   final VoidCallback? onOpenCodes;
 
-  bool get _isGlance => density == TrainTicketDensity.glance;
+  /// Injected for tests so the status band's countdown is deterministic.
+  final DateTime Function() clock;
 
-  static double footerBodyHeight({required bool detail, required double scale}) =>
-      (detail ? 68.0 : 54.0) * scale;
+  bool get _detail => density == TrainTicketDensity.detail;
+
+  /// The dashed rule between the station codes. Its position is derived from
+  /// the measured code widths, so a test needs to find it to assert clearance.
+  @visibleForTesting
+  static const Key connectorKey = Key('train_pass.connector');
 
   @override
   Widget build(BuildContext context) {
-    final bool isActive = ticket.status == TicketStatus.active;
-    final TrainTicketStyle style = TrainTicketStyle.forTicket(
-      ticket,
-      useBrandColors: useBrandColors,
-    );
-    final double scale =
-        _isGlance ? MovieTicketMetrics.glanceTallScale : 1.0;
-    final double footerHeight =
-        footerBodyHeight(detail: !_isGlance, scale: scale);
-    final double notchFromBottom =
-        footerHeight + (MovieTicketMetrics.tearHeight * scale) / 2;
-    final double factor = widthFactor ?? (_isGlance ? 0.94 : 1.0);
+    final MockTicket t = ticket;
+    final bool isExpired =
+        !useBrandColors && t.status == TicketStatus.expired;
+    final TrainPassColors c = TrainPassColors.of(isExpired: isExpired);
 
-    final Widget ticketWidget = Container(
+    final Widget card = Container(
+      width: TrainPassMetrics.width,
+      height: TrainPassMetrics.height,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(MovieTicketMetrics.cornerR),
+        borderRadius: BorderRadius.circular(TrainPassMetrics.cornerR),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: style.shadow.withValues(alpha: isActive ? 0.22 : 0.12),
-            blurRadius: 32,
+            color: Colors.black.withValues(alpha: c.shadowAlpha),
+            blurRadius: 30,
             offset: const Offset(0, 16),
-            spreadRadius: -8,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
             spreadRadius: -4,
           ),
         ],
       ),
-      child: ClipPath(
-        clipper: TicketShapeClipper(notchFromBottom: notchFromBottom),
-        child: _TicketBody(
-          ticket: ticket,
-          style: style,
-          isActive: isActive,
-          scale: scale,
-          density: density,
-          footerHeight: footerHeight,
-          onOpenCodes: onOpenCodes,
-        ),
-      ),
-    );
-
-    if (factor >= 0.999) return ticketWidget;
-
-    return Align(
-      child: FractionallySizedBox(
-        widthFactor: factor,
-        child: ticketWidget,
-      ),
-    );
-  }
-}
-
-// ── Body ──────────────────────────────────────────────────────────────────────
-
-class _TicketBody extends StatelessWidget {
-  const _TicketBody({
-    required this.ticket,
-    required this.style,
-    required this.isActive,
-    required this.scale,
-    required this.density,
-    required this.footerHeight,
-    this.onOpenCodes,
-  });
-
-  final MockTicket ticket;
-  final TrainTicketStyle style;
-  final bool isActive;
-  final double scale;
-  final TrainTicketDensity density;
-  final double footerHeight;
-  final VoidCallback? onOpenCodes;
-
-  bool get _detail => density == TrainTicketDensity.detail;
-
-  @override
-  Widget build(BuildContext context) {
-    final MockTicket t = ticket;
-
-    return Stack(
-      children: <Widget>[
-        // Paper surface
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: <Color>[style.surface, style.surfaceDeep],
-              ),
-            ),
-          ),
-        ),
-        // Soft mint wash top-right
-        Positioned(
-          top: -80,
-          right: -50,
-          child: IgnorePointer(
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: <Color>[
-                    style.accent.withValues(alpha: isActive ? 0.14 : 0.06),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        // Top accent hairline
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: Container(
-            height: 3.5 * scale,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: <Color>[
-                  style.accent.withValues(alpha: 0.0),
-                  style.accent,
-                  style.accent.withValues(alpha: 0.0),
-                ],
-                stops: const <double>[0.0, 0.5, 1.0],
-              ),
-            ),
-          ),
-        ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(TrainPassMetrics.cornerR),
+        child: Stack(
+          clipBehavior: Clip.none,
           children: <Widget>[
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                20 * scale,
-                18 * scale,
-                20 * scale,
-                0,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  _HeaderRow(
-                    operator: t.operator,
-                    isActive: isActive,
-                    style: style,
-                    scale: scale,
-                  ),
-                  SizedBox(height: (_detail ? 22 : 18) * scale),
-                  Text(
-                    'Passenger',
-                    style: GoogleFonts.inter(
-                      color: style.muted,
-                      fontSize: 11.5 * scale.clamp(0.9, 1.15).toDouble(),
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.15,
-                      height: 1.0,
-                    ),
-                  ),
-                  SizedBox(height: 5 * scale),
-                  Text(
-                    t.passengerCount > 1
-                        ? '${t.passengerName}  +${t.passengerCount - 1}'
-                        : t.passengerName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      color: style.ink,
-                      fontSize: _detail ? 22 : 19,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.55,
-                      height: 1.15,
-                    ),
-                  ),
-                  SizedBox(height: (_detail ? 22 : 18) * scale),
-                  _RouteTimeline(
-                    ticket: t,
-                    style: style,
-                    detail: _detail,
-                    scale: scale,
-                  ),
-                  SizedBox(height: (_detail ? 22 : 18) * scale),
-                  _ReferenceBlock(
-                    label: 'Booking reference',
-                    value: _formatPnr(t.pnr),
-                    style: style,
-                    scale: scale,
-                    detail: _detail,
-                  ),
-                  SizedBox(height: (_detail ? 18 : 14) * scale),
-                  _StatsRow(
-                    style: style,
-                    scale: scale,
-                    detail: _detail,
-                    items: <_StatItem>[
-                      _StatItem(
-                        label: 'Coach',
-                        value: t.coachesListLabel,
-                      ),
-                      _StatItem(
-                        label: 'Train',
-                        value: t.trainNumber,
-                      ),
-                      // Never a bare passenger count here: '3' under a "Seat"
-                      // label reads as seat number 3. The detail face has room
-                      // for the actual numbers; the glance face says how many.
-                      _StatItem(
-                        label: t.passengerCount == 1 ? 'Seat' : 'Seats',
-                        value: _detail ? t.seatsListLabel : t.seatSummary,
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: (_detail ? 10 : 8) * scale),
-                  Text(
-                    '${t.trainName}  ·  ${_classShort(t.ticketClass)}  ·  ${_shortDate(t.date)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      color: style.muted,
-                      fontSize: _detail ? 12 : 11,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -0.1,
-                    ),
-                  ),
-                  if (_detail) ...<Widget>[
-                    SizedBox(height: 18 * scale),
-                    _CodesPanel(
-                      style: style,
-                      onTap: onOpenCodes,
-                    ),
-                  ],
-                ],
+            Positioned.fill(child: ColoredBox(color: c.surface)),
+
+            // ── Status band (painted first so nothing above it is occluded) ──
+            Positioned(
+              left: 0,
+              right: 0,
+              top: TrainPassMetrics.bandTop,
+              height: TrainPassMetrics.bandHeight,
+              child: TrainStatusBand(
+                pass: t,
+                colors: c,
+                clock: clock,
               ),
             ),
-            if (!_detail) const Spacer(),
-            if (_detail) SizedBox(height: 10 * scale),
-            _PaperTear(style: style, height: MovieTicketMetrics.tearHeight * scale),
-            SizedBox(
-              width: double.infinity,
-              height: footerHeight,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20 * scale),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    _RailMark(color: style.footerInk, size: 16 * scale),
-                    SizedBox(width: 8 * scale),
-                    Text(
-                      'Indian Railways',
-                      style: GoogleFonts.inter(
-                        color: style.footerInk.withValues(alpha: 0.85),
-                        fontSize: 12.5 * scale.clamp(0.9, 1.1).toDouble(),
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ],
+
+            // ── Station header ──
+            //
+            // Order matters. The dashed rule is painted across the whole
+            // content width first, then each code is painted over it on an
+            // opaque swatch of the card surface. The swatch is the code's own
+            // width plus a fixed margin, so the visible run of dashes is
+            // exactly the gap the codes leave — no measuring, and it re-lays
+            // out by itself when google_fonts swaps the fallback face for
+            // Instrument Serif. (Measuring with a TextPainter in build looked
+            // fine and was wrong: it ran once, before the serif resolved, and
+            // the rule kept the fallback face's proportions forever.) Codes
+            // wide enough to meet in the middle mask the rule off entirely
+            // rather than having it drawn through them.
+            Positioned(
+              left: TrainPassMetrics.inset,
+              right: TrainPassMetrics.inset,
+              top: TrainPassMetrics.connectorY - 1,
+              height: 2,
+              child: CustomPaint(
+                key: TrainTicketFace.connectorKey,
+                painter: _DashedRulePainter(
+                  color: c.rule,
+                  strokeWidth: 2,
+                  dash: 4,
+                  gap: 4,
                 ),
               ),
             ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  String _shortDate(String full) {
-    final int i = full.indexOf(', ');
-    return i >= 0 ? full.substring(i + 2) : full;
-  }
-
-  String _classShort(String ticketClass) {
-    final String u = ticketClass.toUpperCase();
-    if (u.contains('2') && (u.contains('AC') || u.contains('2A'))) return '2A';
-    if (u.contains('1') && (u.contains('AC') || u.contains('1A'))) return '1A';
-    if (u.contains('3') && (u.contains('AC') || u.contains('3A'))) return '3A';
-    if (u.contains('SL')) return 'SL';
-    if (u.contains('CC')) return 'CC';
-    return ticketClass;
-  }
-
-  String _formatPnr(String raw) {
-    if (raw.length <= 4) return raw;
-    final StringBuffer b = StringBuffer();
-    for (int i = 0; i < raw.length; i++) {
-      if (i > 0 && i % 4 == 0) b.write(' ');
-      b.write(raw[i]);
-    }
-    return b.toString();
-  }
-}
-
-// ── Header ────────────────────────────────────────────────────────────────────
-
-class _HeaderRow extends StatelessWidget {
-  const _HeaderRow({
-    required this.operator,
-    required this.isActive,
-    required this.style,
-    required this.scale,
-  });
-
-  final String operator;
-  final bool isActive;
-  final TrainTicketStyle style;
-  final double scale;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: 10 * scale,
-            vertical: 6 * scale,
-          ),
-          decoration: BoxDecoration(
-            color: style.accentSoft,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(
-                Icons.train_rounded,
-                size: 14 * scale,
-                color: style.accent,
-              ),
-              SizedBox(width: 5 * scale),
-              Text(
-                operator.toUpperCase(),
-                style: GoogleFonts.inter(
-                  color: style.ink,
-                  fontSize: 11 * scale,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
+            _Baselined(
+              baseline: TrainPassMetrics.codeBaseline,
+              left: TrainPassMetrics.inset,
+              child: _CodeMask(
+                surface: c.surface,
+                padding: const EdgeInsets.only(
+                  right: TrainPassMetrics.codeConnectorGap,
+                ),
+                child: Text(
+                  _code(t.fromCode),
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TrainPassType.stationCode(c.ink),
                 ),
               ),
-            ],
-          ),
-        ),
-        const Spacer(),
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: 10 * scale,
-            vertical: 6 * scale,
-          ),
-          decoration: BoxDecoration(
-            color: isActive ? style.accentSoft : style.chipFill,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Container(
-                width: 6 * scale,
-                height: 6 * scale,
-                decoration: BoxDecoration(
-                  color: isActive ? style.accent : style.muted,
-                  shape: BoxShape.circle,
+            ),
+            _Baselined(
+              baseline: TrainPassMetrics.codeBaseline,
+              right: TrainPassMetrics.inset,
+              child: _CodeMask(
+                surface: c.surface,
+                padding: const EdgeInsets.only(
+                  left: TrainPassMetrics.codeConnectorGap,
+                ),
+                child: Text(
+                  _code(t.toCode),
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TrainPassType.stationCode(c.ink),
                 ),
               ),
-              SizedBox(width: 6 * scale),
-              Text(
-                isActive ? 'Active' : 'Expired',
-                style: GoogleFonts.inter(
-                  color: isActive ? style.ink : style.muted,
-                  fontSize: 11 * scale,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Route timeline (Dribbble center card) ─────────────────────────────────────
-
-class _RouteTimeline extends StatelessWidget {
-  const _RouteTimeline({
-    required this.ticket,
-    required this.style,
-    required this.detail,
-    required this.scale,
-  });
-
-  final MockTicket ticket;
-  final TrainTicketStyle style;
-  final bool detail;
-  final double scale;
-
-  @override
-  Widget build(BuildContext context) {
-    final MockTicket t = ticket;
-
-    return Column(
-      children: <Widget>[
-        // Times + duration
-        Row(
-          children: <Widget>[
-            Expanded(
+            ),
+            _Baselined(
+              baseline: TrainPassMetrics.stationNameBaseline,
+              left: TrainPassMetrics.inset,
+              width: 150,
               child: Text(
-                t.departTime,
-                style: GoogleFonts.inter(
-                  color: style.ink,
-                  fontSize: detail ? 17 : 15.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.35,
-                  height: 1.0,
-                ),
+                t.fromName.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TrainPassType.stationName(c.muted),
               ),
             ),
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: 10 * scale,
-                vertical: 4 * scale,
-              ),
-              decoration: BoxDecoration(
-                color: style.chipFill,
-                borderRadius: BorderRadius.circular(20),
-              ),
+            _Baselined(
+              baseline: TrainPassMetrics.stationNameBaseline,
+              right: TrainPassMetrics.inset,
+              width: 150,
               child: Text(
-                t.duration,
-                style: GoogleFonts.inter(
-                  color: style.muted,
-                  fontSize: detail ? 11.5 : 10.5,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.1,
-                ),
-              ),
-            ),
-            Expanded(
-              child: Text(
-                t.arriveTime,
+                t.toName.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.right,
-                style: GoogleFonts.inter(
-                  color: style.ink,
-                  fontSize: detail ? 17 : 15.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.35,
-                  height: 1.0,
+                style: TrainPassType.stationName(c.muted),
+              ),
+            ),
+
+            Positioned(
+              left: TrainPassMetrics.inset,
+              right: TrainPassMetrics.inset,
+              top: TrainPassMetrics.headerRuleY - 0.5,
+              height: 1,
+              child: ColoredBox(color: c.rule),
+            ),
+
+            // ── Train identity ──
+            _Baselined(
+              baseline: TrainPassMetrics.trainNameBaseline,
+              left: TrainPassMetrics.inset,
+              right: TrainPassMetrics.width - TrainPassMetrics.chipLeft + 10,
+              child: Text(
+                t.trainName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TrainPassType.trainName(c.ink),
+              ),
+            ),
+            _Baselined(
+              baseline: TrainPassMetrics.trainNumberBaseline,
+              left: TrainPassMetrics.inset,
+              width: 200,
+              child: Text(
+                'Train #${t.trainNumber}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TrainPassType.trainNumber(c.muted),
+              ),
+            ),
+            Positioned(
+              left: TrainPassMetrics.chipLeft,
+              top: TrainPassMetrics.chipTop,
+              width: TrainPassMetrics.chipWidth,
+              height: TrainPassMetrics.chipHeight,
+              child: _BookingChip(
+                label: _bookingCode(t.bookingStatus),
+                colors: c,
+              ),
+            ),
+
+            // ── Data grid ──
+            ..._grid(t, c),
+
+            Positioned(
+              left: TrainPassMetrics.inset,
+              right: TrainPassMetrics.inset,
+              top: TrainPassMetrics.tearRuleY - 0.75,
+              height: 1.5,
+              child: CustomPaint(
+                painter: _DashedRulePainter(
+                  color: c.rule,
+                  strokeWidth: 1.5,
+                  dash: 6,
+                  gap: 4,
+                ),
+              ),
+            ),
+
+            // ── Passenger + PNR ──
+            _Baselined(
+              baseline: TrainPassMetrics.passengerLabelBaseline,
+              left: TrainPassMetrics.inset,
+              width: 200,
+              child: Text(
+                'Passenger',
+                maxLines: 1,
+                style: TrainPassType.label(c.muted),
+              ),
+            ),
+            _Baselined(
+              baseline: TrainPassMetrics.passengerValueBaseline,
+              left: TrainPassMetrics.inset,
+              right: TrainPassMetrics.width - TrainPassMetrics.passengerRight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: <Widget>[
+                  Flexible(
+                    child: Text(
+                      t.passengerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TrainPassType.value(c.ink),
+                    ),
+                  ),
+                  if (t.passengerCount > 1) ...<Widget>[
+                    const SizedBox(width: 7.6),
+                    Text(
+                      '+${t.passengerCount - 1} others',
+                      maxLines: 1,
+                      style: TrainPassType.secondary(c.muted),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            _Baselined(
+              baseline: TrainPassMetrics.pnrLabelBaseline,
+              left: TrainPassMetrics.inset,
+              width: 200,
+              child: Text(
+                'PNR No',
+                maxLines: 1,
+                style: TrainPassType.label(c.muted),
+              ),
+            ),
+            _Baselined(
+              baseline: TrainPassMetrics.pnrValueBaseline,
+              left: TrainPassMetrics.inset,
+              right: TrainPassMetrics.width - TrainPassMetrics.passengerRight,
+              child: Text(
+                _formatPnr(t.pnr),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TrainPassType.value(c.ink),
+              ),
+            ),
+
+            // ── QR ──
+            Positioned(
+              left: TrainPassMetrics.qrLeft,
+              top: TrainPassMetrics.qrTop,
+              width: TrainPassMetrics.qrSize,
+              height: TrainPassMetrics.qrSize,
+              child: _QrBlock(
+                colors: c,
+                onTap: _detail ? onOpenCodes : null,
+              ),
+            ),
+
+            // Border last so the clip never eats it.
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius:
+                        BorderRadius.circular(TrainPassMetrics.cornerR),
+                    border: Border.all(color: c.border),
+                  ),
                 ),
               ),
             ),
           ],
         ),
-        SizedBox(height: 12 * scale),
-        // Track with train
-        SizedBox(
-          height: 22 * scale,
-          child: CustomPaint(
-            painter: _RouteTrackPainter(
-              doneColor: style.trackDone,
-              pendingColor: style.track,
-              accent: style.accent,
-              progress: t.progressFraction.clamp(0.18, 0.82).toDouble(),
-            ),
-            size: Size(double.infinity, 22 * scale),
+      ),
+    );
+
+    final double factor = widthFactor ?? 1.0;
+    if (factor >= 0.999) return card;
+    return Align(
+      child: FractionallySizedBox(widthFactor: factor, child: card),
+    );
+  }
+
+  List<Widget> _grid(MockTicket t, TrainPassColors c) {
+    final List<(String, String, String, String)> rows =
+        <(String, String, String, String)>[
+      ('Date', _shortDate(t.date), 'Duration', t.duration),
+      (
+        'Departure (${_code(t.fromCode)})',
+        t.departTime,
+        'Arrival (${_code(t.toCode)})',
+        t.arriveTime,
+      ),
+      ('Coach /Seat', _coachSeat(t), 'Class Type', t.ticketClass),
+    ];
+
+    const double colOneWidth = TrainPassMetrics.gridColumnTwoX -
+        TrainPassMetrics.inset -
+        10; // 158
+    const double colTwoWidth =
+        TrainPassMetrics.contentRight - TrainPassMetrics.gridColumnTwoX; // 150
+
+    final List<Widget> out = <Widget>[];
+    for (int i = 0; i < rows.length; i++) {
+      final (String l1, String v1, String l2, String v2) = rows[i];
+      out.addAll(<Widget>[
+        _Baselined(
+          baseline: TrainPassMetrics.gridLabelBaseline(i),
+          left: TrainPassMetrics.inset,
+          width: colOneWidth,
+          child: Text(
+            l1,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TrainPassType.label(c.muted),
           ),
         ),
-        SizedBox(height: 12 * scale),
-        // Station names + codes
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    t.fromName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      color: style.ink,
-                      fontSize: detail ? 15 : 13.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.25,
-                      height: 1.15,
-                    ),
-                  ),
-                  SizedBox(height: 3 * scale),
-                  Text(
-                    t.fromCode,
-                    style: GoogleFonts.inter(
-                      color: style.muted,
-                      fontSize: detail ? 12 : 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: <Widget>[
-                  Text(
-                    t.toName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                    style: GoogleFonts.inter(
-                      color: style.ink,
-                      fontSize: detail ? 15 : 13.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.25,
-                      height: 1.15,
-                    ),
-                  ),
-                  SizedBox(height: 3 * scale),
-                  Text(
-                    t.toCode,
-                    textAlign: TextAlign.right,
-                    style: GoogleFonts.inter(
-                      color: style.muted,
-                      fontSize: detail ? 12 : 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+        _Baselined(
+          baseline: TrainPassMetrics.gridValueBaseline(i),
+          left: TrainPassMetrics.inset,
+          width: colOneWidth,
+          child: Text(
+            _orDash(v1),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TrainPassType.value(c.ink),
+          ),
         ),
-      ],
+        _Baselined(
+          baseline: TrainPassMetrics.gridLabelBaseline(i),
+          left: TrainPassMetrics.gridColumnTwoX,
+          width: colTwoWidth,
+          child: Text(
+            l2,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TrainPassType.label(c.muted),
+          ),
+        ),
+        _Baselined(
+          baseline: TrainPassMetrics.gridValueBaseline(i),
+          left: TrainPassMetrics.gridColumnTwoX,
+          width: colTwoWidth,
+          child: Text(
+            _orDash(v2),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TrainPassType.value(c.ink),
+          ),
+        ),
+      ]);
+    }
+    return out;
+  }
+}
+
+// ── Formatting ────────────────────────────────────────────────────────────────
+
+const String _absent = '—';
+
+String _orDash(String value) => value.trim().isEmpty ? _absent : value.trim();
+
+String _code(String raw) {
+  final String v = raw.trim().toUpperCase();
+  return v.isEmpty ? _absent : v;
+}
+
+/// "Fri, 15 Aug 2026" -> "15 Aug 2026". The weekday is redundant on a card that
+/// already carries the countdown in its band.
+String _shortDate(String full) {
+  final int i = full.indexOf(', ');
+  return i >= 0 ? full.substring(i + 2) : full;
+}
+
+/// "C5 / 32A (Window)" for a lone traveller; a group gets a count instead,
+/// because one seat number standing for six people is worse than no number.
+String _coachSeat(MockTicket t) {
+  if (t.passengerCount == 1) {
+    final TicketPassenger p = t.primaryPassenger;
+    final String head = <String>[p.coach, p.seat]
+        .where((String s) => s.trim().isNotEmpty && s.trim() != _absent)
+        .join(' / ');
+    if (head.isEmpty) return _absent;
+    final String berth = p.berth.trim();
+    if (berth.isEmpty || berth == _absent) return head;
+    return '$head ($berth)';
+  }
+  final String coaches = t.coachesListLabel.trim();
+  final String seats = '${t.passengerCount} seats';
+  return coaches.isEmpty ? seats : '$coaches / $seats';
+}
+
+/// Indian Railways PNRs are 10 digits and are printed 3-7.
+String _formatPnr(String raw) {
+  final String v = raw.trim();
+  if (v.length == 10 && !v.contains('-')) {
+    return '${v.substring(0, 3)}-${v.substring(3)}';
+  }
+  return v.isEmpty ? _absent : v;
+}
+
+/// Reservation status shortened to the code printed on a real ticket.
+String _bookingCode(String status) {
+  final String s = status.trim().toUpperCase();
+  if (s.isEmpty) return _absent;
+  if (s.startsWith('CONFIRM') || s == 'CNF') return 'CNF';
+  if (s.startsWith('RAC')) return 'RAC';
+  if (s.startsWith('WAIT') || s.startsWith('WL')) return 'WL';
+  if (s.startsWith('CANCEL') || s.startsWith('CAN')) return 'CAN';
+  if (s.length <= 4) return s;
+  return s.substring(0, 3);
+}
+
+// ── Layout helpers ────────────────────────────────────────────────────────────
+
+/// Positions [child] so its text baseline lands exactly on [baseline].
+///
+/// Placing by `top` instead would need each font's ascent, which differs
+/// between Geist and the fallback face google_fonts uses before the real font
+/// arrives — the card would shift on first launch and settle later.
+class _Baselined extends StatelessWidget {
+  const _Baselined({
+    required this.baseline,
+    required this.child,
+    this.left,
+    this.right,
+    this.width,
+  });
+
+  final double baseline;
+  final Widget child;
+  final double? left;
+  final double? right;
+
+  /// Width of the text column. Passed to the child as a *tight* constraint —
+  /// see below for why that matters.
+  final double? width;
+
+  @override
+  Widget build(BuildContext context) {
+    // RenderBaseline lays its child out under constraints.loosen() and then
+    // pins it at Offset(0, top). A Text child therefore shrink-wraps and sits
+    // flush left no matter what, so `textAlign: TextAlign.right` silently did
+    // nothing and a right-anchored column rendered from its *left* edge —
+    // which is how the destination station name ended up floating mid-card
+    // instead of aligning under its code. The SizedBox restores a tight width
+    // so the child fills the column and can align inside it.
+    final Widget sized =
+        width == null ? child : SizedBox(width: width, child: child);
+
+    return Positioned(
+      left: left,
+      right: right,
+      width: width,
+      top: 0,
+      child: Baseline(
+        baseline: baseline,
+        baselineType: TextBaseline.alphabetic,
+        child: sized,
+      ),
     );
   }
 }
 
-/// Solid → train → dotted track, matching the booking UI reference.
-class _RouteTrackPainter extends CustomPainter {
-  _RouteTrackPainter({
-    required this.doneColor,
-    required this.pendingColor,
-    required this.accent,
-    required this.progress,
+/// A station code on an opaque swatch of the card surface, which is what cuts
+/// the gap either side of the dashed connector running underneath it.
+///
+/// [padding] is the clear space held between the lettering and the first dash.
+class _CodeMask extends StatelessWidget {
+  const _CodeMask({
+    required this.surface,
+    required this.padding,
+    required this.child,
   });
 
-  final Color doneColor;
-  final Color pendingColor;
-  final Color accent;
-  final double progress;
+  final Color surface;
+  final EdgeInsets padding;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: surface,
+      child: Padding(padding: padding, child: child),
+    );
+  }
+}
+
+class _DashedRulePainter extends CustomPainter {
+  const _DashedRulePainter({
+    required this.color,
+    required this.strokeWidth,
+    required this.dash,
+    required this.gap,
+  });
+
+  final Color color;
+  final double strokeWidth;
+  final double dash;
+  final double gap;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final double cy = size.height / 2;
-    final double left = 5;
-    final double right = size.width - 5;
-    final double trainX = left + (right - left) * progress.clamp(0.15, 0.85).toDouble();
-
-    // End dots
-    canvas.drawCircle(
-      Offset(left, cy),
-      4.2,
-      Paint()..color = doneColor,
-    );
-    canvas.drawCircle(
-      Offset(right, cy),
-      4.2,
-      Paint()
-        ..color = pendingColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-    canvas.drawCircle(
-      Offset(right, cy),
-      1.8,
-      Paint()..color = accent,
-    );
-
-    // Solid completed segment
-    final Paint solid = Paint()
-      ..color = doneColor
-      ..strokeWidth = 2.2
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(left + 6, cy), Offset(trainX - 14, cy), solid);
-
-    // Dotted remaining segment
-    final Paint dot = Paint()
-      ..color = pendingColor
-      ..strokeWidth = 2.2
-      ..strokeCap = StrokeCap.round;
-    double x = trainX + 14;
-    while (x < right - 8) {
-      final double x2 = math.min(x + 3.5, right - 8);
-      canvas.drawLine(Offset(x, cy), Offset(x2, cy), dot);
-      x += 7.5;
+    final Paint paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.butt;
+    final double y = size.height / 2;
+    double x = 0;
+    while (x < size.width) {
+      canvas.drawLine(
+        Offset(x, y),
+        Offset((x + dash).clamp(0, size.width), y),
+        paint,
+      );
+      x += dash + gap;
     }
-
-    // Train capsule
-    final RRect body = RRect.fromRectAndRadius(
-      Rect.fromCenter(
-        center: Offset(trainX, cy),
-        width: 26,
-        height: 16,
-      ),
-      const Radius.circular(8),
-    );
-    canvas.drawRRect(body, Paint()..color = doneColor);
-
-    // Cabin window
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(
-          center: Offset(trainX - 2, cy),
-          width: 8,
-          height: 7,
-        ),
-        const Radius.circular(2),
-      ),
-      Paint()..color = Colors.white.withValues(alpha: 0.92),
-    );
-    // Nose
-    final Path nose = Path()
-      ..moveTo(trainX + 10, cy - 5)
-      ..lineTo(trainX + 15, cy)
-      ..lineTo(trainX + 10, cy + 5)
-      ..close();
-    canvas.drawPath(nose, Paint()..color = doneColor);
   }
 
   @override
-  bool shouldRepaint(covariant _RouteTrackPainter old) {
-    return old.progress != progress ||
-        old.doneColor != doneColor ||
-        old.pendingColor != pendingColor ||
-        old.accent != accent;
-  }
+  bool shouldRepaint(covariant _DashedRulePainter old) =>
+      old.color != color ||
+      old.strokeWidth != strokeWidth ||
+      old.dash != dash ||
+      old.gap != gap;
 }
 
-// ── Reference + stats ─────────────────────────────────────────────────────────
+// ── Pieces ────────────────────────────────────────────────────────────────────
 
-class _ReferenceBlock extends StatelessWidget {
-  const _ReferenceBlock({
-    required this.label,
-    required this.value,
-    required this.style,
-    required this.scale,
-    required this.detail,
-  });
+class _BookingChip extends StatelessWidget {
+  const _BookingChip({required this.label, required this.colors});
 
   final String label;
-  final String value;
-  final TrainTicketStyle style;
-  final double scale;
-  final bool detail;
+  final TrainPassColors colors;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            color: style.muted,
-            fontSize: 11.5 * scale.clamp(0.9, 1.15).toDouble(),
-            fontWeight: FontWeight.w500,
-            letterSpacing: 0.1,
-          ),
-        ),
-        SizedBox(height: 5 * scale),
-        Text(
-          value,
-          style: GoogleFonts.inter(
-            color: style.ink,
-            fontSize: detail ? 20 : 17.5,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.1,
-            height: 1.1,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatItem {
-  const _StatItem({required this.label, required this.value});
-  final String label;
-  final String value;
-}
-
-class _StatsRow extends StatelessWidget {
-  const _StatsRow({
-    required this.style,
-    required this.scale,
-    required this.detail,
-    required this.items,
-  });
-
-  final TrainTicketStyle style;
-  final double scale;
-  final bool detail;
-  final List<_StatItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: 4 * scale,
-        vertical: (detail ? 14 : 12) * scale,
-      ),
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: style.chipFill,
-        borderRadius: BorderRadius.circular(14),
+        color: colors.chipFill,
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
-        children: <Widget>[
-          for (int i = 0; i < items.length; i++) ...<Widget>[
-            if (i > 0)
-              Container(
-                width: 1,
-                height: 32 * scale,
-                color: style.divider,
-              ),
-            Expanded(
-              child: Column(
-                children: <Widget>[
-                  Text(
-                    items[i].label,
-                    style: GoogleFonts.inter(
-                      color: style.muted,
-                      fontSize: detail ? 11.5 : 10.5,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(height: 5 * scale),
-                  Text(
-                    items[i].value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      color: style.ink,
-                      fontSize: detail ? 20 : 17,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.4,
-                      height: 1.0,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
+      child: Center(
+        child: Text(
+          label,
+          maxLines: 1,
+          style: TrainPassType.chip(colors.chipInk),
+        ),
       ),
     );
   }
 }
 
-// ── Codes (detail) ────────────────────────────────────────────────────────────
+/// Decorative code block, not a scannable one.
+///
+/// The pattern is the fixed 7x7 grid from the design export; it encodes
+/// nothing. The real boarding code lives behind [onTap] on the detail screen,
+/// which is why the glance card leaves this inert rather than inviting a scan
+/// that would fail at a gate.
+class _QrBlock extends StatelessWidget {
+  const _QrBlock({required this.colors, this.onTap});
 
-class _CodesPanel extends StatelessWidget {
-  const _CodesPanel({
-    required this.style,
-    this.onTap,
-  });
-
-  final TrainTicketStyle style;
+  final TrainPassColors colors;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+    final Widget block = Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        DecoratedBox(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: style.divider),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: SizedBox(
-                  height: 44,
-                  child: CustomPaint(
-                    painter: _DarkBarcodePainter(color: style.ink),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                width: 56,
-                height: 56,
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: style.divider),
-                ),
-                child: CustomPaint(
-                  painter: _DarkQrPainter(color: style.ink),
-                ),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(TrainPassMetrics.qrRadius),
+            border: Border.all(color: colors.qrBorder),
           ),
         ),
-      ),
+        CustomPaint(painter: _QrPainter(color: colors.ink)),
+      ],
+    );
+
+    if (onTap == null) return block;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: block,
     );
   }
 }
 
-class _DarkBarcodePainter extends CustomPainter {
-  _DarkBarcodePainter({required this.color});
+class _QrPainter extends CustomPainter {
+  const _QrPainter({required this.color});
+
   final Color color;
+
+  /// Verbatim from the export's 7x7 rect grid.
+  static const List<List<int>> _pattern = <List<int>>[
+    <int>[1, 1, 1, 0, 1, 1, 1],
+    <int>[1, 0, 1, 1, 0, 0, 1],
+    <int>[1, 1, 1, 0, 1, 1, 1],
+    <int>[0, 0, 0, 1, 0, 1, 0],
+    <int>[1, 1, 0, 0, 1, 0, 1],
+    <int>[1, 0, 1, 1, 0, 1, 1],
+    <int>[1, 1, 1, 0, 1, 0, 1],
+  ];
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()..color = color.withValues(alpha: 0.88);
-    const List<double> widths = <double>[
-      1.2, 0.8, 2.0, 0.8, 1.2, 1.6, 0.8, 2.4, 0.8, 1.2,
-      0.8, 1.6, 2.0, 0.8, 1.2, 0.8, 2.0, 1.2, 0.8, 1.6,
-      0.8, 2.4, 0.8, 1.2, 1.6, 0.8, 2.0, 0.8, 1.2, 0.8,
-    ];
-    double x = 0;
-    int i = 0;
-    while (x < size.width - 2) {
-      final double w = widths[i % widths.length];
-      if (i.isEven) {
+    final Paint paint = Paint()..color = color;
+    for (int r = 0; r < TrainPassMetrics.qrModules; r++) {
+      for (int col = 0; col < TrainPassMetrics.qrModules; col++) {
+        if (_pattern[r][col] == 0) continue;
         canvas.drawRect(
-          Rect.fromLTWH(x, 0, w, size.height),
+          Rect.fromLTWH(
+            TrainPassMetrics.qrInset + col * TrainPassMetrics.qrPitch,
+            TrainPassMetrics.qrInset + r * TrainPassMetrics.qrPitch,
+            TrainPassMetrics.qrCell,
+            TrainPassMetrics.qrCell,
+          ),
           paint,
         );
       }
-      x += w + 0.7;
-      i++;
     }
   }
 
   @override
-  bool shouldRepaint(covariant _DarkBarcodePainter old) => old.color != color;
-}
-
-class _DarkQrPainter extends CustomPainter {
-  _DarkQrPainter({required this.color});
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()..color = color.withValues(alpha: 0.9);
-    final double cell = size.width / 9;
-    const List<List<int>> pattern = <List<int>>[
-      <int>[1, 1, 1, 1, 1, 1, 1, 0, 1],
-      <int>[1, 0, 0, 0, 0, 0, 1, 0, 0],
-      <int>[1, 0, 1, 1, 1, 0, 1, 0, 1],
-      <int>[1, 0, 1, 1, 1, 0, 1, 1, 0],
-      <int>[1, 0, 1, 1, 1, 0, 1, 0, 1],
-      <int>[1, 0, 0, 0, 0, 0, 1, 1, 0],
-      <int>[1, 1, 1, 1, 1, 1, 1, 0, 1],
-      <int>[0, 0, 1, 0, 1, 0, 0, 1, 0],
-      <int>[1, 0, 1, 1, 0, 1, 1, 0, 1],
-    ];
-    for (int r = 0; r < 9; r++) {
-      for (int c = 0; c < 9; c++) {
-        if (pattern[r][c] == 1) {
-          canvas.drawRRect(
-            RRect.fromRectAndRadius(
-              Rect.fromLTWH(c * cell, r * cell, cell * 0.88, cell * 0.88),
-              Radius.circular(cell * 0.12),
-            ),
-            paint,
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DarkQrPainter old) => old.color != color;
-}
-
-// ── Tear + brand mark ─────────────────────────────────────────────────────────
-
-class _PaperTear extends StatelessWidget {
-  const _PaperTear({required this.style, required this.height});
-
-  final TrainTicketStyle style;
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: height,
-      width: double.infinity,
-      child: CustomPaint(
-        painter: _PaperDashPainter(color: style.divider),
-      ),
-    );
-  }
-}
-
-class _PaperDashPainter extends CustomPainter {
-  _PaperDashPainter({required this.color});
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint dash = Paint()
-      ..color = color
-      ..strokeWidth = 1.5
-      ..strokeCap = StrokeCap.round;
-    const double inset = 18;
-    double x = inset;
-    final double y = size.height / 2;
-    while (x < size.width - inset) {
-      canvas.drawLine(Offset(x, y), Offset(x + 5, y), dash);
-      x += 10;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _PaperDashPainter old) => old.color != color;
-}
-
-class _RailMark extends StatelessWidget {
-  const _RailMark({required this.color, required this.size});
-
-  final Color color;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(painter: _RailMarkPainter(color: color)),
-    );
-  }
-}
-
-class _RailMarkPainter extends CustomPainter {
-  _RailMarkPainter({required this.color});
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint p = Paint()
-      ..color = color.withValues(alpha: 0.85)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.12
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final double w = size.width;
-    final double h = size.height;
-    // Simplified locomotive mark
-    final RRect body = RRect.fromRectAndRadius(
-      Rect.fromLTWH(w * 0.12, h * 0.28, w * 0.62, h * 0.42),
-      Radius.circular(w * 0.1),
-    );
-    canvas.drawRRect(body, p);
-    canvas.drawLine(
-      Offset(w * 0.74, h * 0.42),
-      Offset(w * 0.9, h * 0.42),
-      p,
-    );
-    canvas.drawCircle(Offset(w * 0.32, h * 0.78), w * 0.1, p);
-    canvas.drawCircle(Offset(w * 0.58, h * 0.78), w * 0.1, p);
-  }
-
-  @override
-  bool shouldRepaint(covariant _RailMarkPainter old) => old.color != color;
+  bool shouldRepaint(covariant _QrPainter old) => old.color != color;
 }
