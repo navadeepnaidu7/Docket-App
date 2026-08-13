@@ -2,7 +2,7 @@
 
 What is built and verified in `docket_app`.
 
-**Snapshot:** 13 Aug 2026 · branch `feature/train-pass-redesign` · `flutter analyze` clean (5 info-level lints) · 335 tests pass, no suite hangs (§3.2) · release APK builds at **93.0 MB** — inflated by an `x86_64` slice that the `abiFilters` pin is currently failing to drop; see the gotcha in `CLAUDE.md`.
+**Snapshot:** 13 Aug 2026 · **v0.1.0-alpha** (build 1) · branch `feature/train-pass-redesign` · `flutter analyze` clean (5 info-level lints) · 337 tests pass, no suite hangs (§3.2) · release APK builds at **93.0 MB** — inflated by an `x86_64` slice that the `abiFilters` pin is currently failing to drop; see the gotcha in `CLAUDE.md`.
 
 The app is **feature-complete on local documents and fully mock-driven on server-backed passes**. Nothing talks to `docket_server` yet.
 
@@ -103,7 +103,7 @@ errors.
 
 ```bash
 flutter test
-# 335 tests, All tests passed! (~30s)   # 13 Aug 2026
+# 337 tests, All tests passed! (~30s)   # 13 Aug 2026
 ```
 
 | Suite | Covers | Result |
@@ -114,6 +114,7 @@ flutter test
 | `test/movie_hero_band_test.dart` | Hero band: brand chip + status pill present for all three brands (the dead-branch regression), gradient fallback with no network request when no poster, `CachedNetworkImage` when there is one, bundled asset still wins | pass |
 | `test/train_pass_face_test.dart` | Station header anchoring (origin left, destination right, long names still flush to the content edge) and the connector rule's span + masking. Pins a silent layout bug: `RenderBaseline` lays its child out loose and pins it flush left, so `width` + `textAlign: right` did nothing and the destination column rendered from the wrong edge with no overflow reported | pass |
 | `test/train_status_band_test.dart` | Status-band message resolution: cancelled suppresses everything, arrived/expired collapse to one line, delay wording and ordering, `delayMinutes: 0` is not a delay, "On time" only when claimed, platform normalisation and hand-off to `nextHalt`, countdown thresholds and the boarding grace window, `departAt` preferred over display strings, unparseable date yields no countdown. Widget: cycling, no timer for a single message | pass |
+| `test/app_version_test.dart` | `kAppVersion` in Settings matches `pubspec.yaml` (the two are hand-synced — nothing reads the real version at runtime), and the pubspec keeps a `+<build>` suffix so AGP has a `versionCode` | pass |
 | `test/pass_activity_date_test.dart` | Display and ISO date parsing, incl. rejection of overflow calendar dates (`2024-02-31`) that `DateTime.parse` silently rolls into the next month | pass |
 | `test/pass_history_folders_test.dart` / `test/archive_layout_test.dart` | Archive foldering and layout | pass |
 | `test/account_profile_provider_test.dart` | Profile persistence against a stubbed store: hydration, rejected read / write / delete, rollback, and write serialization | pass |

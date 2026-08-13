@@ -42,8 +42,12 @@ const String kDeveloperWebsiteUrl = 'https://navadeepnaidu.com';
 const String kDeveloperBlogUrl = 'https://blog.navadeepnaidu.com';
 const String kDeveloperXUrl = 'https://x.com/navadeep_naidu7';
 
-/// App version label (keep in sync with `pubspec.yaml` `version:`).
-const String kAppVersion = '1.0.0';
+/// App version label — the part of `pubspec.yaml` `version:` before the `+`.
+///
+/// Duplicated rather than read at runtime because nothing here depends on
+/// `package_info_plus`. `test/app_version_test.dart` fails if this drifts from
+/// the pubspec, which is the only thing keeping the two honest.
+const String kAppVersion = '0.1.0-alpha';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
