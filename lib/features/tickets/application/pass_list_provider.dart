@@ -7,6 +7,7 @@ import '../data/remote_pass_repository.dart';
 import '../domain/pass_catalog.dart';
 import '../domain/pass_repository.dart';
 import '../domain/pass_status.dart';
+import 'pass_ingest_service.dart';
 
 /// Resolves mock vs remote from [devFlagsProvider].
 ///
@@ -19,10 +20,11 @@ final passRepositoryProvider = Provider<PassRepository>((Ref ref) {
   if (flags.isMockPassesActive) {
     return MockPassRepository();
   }
-  return RemotePassRepository(
-    baseUrl: flags.apiBaseUrl.trim(),
-    enabled: true,
-  );
+  final api = ref.watch(docketApiProvider);
+  if (api == null) {
+    return MockPassRepository();
+  }
+  return RemotePassRepository(api);
 });
 
 /// Async list of wallet passes (train + movie).

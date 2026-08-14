@@ -54,7 +54,7 @@ final spaceArchiveAnalyticsProvider = Provider<SpaceArchiveData>((Ref ref) {
   DateTime normalizeDate(DateTime d) => DateTime(d.year, d.month, d.day);
 
   for (final WalletPassItem item in passes) {
-    if (item is TrainPassItem) {
+    if (item is TrainPassItem || item is BusPassItem) {
       trainCount++;
     } else if (item is MoviePassItem) {
       movieCount++;

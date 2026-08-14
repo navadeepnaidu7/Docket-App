@@ -63,8 +63,8 @@ Empty wallet → `200` with `"items": []` (preferred over `404`).
 }
 ```
 
-- **`kind`**: `"train"` | `"movie"` (required discriminator)
-- Nested object key matches kind: `train` or `movie`
+- **`kind`**: `"train"` | `"movie"` | `"bus"` (required discriminator)
+- Nested object key matches kind: `train`, `movie`, or `bus`
 
 ### Detail response
 

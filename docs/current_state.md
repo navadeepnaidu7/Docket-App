@@ -2,9 +2,58 @@
 
 What is built and verified in `docket_app`.
 
-**Snapshot:** 13 Aug 2026 · **v0.1.0-alpha** (build 1) · branch `feature/train-pass-redesign` · `flutter analyze` clean (5 info-level lints) · 337 tests pass, no suite hangs (§3.2) · release APK builds at **93.0 MB** — inflated by an `x86_64` slice that the `abiFilters` pin is currently failing to drop; see the gotcha in `CLAUDE.md`.
+**Snapshot:** 14 Aug 2026 · **v0.1.0-alpha** (build 1) · branch `feature/train-pass-redesign` @ `b095436` (2 commits ahead of `origin/master`; no open PR for the version bump) · `flutter analyze` 5 info-level lints, no warnings/errors · **337/337** tests pass, no suite hangs (§3.2) · last measured release APK **93.0 MB** on 10 Aug (x86_64 slice still present); no release APK in the tree today.
 
-The app is **feature-complete on local documents and fully mock-driven on server-backed passes**. Nothing talks to `docket_server` yet.
+The app is **feature-complete on local documents and can connect to a remote server for server-backed passes**. `RemotePassRepository` fetches passes from `GET /v1/passes`, the API client handles session refresh on `401`, and debug builds can exchange a developer token against `POST /v1/auth/google` to obtain access and refresh tokens. Full Google Sign-In integration (via `google_sign_in`) is not yet implemented.
+
+---
+
+## 0. Alpha readiness
+
+This is the pickup note for a documents-first alpha. Packaging work was started and then **reverted on purpose** — stay on `com.example.docket` and debug signing until the Passes input layer exists.
+
+### What a tester can use today (sideload / debug)
+
+Passport, Aadhaar, PAN, ID attachments, wallet organisation, trash, archive, theming, and the mock Passes tab. Documents never leave the device. Confirmed on hardware for attachments (10 Aug).
+
+### What a tester cannot do
+
+Add a pass to the wallet from a production backend. The Passes-tab `+` opens the input flow (train PNR / photo / PDF; bus and movie photo / PDF) but submit is refused while mock fixtures are active. `RemotePassRepository` fetches from `GET /v1/passes` when an API URL is configured. Extract (`POST /tickets/extract`) and PNR create (`POST /tickets`) work over `http` with a developer auth token (`DEV_AUTH_ID_TOKEN` or Settings → Developer → Dev auth token), exchanged for session tokens at `POST /v1/auth/google`. The API client includes a 401-refresh interceptor (`POST /v1/auth/refresh`). Full Google Sign-In integration (via `google_sign_in`) is not yet implemented.
+
+A release build would also ship the 10 fixture passes **without** the purple MOCK chip (`DevConfig.defaultUseMockPasses` defaults to `true`; the badge is gated on `showDevMenu`, which is off in release). That is why a Play-track alpha is the wrong shape until either mocks are locked off or real data flows.
+
+### Server (sibling repo)
+
+`docket_server` on `hardening/deployment-readiness` @ `098ba79`, PR [#5](https://github.com/navadeepnaidu7/docket-server/pull/5) open. Containerised, deployable, poster path smoke-tested end to end. **Not hosted.** A documents-only alpha does not need it running.
+
+### Deferred until after the Passes input layer
+
+Explicit call on 13 Aug, do not pick these up early:
+
+1. `applicationId` + `namespace` → `com.docket.wallet`, `MainActivity.kt` moved to `com/docket/wallet/`
+2. Release `signingConfigs` from a gitignored `android/key.properties`, falling back to the debug key with a warning
+3. `flutter build appbundle` + ABI verification inside the artifact
+4. Play Console: privacy policy URL, data-safety answers
+
+OAuth Android client registration needs the **final** applicationId and the SHA-1 of the cert that signs the delivered app (Play's key after first upload, not the upload key). Debug against the debug keystore is fine; do not build the production OAuth client until the rename lands.
+
+### Hardware-only, still unverified
+
+- NFC passport read from a **release** APK after R8
+- Install over an existing build (`attachment_key_v1` + secure-storage migration)
+- Trash → restore with attachments, walked in the app
+
+### Critical path to a connected alpha
+
+The input layer is in (`docs/features/pass-input.md`): train PNR / photo / PDF, bus and movie photo / PDF, plus `RemotePassRepository` and a 401-refresh interceptor. What is still missing is real Google Sign-In — debug builds exchange `DEV_AUTH_ID_TOKEN` (or Settings → Developer → Dev auth token) at `POST /v1/auth/google`. Local emulator:
+
+```bash
+--dart-define=USE_MOCK_PASSES=false
+--dart-define=API_BASE_URL=http://10.0.2.2:8080
+--dart-define=DEV_AUTH_ID_TOKEN=dev-google-token
+```
+
+(`isMockPassesActive` is `useMockPasses || apiBaseUrl.isEmpty`, so the first two defines are both required. The server must have `AUTH_DEV_BYPASS_TOKEN=dev-google-token`.)
 
 ---
 
@@ -12,13 +61,13 @@ The app is **feature-complete on local documents and fully mock-driven on server
 
 ### 1.1 Shell & navigation
 - First-run onboarding wizard (`features/onboarding/`, "fuse" flow); completion persists `has_seen_onboarding` in `SharedPreferences`.
-- Two-tab dashboard behind a custom pill nav bar: **IDs** (index 0) and **Passes** (index 1). Nav icon style and labels are user-configurable.
+- Two-tab dashboard behind a custom pill nav bar: **IDs** (index 0) and **Passes** (index 1). Nav icon styles are fixed (IDs classic, Passes vertical) — the style toggle was removed in #19.
 - Portrait-locked at runtime (`main.dart`) and in both native manifests.
 - Hand-driven light↔dark theme transition (`app.dart`): `ThemeData.lerp` over 620ms plus a veil overlay, so `MaterialApp.themeMode` stays pinned to `light` deliberately.
 - Theme warm-up in `main()` caches `AppTheme.lightTheme`/`darkTheme` and caps `GoogleFonts.pendingFonts()` at 900ms so offline cold start still renders.
 
 ### 1.2 Documents — local-first, complete
-- **Passports** (`features/passport/`): three entry paths — manual form, camera MRZ scan, and NFC chip read. `PassportProfile` records persist through `SecureDocumentStore` under `saved_passports`.
+- **Passports** (`features/passport/`): three entry paths — manual form, camera MRZ scan, and NFC chip read. `PassportProfile` records persist through `SecureDocumentStore` under `saved_passports`. The wallet card is a booklet (spec in `docs/features/passport-cover-redesign.md`): navy 2021/2024 cover on the front, cream bilingual biodata page on the back. Ordinary vs e-passport differs by the ICAO chip mark.
 - **MRZ scanning** (`features/mrz_scanner/`): ML Kit text recognition, `MrzParser` as the authoritative source for document number / DOB / expiry, plus `FullPageExtractor` regex heuristics for name, issuing country, date of issue, place of birth from the visual zone.
 - **NFC e-passport** (`features/nfc/` + `MainActivity.kt`): BAC using number + DOB + expiry, reads **DG1** (MRZ), **DG2** (face image, JP2 decoded to JPEG then base64), **DG11**/**DG12** (additional personal and document details). Returns a flat map the passport draft consumes, including `photoBase64` for the card portrait.
 - **ID documents** (`features/ids/`): Aadhaar and PAN, each with a bespoke card face and rendered QR (`qr_flutter`). `IdScannerService` combines barcode, text, and face detection; records persist under `saved_id_documents`.
@@ -40,7 +89,7 @@ The app is **feature-complete on local documents and fully mock-driven on server
 - Source selection via `devFlagsProvider` → `MockPassRepository` or `RemotePassRepository`; a purple **MOCK** chip shows in the Passes tab while mock mode is active.
 
 ### 1.4 Settings
-Appearance (light / dark / device / scheduled with a custom time picker), haptics, navigation icon style and labels, experimental toggles (card shine border, card category filter), Account section, About / developer links (`url_launcher`), and a Developer section (debug/profile only, or `--dart-define=FORCE_DEV_MENU=true`) exposing mock passes, mock sign-in, card gradient scheme, API base URL, reload passes, and reset flags.
+Appearance (light / dark / device / scheduled with a custom time picker), haptics, experimental toggles (card shine border, card category filter), Account section, About / developer links (`url_launcher`), and a Developer section (debug/profile only, or `--dart-define=FORCE_DEV_MENU=true`) exposing mock passes, mock sign-in, card gradient scheme, API base URL, reload passes, and reset flags. Nav icon styles are no longer a setting (#19).
 
 ### 1.5 Design & sensory layer
 3D card tilt and drag reactions, custom-drawn shine/holographic borders, `studio_*` shared widget set, entry-reveal motion curves, haptic service, sound triggers, and an easter-egg drawer.
@@ -78,9 +127,9 @@ Landed in `a3fe742` + `a66c039`. Universal release APK measured at **59.0 MB**, 
 
 | Area | State |
 |------|-------|
-| **Remote passes** | `RemotePassRepository` returns empty when disabled and throws `UnimplementedError` when enabled. No `http`/`dio` dependency in `pubspec.yaml`. |
-| **Auth** | `authSessionProvider` returns a hardcoded `AuthSession.demo` when the `mockSignedIn` dev flag is on, `signedOut` otherwise. No `google_sign_in` dependency, no token storage, no refresh interceptor. |
-| **Extract upload** | The server's `POST /tickets/extract` has no client. Passes cannot be added from the app — only fixtures exist. |
+| **Remote passes** | `RemotePassRepository` calls `GET /v1/passes` when an API URL is set. Requires a session (via `DEV_AUTH_ID_TOKEN` or Settings → Developer → Dev auth token, exchanged at `POST /v1/auth/google`). |
+| **Auth** | `authSessionProvider` returns a hardcoded `AuthSession.demo` when the `mockSignedIn` dev flag is on, `signedOut` otherwise. Session tokens (access + refresh) are stored in `flutter_secure_storage` under `docket_api_session_v1` and refreshed on `401` via `POST /v1/auth/refresh`. No `google_sign_in` dependency for full OAuth flow yet. |
+| **Extract upload** | Wired: train PNR (`POST /tickets`) + photo/PDF (`POST /tickets/extract`), bus photo/PDF, movie photo/PDF. Submit is refused while mock fixtures are active. Full Google Sign-In is still missing. |
 | **Push** | No FCM dependency and no `POST /v1/devices` registration, although the server's Phase D outbox is ready. |
 | **iOS NFC** | Not implemented; `MainActivity.kt` is Android-only. |
 | **Search** | `README.md` lists search among wallet features; there is no search UI in the codebase. |
@@ -103,7 +152,7 @@ errors.
 
 ```bash
 flutter test
-# 337 tests, All tests passed! (~30s)   # 13 Aug 2026
+# 337 tests, All tests passed! (~37s)   # 14 Aug 2026
 ```
 
 | Suite | Covers | Result |
@@ -123,12 +172,17 @@ flutter test
 | `test/id_attachment_limits_test.dart` | 3 images + 1 PDF counted independently, over-limit and oversize rejection, extension-to-kind mapping | pass |
 | `test/id_attachment_model_test.dart` / `test/id_document_attachments_test.dart` | Attachment JSON round-trip and back-compat: a record written **without** the `attachments` key, and a malformed non-list value, both decode to an empty list | pass |
 | `test/id_attachment_tray_test.dart` | Tray states: empty, counter at 2 attachments, add tile hidden at capacity, long-press remove callback, PDF placeholder | pass |
+| `test/secure_document_store_test.dart` | Unreadable-key interlock: a failed read marks the key and `writeList` refuses rather than saving empty over live records | pass |
+| `test/nfc_failure_test.dart` | Every platform channel code maps to a distinct, actionable `NfcFailure` (no collapsed "try again") | pass |
+| `test/bac_key_format_test.dart` / `test/chip_payload_test.dart` / `test/document_validators_test.dart` | BAC date/number formatting, DG1/DG11/DG12 field mapping, passport-number and BAC-triple validation | pass |
+| `test/passport_prompt_flow_test.dart` / `test/prompt_flow_controller_test.dart` | Prompted entry routes (e-passport vs regular) and controller gating | pass |
+| `test/passport_profile_migration_test.dart` | v1 `imagePath`/`photoBase64` split on read | pass |
 
 The whole suite terminates — the old `widget_test.dart` hang (unbounded `pumpAndSettle()` against
 continuously animating screens) is fixed.
 
-Coverage is still thin below that: `SecureDocumentStore`, MRZ parsing, and the NFC bridge have
-**no automated tests**.
+There is still **no on-device NFC test** and no MRZ-image fixture suite. The native JMRTD
+bridge and ML Kit scanner are covered only by the failure/format unit tests above.
 
 ### 3.3 On-device — ID media attachments (10 Aug 2026)
 
@@ -152,13 +206,11 @@ Visual refinements are tracked separately and do not affect the above.
 
 ## 4. Backend integration checklist
 
-The server (`../docket_server`, branch `dev-auth_and_users`) is ahead of the app and waiting on it. To connect:
+The server (`../docket_server`, `master` plus open PR [#5](https://github.com/navadeepnaidu7/docket-server/pull/5) on `hardening/deployment-readiness`) is ready and waiting for deployment. Auth, passes, extract, and posters are on `master`; the PR is deploy/container hardening only. What remains to fully connect:
 
-1. Add `http` (or `dio`) and `google_sign_in`; keep `flutter_secure_storage` for tokens.
-2. Implement `RemotePassRepository.fetchPasses` / `fetchPassById` against `PassApiPaths` using `PassListResponse.fromJson`.
-3. Replace `authSessionProvider` with a real session: `POST /v1/auth/google` with the Google `idToken`, store access + refresh in secure storage, attach `Authorization: Bearer`, and on `401` do a single `POST /v1/auth/refresh` + retry before signing out.
-4. Map the membership card from `/v1/me`: `joinedAt` → `MMMM y`, `displayName`, `#publicId`.
-5. Optional next: multipart extract upload from camera/gallery (handle `429` with `retryAfterSeconds` / `window`), and FCM token registration via `POST /v1/devices`.
+1. Add `google_sign_in` for production Google OAuth — replace the debug `DEV_AUTH_ID_TOKEN` developer-token exchange with a real Google Sign-In flow that obtains the `idToken` for `POST /v1/auth/google`. (`http` and `flutter_secure_storage` are already in place; `RemotePassRepository`, session storage, refresh interceptor, and extract upload are implemented.)
+2. Map the membership card from `/v1/me`: `joinedAt` → `MMMM y`, `displayName`, `#publicId`.
+3. Optional next: FCM token registration via `POST /v1/devices` (multipart extract upload with `429` handling is already implemented).
 
 Full guide: `../docket_server/docs/flutter_auth_integration.md`. Contract: [`api/passes.md`](api/passes.md). Switching: [`dev-flags.md`](dev-flags.md).
 

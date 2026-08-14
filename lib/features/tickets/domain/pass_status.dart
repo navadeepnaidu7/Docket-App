@@ -48,15 +48,17 @@ enum TrainRunState {
 
 /// Discriminator for multi-type pass lists.
 ///
-/// Wire format: `"train"` | `"movie"`.
+/// Wire format: `"train"` | `"movie"` | `"bus"`.
 enum PassKind {
   train,
-  movie;
+  movie,
+  bus;
 
   static PassKind fromJson(Object? raw) {
     final String s = raw?.toString().toLowerCase() ?? '';
     return switch (s) {
       'movie' || 'cinema' => PassKind.movie,
+      'bus' => PassKind.bus,
       _ => PassKind.train,
     };
   }

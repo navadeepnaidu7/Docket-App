@@ -6,6 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/bounce_tap.dart';
 import '../../domain/history_folder.dart';
 import '../../domain/pass_catalog.dart';
+import '../bus/bus_pass_detail_screen.dart';
 import '../movie_pass_detail_screen.dart';
 import '../ticket_detail_screen.dart';
 
@@ -35,6 +36,13 @@ class HistoryPassCard extends StatelessWidget {
           MaterialPageRoute<void>(
             fullscreenDialog: true,
             builder: (_) => MoviePassDetailScreen(pass: pass),
+          ),
+        );
+      case BusPassItem(:final pass):
+        root.push(
+          MaterialPageRoute<void>(
+            fullscreenDialog: true,
+            builder: (_) => BusPassDetailScreen(pass: pass),
           ),
         );
     }
