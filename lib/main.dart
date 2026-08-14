@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'core/theme/app_theme.dart';
+import 'features/dashboard/presentation/wallet_passport_card.dart';
 import 'features/tickets/presentation/train/train_pass_theme.dart';
 
 void main() async {
@@ -28,11 +29,12 @@ void main() async {
   AppTheme.lightTheme;
   AppTheme.darkTheme;
 
-  // The train pass face sets its type in Geist and Instrument Serif, neither of
-  // which the theme touches. Requesting them here puts them in the same
-  // pendingFonts() wait below, so the card is not the one surface that renders
-  // in the fallback face and reflows a frame later.
+  // The train pass face sets its type in Geist and Instrument Serif, and the
+  // passport cover sets Hindi titles in Noto Sans Devanagari — neither family
+  // is on the theme. Requesting them here puts them in the same pendingFonts()
+  // wait below, so those cards do not render in a fallback face and reflow.
   TrainPassType.warmUp();
+  WalletPassportCard.warmUp();
 
   final SharedPreferences prefs = await prefsFuture;
   await orientationFuture;
