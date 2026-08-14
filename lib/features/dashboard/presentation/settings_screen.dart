@@ -12,6 +12,7 @@ import '../../../core/assets/app_assets.dart';
 import '../../../core/dev/dev_config.dart';
 import '../../../core/dev/dev_flags.dart';
 import '../../../core/dev/dev_flags_provider.dart';
+import '../../../core/dev/dummy_wallet_seed.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/haptics/haptics_provider.dart';
 import '../../../core/theme/theme_provider.dart';
@@ -42,8 +43,12 @@ const String kDeveloperWebsiteUrl = 'https://navadeepnaidu.com';
 const String kDeveloperBlogUrl = 'https://blog.navadeepnaidu.com';
 const String kDeveloperXUrl = 'https://x.com/navadeep_naidu7';
 
-/// App version label (keep in sync with `pubspec.yaml` `version:`).
-const String kAppVersion = '1.0.0';
+/// App version label — the part of `pubspec.yaml` `version:` before the `+`.
+///
+/// Duplicated rather than read at runtime because nothing here depends on
+/// `package_info_plus`. `test/app_version_test.dart` fails if this drifts from
+/// the pubspec, which is the only thing keeping the two honest.
+const String kAppVersion = '0.1.0-alpha';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -959,6 +964,50 @@ class _DeveloperSection extends ConsumerWidget {
                 content: Text('Refreshing passes…'),
                 behavior: SnackBarBehavior.floating,
                 duration: Duration(seconds: 1),
+              ),
+            );
+          },
+        ),
+        const _SettingsDivider(),
+        _SettingsLinkRow(
+          icon: Icons.badge_outlined,
+          iconColor: const Color(0xFF0A84FF),
+          title: 'Load dummy IDs',
+          subtitle: '5 passports + 5 Aadhaar/PAN variants',
+          onTap: () {
+            HapticService.select();
+            final int added = DummyWalletSeed.load(ref);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  added == 0
+                      ? 'Dummy cards already loaded'
+                      : 'Loaded $added dummy cards',
+                ),
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          },
+        ),
+        const _SettingsDivider(),
+        _SettingsLinkRow(
+          icon: Icons.playlist_remove_rounded,
+          iconColor: const Color(0xFFFF453A),
+          title: 'Remove dummy IDs',
+          subtitle: 'Only cards whose id starts with dummy-',
+          onTap: () {
+            HapticService.select();
+            final int removed = DummyWalletSeed.remove(ref);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  removed == 0
+                      ? 'No dummy cards to remove'
+                      : 'Removed $removed dummy cards',
+                ),
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 2),
               ),
             );
           },
