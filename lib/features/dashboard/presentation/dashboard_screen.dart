@@ -17,6 +17,7 @@ import '../../ids/presentation/id_entry_screen.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../passport/presentation/passport_prompt_screen.dart';
+import '../../tickets/presentation/add/add_pass_flow.dart';
 import '../../tickets/presentation/history/passes_archive_screen.dart';
 import '../../tickets/presentation/tickets_tab.dart';
 
@@ -263,14 +264,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         ),
       );
     } else {
-      // Tickets tab — coming soon
-      showModalBottomSheet<void>(
-        context: context,
-        useSafeArea: true,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => const TicketsComingSoonSheet(),
-      );
+      showAddPassFlow(context, ref);
     }
   }
 

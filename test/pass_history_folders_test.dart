@@ -265,6 +265,7 @@ void main() {
     test('maps PassKind', () {
       expect(PassKind.train.historyCategory, PassHistoryCategory.train);
       expect(PassKind.movie.historyCategory, PassHistoryCategory.movie);
+      expect(PassKind.bus.historyCategory, PassHistoryCategory.bus);
     });
   });
 }

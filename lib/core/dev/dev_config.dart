@@ -28,6 +28,15 @@ abstract final class DevConfig {
     defaultValue: false,
   );
 
+  /// Google id token exchanged against `POST /v1/auth/google`.
+  ///
+  /// Local only: this is the server's `AUTH_DEV_BYPASS_TOKEN`. Never bake a
+  /// production token into a release build.
+  static const String defaultDevAuthIdToken = String.fromEnvironment(
+    'DEV_AUTH_ID_TOKEN',
+    defaultValue: '',
+  );
+
   /// In-app Developer section + runtime toggles.
   static bool get showDevMenu =>
       forceDevMenu || kDebugMode || kProfileMode;

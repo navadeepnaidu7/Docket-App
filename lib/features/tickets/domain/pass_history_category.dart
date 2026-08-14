@@ -46,6 +46,7 @@ enum PassHistoryCategory {
   static PassHistoryCategory fromPassKind(PassKind kind) => switch (kind) {
         PassKind.train => PassHistoryCategory.train,
         PassKind.movie => PassHistoryCategory.movie,
+        PassKind.bus => PassHistoryCategory.bus,
       };
 }
 

@@ -33,6 +33,7 @@ class HistoryStripLook {
     return switch (item) {
       TrainPassItem(:final ticket) => forTrain(ticket),
       MoviePassItem(:final pass) => forMovie(pass),
+      BusPassItem() => forCategory(PassHistoryCategory.bus),
     };
   }
 

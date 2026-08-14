@@ -28,6 +28,7 @@ class DevFlags {
     required this.apiBaseUrl,
     this.cardFluidScheme = CardFluidScheme.auto,
     this.mockSignedIn = false,
+    this.devAuthIdToken = '',
   });
 
   /// Defaults from compile-time defines (no prefs applied yet).
@@ -36,6 +37,7 @@ class DevFlags {
         apiBaseUrl: DevConfig.defaultApiBaseUrl,
         cardFluidScheme: CardFluidScheme.auto,
         mockSignedIn: false,
+        devAuthIdToken: DevConfig.defaultDevAuthIdToken,
       );
 
   /// Release / locked: always compile-time consumer defaults.
@@ -44,6 +46,7 @@ class DevFlags {
         apiBaseUrl: DevConfig.defaultApiBaseUrl,
         cardFluidScheme: CardFluidScheme.auto,
         mockSignedIn: false,
+        devAuthIdToken: DevConfig.defaultDevAuthIdToken,
       );
 
   final bool useMockPasses;
@@ -54,6 +57,9 @@ class DevFlags {
   /// Off → Google button on card, no Account section.
   final bool mockSignedIn;
 
+  /// Google id token for `POST /v1/auth/google` (dev bypass or a real idToken).
+  final String devAuthIdToken;
+
   /// True when mock fixtures drive the Passes tab.
   bool get isMockPassesActive =>
       useMockPasses || apiBaseUrl.trim().isEmpty;
@@ -63,12 +69,14 @@ class DevFlags {
     String? apiBaseUrl,
     CardFluidScheme? cardFluidScheme,
     bool? mockSignedIn,
+    String? devAuthIdToken,
   }) {
     return DevFlags(
       useMockPasses: useMockPasses ?? this.useMockPasses,
       apiBaseUrl: apiBaseUrl ?? this.apiBaseUrl,
       cardFluidScheme: cardFluidScheme ?? this.cardFluidScheme,
       mockSignedIn: mockSignedIn ?? this.mockSignedIn,
+      devAuthIdToken: devAuthIdToken ?? this.devAuthIdToken,
     );
   }
 
@@ -79,9 +87,15 @@ class DevFlags {
           useMockPasses == other.useMockPasses &&
           apiBaseUrl == other.apiBaseUrl &&
           cardFluidScheme == other.cardFluidScheme &&
-          mockSignedIn == other.mockSignedIn;
+          mockSignedIn == other.mockSignedIn &&
+          devAuthIdToken == other.devAuthIdToken;
 
   @override
-  int get hashCode =>
-      Object.hash(useMockPasses, apiBaseUrl, cardFluidScheme, mockSignedIn);
+  int get hashCode => Object.hash(
+        useMockPasses,
+        apiBaseUrl,
+        cardFluidScheme,
+        mockSignedIn,
+        devAuthIdToken,
+      );
 }

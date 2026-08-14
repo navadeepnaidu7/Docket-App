@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/prompt_typography.dart';
@@ -18,6 +19,7 @@ class StudioField extends StatefulWidget {
     this.textCapitalization = TextCapitalization.none,
     this.keyboardType,
     this.errorText,
+    this.inputFormatters,
   });
 
   final TextEditingController controller;
@@ -32,6 +34,7 @@ class StudioField extends StatefulWidget {
   final TextCapitalization textCapitalization;
   final TextInputType? keyboardType;
   final String? errorText;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   State<StudioField> createState() => _StudioFieldState();
@@ -119,6 +122,7 @@ class _StudioFieldState extends State<StudioField> {
                   onTap: widget.onTap,
                   textCapitalization: widget.textCapitalization,
                   keyboardType: widget.keyboardType,
+                  inputFormatters: widget.inputFormatters,
                   onChanged: (_) => widget.onChanged(),
                   // Type roles, not ad-hoc sizes: this field and the prompt
                   // flow's inputs sit next to each other in the same product

@@ -68,6 +68,10 @@ dependencies:
   # cache, so every cold start would re-download; the proxy serves posters as immutable,
   # which flutter_cache_manager honours indefinitely.
   cached_network_image: ^3.4.1
+  # Wallet + extract client. Kept as a direct dependency so RemotePassRepository
+  # can talk to docket_server without a heavier client stack.
+  http: ^1.2.2
+  http_parser: ^4.1.2
 
 dev_dependencies:
   flutter_test:

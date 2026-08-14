@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:docket/features/tickets/data/mock_pass_fixtures.dart';
 import 'package:docket/features/tickets/data/mock_pass_repository.dart';
 import 'package:docket/features/tickets/domain/movie_pass_models.dart';
+import 'package:docket/features/tickets/domain/bus_pass_models.dart';
 import 'package:docket/features/tickets/domain/pass_catalog.dart';
 import 'package:docket/features/tickets/domain/ticket_models.dart';
 
@@ -137,6 +138,34 @@ void main() {
       expect(res.items[0], isA<MoviePassItem>());
       expect(res.items[1], isA<TrainPassItem>());
       expect(res.updatedAt, isNotNull);
+    });
+
+    test('parses a bus envelope', () {
+      final PassListResponse res = PassListResponse.fromJson(<String, dynamic>{
+        'items': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'kind': 'bus',
+            'bus': <String, dynamic>{
+              'id': 'bus-1',
+              'operator': 'Orange Travels',
+              'boardingLocation': 'Hyderabad',
+              'dropLocation': 'Bengaluru',
+              'departTime': '09:00 PM',
+              'arriveTime': '06:00 AM',
+              'date': '14 Aug 2026',
+              'arrivalDate': '15 Aug 2026',
+              'status': 'active',
+              'seatDetails': 'L12',
+            },
+          },
+        ],
+      });
+      expect(res.items, hasLength(1));
+      expect(res.items.single, isA<BusPassItem>());
+      final BusPass pass = (res.items.single as BusPassItem).pass;
+      expect(pass.operator, 'Orange Travels');
+      expect(pass.status, TicketStatus.active);
+      expect(pass.routeLabel, 'Hyderabad → Bengaluru');
     });
 
     test('round-trips catalog envelope', () {
