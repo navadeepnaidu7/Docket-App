@@ -1,46 +1,24 @@
 import '../domain/pass_catalog.dart';
 import '../domain/pass_repository.dart';
 import '../domain/pass_status.dart';
+import 'docket_api_client.dart';
 
-/// HTTP-backed repository — wire [PassApiPaths] when backend ships.
-///
-/// Default behaviour: empty list so the app does not crash if switched early.
-/// Set [enabled] true and inject an HTTP client before production use.
+/// HTTP-backed repository against `GET /v1/passes`.
 class RemotePassRepository implements PassRepository {
-  RemotePassRepository({
-    this.baseUrl = '',
-    this.enabled = false,
-  });
+  RemotePassRepository(this._api);
 
-  /// e.g. `https://api.example.com`
-  final String baseUrl;
-
-  /// When false, methods return empty / null (safe stub).
-  final bool enabled;
+  final DocketApi _api;
 
   @override
-  Future<List<WalletPassItem>> fetchPasses({TicketStatus? status}) async {
-    if (!enabled || baseUrl.isEmpty) {
-      return const <WalletPassItem>[];
-    }
-    // TODO(backend): GET $baseUrl${PassApiPaths.passes}
-    //   query: status?.name
-    //   headers: Authorization Bearer …
-    //   body → PassListResponse.fromJson
-    throw UnimplementedError(
-      'RemotePassRepository.fetchPasses: implement HTTP against '
-      '${PassApiPaths.passes}',
-    );
+  Future<List<WalletPassItem>> fetchPasses({TicketStatus? status}) {
+    return _api.fetchPasses(status: status).then(
+          (PassListResponse res) => res.items,
+        );
   }
 
   @override
-  Future<WalletPassItem?> fetchPassById(String id) async {
-    if (!enabled || baseUrl.isEmpty) return null;
-    // TODO(backend): GET $baseUrl${PassApiPaths.passById(id)}
-    throw UnimplementedError(
-      'RemotePassRepository.fetchPassById: implement HTTP against '
-      '${PassApiPaths.passById(id)}',
-    );
+  Future<WalletPassItem?> fetchPassById(String id) {
+    return _api.fetchPassById(id);
   }
 }
 
@@ -52,4 +30,8 @@ abstract final class PassApiPaths {
   static String passById(String id) => '/v1/passes/$id';
   static String liveStatus(String id) => '/v1/passes/$id/live';
   static String code(String id) => '/v1/passes/$id/code';
+  static const String extract = '/tickets/extract';
+  static const String tickets = '/tickets';
+  static const String authGoogle = '/v1/auth/google';
+  static const String authRefresh = '/v1/auth/refresh';
 }

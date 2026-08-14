@@ -9,6 +9,7 @@ const String _kUseMockPasses = 'dev_use_mock_passes';
 const String _kApiBaseUrl = 'dev_api_base_url';
 const String _kCardFluidScheme = 'dev_card_fluid_scheme';
 const String _kMockSignedIn = 'dev_mock_signed_in';
+const String _kDevAuthIdToken = 'dev_auth_id_token';
 
 final devFlagsProvider =
     StateNotifierProvider<DevFlagsNotifier, DevFlags>((Ref ref) {
@@ -40,11 +41,14 @@ class DevFlagsNotifier extends StateNotifier<DevFlags> {
         orElse: () => CardFluidScheme.auto,
       );
       final bool mockSignedIn = prefs.getBool(_kMockSignedIn) ?? false;
+      final String devAuth = prefs.getString(_kDevAuthIdToken) ??
+          DevConfig.defaultDevAuthIdToken;
       state = DevFlags(
         useMockPasses: useMock,
         apiBaseUrl: url,
         cardFluidScheme: scheme,
         mockSignedIn: mockSignedIn,
+        devAuthIdToken: devAuth,
       );
     } catch (e, st) {
       debugPrint('DevFlags load failed: $e\n$st');
@@ -87,6 +91,14 @@ class DevFlagsNotifier extends StateNotifier<DevFlags> {
 
   Future<void> toggleMockSignedIn() => setMockSignedIn(!state.mockSignedIn);
 
+  Future<void> setDevAuthIdToken(String token) async {
+    if (!DevConfig.allowRuntimeOverrides) return;
+    final String trimmed = token.trim();
+    state = state.copyWith(devAuthIdToken: trimmed);
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kDevAuthIdToken, trimmed);
+  }
+
   Future<void> resetToCompileTimeDefaults() async {
     if (!DevConfig.allowRuntimeOverrides) return;
     state = DevFlags.compileTimeDefaults();
@@ -95,5 +107,6 @@ class DevFlagsNotifier extends StateNotifier<DevFlags> {
     await prefs.remove(_kApiBaseUrl);
     await prefs.remove(_kCardFluidScheme);
     await prefs.remove(_kMockSignedIn);
+    await prefs.remove(_kDevAuthIdToken);
   }
 }

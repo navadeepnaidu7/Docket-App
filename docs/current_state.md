@@ -2,9 +2,58 @@
 
 What is built and verified in `docket_app`.
 
-**Snapshot:** 13 Aug 2026 · branch `feature/train-pass-redesign` · `flutter analyze` clean (5 info-level lints) · 335 tests pass, no suite hangs (§3.2) · release APK builds at **93.0 MB** — inflated by an `x86_64` slice that the `abiFilters` pin is currently failing to drop; see the gotcha in `CLAUDE.md`.
+**Snapshot:** 14 Aug 2026 · **v0.1.0-alpha** (build 1) · branch `feature/train-pass-redesign` @ `b095436` (2 commits ahead of `origin/master`; no open PR for the version bump) · `flutter analyze` 5 info-level lints, no warnings/errors · **337/337** tests pass, no suite hangs (§3.2) · last measured release APK **93.0 MB** on 10 Aug (x86_64 slice still present); no release APK in the tree today.
 
 The app is **feature-complete on local documents and fully mock-driven on server-backed passes**. Nothing talks to `docket_server` yet.
+
+---
+
+## 0. Alpha readiness
+
+This is the pickup note for a documents-first alpha. Packaging work was started and then **reverted on purpose** — stay on `com.example.docket` and debug signing until the Passes input layer exists.
+
+### What a tester can use today (sideload / debug)
+
+Passport, Aadhaar, PAN, ID attachments, wallet organisation, trash, archive, theming, and the mock Passes tab. Documents never leave the device. Confirmed on hardware for attachments (10 Aug).
+
+### What a tester cannot do
+
+Add a pass against a mock list. The Passes-tab `+` now opens the input flow (train PNR / photo / PDF; bus and movie photo / PDF) but submit is refused while mock fixtures are active. `RemotePassRepository` talks to `GET /v1/passes` when an API URL is set. Extract and PNR create use `http` plus a debug `DEV_AUTH_ID_TOKEN`. There is still no `google_sign_in`.
+
+A release build would also ship the 10 fixture passes **without** the purple MOCK chip (`DevConfig.defaultUseMockPasses` defaults to `true`; the badge is gated on `showDevMenu`, which is off in release). That is why a Play-track alpha is the wrong shape until either mocks are locked off or real data flows.
+
+### Server (sibling repo)
+
+`docket_server` on `hardening/deployment-readiness` @ `098ba79`, PR [#5](https://github.com/navadeepnaidu7/docket-server/pull/5) open. Containerised, deployable, poster path smoke-tested end to end. **Not hosted.** A documents-only alpha does not need it running.
+
+### Deferred until after the Passes input layer
+
+Explicit call on 13 Aug, do not pick these up early:
+
+1. `applicationId` + `namespace` → `com.docket.wallet`, `MainActivity.kt` moved to `com/docket/wallet/`
+2. Release `signingConfigs` from a gitignored `android/key.properties`, falling back to the debug key with a warning
+3. `flutter build appbundle` + ABI verification inside the artifact
+4. Play Console: privacy policy URL, data-safety answers
+
+OAuth Android client registration needs the **final** applicationId and the SHA-1 of the cert that signs the delivered app (Play's key after first upload, not the upload key). Debug against the debug keystore is fine; do not build the production OAuth client until the rename lands.
+
+### Hardware-only, still unverified
+
+- NFC passport read from a **release** APK after R8
+- Install over an existing build (`attachment_key_v1` + secure-storage migration)
+- Trash → restore with attachments, walked in the app
+
+### Critical path to a connected alpha
+
+The input layer is in (`docs/features/pass-input.md`): train PNR / photo / PDF, bus and movie photo / PDF, plus `RemotePassRepository` and a 401-refresh interceptor. What is still missing is real Google Sign-In — debug builds exchange `DEV_AUTH_ID_TOKEN` (or Settings → Developer → Dev auth token) at `POST /v1/auth/google`. Local emulator:
+
+```
+--dart-define=USE_MOCK_PASSES=false
+--dart-define=API_BASE_URL=http://10.0.2.2:8080
+--dart-define=DEV_AUTH_ID_TOKEN=dev-google-token
+```
+
+(`isMockPassesActive` is `useMockPasses || apiBaseUrl.isEmpty`, so the first two defines are both required. The server must have `AUTH_DEV_BYPASS_TOKEN=dev-google-token`.)
 
 ---
 
@@ -12,13 +61,13 @@ The app is **feature-complete on local documents and fully mock-driven on server
 
 ### 1.1 Shell & navigation
 - First-run onboarding wizard (`features/onboarding/`, "fuse" flow); completion persists `has_seen_onboarding` in `SharedPreferences`.
-- Two-tab dashboard behind a custom pill nav bar: **IDs** (index 0) and **Passes** (index 1). Nav icon style and labels are user-configurable.
+- Two-tab dashboard behind a custom pill nav bar: **IDs** (index 0) and **Passes** (index 1). Nav icon styles are fixed (IDs classic, Passes vertical) — the style toggle was removed in #19.
 - Portrait-locked at runtime (`main.dart`) and in both native manifests.
 - Hand-driven light↔dark theme transition (`app.dart`): `ThemeData.lerp` over 620ms plus a veil overlay, so `MaterialApp.themeMode` stays pinned to `light` deliberately.
 - Theme warm-up in `main()` caches `AppTheme.lightTheme`/`darkTheme` and caps `GoogleFonts.pendingFonts()` at 900ms so offline cold start still renders.
 
 ### 1.2 Documents — local-first, complete
-- **Passports** (`features/passport/`): three entry paths — manual form, camera MRZ scan, and NFC chip read. `PassportProfile` records persist through `SecureDocumentStore` under `saved_passports`.
+- **Passports** (`features/passport/`): three entry paths — manual form, camera MRZ scan, and NFC chip read. `PassportProfile` records persist through `SecureDocumentStore` under `saved_passports`. The wallet card is a booklet (spec in `docs/features/passport-cover-redesign.md`): navy 2021/2024 cover on the front, cream bilingual biodata page on the back. Ordinary vs e-passport differs by the ICAO chip mark.
 - **MRZ scanning** (`features/mrz_scanner/`): ML Kit text recognition, `MrzParser` as the authoritative source for document number / DOB / expiry, plus `FullPageExtractor` regex heuristics for name, issuing country, date of issue, place of birth from the visual zone.
 - **NFC e-passport** (`features/nfc/` + `MainActivity.kt`): BAC using number + DOB + expiry, reads **DG1** (MRZ), **DG2** (face image, JP2 decoded to JPEG then base64), **DG11**/**DG12** (additional personal and document details). Returns a flat map the passport draft consumes, including `photoBase64` for the card portrait.
 - **ID documents** (`features/ids/`): Aadhaar and PAN, each with a bespoke card face and rendered QR (`qr_flutter`). `IdScannerService` combines barcode, text, and face detection; records persist under `saved_id_documents`.
@@ -40,7 +89,7 @@ The app is **feature-complete on local documents and fully mock-driven on server
 - Source selection via `devFlagsProvider` → `MockPassRepository` or `RemotePassRepository`; a purple **MOCK** chip shows in the Passes tab while mock mode is active.
 
 ### 1.4 Settings
-Appearance (light / dark / device / scheduled with a custom time picker), haptics, navigation icon style and labels, experimental toggles (card shine border, card category filter), Account section, About / developer links (`url_launcher`), and a Developer section (debug/profile only, or `--dart-define=FORCE_DEV_MENU=true`) exposing mock passes, mock sign-in, card gradient scheme, API base URL, reload passes, and reset flags.
+Appearance (light / dark / device / scheduled with a custom time picker), haptics, experimental toggles (card shine border, card category filter), Account section, About / developer links (`url_launcher`), and a Developer section (debug/profile only, or `--dart-define=FORCE_DEV_MENU=true`) exposing mock passes, mock sign-in, card gradient scheme, API base URL, reload passes, and reset flags. Nav icon styles are no longer a setting (#19).
 
 ### 1.5 Design & sensory layer
 3D card tilt and drag reactions, custom-drawn shine/holographic borders, `studio_*` shared widget set, entry-reveal motion curves, haptic service, sound triggers, and an easter-egg drawer.
@@ -78,9 +127,9 @@ Landed in `a3fe742` + `a66c039`. Universal release APK measured at **59.0 MB**, 
 
 | Area | State |
 |------|-------|
-| **Remote passes** | `RemotePassRepository` returns empty when disabled and throws `UnimplementedError` when enabled. No `http`/`dio` dependency in `pubspec.yaml`. |
+| **Remote passes** | `RemotePassRepository` calls `GET /v1/passes` when an API URL is set. Needs a session (`DEV_AUTH_ID_TOKEN` or Settings → Developer). |
 | **Auth** | `authSessionProvider` returns a hardcoded `AuthSession.demo` when the `mockSignedIn` dev flag is on, `signedOut` otherwise. No `google_sign_in` dependency, no token storage, no refresh interceptor. |
-| **Extract upload** | The server's `POST /tickets/extract` has no client. Passes cannot be added from the app — only fixtures exist. |
+| **Extract upload** | Wired: train PNR + photo/PDF, bus photo/PDF, movie photo/PDF. Submit is refused while mock fixtures are on. Google Sign-In is still missing. |
 | **Push** | No FCM dependency and no `POST /v1/devices` registration, although the server's Phase D outbox is ready. |
 | **iOS NFC** | Not implemented; `MainActivity.kt` is Android-only. |
 | **Search** | `README.md` lists search among wallet features; there is no search UI in the codebase. |
@@ -103,7 +152,7 @@ errors.
 
 ```bash
 flutter test
-# 335 tests, All tests passed! (~30s)   # 13 Aug 2026
+# 337 tests, All tests passed! (~37s)   # 14 Aug 2026
 ```
 
 | Suite | Covers | Result |
@@ -114,6 +163,7 @@ flutter test
 | `test/movie_hero_band_test.dart` | Hero band: brand chip + status pill present for all three brands (the dead-branch regression), gradient fallback with no network request when no poster, `CachedNetworkImage` when there is one, bundled asset still wins | pass |
 | `test/train_pass_face_test.dart` | Station header anchoring (origin left, destination right, long names still flush to the content edge) and the connector rule's span + masking. Pins a silent layout bug: `RenderBaseline` lays its child out loose and pins it flush left, so `width` + `textAlign: right` did nothing and the destination column rendered from the wrong edge with no overflow reported | pass |
 | `test/train_status_band_test.dart` | Status-band message resolution: cancelled suppresses everything, arrived/expired collapse to one line, delay wording and ordering, `delayMinutes: 0` is not a delay, "On time" only when claimed, platform normalisation and hand-off to `nextHalt`, countdown thresholds and the boarding grace window, `departAt` preferred over display strings, unparseable date yields no countdown. Widget: cycling, no timer for a single message | pass |
+| `test/app_version_test.dart` | `kAppVersion` in Settings matches `pubspec.yaml` (the two are hand-synced — nothing reads the real version at runtime), and the pubspec keeps a `+<build>` suffix so AGP has a `versionCode` | pass |
 | `test/pass_activity_date_test.dart` | Display and ISO date parsing, incl. rejection of overflow calendar dates (`2024-02-31`) that `DateTime.parse` silently rolls into the next month | pass |
 | `test/pass_history_folders_test.dart` / `test/archive_layout_test.dart` | Archive foldering and layout | pass |
 | `test/account_profile_provider_test.dart` | Profile persistence against a stubbed store: hydration, rejected read / write / delete, rollback, and write serialization | pass |
@@ -122,12 +172,17 @@ flutter test
 | `test/id_attachment_limits_test.dart` | 3 images + 1 PDF counted independently, over-limit and oversize rejection, extension-to-kind mapping | pass |
 | `test/id_attachment_model_test.dart` / `test/id_document_attachments_test.dart` | Attachment JSON round-trip and back-compat: a record written **without** the `attachments` key, and a malformed non-list value, both decode to an empty list | pass |
 | `test/id_attachment_tray_test.dart` | Tray states: empty, counter at 2 attachments, add tile hidden at capacity, long-press remove callback, PDF placeholder | pass |
+| `test/secure_document_store_test.dart` | Unreadable-key interlock: a failed read marks the key and `writeList` refuses rather than saving empty over live records | pass |
+| `test/nfc_failure_test.dart` | Every platform channel code maps to a distinct, actionable `NfcFailure` (no collapsed "try again") | pass |
+| `test/bac_key_format_test.dart` / `test/chip_payload_test.dart` / `test/document_validators_test.dart` | BAC date/number formatting, DG1/DG11/DG12 field mapping, passport-number and BAC-triple validation | pass |
+| `test/passport_prompt_flow_test.dart` / `test/prompt_flow_controller_test.dart` | Prompted entry routes (e-passport vs regular) and controller gating | pass |
+| `test/passport_profile_migration_test.dart` | v1 `imagePath`/`photoBase64` split on read | pass |
 
 The whole suite terminates — the old `widget_test.dart` hang (unbounded `pumpAndSettle()` against
 continuously animating screens) is fixed.
 
-Coverage is still thin below that: `SecureDocumentStore`, MRZ parsing, and the NFC bridge have
-**no automated tests**.
+There is still **no on-device NFC test** and no MRZ-image fixture suite. The native JMRTD
+bridge and ML Kit scanner are covered only by the failure/format unit tests above.
 
 ### 3.3 On-device — ID media attachments (10 Aug 2026)
 
@@ -151,7 +206,7 @@ Visual refinements are tracked separately and do not affect the above.
 
 ## 4. Backend integration checklist
 
-The server (`../docket_server`, branch `dev-auth_and_users`) is ahead of the app and waiting on it. To connect:
+The server (`../docket_server`, `master` plus open PR [#5](https://github.com/navadeepnaidu7/docket-server/pull/5) on `hardening/deployment-readiness`) is ahead of the app and waiting on it. Auth, passes, extract, and posters are on `master`; the PR is deploy/container hardening only. To connect:
 
 1. Add `http` (or `dio`) and `google_sign_in`; keep `flutter_secure_storage` for tokens.
 2. Implement `RemotePassRepository.fetchPasses` / `fetchPassById` against `PassApiPaths` using `PassListResponse.fromJson`.

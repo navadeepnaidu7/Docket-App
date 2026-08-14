@@ -1,7 +1,8 @@
+import 'bus_pass_models.dart';
 import 'movie_pass_models.dart';
 import 'ticket_models.dart';
 
-/// Unified pass entry for the Passes tab (train + movie).
+/// Unified pass entry for the Passes tab (train + movie + bus).
 sealed class WalletPassItem {
   const WalletPassItem();
 
@@ -68,12 +69,41 @@ final class MoviePassItem extends WalletPassItem {
   }
 }
 
-/// Parses a single list item: `{ "kind": "train"|"movie", ... }`.
+final class BusPassItem extends WalletPassItem {
+  const BusPassItem(this.pass);
+  final BusPass pass;
+
+  @override
+  String get id => pass.id;
+
+  @override
+  TicketStatus get status => pass.status;
+
+  @override
+  PassKind get kind => PassKind.bus;
+
+  @override
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'kind': kind.toJson(),
+        'bus': pass.toJson(),
+      };
+
+  factory BusPassItem.fromJson(Map<String, dynamic> json) {
+    final Object? nested = json['bus'] ?? json;
+    final Map<String, dynamic> map = nested is Map
+        ? Map<String, dynamic>.from(nested)
+        : json;
+    return BusPassItem(BusPass.fromJson(map));
+  }
+}
+
+/// Parses a single list item: `{ "kind": "train"|"movie"|"bus", ... }`.
 WalletPassItem walletPassItemFromJson(Map<String, dynamic> json) {
   final PassKind kind = PassKind.fromJson(json['kind']);
   return switch (kind) {
     PassKind.train => TrainPassItem.fromJson(json),
     PassKind.movie => MoviePassItem.fromJson(json),
+    PassKind.bus => BusPassItem.fromJson(json),
   };
 }
 
@@ -111,10 +141,11 @@ class PassListResponse {
       };
 }
 
-/// Active first (movies then trains), then expired — demo ordering.
+/// Active first (movies then trains then buses), then expired — demo ordering.
 List<WalletPassItem> buildWalletPassCatalog({
   required List<TrainPass> trains,
   required List<MoviePass> movies,
+  List<BusPass> buses = const <BusPass>[],
 }) {
   final List<WalletPassItem> active = <WalletPassItem>[
     ...movies
@@ -123,6 +154,9 @@ List<WalletPassItem> buildWalletPassCatalog({
     ...trains
         .where((TrainPass t) => t.status == TicketStatus.active)
         .map(TrainPassItem.new),
+    ...buses
+        .where((BusPass b) => b.status == TicketStatus.active)
+        .map(BusPassItem.new),
   ];
   final List<WalletPassItem> expired = <WalletPassItem>[
     ...movies
@@ -131,6 +165,9 @@ List<WalletPassItem> buildWalletPassCatalog({
     ...trains
         .where((TrainPass t) => t.status == TicketStatus.expired)
         .map(TrainPassItem.new),
+    ...buses
+        .where((BusPass b) => b.status == TicketStatus.expired)
+        .map(BusPassItem.new),
   ];
   return <WalletPassItem>[...active, ...expired];
 }

@@ -73,15 +73,12 @@ widgets observe, they don't own logic. Persistence goes through the controller, 
 ### Passes: mock vs remote
 
 `passRepositoryProvider` picks `MockPassRepository` (fixtures) or `RemotePassRepository`
-based on `devFlagsProvider`. **`RemotePassRepository` is still a stub** — it returns empty
-when disabled and throws `UnimplementedError` when enabled with a base URL. There is no HTTP
-client dependency in `pubspec.yaml` yet.
-
-Wiring it to the backend is the main open task and means: add `http`/`dio`, implement
-`fetchPasses`/`fetchPassById` against `PassApiPaths`, and replace the mock
-`authSessionProvider` with real Google Sign-In (`../docket_server/docs/flutter_auth_integration.md`
-is the pickup guide: `POST /v1/auth/google` → access JWT + refresh, tokens in secure storage,
-401 → single refresh + retry).
+based on `devFlagsProvider`. The remote path uses `http` against `PassApiPaths` (`GET /v1/passes`).
+The Passes-tab `+` can submit a train PNR (`POST /tickets`) or a photo/PDF
+(`POST /tickets/extract`). Auth is still not Google Sign-In: debug builds exchange
+`DEV_AUTH_ID_TOKEN` (or Settings → Developer → Dev auth token) at `POST /v1/auth/google`.
+See `docs/features/pass-input.md`. Full OAuth is still open
+(`../docket_server/docs/flutter_auth_integration.md`).
 
 ### Movie posters
 

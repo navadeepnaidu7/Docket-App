@@ -2,8 +2,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../domain/bus_pass_models.dart';
 import '../../domain/movie_pass_models.dart';
 import '../../domain/pass_catalog.dart';
+import '../../domain/pass_history_category.dart';
 import '../../domain/ticket_models.dart';
 import 'history_visuals.dart';
 
@@ -112,6 +114,7 @@ class _FannedChip extends StatelessWidget {
               child: switch (item) {
                 MoviePassItem(:final pass) => _PosterChip(pass: pass),
                 TrainPassItem(:final ticket) => _RouteChip(ticket: ticket),
+                BusPassItem(:final pass) => _BusChip(pass: pass),
               },
             ),
           ),
@@ -232,6 +235,58 @@ class _RouteChip extends StatelessWidget {
           fontSize: 8,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.4,
+          height: 1.0,
+          color: Colors.white,
+        ),
+      );
+}
+
+class _BusChip extends StatelessWidget {
+  const _BusChip({required this.pass});
+
+  final BusPass pass;
+
+  @override
+  Widget build(BuildContext context) {
+    final HistoryStripLook look =
+        HistoryStripLook.forCategory(PassHistoryCategory.bus);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: look.gradient,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              _place(pass.boardingLocation),
+              Container(
+                width: 10,
+                height: 1,
+                margin: const EdgeInsets.symmetric(vertical: 3),
+                color: Colors.white.withValues(alpha: 0.45),
+              ),
+              _place(pass.dropLocation),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _place(String value) => Text(
+        value.trim().isEmpty ? '--' : value.trim(),
+        maxLines: 1,
+        style: GoogleFonts.inter(
+          fontSize: 7,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
           height: 1.0,
           color: Colors.white,
         ),

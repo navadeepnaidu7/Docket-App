@@ -80,6 +80,7 @@ abstract final class PassActivityDate {
         TrainPassItem(:final ticket) =>
           parse(ticket.departAt) ?? parse(ticket.date),
         MoviePassItem(:final pass) => parse(pass.showAt) ?? parse(pass.showDate),
+        BusPassItem(:final pass) => parse(pass.departAt) ?? parse(pass.date),
       };
 
   /// Parses an ISO 8601 instant or a display date, or returns null.

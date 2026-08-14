@@ -797,6 +797,43 @@ class _DeveloperSection extends ConsumerWidget {
     await ref.read(devFlagsProvider.notifier).setApiBaseUrl(result);
   }
 
+  Future<void> _editDevAuthToken(BuildContext context, WidgetRef ref) async {
+    final DevFlags flags = ref.read(devFlagsProvider);
+    final TextEditingController controller =
+        TextEditingController(text: flags.devAuthIdToken);
+    final String? result = await showDialog<String>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: const Text('Dev auth token'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            obscureText: true,
+            decoration: const InputDecoration(
+              hintText: 'dev-google-token',
+              helperText: 'Sent as idToken to POST /v1/auth/google',
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    if (result == null) return;
+    HapticService.select();
+    await ref.read(devFlagsProvider.notifier).setDevAuthIdToken(result);
+  }
+
   Future<void> _selectFluidScheme(BuildContext context, WidgetRef ref) async {
     final DevFlags flags = ref.read(devFlagsProvider);
     final CardFluidScheme? selected = await showDialog<CardFluidScheme>(
@@ -898,6 +935,16 @@ class _DeveloperSection extends ConsumerWidget {
           title: 'API base URL',
           subtitle: urlLabel,
           onTap: () => _editApiBaseUrl(context, ref),
+        ),
+        const _SettingsDivider(),
+        _SettingsLinkRow(
+          icon: Icons.key_rounded,
+          iconColor: const Color(0xFFAF52DE),
+          title: 'Dev auth token',
+          subtitle: flags.devAuthIdToken.isEmpty
+              ? 'Not set · needed to add passes'
+              : 'Set · used for /v1/auth/google',
+          onTap: () => _editDevAuthToken(context, ref),
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(
