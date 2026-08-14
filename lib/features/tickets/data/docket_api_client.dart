@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
@@ -38,11 +40,40 @@ class DocketApiClient implements DocketApi {
   final String devIdToken;
   final http.Client _http;
 
+  static const Duration _httpTimeout = Duration(seconds: 30);
+
+  Future<T> _withTimeout<T>(Future<T> Function() operation) async {
+    try {
+      return await operation().timeout(_httpTimeout);
+    } on TimeoutException {
+      throw const PassIngestException(
+        PassIngestCode.failed,
+        'The request timed out. Check your connection and try again.',
+      );
+    }
+  }
+
   Uri _uri(String path, [Map<String, String>? query]) {
     final String origin = baseUrl.endsWith('/')
         ? baseUrl.substring(0, baseUrl.length - 1)
         : baseUrl;
     final Uri uri = Uri.parse('$origin$path');
+
+    // Enforce HTTPS, allowing HTTP only for explicit loopback hosts in debug builds
+    if (uri.scheme == 'http') {
+      final String host = uri.host.toLowerCase();
+      final bool isLoopback = host == 'localhost' ||
+          host == '127.0.0.1' ||
+          host == '10.0.2.2' ||
+          host == '[::1]';
+      if (!kDebugMode || !isLoopback) {
+        throw const PassIngestException(
+          PassIngestCode.failed,
+          'API must use HTTPS in production. Use a secure origin or run a debug build with a loopback address.',
+        );
+      }
+    }
+
     if (query == null || query.isEmpty) return uri;
     return uri.replace(queryParameters: query);
   }
@@ -50,12 +81,14 @@ class DocketApiClient implements DocketApi {
   @override
   Future<PassListResponse> fetchPasses({TicketStatus? status}) async {
     final http.Response res = await _authed(
-      (Map<String, String> headers) => _http.get(
-        _uri(
-          PassApiPaths.passes,
-          status == null ? null : <String, String>{'status': status.toJson()},
+      (Map<String, String> headers) => _withTimeout(
+        () => _http.get(
+          _uri(
+            PassApiPaths.passes,
+            status == null ? null : <String, String>{'status': status.toJson()},
+          ),
+          headers: headers,
         ),
-        headers: headers,
       ),
     );
     _throwIfFailed(res, fallback: 'Could not load passes.');
@@ -72,9 +105,11 @@ class DocketApiClient implements DocketApi {
   @override
   Future<WalletPassItem?> fetchPassById(String id) async {
     final http.Response res = await _authed(
-      (Map<String, String> headers) => _http.get(
-        _uri(PassApiPaths.passById(id)),
-        headers: headers,
+      (Map<String, String> headers) => _withTimeout(
+        () => _http.get(
+          _uri(PassApiPaths.passById(id)),
+          headers: headers,
+        ),
       ),
     );
     if (res.statusCode == 404) return null;
@@ -110,8 +145,10 @@ class DocketApiClient implements DocketApi {
           contentType: MediaType.parse(mimeType),
         ),
       );
-      final http.StreamedResponse streamed = await _http.send(req);
-      return http.Response.fromStream(streamed);
+      return _withTimeout(() async {
+        final http.StreamedResponse streamed = await _http.send(req);
+        return http.Response.fromStream(streamed);
+      });
     });
     _throwIfFailed(res, fallback: 'Could not read that ticket.');
     return _ticketIdFrom(res.body);
@@ -120,13 +157,15 @@ class DocketApiClient implements DocketApi {
   @override
   Future<String> createFromPnr(String pnr) async {
     final http.Response res = await _authed(
-      (Map<String, String> headers) => _http.post(
-        _uri(PassApiPaths.tickets),
-        headers: <String, String>{
-          ...headers,
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(<String, String>{'pnr': pnr}),
+      (Map<String, String> headers) => _withTimeout(
+        () => _http.post(
+          _uri(PassApiPaths.tickets),
+          headers: <String, String>{
+            ...headers,
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(<String, String>{'pnr': pnr}),
+        ),
       ),
     );
     _throwIfFailed(res, fallback: 'Could not add that PNR.');
@@ -161,16 +200,18 @@ class DocketApiClient implements DocketApi {
   }
 
   Future<ApiTokens> _exchange(String idToken) async {
-    final http.Response res = await _http.post(
-      _uri(PassApiPaths.authGoogle),
-      headers: const <String, String>{
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode(<String, String>{
-        'idToken': idToken,
-        'deviceLabel': 'docket-app',
-      }),
+    final http.Response res = await _withTimeout(
+      () => _http.post(
+        _uri(PassApiPaths.authGoogle),
+        headers: const <String, String>{
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(<String, String>{
+          'idToken': idToken,
+          'deviceLabel': 'docket-app',
+        }),
+      ),
     );
     if (res.statusCode == 401 || res.statusCode == 403) {
       throw const PassIngestException(
@@ -192,13 +233,15 @@ class DocketApiClient implements DocketApi {
         'Session expired. Sign in again.',
       );
     }
-    final http.Response res = await _http.post(
-      _uri(PassApiPaths.authRefresh),
-      headers: const <String, String>{
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode(<String, String>{'refreshToken': current.refreshToken}),
+    final http.Response res = await _withTimeout(
+      () => _http.post(
+        _uri(PassApiPaths.authRefresh),
+        headers: const <String, String>{
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(<String, String>{'refreshToken': current.refreshToken}),
+      ),
     );
     if (res.statusCode == 401) {
       await session.clear();

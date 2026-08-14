@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -38,6 +39,8 @@ class PassIngestService {
 
   final Ref _ref;
 
+  static const Duration _ingestTimeout = Duration(seconds: 60);
+
   DocketApi _requireApi() {
     final DevFlags flags = _ref.read(devFlagsProvider);
     if (flags.isMockPassesActive) {
@@ -65,8 +68,15 @@ class PassIngestService {
       );
     }
     final DocketApi api = _requireApi();
-    final String id = await api.createFromPnr(pnr);
-    return _resolve(api, id);
+    try {
+      final String id = await api.createFromPnr(pnr).timeout(_ingestTimeout);
+      return _resolve(api, id);
+    } on TimeoutException {
+      throw const PassIngestException(
+        PassIngestCode.failed,
+        'The request timed out. Check your connection and try again.',
+      );
+    }
   }
 
   Future<WalletPassItem> submitFile({
@@ -91,13 +101,20 @@ class PassIngestService {
     final Uint8List bytes = await file.readAsBytes();
     final String filename = path.split(RegExp(r'[\\/]')).last;
     final DocketApi api = _requireApi();
-    final String id = await api.extractFile(
-      bytes: bytes,
-      filename: filename.isEmpty ? 'ticket' : filename,
-      mimeType: mime,
-      categoryHint: category.hint,
-    );
-    return _resolve(api, id);
+    try {
+      final String id = await api.extractFile(
+        bytes: bytes,
+        filename: filename.isEmpty ? 'ticket' : filename,
+        mimeType: mime,
+        categoryHint: category.hint,
+      ).timeout(_ingestTimeout);
+      return _resolve(api, id);
+    } on TimeoutException {
+      throw const PassIngestException(
+        PassIngestCode.failed,
+        'The request timed out. Check your connection and try again.',
+      );
+    }
   }
 
   Future<WalletPassItem> _resolve(DocketApi api, String id) async {

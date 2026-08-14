@@ -4,7 +4,7 @@ What is built and verified in `docket_app`.
 
 **Snapshot:** 14 Aug 2026 · **v0.1.0-alpha** (build 1) · branch `feature/train-pass-redesign` @ `b095436` (2 commits ahead of `origin/master`; no open PR for the version bump) · `flutter analyze` 5 info-level lints, no warnings/errors · **337/337** tests pass, no suite hangs (§3.2) · last measured release APK **93.0 MB** on 10 Aug (x86_64 slice still present); no release APK in the tree today.
 
-The app is **feature-complete on local documents and fully mock-driven on server-backed passes**. Nothing talks to `docket_server` yet.
+The app is **feature-complete on local documents and can connect to a remote server for server-backed passes**. `RemotePassRepository` fetches passes from `GET /v1/passes`, the API client handles session refresh on `401`, and debug builds can exchange a developer token against `POST /v1/auth/google` to obtain access and refresh tokens. Full Google Sign-In integration (via `google_sign_in`) is not yet implemented.
 
 ---
 
@@ -18,7 +18,7 @@ Passport, Aadhaar, PAN, ID attachments, wallet organisation, trash, archive, the
 
 ### What a tester cannot do
 
-Add a pass against a mock list. The Passes-tab `+` now opens the input flow (train PNR / photo / PDF; bus and movie photo / PDF) but submit is refused while mock fixtures are active. `RemotePassRepository` talks to `GET /v1/passes` when an API URL is set. Extract and PNR create use `http` plus a debug `DEV_AUTH_ID_TOKEN`. There is still no `google_sign_in`.
+Add a pass to the wallet from a production backend. The Passes-tab `+` opens the input flow (train PNR / photo / PDF; bus and movie photo / PDF) but submit is refused while mock fixtures are active. `RemotePassRepository` fetches from `GET /v1/passes` when an API URL is configured. Extract (`POST /tickets/extract`) and PNR create (`POST /tickets`) work over `http` with a developer auth token (`DEV_AUTH_ID_TOKEN` or Settings → Developer → Dev auth token), exchanged for session tokens at `POST /v1/auth/google`. The API client includes a 401-refresh interceptor (`POST /v1/auth/refresh`). Full Google Sign-In integration (via `google_sign_in`) is not yet implemented.
 
 A release build would also ship the 10 fixture passes **without** the purple MOCK chip (`DevConfig.defaultUseMockPasses` defaults to `true`; the badge is gated on `showDevMenu`, which is off in release). That is why a Play-track alpha is the wrong shape until either mocks are locked off or real data flows.
 
@@ -47,7 +47,7 @@ OAuth Android client registration needs the **final** applicationId and the SHA-
 
 The input layer is in (`docs/features/pass-input.md`): train PNR / photo / PDF, bus and movie photo / PDF, plus `RemotePassRepository` and a 401-refresh interceptor. What is still missing is real Google Sign-In — debug builds exchange `DEV_AUTH_ID_TOKEN` (or Settings → Developer → Dev auth token) at `POST /v1/auth/google`. Local emulator:
 
-```
+```bash
 --dart-define=USE_MOCK_PASSES=false
 --dart-define=API_BASE_URL=http://10.0.2.2:8080
 --dart-define=DEV_AUTH_ID_TOKEN=dev-google-token
@@ -127,9 +127,9 @@ Landed in `a3fe742` + `a66c039`. Universal release APK measured at **59.0 MB**, 
 
 | Area | State |
 |------|-------|
-| **Remote passes** | `RemotePassRepository` calls `GET /v1/passes` when an API URL is set. Needs a session (`DEV_AUTH_ID_TOKEN` or Settings → Developer). |
-| **Auth** | `authSessionProvider` returns a hardcoded `AuthSession.demo` when the `mockSignedIn` dev flag is on, `signedOut` otherwise. No `google_sign_in` dependency, no token storage, no refresh interceptor. |
-| **Extract upload** | Wired: train PNR + photo/PDF, bus photo/PDF, movie photo/PDF. Submit is refused while mock fixtures are on. Google Sign-In is still missing. |
+| **Remote passes** | `RemotePassRepository` calls `GET /v1/passes` when an API URL is set. Requires a session (via `DEV_AUTH_ID_TOKEN` or Settings → Developer → Dev auth token, exchanged at `POST /v1/auth/google`). |
+| **Auth** | `authSessionProvider` returns a hardcoded `AuthSession.demo` when the `mockSignedIn` dev flag is on, `signedOut` otherwise. Session tokens (access + refresh) are stored in `flutter_secure_storage` under `docket_api_session_v1` and refreshed on `401` via `POST /v1/auth/refresh`. No `google_sign_in` dependency for full OAuth flow yet. |
+| **Extract upload** | Wired: train PNR (`POST /tickets`) + photo/PDF (`POST /tickets/extract`), bus photo/PDF, movie photo/PDF. Submit is refused while mock fixtures are active. Full Google Sign-In is still missing. |
 | **Push** | No FCM dependency and no `POST /v1/devices` registration, although the server's Phase D outbox is ready. |
 | **iOS NFC** | Not implemented; `MainActivity.kt` is Android-only. |
 | **Search** | `README.md` lists search among wallet features; there is no search UI in the codebase. |
@@ -206,13 +206,11 @@ Visual refinements are tracked separately and do not affect the above.
 
 ## 4. Backend integration checklist
 
-The server (`../docket_server`, `master` plus open PR [#5](https://github.com/navadeepnaidu7/docket-server/pull/5) on `hardening/deployment-readiness`) is ahead of the app and waiting on it. Auth, passes, extract, and posters are on `master`; the PR is deploy/container hardening only. To connect:
+The server (`../docket_server`, `master` plus open PR [#5](https://github.com/navadeepnaidu7/docket-server/pull/5) on `hardening/deployment-readiness`) is ready and waiting for deployment. Auth, passes, extract, and posters are on `master`; the PR is deploy/container hardening only. What remains to fully connect:
 
-1. Add `http` (or `dio`) and `google_sign_in`; keep `flutter_secure_storage` for tokens.
-2. Implement `RemotePassRepository.fetchPasses` / `fetchPassById` against `PassApiPaths` using `PassListResponse.fromJson`.
-3. Replace `authSessionProvider` with a real session: `POST /v1/auth/google` with the Google `idToken`, store access + refresh in secure storage, attach `Authorization: Bearer`, and on `401` do a single `POST /v1/auth/refresh` + retry before signing out.
-4. Map the membership card from `/v1/me`: `joinedAt` → `MMMM y`, `displayName`, `#publicId`.
-5. Optional next: multipart extract upload from camera/gallery (handle `429` with `retryAfterSeconds` / `window`), and FCM token registration via `POST /v1/devices`.
+1. Add `google_sign_in` for production Google OAuth — replace the debug `DEV_AUTH_ID_TOKEN` developer-token exchange with a real Google Sign-In flow that obtains the `idToken` for `POST /v1/auth/google`. (`http` and `flutter_secure_storage` are already in place; `RemotePassRepository`, session storage, refresh interceptor, and extract upload are implemented.)
+2. Map the membership card from `/v1/me`: `joinedAt` → `MMMM y`, `displayName`, `#publicId`.
+3. Optional next: FCM token registration via `POST /v1/devices` (multipart extract upload with `429` handling is already implemented).
 
 Full guide: `../docket_server/docs/flutter_auth_integration.md`. Contract: [`api/passes.md`](api/passes.md). Switching: [`dev-flags.md`](dev-flags.md).
 

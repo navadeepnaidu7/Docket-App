@@ -32,7 +32,7 @@ String _titleFor(PassIngestCode code) {
     PassIngestCode.fileTooLarge => 'File too large',
     PassIngestCode.unsupportedFile => 'Unsupported file',
     PassIngestCode.rateLimited => 'Scan limit reached',
-    PassIngestCode.unreadable => 'Saved',
+    PassIngestCode.unreadable => 'Could not read pass',
     PassIngestCode.failed => 'Could not add pass',
   };
 }

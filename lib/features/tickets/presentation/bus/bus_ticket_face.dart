@@ -4,21 +4,27 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/bus_pass_models.dart';
 
+/// Brand palette for bus passes — teal/pine, shared with history strips.
+abstract final class BusPassPalette {
+  BusPassPalette._();
+
+  static const Color pine = Color(0xFF115E59);
+  static const Color teal = Color(0xFF2DD4BF);
+}
+
 /// First-cut bus face — operator, route, times. Not a Figma lockup.
 class BusTicketFace extends StatelessWidget {
   const BusTicketFace({super.key, required this.pass});
 
   final BusPass pass;
 
-  static const Color _pine = Color(0xFF115E59);
-  static const Color _teal = Color(0xFF2DD4BF);
-
   @override
   Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color ink = isDark ? Colors.white : const Color(0xFF10221F);
+    final Brightness brightness = Theme.of(context).brightness;
+    final bool isDark = brightness == Brightness.dark;
+    final Color ink = AppTheme.ink(brightness);
     final Color muted = isDark ? const Color(0xFF8E8E93) : const Color(0xFF5B6B68);
-    final Color surface = isDark ? const Color(0xFF1C2423) : const Color(0xFFF3FBFA);
+    final Color surface = AppTheme.surface(brightness);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -27,7 +33,7 @@ class BusTicketFace extends StatelessWidget {
         border: Border.all(
           color: isDark
               ? Colors.white.withValues(alpha: 0.08)
-              : _teal.withValues(alpha: 0.28),
+              : BusPassPalette.teal.withValues(alpha: 0.28),
         ),
       ),
       child: Padding(
@@ -41,7 +47,7 @@ class BusTicketFace extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.8,
-                color: _pine,
+                color: BusPassPalette.pine,
               ),
             ),
             const SizedBox(height: 18),
@@ -63,7 +69,7 @@ class BusTicketFace extends StatelessWidget {
                   child: Icon(
                     Icons.arrow_forward_rounded,
                     size: 18,
-                    color: _teal,
+                    color: BusPassPalette.teal,
                   ),
                 ),
                 Expanded(

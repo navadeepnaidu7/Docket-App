@@ -1,6 +1,6 @@
 # Pass input layer
 
-Wire the Passes-tab `+` so a user can add a ticket. Replaces
+Wire the Passes-tab `+` so a user can add a ticket. This replaces
 `TicketsComingSoonSheet`.
 
 ## What this is

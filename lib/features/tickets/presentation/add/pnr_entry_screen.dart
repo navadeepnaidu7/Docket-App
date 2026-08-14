@@ -81,28 +81,15 @@ class _PnrEntryScreenState extends ConsumerState<PnrEntryScreen> {
             icon: Icons.confirmation_number_outlined,
             keyboardType: TextInputType.number,
             textInputAction: TextInputAction.done,
-            inputFormatters: <TextInputFormatter>[PnrInputFormatter()],
+            inputFormatters: <TextInputFormatter>[
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
             errorText: _error,
             onChanged: () => setState(() => _error = null),
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Digits only, max 10. Applied on the PNR field via [TextInputFormatter].
-class PnrInputFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final String digits = newValue.text.replaceAll(RegExp(r'\D'), '');
-    final String clipped = digits.length > 10 ? digits.substring(0, 10) : digits;
-    return TextEditingValue(
-      text: clipped,
-      selection: TextSelection.collapsed(offset: clipped.length),
     );
   }
 }

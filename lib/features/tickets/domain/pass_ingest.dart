@@ -48,9 +48,12 @@ abstract final class PassUpload {
   }
 
   static String extensionOf(String path) {
-    final int dot = path.lastIndexOf('.');
-    if (dot < 0 || dot == path.length - 1) return '';
-    return path.substring(dot + 1).toLowerCase();
+    // Isolate the final path segment to prevent directory names from contributing
+    final int lastSep = path.lastIndexOf(RegExp(r'[/\\]'));
+    final String filename = lastSep >= 0 ? path.substring(lastSep + 1) : path;
+    final int dot = filename.lastIndexOf('.');
+    if (dot < 0 || dot == filename.length - 1) return '';
+    return filename.substring(dot + 1).toLowerCase();
   }
 }
 

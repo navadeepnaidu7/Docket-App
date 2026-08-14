@@ -132,21 +132,18 @@ Future<void> _submitFile(
 ) async {
   showDialog<void>(
     context: context,
-    barrierDismissible: false,
-    builder: (BuildContext ctx) => const PopScope(
-      canPop: false,
-      child: Center(
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(28, 24, 28, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                CupertinoActivityIndicator(),
-                SizedBox(height: 14),
-                Text('Reading ticket…'),
-              ],
-            ),
+    barrierDismissible: true,
+    builder: (BuildContext ctx) => const Center(
+      child: Card(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(28, 24, 28, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              CupertinoActivityIndicator(),
+              SizedBox(height: 14),
+              Text('Reading ticket…'),
+            ],
           ),
         ),
       ),
