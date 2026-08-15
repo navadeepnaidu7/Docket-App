@@ -125,6 +125,9 @@ abstract final class PassActivityDate {
   static String monthLabel(DateTime date) =>
       '${_monthsLong[date.month - 1]} ${date.year}';
 
+  /// Year section header, e.g. "2025".
+  static String yearLabel(DateTime date) => '${date.year}';
+
   /// Compact card date, e.g. "10 Feb". The section header carries the year.
   static String shortDayLabel(DateTime date) =>
       '${date.day} ${_monthsShort[date.month - 1]}';

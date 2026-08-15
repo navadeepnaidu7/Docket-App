@@ -9,6 +9,16 @@ A film is recognised by its artwork long before its title. Trains and buses have
 they keep `HistoryPassCard`. The switch is one branch in `HistoryCategoryScreen`, keyed on
 `PassHistoryCategory.movie` — every other category is untouched.
 
+## Sections are years, not months
+
+Posters run three to a row, so a header per month strands one- and two-tile sections between
+rules and the grid stops reading as a shelf. The movies folder buckets by **year**; every other
+category keeps months, where a titled row per month is the right density.
+
+`buildHistorySections(items, span:)` takes a `HistorySectionSpan` — `month` (default) or `year`.
+Ordering, the newest-first sort, and the trailing **Undated** bucket are identical either way:
+a pass whose date string will not parse is never dropped, whichever span is in play.
+
 ## The tile
 
 | Piece | Treatment |
@@ -48,7 +58,20 @@ Deliberately **not** a `Hero`. The destination is a full e-ticket face, not a ba
 there is no honest counterpart to fly into — and a Hero tag that collides (the same pass drawn
 twice on one route) throws at runtime, where this cannot.
 
+## Fixtures
+
+The archive ships nine finished bookings spread across 2023–2025, so the grid and its year
+headers have something real to render. Every `posterUrl` was checked against `image.tmdb.org`
+and returns image bytes — a mistyped hash 404s silently and falls back to the gradient, which
+looks like a design bug rather than a typo.
+
+Archived fixtures carry **no `logoUrl`**, deliberately: the logo exists so the glance card has
+legible art, and an expired pass never renders a glance card. The detail face it opens into
+uses the poster.
+
 ## Not covered
 
 - The glance card keeps the title logo; only the archive and folder chips use the poster
 - Grid density is fixed at 3 columns — it does not adapt on tablets
+- Fixture posters point at `image.tmdb.org` directly rather than the Docket proxy, so they do
+  not load on ISPs that block it (see `movie-logo-glance.md`)

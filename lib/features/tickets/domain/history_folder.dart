@@ -26,22 +26,33 @@ class HistoryFolderSummary {
 }
 
 /// One month bucket inside a category, newest first.
-class HistoryMonthSection {
-  const HistoryMonthSection({
+/// How far apart archive section headers are spaced.
+enum HistorySectionSpan {
+  /// "February 2025" — the default, and what dated rows use.
+  month,
+
+  /// "2025". Posters are dense enough that a header per month would leave
+  /// one- and two-tile sections stranded between rules.
+  year,
+}
+
+class HistoryDateSection {
+  const HistoryDateSection({
     required this.label,
     required this.items,
-    this.month,
+    this.periodStart,
   });
 
-  /// "February 2025", or "Undated" when no date could be resolved.
+  /// "February 2025", "2025", or "Undated" when no date could be resolved.
   final String label;
 
-  /// First of the month, or null for the undated bucket.
-  final DateTime? month;
+  /// Start of the section's period — first of the month or first of the year —
+  /// or null for the undated bucket.
+  final DateTime? periodStart;
 
   final List<WalletPassItem> items;
 
-  bool get isUndated => month == null;
+  bool get isUndated => periodStart == null;
 }
 
 /// Label for the trailing bucket of passes whose date could not be resolved.
@@ -137,29 +148,44 @@ List<HistoryFolderSummary> buildHistoryFolders(List<WalletPassItem> all) {
   return folders;
 }
 
-/// Buckets passes into month sections, newest first, undated last.
+/// Buckets passes into dated sections, newest first, undated last.
+///
+/// [span] controls how coarse the buckets are — see [HistorySectionSpan].
 ///
 /// Undated passes are never dropped — hiding a pass because a date string did
 /// not parse would be worse than showing it without one.
-List<HistoryMonthSection> buildHistoryMonthSections(List<WalletPassItem> items) {
-  final List<HistoryMonthSection> sections = <HistoryMonthSection>[];
+List<HistoryDateSection> buildHistorySections(
+  List<WalletPassItem> items, {
+  HistorySectionSpan span = HistorySectionSpan.month,
+}) {
+  final List<HistoryDateSection> sections = <HistoryDateSection>[];
   final List<WalletPassItem> undated = <WalletPassItem>[];
 
-  DateTime? currentMonth;
+  DateTime startOf(DateTime date) => switch (span) {
+    HistorySectionSpan.month => DateTime(date.year, date.month),
+    HistorySectionSpan.year => DateTime(date.year),
+  };
+
+  String labelFor(DateTime start) => switch (span) {
+    HistorySectionSpan.month => PassActivityDate.monthLabel(start),
+    HistorySectionSpan.year => PassActivityDate.yearLabel(start),
+  };
+
+  DateTime? currentStart;
   List<WalletPassItem> bucket = <WalletPassItem>[];
 
   void flush() {
-    if (currentMonth == null || bucket.isEmpty) return;
+    if (currentStart == null || bucket.isEmpty) return;
     sections.add(
-      HistoryMonthSection(
-        label: PassActivityDate.monthLabel(currentMonth),
-        month: currentMonth,
+      HistoryDateSection(
+        label: labelFor(currentStart),
+        periodStart: currentStart,
         items: bucket,
       ),
     );
   }
 
-  // Sorted first, so every dated pass precedes every undated one and months
+  // Sorted first, so every dated pass precedes every undated one and periods
   // arrive already in descending order.
   for (final WalletPassItem item in _sortByActivityDateDesc(items)) {
     final DateTime? date = PassActivityDate.of(item);
@@ -167,10 +193,10 @@ List<HistoryMonthSection> buildHistoryMonthSections(List<WalletPassItem> items) 
       undated.add(item);
       continue;
     }
-    final DateTime month = DateTime(date.year, date.month);
-    if (month != currentMonth) {
+    final DateTime start = startOf(date);
+    if (start != currentStart) {
       flush();
-      currentMonth = month;
+      currentStart = start;
       bucket = <WalletPassItem>[];
     }
     bucket.add(item);
@@ -179,7 +205,7 @@ List<HistoryMonthSection> buildHistoryMonthSections(List<WalletPassItem> items) 
 
   if (undated.isNotEmpty) {
     sections.add(
-      HistoryMonthSection(label: kUndatedSectionLabel, items: undated),
+      HistoryDateSection(label: kUndatedSectionLabel, items: undated),
     );
   }
   return sections;
