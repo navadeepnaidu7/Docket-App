@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/studio_backdrop.dart';
 import '../../domain/bus_pass_models.dart';
+import '../pass_typography.dart';
 import 'bus_ticket_face.dart';
 
 class BusPassDetailScreen extends StatelessWidget {
@@ -33,11 +33,7 @@ class BusPassDetailScreen extends StatelessWidget {
                         child: Text(
                           pass.operator.trim().isEmpty ? 'Bus' : pass.operator,
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: scheme.onSurface,
-                          ),
+                          style: PassType.screenTitle(scheme.onSurface),
                         ),
                       ),
                       const SizedBox(width: 48),
@@ -56,11 +52,8 @@ class BusPassDetailScreen extends StatelessWidget {
                         const SizedBox(height: 24),
                         Text(
                           'Passengers',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.4,
-                            color: AppTokens.secondaryLabel(scheme),
+                          style: PassType.sectionTitle(
+                            AppTokens.secondaryLabel(scheme),
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -69,11 +62,7 @@ class BusPassDetailScreen extends StatelessWidget {
                             padding: const EdgeInsets.only(bottom: 8),
                             child: Text(
                               p.seat.isEmpty ? p.name : '${p.name} · ${p.seat}',
-                              style: GoogleFonts.inter(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: scheme.onSurface,
-                              ),
+                              style: PassType.itemTitle(scheme.onSurface),
                             ),
                           ),
                       ],

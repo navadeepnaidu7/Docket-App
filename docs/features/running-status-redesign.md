@@ -11,14 +11,17 @@ progress legible at a glance:
 
 | Piece | Treatment |
 |-------|-----------|
-| Spine | 6px rounded bar. Solid ink for the travelled portion, faint track for what's ahead |
-| Node | Large hollow ring (11px radius, 3.5px stroke) filled with the surface color |
+| Spine | 5px rounded bar. Solid ink for the travelled portion, faint track for what's ahead |
+| Node | Hollow ring (9px radius, 3px stroke) filled with the surface color |
 | Time | Small grey pill above the station name |
-| Station | 21px bold, the loudest thing in the row |
+| Station | `PassType.itemTitle` — the loudest thing in the row, but on the shared ramp |
 | Sub-line | Platform / date, with a chevron when there is more to say |
 | Status | Right-aligned pill — green when on time, amber when late, grey once departed |
 
-Generous vertical rhythm (28px between stops) so the spine reads as distance covered.
+Every size comes from `PassType` (see `pass-typography.md`). The first cut of this screen set
+the station name at 21px with a 6px spine and 11px rings, which made a four-stop journey feel
+like a poster: correct in shape, far too loud next to the movie and bus passes. The ramp now
+tops out at 16 across all three.
 
 ## Honest status, not decorative status
 

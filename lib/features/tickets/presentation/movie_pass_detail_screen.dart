@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/movie_pass_models.dart';
 import 'movie/movie_ticket_code_screen.dart';
 import 'movie/movie_ticket_face.dart';
+import 'pass_typography.dart';
 
 /// Fullscreen e-ticket detail — shared face + booking/cinema sections.
 class MoviePassDetailScreen extends StatelessWidget {
@@ -51,12 +51,7 @@ class MoviePassDetailScreen extends StatelessWidget {
                     child: Text(
                       'E-Ticket',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
-                        color: ink,
-                      ),
+                      style: PassType.screenTitle(ink),
                     ),
                   ),
                   IconButton(
@@ -182,14 +177,7 @@ class _InfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            title,
-            style: GoogleFonts.inter(
-              color: ink,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          Text(title, style: PassType.sectionTitle(ink)),
           const SizedBox(height: 6),
           ...rows.map(
             ((String, String) r) => Padding(
@@ -199,24 +187,10 @@ class _InfoCard extends StatelessWidget {
                 children: <Widget>[
                   SizedBox(
                     width: 110,
-                    child: Text(
-                      r.$1,
-                      style: GoogleFonts.inter(
-                        color: muted,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    child: Text(r.$1, style: PassType.label(muted)),
                   ),
                   Expanded(
-                    child: Text(
-                      r.$2,
-                      style: GoogleFonts.inter(
-                        color: ink,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    child: Text(r.$2, style: PassType.value(ink)),
                   ),
                 ],
               ),

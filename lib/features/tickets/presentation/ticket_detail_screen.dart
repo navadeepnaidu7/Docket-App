@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/wallet/wallet_card_metrics.dart';
 import '../domain/ticket_models.dart';
+import 'pass_typography.dart';
 import 'train/halt_status.dart';
 import 'train/train_ticket_face.dart';
 
@@ -53,15 +53,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                Text(
-                  'Boarding code',
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                    color: ink,
-                  ),
-                ),
+                Text('Boarding code', style: PassType.screenTitle(ink)),
                 const SizedBox(height: 18),
                 Container(
                   width: 188,
@@ -89,22 +81,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  t.pnr,
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 2.2,
-                    color: ink,
-                  ),
-                ),
+                Text(t.pnr, style: PassType.code(ink)),
                 const SizedBox(height: 4),
                 Text(
                   'PNR Number',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: ink.withValues(alpha: 0.5),
-                  ),
+                  style: PassType.label(ink.withValues(alpha: 0.5)),
                 ),
               ],
             ),
@@ -146,12 +127,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     child: Text(
                       'E-Ticket',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
-                        color: ink,
-                      ),
+                      style: PassType.screenTitle(ink),
                     ),
                   ),
                   const SizedBox(width: 48),
@@ -348,12 +324,9 @@ class _SegButton extends StatelessWidget {
         child: AnimatedDefaultTextStyle(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: selected ? ink : ink.withValues(alpha: 0.48),
-            letterSpacing: -0.15,
-          ),
+          style: PassType.value(
+            selected ? ink : ink.withValues(alpha: 0.48),
+          ).copyWith(fontWeight: selected ? FontWeight.w700 : FontWeight.w500),
           child: Text(label),
         ),
       ),
@@ -596,12 +569,7 @@ class _LiveStatusTab extends StatelessWidget {
                     ),
                     child: Text(
                       t.trainNumber,
-                      style: GoogleFonts.inter(
-                        color: _kMint,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.3,
-                      ),
+                      style: PassType.pill(_kMint),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -610,11 +578,8 @@ class _LiveStatusTab extends StatelessWidget {
                       t.trainName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        color: Colors.white.withValues(alpha: 0.92),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.15,
+                      style: PassType.value(
+                        Colors.white.withValues(alpha: 0.92),
                       ),
                     ),
                   ),
@@ -640,14 +605,7 @@ class _LiveStatusTab extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 5),
-                          Text(
-                            'Live',
-                            style: GoogleFonts.inter(
-                              color: _kMint,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                          Text('Live', style: PassType.pill(_kMint)),
                         ],
                       ),
                     ),
@@ -669,10 +627,8 @@ class _LiveStatusTab extends StatelessWidget {
                       children: <Widget>[
                         Text(
                           t.duration,
-                          style: GoogleFonts.inter(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                          style: PassType.micro(
+                            Colors.white.withValues(alpha: 0.7),
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -700,12 +656,8 @@ class _LiveStatusTab extends StatelessWidget {
               const SizedBox(height: 14),
               Text(
                 t.liveStatusLabel,
-                style: GoogleFonts.inter(
-                  color: completed
-                      ? Colors.white.withValues(alpha: 0.45)
-                      : _kMint,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
+                style: PassType.value(
+                  completed ? Colors.white.withValues(alpha: 0.45) : _kMint,
                 ),
               ),
             ],
@@ -723,11 +675,7 @@ class _LiveStatusTab extends StatelessWidget {
                     ? 'Journey completed. Live tracking is no longer available.'
                     : 'Live tracking will appear once the train departs.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: muted,
-                  height: 1.4,
-                ),
+                style: PassType.label(muted).copyWith(height: 1.4),
               ),
             ),
           )
@@ -767,10 +715,7 @@ class _LiveStatusTab extends StatelessWidget {
         Center(
           child: Text(
             'All times are in IST',
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              color: muted.withValues(alpha: 0.75),
-            ),
+            style: PassType.micro(muted.withValues(alpha: 0.75)),
           ),
         ),
       ],
@@ -797,13 +742,7 @@ class _DarkEndpoint extends StatelessWidget {
       children: <Widget>[
         Text(
           time,
-          style: GoogleFonts.inter(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.3,
-            height: 1.0,
-          ),
+          style: PassType.sectionTitle(Colors.white).copyWith(height: 1.0),
         ),
         const SizedBox(height: 4),
         Text(
@@ -811,11 +750,7 @@ class _DarkEndpoint extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-          style: GoogleFonts.inter(
-            color: Colors.white.withValues(alpha: 0.7),
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
+          style: PassType.caption(Colors.white.withValues(alpha: 0.7)),
         ),
       ],
     );
@@ -918,25 +853,14 @@ class _JourneyDock extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                    height: 1.2,
-                    color: ink,
-                  ),
+                  style: PassType.itemTitle(ink),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   route,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                    height: 1.2,
-                    color: muted,
-                  ),
+                  style: PassType.caption(muted),
                 ),
               ],
             ),
@@ -956,12 +880,9 @@ class _JourneyDock extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                height: 1.2,
-                color: completed ? muted : (isDark ? _kMint : _kCharcoal),
-              ),
+              style: PassType.pill(
+                completed ? muted : (isDark ? _kMint : _kCharcoal),
+              ).copyWith(height: 1.2),
             ),
           ),
         ],
@@ -1099,10 +1020,13 @@ class _JourneyTimelineState extends State<_JourneyTimeline>
 
 /// Vertical space above a node, which the painter must match to centre the ring
 /// on the time pill.
-const double _kHaltTopGap = 18;
+const double _kHaltTopGap = 14;
 
 /// Half the time pill's height — the node's centre line.
-const double _kHaltNodeInset = 11;
+const double _kHaltNodeInset = 10;
+
+/// Width of the spine gutter. Sized to the ring so the bar sits centred.
+const double _kSpineGutter = 22;
 
 class _HaltRow extends StatelessWidget {
   const _HaltRow({
@@ -1160,7 +1084,7 @@ class _HaltRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           SizedBox(
-            width: 26,
+            width: _kSpineGutter,
             child: CustomPaint(
               painter: _SpinePainter(
                 topFilled: reached,
@@ -1176,7 +1100,7 @@ class _HaltRow extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Padding(
               padding: EdgeInsets.only(
@@ -1210,15 +1134,12 @@ class _HaltRow extends StatelessWidget {
                                   halt.actual!,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: _toneColor(
+                                  style: PassType.pill(
+                                    _toneColor(
                                       status?.tone ?? HaltStatusTone.warning,
                                       isDark: isDark,
                                       muted: muted,
                                     ),
-                                    height: 1.0,
                                   ),
                                 ),
                               ),
@@ -1238,21 +1159,15 @@ class _HaltRow extends StatelessWidget {
                       ],
                     ],
                   ),
-                  const SizedBox(height: 9),
+                  const SizedBox(height: 7),
                   Text(
                     halt.station,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 21,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.5,
-                      color: nameColor,
-                      height: 1.15,
-                    ),
+                    style: PassType.itemTitle(nameColor),
                   ),
                   if (subtitle.isNotEmpty) ...<Widget>[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Row(
                       children: <Widget>[
                         Flexible(
@@ -1260,18 +1175,13 @@ class _HaltRow extends StatelessWidget {
                             subtitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w500,
-                              color: muted,
-                              height: 1.2,
-                            ),
+                            style: PassType.caption(muted),
                           ),
                         ),
                         const SizedBox(width: 2),
                         Icon(
                           Icons.chevron_right_rounded,
-                          size: 17,
+                          size: 15,
                           color: muted.withValues(alpha: 0.7),
                         ),
                       ],
@@ -1304,21 +1214,18 @@ class _TimePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: isDark
             ? Colors.white.withValues(alpha: 0.09)
             : const Color(0xFFEDEDEF),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(7),
       ),
       child: Text(
         time,
-        style: GoogleFonts.inter(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.1,
-          height: 1.0,
-          color: struckThrough ? ink.withValues(alpha: 0.55) : ink,
+        style: PassType.pill(
+          struckThrough ? ink.withValues(alpha: 0.55) : ink,
+        ).copyWith(
           decoration: struckThrough ? TextDecoration.lineThrough : null,
           decorationColor: ink.withValues(alpha: 0.55),
         ),
@@ -1370,7 +1277,7 @@ class _StatusPill extends StatelessWidget {
     };
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(11, 6, 7, 6),
+      padding: const EdgeInsets.fromLTRB(10, 5, 6, 5),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
@@ -1383,17 +1290,11 @@ class _StatusPill extends StatelessWidget {
               status.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.1,
-                height: 1.0,
-                color: fg,
-              ),
+              style: PassType.pill(fg),
             ),
           ),
           const SizedBox(width: 1),
-          Icon(Icons.chevron_right_rounded, size: 15, color: fg),
+          Icon(Icons.chevron_right_rounded, size: 14, color: fg),
         ],
       ),
     );
@@ -1418,23 +1319,23 @@ class _RideChip extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           SizedBox(
-            width: 26,
+            width: _kSpineGutter,
             child: Center(
               child: Container(
-                width: 6,
+                width: 5,
                 decoration: BoxDecoration(
                   color: _kMint,
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
+            padding: const EdgeInsets.symmetric(vertical: 5),
             child: Container(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
               decoration: BoxDecoration(
                 color: isDark
                     ? _kMint.withValues(alpha: 0.12)
@@ -1444,15 +1345,12 @@ class _RideChip extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  const Icon(Icons.train_rounded, size: 15, color: _kMint),
-                  const SizedBox(width: 7),
+                  const Icon(Icons.train_rounded, size: 14, color: _kMint),
+                  const SizedBox(width: 6),
                   Text(
                     'Ride $stops stops',
-                    style: GoogleFonts.inter(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.1,
-                      color: isDark ? Colors.white : _kCharcoal,
+                    style: PassType.pill(
+                      isDark ? Colors.white : _kCharcoal,
                     ),
                   ),
                 ],
@@ -1494,9 +1392,9 @@ class _SpinePainter extends CustomPainter {
   final Color surface;
   final bool isDark;
 
-  static const double _bar = 6;
-  static const double _ringRadius = 11;
-  static const double _ringStroke = 3.5;
+  static const double _bar = 5;
+  static const double _ringRadius = 9;
+  static const double _ringStroke = 3;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1625,34 +1523,16 @@ class _PassengerInfoRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      'Passenger $index',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: muted,
-                      ),
-                    ),
+                    Text('Passenger $index', style: PassType.caption(muted)),
                     const SizedBox(height: 2),
-                    Text(
-                      passenger.name,
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: ink,
-                      ),
-                    ),
+                    Text(passenger.name, style: PassType.itemTitle(ink)),
                   ],
                 ),
               ),
               Text(
                 passenger.seatLabel,
                 textAlign: TextAlign.right,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: ink,
-                ),
+                style: PassType.value(ink),
               ),
             ],
           ),
@@ -1703,24 +1583,13 @@ class _InfoRow extends StatelessWidget {
               Icon(icon, size: 18, color: muted),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: muted,
-                  ),
-                ),
+                child: Text(label, style: PassType.label(muted)),
               ),
               Flexible(
                 child: Text(
                   value,
                   textAlign: TextAlign.right,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: valueColor ?? ink,
-                  ),
+                  style: PassType.value(valueColor ?? ink),
                 ),
               ),
               if (trailing != null) ...<Widget>[
