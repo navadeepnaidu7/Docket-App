@@ -5,6 +5,7 @@ import '../../../core/haptics/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/wallet/wallet_card_metrics.dart';
 import '../domain/ticket_models.dart';
+import 'train/halt_status.dart';
 import 'train/train_ticket_face.dart';
 
 /// Fullscreen train pass detail — ticket face, then Details | Live status.
@@ -735,21 +736,25 @@ class _LiveStatusTab extends StatelessWidget {
             surface: cardSurface,
             border: border,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
               child: _JourneyTimeline(
                 halts: halts,
                 ink: ink,
                 muted: muted,
+                surface: cardSurface,
                 isDark: isDark,
                 completed: completed,
+                runState: t.runState,
+                delayMinutes: t.delayMinutes,
               ),
             ),
           ),
         if (halts.isNotEmpty) ...<Widget>[
           const SizedBox(height: 14),
-          _StatusDock(
-            left: etaLeft,
-            right: completed ? 'Complete' : t.liveStatusLabel,
+          _JourneyDock(
+            title: '${t.trainNumber} ${t.trainName}',
+            route: '${t.fromName} → ${t.toName}',
+            status: etaLeft,
             ink: ink,
             muted: muted,
             isDark: isDark,
@@ -862,10 +867,12 @@ class _MiniTrackPainter extends CustomPainter {
       old.progress != progress;
 }
 
-class _StatusDock extends StatelessWidget {
-  const _StatusDock({
-    required this.left,
-    required this.right,
+/// Anchors the timeline: which train this is, where it runs, and how far along.
+class _JourneyDock extends StatelessWidget {
+  const _JourneyDock({
+    required this.title,
+    required this.route,
+    required this.status,
     required this.ink,
     required this.muted,
     required this.isDark,
@@ -874,8 +881,9 @@ class _StatusDock extends StatelessWidget {
     required this.completed,
   });
 
-  final String left;
-  final String right;
+  final String title;
+  final String route;
+  final String status;
   final Color ink;
   final Color muted;
   final bool isDark;
@@ -886,10 +894,10 @@ class _StatusDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+      padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
       decoration: BoxDecoration(
         color: cardSurface,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: border, width: 0.5),
         boxShadow: <BoxShadow>[
           BoxShadow(
@@ -902,37 +910,56 @@ class _StatusDock extends StatelessWidget {
       child: Row(
         children: <Widget>[
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Text(
-                left,
-                style: GoogleFonts.inter(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.15,
-                  color: ink,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                    height: 1.2,
+                    color: ink,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 3),
+                Text(
+                  route,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    height: 1.2,
+                    color: muted,
+                  ),
+                ),
+              ],
             ),
           ),
+          const SizedBox(width: 10),
           Container(
-            constraints: const BoxConstraints(maxWidth: 160),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            constraints: const BoxConstraints(maxWidth: 132),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: BoxDecoration(
               color: completed
                   ? muted.withValues(alpha: isDark ? 0.16 : 0.12)
-                  : (isDark
-                      ? _kMint.withValues(alpha: 0.18)
-                      : _kMintSoft),
+                  : (isDark ? _kMint.withValues(alpha: 0.18) : _kMintSoft),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
-              right,
-              maxLines: 1,
+              status,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
               style: GoogleFonts.inter(
-                fontSize: 12.5,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
+                height: 1.2,
                 color: completed ? muted : (isDark ? _kMint : _kCharcoal),
               ),
             ),
@@ -950,15 +977,24 @@ class _JourneyTimeline extends StatefulWidget {
     required this.halts,
     required this.ink,
     required this.muted,
+    required this.surface,
     required this.isDark,
     required this.completed,
+    required this.runState,
+    required this.delayMinutes,
   });
 
   final List<TicketHalt> halts;
   final Color ink;
   final Color muted;
+
+  /// Fill inside each ring, so a node reads as a hole punched in the spine
+  /// rather than a dot sitting on top of it.
+  final Color surface;
   final bool isDark;
   final bool completed;
+  final TrainRunState runState;
+  final int? delayMinutes;
 
   @override
   State<_JourneyTimeline> createState() => _JourneyTimelineState();
@@ -1008,6 +1044,14 @@ class _JourneyTimelineState extends State<_JourneyTimeline>
     final bool showRide =
         !widget.completed && rideStops > 1 && current < n - 1;
 
+    // "Reached" drives the spine fill: the bar is solid up to where the train
+    // actually is and faint beyond it, so progress is legible without reading
+    // a single word.
+    bool reached(int i) =>
+        widget.completed ||
+        list[i].state == HaltState.departed ||
+        list[i].state == HaltState.arriving;
+
     return AnimatedBuilder(
       animation: _pulse,
       builder: (BuildContext context, Widget? child) {
@@ -1021,8 +1065,19 @@ class _JourneyTimelineState extends State<_JourneyTimeline>
                 isCurrent: i == current && !widget.completed,
                 isPast: list[i].state == HaltState.departed &&
                     !(i == current && !widget.completed),
+                reached: reached(i),
+                // The segment below this node belongs to the next halt: it only
+                // darkens once the train has got there.
+                nextReached: i + 1 < n && reached(i + 1),
+                status: resolveHaltStatus(
+                  halt: list[i],
+                  runState: widget.runState,
+                  delayMinutes: widget.delayMinutes,
+                  completed: widget.completed,
+                ),
                 ink: widget.ink,
                 muted: widget.muted,
+                surface: widget.surface,
                 isDark: widget.isDark,
                 pulse: _pulse.value,
                 isFirst: i == 0,
@@ -1042,6 +1097,13 @@ class _JourneyTimelineState extends State<_JourneyTimeline>
   }
 }
 
+/// Vertical space above a node, which the painter must match to centre the ring
+/// on the time pill.
+const double _kHaltTopGap = 18;
+
+/// Half the time pill's height — the node's centre line.
+const double _kHaltNodeInset = 11;
+
 class _HaltRow extends StatelessWidget {
   const _HaltRow({
     required this.halt,
@@ -1049,8 +1111,12 @@ class _HaltRow extends StatelessWidget {
     required this.total,
     required this.isCurrent,
     required this.isPast,
+    required this.reached,
+    required this.nextReached,
+    required this.status,
     required this.ink,
     required this.muted,
+    required this.surface,
     required this.isDark,
     required this.pulse,
     required this.isFirst,
@@ -1062,8 +1128,12 @@ class _HaltRow extends StatelessWidget {
   final int total;
   final bool isCurrent;
   final bool isPast;
+  final bool reached;
+  final bool nextReached;
+  final HaltStatus? status;
   final Color ink;
   final Color muted;
+  final Color surface;
   final bool isDark;
   final double pulse;
   final bool isFirst;
@@ -1071,122 +1141,259 @@ class _HaltRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String subtitle = switch (halt.state) {
-      HaltState.departed => [
-          'Departed',
-          if (halt.platform != null) halt.platform!,
-        ].join(' · '),
-      HaltState.arriving => [
-          'Arriving now',
-          if (halt.platform != null) halt.platform!,
-        ].join(' · '),
-      HaltState.upcoming => [
-          if (halt.platform != null) halt.platform!,
-          if (index == total - 1) 'Destination' else halt.dateLabel,
-        ].where((String s) => s.isNotEmpty).join(' · '),
-    };
+    // The sub-line carries what the pill does not: where to stand, and which
+    // day this halt falls on.
+    final String subtitle = <String>[
+      if (halt.platform != null && halt.platform!.trim().isNotEmpty)
+        halt.platform!.trim(),
+      if (index == total - 1) 'Destination' else halt.dateLabel,
+    ].where((String s) => s.isNotEmpty).join(' · ');
 
+    // Passed stops recede so the eye lands on where the train is now.
     final Color nameColor =
-        isPast && !isCurrent ? ink.withValues(alpha: 0.45) : ink;
-    final Color subColor = isCurrent
-        ? _kMint
-        : isPast
-            ? muted.withValues(alpha: 0.8)
-            : muted;
+        isPast && !isCurrent ? ink.withValues(alpha: 0.5) : ink;
+
+    final bool revised = halt.actual != null && halt.actual != halt.time;
 
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           SizedBox(
-            width: 24,
+            width: 26,
             child: CustomPaint(
-              painter: _MintSpinePainter(
-                isPast: isPast || isCurrent,
+              painter: _SpinePainter(
+                topFilled: reached,
+                bottomFilled: nextReached,
+                nodeFilled: reached,
                 isCurrent: isCurrent,
                 isFirst: isFirst,
                 isLast: isLast,
                 pulse: pulse,
+                ink: ink,
+                surface: surface,
                 isDark: isDark,
               ),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Expanded(
             child: Padding(
               padding: EdgeInsets.only(
-                top: isFirst ? 0 : 11,
-                bottom: isLast ? 6 : 11,
+                top: isFirst ? 0 : _kHaltTopGap,
+                bottom: isLast ? 4 : _kHaltTopGap,
               ),
-              child: Row(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          halt.station,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
-                            fontSize: isCurrent ? 15 : 14,
-                            fontWeight:
-                                isCurrent ? FontWeight.w700 : FontWeight.w600,
-                            letterSpacing: -0.2,
-                            color: nameColor,
-                            height: 1.2,
-                          ),
-                        ),
-                        if (subtitle.isNotEmpty) ...<Widget>[
-                          const SizedBox(height: 3),
-                          Text(
-                            subtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: subColor,
-                              height: 1.15,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  // Both sides have to be able to give: a narrow phone plus a
+                  // revised time plus a wide status label ("2 hr 5 min late")
+                  // does not fit at natural width.
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: <Widget>[
-                      Text(
-                        halt.time,
-                        style: GoogleFonts.inter(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                          color: nameColor,
-                          height: 1.15,
+                      Flexible(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            _TimePill(
+                              time: halt.time,
+                              struckThrough: revised,
+                              ink: nameColor,
+                              isDark: isDark,
+                            ),
+                            if (revised) ...<Widget>[
+                              const SizedBox(width: 7),
+                              Flexible(
+                                child: Text(
+                                  halt.actual!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: _toneColor(
+                                      status?.tone ?? HaltStatusTone.warning,
+                                      isDark: isDark,
+                                      muted: muted,
+                                    ),
+                                    height: 1.0,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                      if (halt.actual != null &&
-                          halt.actual != halt.time) ...<Widget>[
-                        const SizedBox(height: 2),
-                        Text(
-                          halt.actual!,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: _kMint,
-                            height: 1.1,
+                      if (status != null) ...<Widget>[
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: _StatusPill(
+                            status: status!,
+                            isDark: isDark,
+                            muted: muted,
                           ),
                         ),
                       ],
                     ],
                   ),
+                  const SizedBox(height: 9),
+                  Text(
+                    halt.station,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.5,
+                      color: nameColor,
+                      height: 1.15,
+                    ),
+                  ),
+                  if (subtitle.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: <Widget>[
+                        Flexible(
+                          child: Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w500,
+                              color: muted,
+                              height: 1.2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 17,
+                          color: muted.withValues(alpha: 0.7),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Scheduled time, struck through when a revised time sits beside it.
+class _TimePill extends StatelessWidget {
+  const _TimePill({
+    required this.time,
+    required this.struckThrough,
+    required this.ink,
+    required this.isDark,
+  });
+
+  final String time;
+  final bool struckThrough;
+  final Color ink;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.09)
+            : const Color(0xFFEDEDEF),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        time,
+        style: GoogleFonts.inter(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.1,
+          height: 1.0,
+          color: struckThrough ? ink.withValues(alpha: 0.55) : ink,
+          decoration: struckThrough ? TextDecoration.lineThrough : null,
+          decorationColor: ink.withValues(alpha: 0.55),
+        ),
+      ),
+    );
+  }
+}
+
+Color _toneColor(
+  HaltStatusTone tone, {
+  required bool isDark,
+  required Color muted,
+}) {
+  return switch (tone) {
+    HaltStatusTone.neutral => muted,
+    HaltStatusTone.live => _kMint,
+    HaltStatusTone.positive => isDark ? _kMint : const Color(0xFF1B7F4B),
+    HaltStatusTone.warning => isDark
+        ? const Color(0xFFE9A23B)
+        : const Color(0xFF9A5B00),
+  };
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({
+    required this.status,
+    required this.isDark,
+    required this.muted,
+  });
+
+  final HaltStatus status;
+  final bool isDark;
+  final Color muted;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color fg = _toneColor(status.tone, isDark: isDark, muted: muted);
+    final Color bg = switch (status.tone) {
+      HaltStatusTone.neutral => isDark
+          ? Colors.white.withValues(alpha: 0.07)
+          : const Color(0xFFF0F0F2),
+      HaltStatusTone.live ||
+      HaltStatusTone.positive => isDark
+          ? _kMint.withValues(alpha: 0.16)
+          : const Color(0xFFDDF3E5),
+      HaltStatusTone.warning => isDark
+          ? const Color(0xFFE9A23B).withValues(alpha: 0.16)
+          : const Color(0xFFFBEBD2),
+    };
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(11, 6, 7, 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Flexible(
+            child: Text(
+              status.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.1,
+                height: 1.0,
+                color: fg,
+              ),
+            ),
+          ),
+          const SizedBox(width: 1),
+          Icon(Icons.chevron_right_rounded, size: 15, color: fg),
         ],
       ),
     );
@@ -1211,18 +1418,18 @@ class _RideChip extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           SizedBox(
-            width: 24,
+            width: 26,
             child: Center(
               child: Container(
-                width: 3,
+                width: 6,
                 decoration: BoxDecoration(
                   color: _kMint,
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(3),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Container(
@@ -1258,102 +1465,104 @@ class _RideChip extends StatelessWidget {
   }
 }
 
-class _MintSpinePainter extends CustomPainter {
-  _MintSpinePainter({
-    required this.isPast,
+/// The bar-and-ring spine down the left of the timeline.
+///
+/// Draws the bar first and punches the ring over it, so a node reads as a hole
+/// in a continuous rail rather than a bead threaded onto it.
+class _SpinePainter extends CustomPainter {
+  _SpinePainter({
+    required this.topFilled,
+    required this.bottomFilled,
+    required this.nodeFilled,
     required this.isCurrent,
     required this.isFirst,
     required this.isLast,
     required this.pulse,
+    required this.ink,
+    required this.surface,
     required this.isDark,
   });
 
-  final bool isPast;
+  final bool topFilled;
+  final bool bottomFilled;
+  final bool nodeFilled;
   final bool isCurrent;
   final bool isFirst;
   final bool isLast;
   final double pulse;
+  final Color ink;
+  final Color surface;
   final bool isDark;
+
+  static const double _bar = 6;
+  static const double _ringRadius = 11;
+  static const double _ringStroke = 3.5;
 
   @override
   void paint(Canvas canvas, Size size) {
     final double cx = size.width / 2;
-    final double cy = isFirst ? 8.0 : 16.0;
-    final Color track =
-        isDark ? const Color(0xFF3A3F3B) : const Color(0xFFDCE3DC);
+    final double cy = (isFirst ? 0.0 : _kHaltTopGap) + _kHaltNodeInset;
 
-    final Paint active = Paint()
-      ..color = _kMint
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-    final Paint idle = Paint()
-      ..color = track
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
+    final Color track = ink.withValues(alpha: isDark ? 0.16 : 0.11);
 
-    if (!isFirst) {
-      canvas.drawLine(
-        Offset(cx, 0),
-        Offset(cx, cy),
-        isPast || isCurrent ? active : idle,
-      );
-    }
-    if (!isLast) {
-      canvas.drawLine(
-        Offset(cx, cy),
-        Offset(cx, size.height),
-        (isPast && !isCurrent) || isCurrent ? active : idle,
+    void bar(double fromY, double toY, bool filled) {
+      if (toY <= fromY) return;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTRB(cx - _bar / 2, fromY, cx + _bar / 2, toY),
+          const Radius.circular(_bar / 2),
+        ),
+        Paint()..color = filled ? ink : track,
       );
     }
 
-    if (isFirst) {
-      canvas.drawCircle(Offset(cx, cy), 6, Paint()..color = _kMint);
-      canvas.drawCircle(Offset(cx, cy), 2.5, Paint()..color = Colors.white);
-    } else if (isCurrent) {
-      final double ring = 1.0 + 0.2 * pulse;
+    // Overlap the ring slightly so no hairline of background shows at the seam.
+    const double overlap = 2;
+    if (!isFirst) bar(0, cy - _ringRadius + overlap, topFilled);
+    if (!isLast) bar(cy + _ringRadius - overlap, size.height, bottomFilled);
+
+    // Halo on the stop the train is pulling into, so "now" is findable without
+    // reading the pills.
+    if (isCurrent) {
       canvas.drawCircle(
         Offset(cx, cy),
-        9 * ring,
-        Paint()
-          ..color = _kMint.withValues(alpha: 0.28 * (1 - pulse * 0.4))
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2,
-      );
-      canvas.drawCircle(Offset(cx, cy), 7, Paint()..color = _kMint);
-      canvas.drawCircle(Offset(cx, cy), 3, Paint()..color = Colors.white);
-    } else if (isPast) {
-      canvas.drawCircle(Offset(cx, cy), 5, Paint()..color = _kMint);
-      canvas.drawCircle(Offset(cx, cy), 2, Paint()..color = Colors.white);
-    } else if (isLast) {
-      canvas.drawCircle(
-        Offset(cx, cy),
-        6,
-        Paint()
-          ..color = _kMint
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.2,
-      );
-      canvas.drawCircle(Offset(cx, cy), 2.4, Paint()..color = _kMint);
-    } else {
-      canvas.drawCircle(Offset(cx, cy), 4.2, Paint()..color = track);
-      canvas.drawCircle(
-        Offset(cx, cy),
-        4.2,
-        Paint()
-          ..color = _kMint.withValues(alpha: 0.35)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.4,
+        _ringRadius + 4 + 3 * pulse,
+        Paint()..color = _kMint.withValues(alpha: 0.22 * (1 - pulse)),
       );
     }
+
+    final Color ringColor = isCurrent
+        ? _kMint
+        : nodeFilled
+            ? ink
+            : ink.withValues(alpha: 0.45);
+
+    canvas.drawCircle(
+      Offset(cx, cy),
+      _ringRadius - _ringStroke / 2,
+      Paint()..color = surface,
+    );
+    canvas.drawCircle(
+      Offset(cx, cy),
+      _ringRadius - _ringStroke / 2,
+      Paint()
+        ..color = ringColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _ringStroke,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _MintSpinePainter old) {
+  bool shouldRepaint(covariant _SpinePainter old) {
     return old.pulse != pulse ||
         old.isCurrent != isCurrent ||
-        old.isPast != isPast ||
+        old.topFilled != topFilled ||
+        old.bottomFilled != bottomFilled ||
+        old.nodeFilled != nodeFilled ||
         old.isFirst != isFirst ||
         old.isLast != isLast ||
+        old.ink != ink ||
+        old.surface != surface ||
         old.isDark != isDark;
   }
 }
