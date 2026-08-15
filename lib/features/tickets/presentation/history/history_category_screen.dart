@@ -10,6 +10,7 @@ import '../../domain/pass_catalog.dart';
 import '../../domain/pass_history_category.dart';
 import 'archive_scaffold.dart';
 import 'history_pass_card.dart';
+import 'history_poster_grid.dart';
 import 'history_visuals.dart';
 import 'passes_archive_screen.dart';
 
@@ -137,18 +138,22 @@ class _MonthSections extends StatelessWidget {
             ),
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-              sliver: SliverList.separated(
-                itemCount: section.items.length,
-                separatorBuilder: (BuildContext context, int index) =>
-                    const SizedBox(height: 10),
-                itemBuilder: (BuildContext context, int index) {
-                  final WalletPassItem item = section.items[index];
-                  return HistoryPassCard(
-                    key: ValueKey<String>(item.id),
-                    item: item,
-                  );
-                },
-              ),
+              // Films are recognised by their artwork long before their title,
+              // so the movies folder shows posters rather than titled rows.
+              sliver: category == PassHistoryCategory.movie
+                  ? _PosterSection(items: section.items)
+                  : SliverList.separated(
+                      itemCount: section.items.length,
+                      separatorBuilder: (BuildContext context, int index) =>
+                          const SizedBox(height: 10),
+                      itemBuilder: (BuildContext context, int index) {
+                        final WalletPassItem item = section.items[index];
+                        return HistoryPassCard(
+                          key: ValueKey<String>(item.id),
+                          item: item,
+                        );
+                      },
+                    ),
             ),
           ],
           SliverToBoxAdapter(
@@ -158,6 +163,40 @@ class _MonthSections extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// One month's films as a poster grid.
+///
+/// A non-movie pass can only appear here if the category bucketing changes, so
+/// it falls back to the titled row rather than being dropped from the archive.
+class _PosterSection extends StatelessWidget {
+  const _PosterSection({required this.items});
+
+  final List<WalletPassItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverGrid.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        childAspectRatio: kPosterAspect,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 14,
+      ),
+      itemCount: items.length,
+      itemBuilder: (BuildContext context, int index) {
+        final WalletPassItem item = items[index];
+        return switch (item) {
+          MoviePassItem(:final pass) => HistoryPosterTile(
+            key: ValueKey<String>(item.id),
+            pass: pass,
+            dateLabel: HistoryPassPresentation.shortDateLabel(item),
+          ),
+          _ => HistoryPassCard(key: ValueKey<String>(item.id), item: item),
+        };
+      },
     );
   }
 }
