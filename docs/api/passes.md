@@ -177,11 +177,13 @@ they existed.
 | `codeType` | string | no | `qr` \| `barcode` |
 | `codePayload` | string | no | real code data |
 | `posterUrl` | string | no | Absolute Docket image-proxy URL. **May be absent** — see Poster art |
+| `logoUrl` | string | no | Absolute Docket image-proxy URL for the film's **title logo**. **May be absent** — see Title logo. *Not emitted yet* |
 | `posterHint` | string | no | UI fallback gradient family |
 
 Unknown `brand` → client maps to **`universal`**.
 
-Do **not** send logo assets; brand styling is client-side.
+Do **not** send **brand** logo assets (BookMyShow, District, …); brand styling is client-side.
+`logoUrl` is a different thing — it is the *film's* title treatment, covered below.
 
 ### Poster art
 
@@ -206,6 +208,21 @@ Indian ISPs. A raw TMDB CDN URL resolves fine on the server and then fails on th
 `posterUrl` is **absent** when the film has not been matched yet (lookup runs asynchronously
 after extraction) or when TMDB has no confident match. Clients must treat a missing poster as
 normal and render the `posterHint` gradient — never substitute a placeholder film's artwork.
+
+### Title logo
+
+`logoUrl` carries the film's transparent **title logo** (TMDB `logos`). The client renders it
+on the small wallet glance card, where a cropped poster is unreadable, and keeps the full
+poster for the opened detail view. See `docs/features/movie-logo-glance.md`.
+
+**Not emitted yet** — the field is reserved and the client already reads it, but the server has
+no logo resolution. Until it lands, glance cards fall back to the poster. Wiring it up means
+picking from TMDB `logos` (prefer `iso_639_1` matching the ticket language, fall back to `en`),
+persisting `logo_path`, and emitting an absolute URL through the same image proxy.
+
+It must be **proxied**, not a raw `image.tmdb.org` URL, for the ISP reason above, and it is
+optional on the same terms as `posterUrl`: absent is normal, and the client falls back rather
+than substituting other artwork.
 
 ---
 

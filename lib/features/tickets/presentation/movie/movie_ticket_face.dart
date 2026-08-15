@@ -51,8 +51,10 @@ class MovieTicketFace extends StatelessWidget {
   static const Key heroKey = Key('movie_pass.hero');
 
   /// Shared stub height so notch + tear align for every brand.
-  static double footerBodyHeight({required bool detail, required double scale}) =>
-      (detail ? 82.0 : 64.0) * scale;
+  static double footerBodyHeight({
+    required bool detail,
+    required double scale,
+  }) => (detail ? 82.0 : 64.0) * scale;
 
   @override
   Widget build(BuildContext context) {
@@ -61,21 +63,23 @@ class MovieTicketFace extends StatelessWidget {
       pass,
       useBrandColors: useBrandColors,
     );
-    final double scale =
-        _isGlance ? MovieTicketMetrics.glanceTallScale : 1.0;
-    final double footerHeight = footerBodyHeight(detail: !_isGlance, scale: scale);
+    final double scale = _isGlance ? MovieTicketMetrics.glanceTallScale : 1.0;
+    final double footerHeight = footerBodyHeight(
+      detail: !_isGlance,
+      scale: scale,
+    );
     final double notchFromBottom =
         footerHeight + (MovieTicketMetrics.tearHeight * scale) / 2;
-    final double factor = widthFactor ??
-        (_isGlance ? 0.94 : 1.0);
+    final double factor = widthFactor ?? (_isGlance ? 0.94 : 1.0);
 
     final Widget ticket = Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(MovieTicketMetrics.cornerR),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: style.bodyGradient.first
-                .withValues(alpha: isActive ? 0.40 : 0.28),
+            color: style.bodyGradient.first.withValues(
+              alpha: isActive ? 0.40 : 0.28,
+            ),
             blurRadius: 30,
             offset: const Offset(0, 14),
             spreadRadius: -6,
@@ -99,10 +103,7 @@ class MovieTicketFace extends StatelessWidget {
     if (factor >= 0.999) return ticket;
 
     return Align(
-      child: FractionallySizedBox(
-        widthFactor: factor,
-        child: ticket,
-      ),
+      child: FractionallySizedBox(widthFactor: factor, child: ticket),
     );
   }
 }
@@ -136,8 +137,7 @@ class _TicketBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color label =
-        Colors.white.withValues(alpha: style.labelAlpha);
+    final Color label = Colors.white.withValues(alpha: style.labelAlpha);
 
     return Stack(
       children: <Widget>[
@@ -430,10 +430,7 @@ class _TicketCodes extends StatelessWidget {
               if (_isQr)
                 Row(
                   children: <Widget>[
-                    TicketQrTile(
-                      size: 88,
-                      accent: accent,
-                    ),
+                    TicketQrTile(size: 88, accent: accent),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Text(
@@ -507,9 +504,9 @@ class _HeroBand extends StatelessWidget {
     this.height,
     this.aspectRatio,
   }) : assert(
-          (height == null) != (aspectRatio == null),
-          'Size the hero by exactly one of height or aspectRatio',
-        );
+         (height == null) != (aspectRatio == null),
+         'Size the hero by exactly one of height or aspectRatio',
+       );
 
   final MoviePass pass;
   final bool detail;
@@ -522,12 +519,25 @@ class _HeroBand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Fixtures may pin a bundled asset; everything else comes from the backend's TMDB
-    // image proxy. Either may be absent, in which case the gradient backdrop is the art.
+    // Design probe: glance shows a transparent TMDB title logo on a dark plate when
+    // logoUrl is present. Detail always uses the full one-sheet poster (or gradient).
+    final bool logoGlance = !detail && pass.resolvedLogoUrl != null;
+    final Widget art = logoGlance ? _buildLogoGlanceArt() : _buildPosterArt();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: aspectRatio != null
+          ? AspectRatio(aspectRatio: aspectRatio!, child: art)
+          : SizedBox(height: height, width: double.infinity, child: art),
+    );
+  }
+
+  /// Full poster / fixture asset / gradient — detail screen and logo-less glance.
+  Widget _buildPosterArt() {
     final String? asset = pass.resolvedPosterAsset;
     final String? url = pass.resolvedPosterUrl;
 
-    final Widget art = Stack(
+    return Stack(
       fit: StackFit.expand,
       children: <Widget>[
         // Painted first and never removed, so it shows through while the poster
@@ -537,8 +547,9 @@ class _HeroBand extends StatelessWidget {
           Image.asset(
             asset,
             fit: BoxFit.cover,
-            errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) =>
-                const SizedBox.shrink(),
+            errorBuilder:
+                (BuildContext context, Object error, StackTrace? stackTrace) =>
+                    const SizedBox.shrink(),
           )
         else if (url != null)
           LayoutBuilder(
@@ -548,7 +559,8 @@ class _HeroBand extends StatelessWidget {
                 fit: BoxFit.cover,
                 fadeInDuration: const Duration(milliseconds: 220),
                 memCacheWidth: _decodeWidth(context, constraints.maxWidth),
-                placeholder: (BuildContext context, String url) => const _PosterShimmer(),
+                placeholder: (BuildContext context, String url) =>
+                    const _PosterShimmer(),
                 errorWidget: (BuildContext context, String url, Object error) =>
                     const SizedBox.shrink(),
               );
@@ -559,12 +571,51 @@ class _HeroBand extends StatelessWidget {
         if (detail) _buildDetailScreenOverlay(),
       ],
     );
+  }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: aspectRatio != null
-          ? AspectRatio(aspectRatio: aspectRatio!, child: art)
-          : SizedBox(height: height, width: double.infinity, child: art),
+  /// Glance-only: dark field + contained transparent logo.
+  Widget _buildLogoGlanceArt() {
+    final String logoUrl = pass.resolvedLogoUrl!;
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        const ColoredBox(color: Color(0xFF0B0B0E)),
+        // Soft lift so the logo does not sit on pure void.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.center,
+              radius: 0.95,
+              colors: <Color>[
+                const Color(0xFF1A1A22).withValues(alpha: 0.90),
+                const Color(0xFF0B0B0E),
+              ],
+            ),
+          ),
+        ),
+        LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            return Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: constraints.maxWidth * 0.10,
+                vertical: constraints.maxHeight * 0.16,
+              ),
+              child: CachedNetworkImage(
+                imageUrl: logoUrl,
+                fit: BoxFit.contain,
+                fadeInDuration: const Duration(milliseconds: 220),
+                memCacheWidth: _decodeWidth(context, constraints.maxWidth),
+                placeholder: (BuildContext context, String url) =>
+                    const _PosterShimmer(),
+                errorWidget: (BuildContext context, String url, Object error) {
+                  // Logo miss → same path as a posterless glance (gradient only).
+                  return _buildGradientBackdrop();
+                },
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -655,7 +706,9 @@ class _PosterShimmerState extends State<_PosterShimmer>
     return IgnorePointer(
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          final double width = constraints.maxWidth.isFinite ? constraints.maxWidth : 320;
+          final double width = constraints.maxWidth.isFinite
+              ? constraints.maxWidth
+              : 320;
           return AnimatedBuilder(
             animation: _controller,
             builder: (BuildContext context, Widget? child) {
@@ -693,8 +746,6 @@ class _PosterShimmerState extends State<_PosterShimmer>
     );
   }
 }
-
-
 
 class _Field extends StatelessWidget {
   const _Field({

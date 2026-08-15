@@ -1,22 +1,18 @@
 import '../domain/movie_pass_models.dart';
 import '../domain/ticket_models.dart';
 
-/// Origin serving the backend's movie poster image proxy, for mock mode.
+/// TMDB CDN base for mock poster/logo art (design probe only).
 ///
-/// Empty by default: with no backend reachable, fixtures render the [MoviePosterHint]
-/// gradient rather than a URL that cannot load. Point it at a running server to exercise the
-/// real poster path in mock mode:
-///
-///   flutter run --dart-define=MOCK_POSTER_ORIGIN=http://10.0.2.2:8080
-const String _mockPosterOrigin = String.fromEnvironment('MOCK_POSTER_ORIGIN');
+/// Production will keep using the Docket image proxy — `image.tmdb.org` is blocked on many
+/// Indian ISPs. Direct URLs here skip the backend so the logo-glance design can be checked
+/// without `MOCK_POSTER_ORIGIN` or a running server.
+const String _tmdbImageBase = 'https://image.tmdb.org/t/p';
 
-/// Builds a fixture poster URL, or null when no origin is configured.
-///
-/// The filenames are TMDB poster paths. Against a backend running with TMDB_MOCK=true any
-/// well-formed name renders a deterministic placeholder, so these only need to be exact once
-/// a real TMDB key is in play.
-String? _mockPosterUrl(String file) =>
-    _mockPosterOrigin.isEmpty ? null : '$_mockPosterOrigin/img/poster/w500/$file';
+/// Fixture poster URL (TMDB `w500` one-sheet).
+String _mockPosterUrl(String file) => '$_tmdbImageBase/w500/$file';
+
+/// Fixture logo URL (TMDB transparent title art, same size bucket as posters).
+String _mockLogoUrl(String file) => '$_tmdbImageBase/w500/$file';
 
 // ── Demo journey dates ────────────────────────────────────────────────────────
 //
@@ -28,8 +24,18 @@ String? _mockPosterUrl(String file) =>
 // order.
 
 const List<String> _monthsShort = <String>[
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 DateTime get _today {
@@ -426,7 +432,9 @@ final List<MoviePass> mockMoviePasses = <MoviePass>[
     certification: 'UA 13+',
     runtime: '2h 46m',
     gateType: 'QR Scan',
-    posterUrl: _mockPosterUrl('czembW0Rk1Ke7lCJGahbOhdCuhV.jpg'),
+    // TMDB 693134 — live poster + English title logo (transparent PNG).
+    posterUrl: _mockPosterUrl('heM4XKC0jA8fTSNe8F7oUkcJV7Z.jpg'),
+    logoUrl: _mockLogoUrl('eYvF1LhPKuoBxOAmWjFTAK7EPWl.png'),
   ),
   MoviePass(
     id: 'movie_dist_1',
@@ -452,7 +460,9 @@ final List<MoviePass> mockMoviePasses = <MoviePass>[
     certification: 'UA',
     runtime: '2h 18m',
     gateType: 'QR Scan',
-    posterUrl: _mockPosterUrl('mHsW1ChhLJcFVGCMOMPHYbQOSlY.jpg'),
+    // TMDB 1368337
+    posterUrl: _mockPosterUrl('5rhTDKUhPYvpdQIijFIs5VoWsON.jpg'),
+    logoUrl: _mockLogoUrl('kX6ZX4GL7km04332caiOVapR2lb.png'),
   ),
   MoviePass(
     id: 'movie_uni_1',
@@ -479,7 +489,9 @@ final List<MoviePass> mockMoviePasses = <MoviePass>[
     gateType: 'Barcode',
     sourcePlatform: 'PVR',
     codeType: MovieTicketCodeType.barcode,
-    posterUrl: _mockPosterUrl('uJYYizSuA9Y3DCsOqS4qWvHfZg4.jpg'),
+    // TMDB 969681
+    posterUrl: _mockPosterUrl('lH6LQcUhkVOK6ekvXzthQAogUnR.jpg'),
+    logoUrl: _mockLogoUrl('vbZcDHC5IFylYuRnp3eyOs5rTV1.png'),
   ),
   MoviePass(
     id: 'movie_bms_2',
@@ -493,16 +505,16 @@ final List<MoviePass> mockMoviePasses = <MoviePass>[
     showTime: '4:00 PM',
     format: '4DX',
     language: 'Hindi',
-    seats: const <MovieSeat>[
-      MovieSeat(row: 'D', number: '14'),
-    ],
+    seats: const <MovieSeat>[MovieSeat(row: 'D', number: '14')],
     bookingId: 'BMS-1A2B3C4D',
     orderId: 'ORD44120XZ',
     status: TicketStatus.expired,
     posterHint: MoviePosterHint.sciFi,
     certification: 'UA',
     runtime: '3h 01m',
-    posterUrl: _mockPosterUrl('gTGYNTiTfLYSGGwbAKgrJIrCPmO.jpg'),
+    // TMDB 801688
+    posterUrl: _mockPosterUrl('4P3K5medethmTlsuN7UN5bmnATq.jpg'),
+    logoUrl: _mockLogoUrl('phv0D4lpztKSUqNByCJkP1HB1IS.png'),
   ),
   MoviePass(
     id: 'movie_dist_2',
@@ -526,7 +538,9 @@ final List<MoviePass> mockMoviePasses = <MoviePass>[
     posterHint: MoviePosterHint.action,
     certification: 'UA',
     runtime: '3h 20m',
-    posterUrl: _mockPosterUrl('2cxhvwyXc9XPd7RQA0mzS6WHRJi.jpg'),
+    // TMDB 857598 — Telugu logo (stronger local mark than sparse EN set).
+    posterUrl: _mockPosterUrl('mXQRQUhrISOwlQTVOtPCoBltnOG.jpg'),
+    logoUrl: _mockLogoUrl('cCNpEDPa6QA8VfDS4UTAEKnNDwc.png'),
   ),
 ];
 

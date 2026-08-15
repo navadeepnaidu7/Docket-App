@@ -44,10 +44,7 @@ enum MovieTicketCodeType {
 
 /// One seat on a movie booking.
 class MovieSeat {
-  const MovieSeat({
-    required this.row,
-    required this.number,
-  });
+  const MovieSeat({required this.row, required this.number});
 
   final String row;
   final String number;
@@ -62,9 +59,9 @@ class MovieSeat {
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'row': row,
-        'number': number,
-      };
+    'row': row,
+    'number': number,
+  };
 }
 
 /// Brand colors for wallet faces and detail chrome (UI-only, not API).
@@ -152,32 +149,32 @@ enum MoviePosterHint {
 
 extension MoviePosterHintColors on MoviePosterHint {
   List<Color> get gradient => switch (this) {
-        MoviePosterHint.action => const <Color>[
-            Color(0xFF1E3A5F),
-            Color(0xFF0F172A),
-            Color(0xFF7C2D12),
-          ],
-        MoviePosterHint.romance => const <Color>[
-            Color(0xFF4C1D95),
-            Color(0xFF831843),
-            Color(0xFFBE185D),
-          ],
-        MoviePosterHint.thriller => const <Color>[
-            Color(0xFF0F172A),
-            Color(0xFF1E293B),
-            Color(0xFF334155),
-          ],
-        MoviePosterHint.comedy => const <Color>[
-            Color(0xFFB45309),
-            Color(0xFFD97706),
-            Color(0xFFF59E0B),
-          ],
-        MoviePosterHint.sciFi => const <Color>[
-            Color(0xFF0E7490),
-            Color(0xFF1E3A8A),
-            Color(0xFF312E81),
-          ],
-      };
+    MoviePosterHint.action => const <Color>[
+      Color(0xFF1E3A5F),
+      Color(0xFF0F172A),
+      Color(0xFF7C2D12),
+    ],
+    MoviePosterHint.romance => const <Color>[
+      Color(0xFF4C1D95),
+      Color(0xFF831843),
+      Color(0xFFBE185D),
+    ],
+    MoviePosterHint.thriller => const <Color>[
+      Color(0xFF0F172A),
+      Color(0xFF1E293B),
+      Color(0xFF334155),
+    ],
+    MoviePosterHint.comedy => const <Color>[
+      Color(0xFFB45309),
+      Color(0xFFD97706),
+      Color(0xFFF59E0B),
+    ],
+    MoviePosterHint.sciFi => const <Color>[
+      Color(0xFF0E7490),
+      Color(0xFF1E3A8A),
+      Color(0xFF312E81),
+    ],
+  };
 }
 
 class MoviePass {
@@ -206,6 +203,7 @@ class MoviePass {
     this.codePayload,
     this.posterUrl,
     this.posterAsset,
+    this.logoUrl,
     this.showAt,
   }) : assert(seats.length >= 1 && seats.length <= 10);
 
@@ -241,20 +239,27 @@ class MoviePass {
   /// client-only escape hatch for offline demos, and takes precedence over [posterUrl].
   final String? posterAsset;
 
+  /// Optional transparent title logo (TMDB logo art), used on the glance hero.
+  ///
+  /// Design probe: wallet glance shows this on a dark plate; detail still uses the
+  /// full poster. Absent means glance falls back to the poster crop / gradient.
+  /// Not yet a server contract field — fixtures and future API may populate it.
+  final String? logoUrl;
+
   /// Preferred machine-readable show time (ISO-8601).
   final String? showAt;
 
   String get brandLabel => switch (brand) {
-        MoviePassBrand.bookMyShow => 'BookMyShow',
-        MoviePassBrand.district => 'District',
-        MoviePassBrand.universal => 'Ticket',
-      };
+    MoviePassBrand.bookMyShow => 'BookMyShow',
+    MoviePassBrand.district => 'District',
+    MoviePassBrand.universal => 'Ticket',
+  };
 
   String get brandMicro => switch (brand) {
-        MoviePassBrand.bookMyShow => 'bookmyshow',
-        MoviePassBrand.district => 'district',
-        MoviePassBrand.universal => 'E-Ticket',
-      };
+    MoviePassBrand.bookMyShow => 'bookmyshow',
+    MoviePassBrand.district => 'district',
+    MoviePassBrand.universal => 'E-Ticket',
+  };
 
   int get seatCount => seats.length;
 
@@ -295,9 +300,16 @@ class MoviePass {
     return (asset == null || asset.isEmpty) ? null : asset;
   }
 
+  /// Transparent film logo for the glance card, or null when not available.
+  String? get resolvedLogoUrl {
+    final String? url = logoUrl?.trim();
+    return (url == null || url.isEmpty) ? null : url;
+  }
+
   factory MoviePass.fromJson(Map<String, dynamic> json) {
-    final List<dynamic> seatsRaw =
-        json['seats'] is List ? json['seats'] as List : const [];
+    final List<dynamic> seatsRaw = json['seats'] is List
+        ? json['seats'] as List
+        : const [];
     final List<MovieSeat> seats = seatsRaw
         .whereType<Map>()
         .map((Map m) => MovieSeat.fromJson(Map<String, dynamic>.from(m)))
@@ -331,35 +343,37 @@ class MoviePass {
       codePayload: json['codePayload']?.toString(),
       posterUrl: json['posterUrl']?.toString(),
       posterAsset: json['posterAsset']?.toString(),
+      logoUrl: json['logoUrl']?.toString(),
       showAt: json['showAt']?.toString(),
     );
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'id': id,
-        'brand': brand.toJson(),
-        'movieTitle': movieTitle,
-        'movieSubtitle': movieSubtitle,
-        'cinemaName': cinemaName,
-        'cinemaAddress': cinemaAddress,
-        'screen': screen,
-        'showDate': showDate,
-        'showTime': showTime,
-        'format': format,
-        'language': language,
-        'seats': seats.map((MovieSeat s) => s.toJson()).toList(),
-        'bookingId': bookingId,
-        'orderId': orderId,
-        'status': status.toJson(),
-        'posterHint': posterHint.toJson(),
-        'certification': certification,
-        'runtime': runtime,
-        'gateType': gateType,
-        if (sourcePlatform != null) 'sourcePlatform': sourcePlatform,
-        'codeType': codeType.toJson(),
-        if (codePayload != null) 'codePayload': codePayload,
-        if (posterUrl != null) 'posterUrl': posterUrl,
-        if (posterAsset != null) 'posterAsset': posterAsset,
-        if (showAt != null) 'showAt': showAt,
-      };
+    'id': id,
+    'brand': brand.toJson(),
+    'movieTitle': movieTitle,
+    'movieSubtitle': movieSubtitle,
+    'cinemaName': cinemaName,
+    'cinemaAddress': cinemaAddress,
+    'screen': screen,
+    'showDate': showDate,
+    'showTime': showTime,
+    'format': format,
+    'language': language,
+    'seats': seats.map((MovieSeat s) => s.toJson()).toList(),
+    'bookingId': bookingId,
+    'orderId': orderId,
+    'status': status.toJson(),
+    'posterHint': posterHint.toJson(),
+    'certification': certification,
+    'runtime': runtime,
+    'gateType': gateType,
+    if (sourcePlatform != null) 'sourcePlatform': sourcePlatform,
+    'codeType': codeType.toJson(),
+    if (codePayload != null) 'codePayload': codePayload,
+    if (posterUrl != null) 'posterUrl': posterUrl,
+    if (posterAsset != null) 'posterAsset': posterAsset,
+    if (logoUrl != null) 'logoUrl': logoUrl,
+    if (showAt != null) 'showAt': showAt,
+  };
 }
