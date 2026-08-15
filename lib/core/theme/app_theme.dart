@@ -66,14 +66,34 @@ class AppTheme {
   static Color elevated(Brightness b) =>
       b == Brightness.dark ? _darkElevated : _lightElevated;
 
-  static Color ink(Brightness b) =>
-      b == Brightness.dark ? _darkInk : _lightInk;
+  static Color ink(Brightness b) => b == Brightness.dark ? _darkInk : _lightInk;
 
   static Color primaryOf(Brightness b) =>
       b == Brightness.dark ? _darkPrimary : _lightPrimary;
 
   static Color accentOf(Brightness b) =>
       b == Brightness.dark ? _darkAccent : _lightAccent;
+
+  /// Transparent system bars so each screen's own scaffold shows through
+  /// the status bar and the gesture pill. An opaque nav color becomes a
+  /// distinct strip that cannot match every page.
+  static SystemUiOverlayStyle systemOverlayStyleFor({
+    required Brightness brightness,
+  }) {
+    final bool dark = brightness == Brightness.dark;
+    return SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+      statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+      systemStatusBarContrastEnforced: false,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarIconBrightness: dark
+          ? Brightness.light
+          : Brightness.dark,
+      systemNavigationBarContrastEnforced: false,
+    );
+  }
 
   static List<Color> studioGradient(Brightness b) {
     if (b == Brightness.dark) {
@@ -274,9 +294,7 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
         foregroundColor: ink,
-        systemOverlayStyle: isDark
-            ? SystemUiOverlayStyle.light
-            : SystemUiOverlayStyle.dark,
+        systemOverlayStyle: systemOverlayStyleFor(brightness: brightness),
       ),
       cardTheme: CardThemeData(
         color: cardColor,
@@ -297,22 +315,18 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         modalBackgroundColor: elevated,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(radiusSheet)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(radiusSheet),
+          ),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: isDark ? _darkElevated : _lightInk,
         contentTextStyle: TextStyle(color: isDark ? _darkInk : Colors.white),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
-      dividerTheme: DividerThemeData(
-        color: outline,
-        thickness: 0.5,
-        space: 1,
-      ),
+      dividerTheme: DividerThemeData(color: outline, thickness: 0.5, space: 1),
       listTileTheme: ListTileThemeData(
         iconColor: ink.withValues(alpha: 0.85),
         textColor: ink,
@@ -367,8 +381,7 @@ class AppTokens {
       ? scheme.onSurface.withValues(alpha: 0.08)
       : scheme.surfaceContainerHighest.withValues(alpha: 0.55);
 
-  static Color elevatedSurface(ColorScheme scheme) =>
-      _isDark(scheme)
+  static Color elevatedSurface(ColorScheme scheme) => _isDark(scheme)
       ? AppTheme.elevated(Brightness.dark)
       : AppTheme.elevated(Brightness.light);
 

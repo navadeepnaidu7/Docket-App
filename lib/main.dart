@@ -16,11 +16,19 @@ void main() async {
   // passport faces — there is no landscape design, and the manifests used to
   // advertise one anyway. Runtime lock covers both platforms; the native
   // manifests are aligned alongside it.
-  final Future<void> orientationFuture = SystemChrome.setPreferredOrientations(
-    <DeviceOrientation>[
+  final Future<void> chromeFuture = Future.wait<void>(<Future<void>>[
+    SystemChrome.setPreferredOrientations(<DeviceOrientation>[
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
-    ],
+    ]),
+    // Draw behind the gesture pill so each page color shows through,
+    // instead of a separate system strip (black or cream).
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge),
+  ]);
+  SystemChrome.setSystemUIOverlayStyle(
+    AppTheme.systemOverlayStyleFor(
+      brightness: WidgetsBinding.instance.platformDispatcher.platformBrightness,
+    ),
   );
 
   // Parallel: prefs + one-shot theme build (resolves Inter via google_fonts).
@@ -37,7 +45,7 @@ void main() async {
   WalletPassportCard.warmUp();
 
   final SharedPreferences prefs = await prefsFuture;
-  await orientationFuture;
+  await chromeFuture;
 
   // Finish any in-flight font loads before first frame (capped so offline is fine).
   try {

@@ -23,11 +23,7 @@ TextStyle dashboardNavTitleStyle(Color ink, {required bool selected}) {
 }
 
 class GlassIconButton extends StatefulWidget {
-  const GlassIconButton({
-    super.key,
-    required this.icon,
-    required this.onTap,
-  });
+  const GlassIconButton({super.key, required this.icon, required this.onTap});
 
   final IconData icon;
   final VoidCallback onTap;
@@ -168,6 +164,9 @@ class DashboardHeader extends StatelessWidget {
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
           alignment: Alignment.centerRight,
+          // Default hardEdge clips the profile mesh's soft shadow into a
+          // square when the archive control expands on the Passes tab.
+          clipBehavior: Clip.none,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
@@ -199,13 +198,11 @@ class HistoryHeaderButton extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
 
-    final Color bg =
-        isDark ? const Color(0xFF1C1C1E) : const Color(0xFFFFFFFF);
+    final Color bg = isDark ? const Color(0xFF1C1C1E) : const Color(0xFFFFFFFF);
     final Color border = isDark
         ? Colors.white.withValues(alpha: 0.14)
         : Colors.black.withValues(alpha: 0.10);
-    final Color fg =
-        isDark ? const Color(0xFFE8E8ED) : const Color(0xFF1C1C1E);
+    final Color fg = isDark ? const Color(0xFFE8E8ED) : const Color(0xFF1C1C1E);
 
     return Semantics(
       button: true,
@@ -283,8 +280,7 @@ class _ProfileMeshButtonState extends ConsumerState<ProfileMeshButton> {
     final ProfileAvatarShape shape = ref.watch(profileAvatarShapeProvider);
     final bool isCircle = shape == ProfileAvatarShape.circle;
     final double size = ProfileMeshButton.size;
-    final double radius =
-        isCircle ? size / 2 : ProfileMeshButton.roundedRadius;
+    final double radius = isCircle ? size / 2 : ProfileMeshButton.roundedRadius;
 
     final List<Color> colors = avatarMeshColors(
       seed: widget.meshSeed,
@@ -302,6 +298,25 @@ class _ProfileMeshButtonState extends ConsumerState<ProfileMeshButton> {
         : Colors.white.withValues(alpha: 0.70);
 
     final BorderRadius clipRadius = BorderRadius.circular(radius);
+    // Transparent fill so the shadow path uses the rounded shape, not the
+    // rectangular paint bounds of the mesh child.
+    final BoxDecoration shadowDecoration = BoxDecoration(
+      color: Colors.transparent,
+      shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
+      borderRadius: isCircle ? null : clipRadius,
+      boxShadow: <BoxShadow>[
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.14),
+          blurRadius: 12,
+          offset: const Offset(0, 4),
+        ),
+        BoxShadow(
+          color: colors.first.withValues(alpha: 0.22),
+          blurRadius: 14,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    );
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -318,23 +333,10 @@ class _ProfileMeshButtonState extends ConsumerState<ProfileMeshButton> {
           curve: Curves.easeOutCubic,
           width: size,
           height: size,
-          decoration: BoxDecoration(
-            borderRadius: clipRadius,
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.14),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-              BoxShadow(
-                color: colors.first.withValues(alpha: 0.22),
-                blurRadius: 14,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
+          decoration: shadowDecoration,
           child: ClipRRect(
             borderRadius: clipRadius,
+            clipBehavior: Clip.antiAlias,
             child: Stack(
               fit: StackFit.expand,
               children: <Widget>[
@@ -344,7 +346,8 @@ class _ProfileMeshButtonState extends ConsumerState<ProfileMeshButton> {
                 // Outer defined stroke + inner highlight (double rim).
                 DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: clipRadius,
+                    shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
+                    borderRadius: isCircle ? null : clipRadius,
                     border: Border.all(color: strokeOuter, width: 1.5),
                   ),
                 ),
@@ -352,9 +355,12 @@ class _ProfileMeshButtonState extends ConsumerState<ProfileMeshButton> {
                   padding: const EdgeInsets.all(1.5),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(
-                        (radius - 1.5).clamp(0.0, radius),
-                      ),
+                      shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
+                      borderRadius: isCircle
+                          ? null
+                          : BorderRadius.circular(
+                              (radius - 1.5).clamp(0.0, radius),
+                            ),
                       border: Border.all(color: strokeInner, width: 0.8),
                     ),
                   ),

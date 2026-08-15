@@ -96,15 +96,7 @@ class _DocketAppState extends ConsumerState<DocketApp>
   }
 
   SystemUiOverlayStyle _overlayFor(ThemeData theme) {
-    final bool dark = theme.brightness == Brightness.dark;
-    return SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
-      statusBarBrightness: dark ? Brightness.dark : Brightness.light,
-      systemNavigationBarColor: theme.scaffoldBackgroundColor,
-      systemNavigationBarIconBrightness:
-          dark ? Brightness.light : Brightness.dark,
-    );
+    return AppTheme.systemOverlayStyleFor(brightness: theme.brightness);
   }
 
   @override
@@ -112,7 +104,10 @@ class _DocketAppState extends ConsumerState<DocketApp>
     final ThemeMode mode = ref.watch(resolvedThemeModeProvider);
 
     // Drive animation when the user changes Light / Dark / Device / Schedule.
-    ref.listen<ThemeMode>(resolvedThemeModeProvider, (ThemeMode? prev, ThemeMode next) {
+    ref.listen<ThemeMode>(resolvedThemeModeProvider, (
+      ThemeMode? prev,
+      ThemeMode next,
+    ) {
       _syncToMode(next);
     });
 
@@ -132,7 +127,8 @@ class _DocketAppState extends ConsumerState<DocketApp>
 
         // Soft veil that peaks at mid-transition to hide the brightness snap.
         final double veil = (t < 0.5 ? t : 1.0 - t) * 2.0; // 0 → 1 → 0
-        final Color veilColor = Color.lerp(
+        final Color veilColor =
+            Color.lerp(
               _fromTheme.scaffoldBackgroundColor,
               _toTheme.scaffoldBackgroundColor,
               0.5,
