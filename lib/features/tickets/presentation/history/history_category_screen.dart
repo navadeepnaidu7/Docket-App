@@ -10,10 +10,12 @@ import '../../domain/pass_catalog.dart';
 import '../../domain/pass_history_category.dart';
 import 'archive_scaffold.dart';
 import 'history_pass_card.dart';
+import 'history_poster_grid.dart';
 import 'history_visuals.dart';
 import 'passes_archive_screen.dart';
 
-/// Every archived pass in one category, bucketed by month, newest first.
+/// Every archived pass in one category, newest first — bucketed by year for
+/// the movie poster grid, by month everywhere else.
 class HistoryCategoryScreen extends ConsumerWidget {
   const HistoryCategoryScreen({
     super.key,
@@ -69,9 +71,17 @@ class HistoryCategoryScreen extends ConsumerWidget {
               onAction: () => Navigator.of(context).maybePop(),
             );
           }
-          return _MonthSections(
+          return _DateSections(
             category: category,
-            sections: buildHistoryMonthSections(folder.items),
+            // Posters are dense — three to a row — so a header per month would
+            // strand one- and two-tile sections between rules. Years give the
+            // grid room to actually read as a shelf.
+            sections: buildHistorySections(
+              folder.items,
+              span: category == PassHistoryCategory.movie
+                  ? HistorySectionSpan.year
+                  : HistorySectionSpan.month,
+            ),
           );
         },
       ),
@@ -79,11 +89,11 @@ class HistoryCategoryScreen extends ConsumerWidget {
   }
 }
 
-class _MonthSections extends StatelessWidget {
-  const _MonthSections({required this.category, required this.sections});
+class _DateSections extends StatelessWidget {
+  const _DateSections({required this.category, required this.sections});
 
   final PassHistoryCategory category;
-  final List<HistoryMonthSection> sections;
+  final List<HistoryDateSection> sections;
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +120,7 @@ class _MonthSections extends StatelessWidget {
               child: _CategoryIntro(category: category, sections: sections),
             ),
           ),
-          for (final HistoryMonthSection section in sections) ...<Widget>[
+          for (final HistoryDateSection section in sections) ...<Widget>[
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(
                 Space.gutter,
@@ -137,18 +147,22 @@ class _MonthSections extends StatelessWidget {
             ),
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-              sliver: SliverList.separated(
-                itemCount: section.items.length,
-                separatorBuilder: (BuildContext context, int index) =>
-                    const SizedBox(height: 10),
-                itemBuilder: (BuildContext context, int index) {
-                  final WalletPassItem item = section.items[index];
-                  return HistoryPassCard(
-                    key: ValueKey<String>(item.id),
-                    item: item,
-                  );
-                },
-              ),
+              // Films are recognised by their artwork long before their title,
+              // so the movies folder shows posters rather than titled rows.
+              sliver: category == PassHistoryCategory.movie
+                  ? _PosterSection(items: section.items)
+                  : SliverList.separated(
+                      itemCount: section.items.length,
+                      separatorBuilder: (BuildContext context, int index) =>
+                          const SizedBox(height: 10),
+                      itemBuilder: (BuildContext context, int index) {
+                        final WalletPassItem item = section.items[index];
+                        return HistoryPassCard(
+                          key: ValueKey<String>(item.id),
+                          item: item,
+                        );
+                      },
+                    ),
             ),
           ],
           SliverToBoxAdapter(
@@ -162,11 +176,45 @@ class _MonthSections extends StatelessWidget {
   }
 }
 
+/// One year's films as a poster grid.
+///
+/// A non-movie pass can only appear here if the category bucketing changes, so
+/// it falls back to the titled row rather than being dropped from the archive.
+class _PosterSection extends StatelessWidget {
+  const _PosterSection({required this.items});
+
+  final List<WalletPassItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverGrid.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        childAspectRatio: kPosterAspect,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 14,
+      ),
+      itemCount: items.length,
+      itemBuilder: (BuildContext context, int index) {
+        final WalletPassItem item = items[index];
+        return switch (item) {
+          MoviePassItem(:final pass) => HistoryPosterTile(
+            key: ValueKey<String>(item.id),
+            pass: pass,
+            dateLabel: HistoryPassPresentation.shortDateLabel(item),
+          ),
+          _ => HistoryPassCard(key: ValueKey<String>(item.id), item: item),
+        };
+      },
+    );
+  }
+}
+
 class _CategoryIntro extends StatelessWidget {
   const _CategoryIntro({required this.category, required this.sections});
 
   final PassHistoryCategory category;
-  final List<HistoryMonthSection> sections;
+  final List<HistoryDateSection> sections;
 
   @override
   Widget build(BuildContext context) {
@@ -174,7 +222,7 @@ class _CategoryIntro extends StatelessWidget {
     final Color accent = HistoryStripLook.forCategory(category).gradient.first;
     final int passCount = sections.fold<int>(
       0,
-      (int total, HistoryMonthSection section) => total + section.items.length,
+      (int total, HistoryDateSection section) => total + section.items.length,
     );
     final String passLabel = passCount == 1 ? 'pass' : 'passes';
 

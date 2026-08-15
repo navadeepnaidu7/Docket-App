@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -8,6 +7,7 @@ import '../../domain/pass_catalog.dart';
 import '../../domain/pass_history_category.dart';
 import '../../domain/ticket_models.dart';
 import 'history_visuals.dart';
+import 'movie_poster_art.dart';
 
 /// Fanned preview chips showing the newest passes a folder holds.
 ///
@@ -132,58 +132,15 @@ class _PosterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Fixtures may pin a bundled asset; everything else comes from the backend's
-    // TMDB image proxy. Either may be absent — "no poster" is a normal state.
-    final String? asset = pass.resolvedPosterAsset;
-    final String? url = pass.resolvedPosterUrl;
-
-    return Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        // Painted first and never removed, so it shows through while a poster
-        // loads and remains the art when there is none.
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: pass.posterHint.gradient,
-            ),
-          ),
+    return MoviePosterArt(
+      pass: pass,
+      // At chip size a title would be unreadable, so the brand mark stands in.
+      fallback: Center(
+        child: HistoryBrandMark(
+          look: HistoryStripLook.forMovie(pass),
+          size: 16,
         ),
-        if (asset != null)
-          Image.asset(
-            asset,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => const SizedBox.shrink(),
-          )
-        else if (url != null)
-          LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              return CachedNetworkImage(
-                imageUrl: url,
-                fit: BoxFit.cover,
-                fadeInDuration: const Duration(milliseconds: 180),
-                // Chips are ~50dp wide; decoding a 780px poster at full size
-                // across a two-column grid is a real memory cost.
-                memCacheWidth: (constraints.maxWidth *
-                        MediaQuery.devicePixelRatioOf(context))
-                    .round(),
-                // A spinner at this size reads as broken — the gradient below
-                // is the placeholder.
-                placeholder: (_, _) => const SizedBox.shrink(),
-                errorWidget: (_, _, _) => const SizedBox.shrink(),
-              );
-            },
-          )
-        else
-          Center(
-            child: HistoryBrandMark(
-              look: HistoryStripLook.forMovie(pass),
-              size: 16,
-            ),
-          ),
-      ],
+      ),
     );
   }
 }
