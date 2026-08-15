@@ -142,8 +142,16 @@ void main() {
       expect(again.resolvedLogoUrl, logo);
     });
 
-    test('fixtures use absolute TMDB CDN logo PNGs', () {
-      for (final MoviePass m in mockMoviePasses) {
+    // The logo exists so the glance card has legible art, and only an active
+    // pass renders a glance card. Archived fixtures carry a poster and no
+    // logo on purpose — the detail face they open into uses the poster.
+    test('active fixtures use absolute TMDB CDN logo PNGs', () {
+      final Iterable<MoviePass> active = mockMoviePasses.where(
+        (MoviePass m) => m.status == TicketStatus.active,
+      );
+      expect(active, isNotEmpty);
+
+      for (final MoviePass m in active) {
         final String? url = m.resolvedLogoUrl;
         expect(url, isNotNull, reason: '${m.movieTitle} missing logo');
         expect(
@@ -155,6 +163,25 @@ void main() {
           url,
           endsWith('.png'),
           reason: '${m.movieTitle} logo should be PNG',
+        );
+      }
+    });
+
+    // Whatever the archive does about logos, every fixture needs a poster:
+    // it is the only art the archive grid and the detail face have.
+    test('every fixture carries an absolute TMDB CDN poster', () {
+      for (final MoviePass m in mockMoviePasses) {
+        final String? url = m.resolvedPosterUrl;
+        expect(url, isNotNull, reason: '${m.movieTitle} missing poster');
+        expect(
+          url,
+          startsWith('https://image.tmdb.org/t/p/'),
+          reason: '${m.movieTitle} is not a TMDB CDN poster URL',
+        );
+        expect(
+          url,
+          endsWith('.jpg'),
+          reason: '${m.movieTitle} poster should be JPG',
         );
       }
     });
