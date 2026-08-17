@@ -70,6 +70,21 @@ abstract final class AppAssets {
   static const String passportEmblemLarge =
       'assets/wallet/passport/emblems/emblem_140.png';
 
+  /// Passport cover artwork for the add menu.
+  ///
+  /// Unlike the emblems these ship as SVG rather than pre-rasterized PNGs: they
+  /// are flat two-colour path art (navy `#070930`, gold `#f4ca81`) with no
+  /// gradients, filters or masks, which flutter_svg renders exactly, and the add
+  /// menu draws them at two different heights.
+  ///
+  /// Third-party assets, bundled verbatim under CC BY-SA 4.0 — see
+  /// ATTRIBUTIONS.md. Modifying either file makes the result a derivative that
+  /// must stay under the same licence, so prefer composing around them.
+  static const String passportCoverRegular =
+      'assets/wallet/passport/covers/passport_regular.svg';
+  static const String passportCoverEPassport =
+      'assets/wallet/passport/covers/passport_epassport.svg';
+
   // ── Wallet: Aadhaar ────────────────────────────────────────────────────────
 
   static const String aadhaarLogo = 'assets/wallet/aadhaar/logo.svg';

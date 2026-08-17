@@ -123,6 +123,8 @@ flutter:
     - assets/wallet/passport/emblems/emblem_34.png
     - assets/wallet/passport/emblems/emblem_120.png
     - assets/wallet/passport/emblems/emblem_140.png
+    - assets/wallet/passport/covers/passport_regular.svg
+    - assets/wallet/passport/covers/passport_epassport.svg
     - assets/wallet/aadhaar/logo.svg
 
   # An image asset can refer to one or more resolution-specific "variants", see

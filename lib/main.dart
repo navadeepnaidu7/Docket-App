@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
+import 'core/assets/asset_licenses.dart';
 import 'core/theme/app_theme.dart';
 import 'features/dashboard/presentation/wallet_passport_card.dart';
 import 'features/tickets/presentation/pass_typography.dart';
@@ -12,6 +13,10 @@ import 'features/tickets/presentation/train/train_pass_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Attribution for bundled CC BY-SA artwork. Registers a collector only; the
+  // text is not built until a licence page asks for it.
+  registerAssetLicenses();
 
   // Portrait only. The wallet is a vertical card carousel with portrait
   // passport faces — there is no landscape design, and the manifests used to

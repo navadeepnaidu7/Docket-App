@@ -8,46 +8,126 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/haptics/haptic_service.dart';
 import '../../../../core/motion/studio_page_route.dart';
+import '../../../../shared/widgets/morph_sheet.dart';
+import '../../../../shared/widgets/squircle_tile.dart';
 import '../../application/pass_ingest_service.dart';
 import '../../domain/pass_ingest.dart';
-import 'add_pass_sheet.dart';
 import 'pass_ingest_feedback.dart';
 import 'pnr_entry_screen.dart';
 
 /// Opens the Passes-tab add flow: category → method → PNR screen or picker.
+///
+/// Category and method are steps of one morphing sheet, so choosing "Trains"
+/// grows the sheet in place instead of dismissing it and opening another.
+///
+/// [context] belongs to the caller, not the sheet: the terminal actions close
+/// the sheet first and then push or open a picker, which has to happen on the
+/// navigator that outlives it.
 Future<void> showAddPassFlow(BuildContext context, WidgetRef ref) {
-  return showModalBottomSheet<void>(
+  return showMorphSheet(
     context: context,
-    useSafeArea: true,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (BuildContext sheetContext) => AddPassSheet(
-      onSelect: (PassInputCategory category) {
-        Navigator.of(sheetContext).pop();
-        _showMethodSheet(context, ref, category);
+    root: MorphStep(
+      id: 'passes',
+      title: 'Passes',
+      subtitle: 'Add your everyday passes in one place',
+      builder: (BuildContext sheetContext, MorphSheetController controller) {
+        return SquircleTileGrid(
+          columns: 3,
+          tiles: <Widget>[
+            SquircleTile(
+              label: 'Trains',
+              icon: Icons.train_outlined,
+              onTap: () => controller.push(
+                _methodStep(context, ref, PassInputCategory.train),
+              ),
+            ),
+            // Mockup said "Bus / Public Transport", but that wraps to four
+            // lines at the real tile width, and `bus` is the only transit
+            // category the server actually classifies.
+            SquircleTile(
+              label: 'Bus',
+              icon: Icons.directions_bus_outlined,
+              onTap: () => controller.push(
+                _methodStep(context, ref, PassInputCategory.bus),
+              ),
+            ),
+            // Flights, Events and More have no PassInputCategory and no server
+            // route. They are shown so the grid reads as the finished shape,
+            // but a tap would post an unclassifiable upload.
+            const SquircleTile(
+              label: 'Flights',
+              icon: Icons.flight_outlined,
+              soon: true,
+            ),
+            SquircleTile(
+              label: 'Movies',
+              icon: Icons.local_activity_outlined,
+              onTap: () => controller.push(
+                _methodStep(context, ref, PassInputCategory.movie),
+              ),
+            ),
+            const SquircleTile(
+              label: 'Events',
+              icon: Icons.theater_comedy_outlined,
+              soon: true,
+            ),
+            const SquircleTile(
+              label: 'More',
+              icon: Icons.more_horiz_rounded,
+              soon: true,
+            ),
+          ],
+        );
       },
     ),
   );
 }
 
-void _showMethodSheet(
+/// How the ticket gets in: PNR (train only), photo, or PDF.
+MorphStep _methodStep(
   BuildContext context,
   WidgetRef ref,
   PassInputCategory category,
 ) {
-  HapticService.confirm();
-  showModalBottomSheet<void>(
-    context: context,
-    useSafeArea: true,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (BuildContext sheetContext) => AddPassMethodSheet(
-      category: category,
-      onSelect: (PassInputSource source) {
-        Navigator.of(sheetContext).pop();
+  final bool train = category == PassInputCategory.train;
+  return MorphStep(
+    id: 'method-${category.name}',
+    title: switch (category) {
+      PassInputCategory.train => 'Add a train pass',
+      PassInputCategory.bus => 'Add a bus pass',
+      PassInputCategory.movie => 'Add a movie pass',
+    },
+    subtitle: train
+        ? 'IRCTC PNR, or a photo / PDF of the ticket'
+        : 'Photo or PDF — we read the details on the server',
+    builder: (BuildContext sheetContext, MorphSheetController controller) {
+      void choose(PassInputSource source) {
+        controller.close();
         _handleSource(context, ref, category, source);
-      },
-    ),
+      }
+
+      return SquircleTileGrid(
+        columns: 3,
+        tiles: <Widget>[
+          if (train)
+            SquircleTile(
+              label: 'Enter PNR',
+              icon: Icons.pin_outlined,
+              onTap: () => choose(PassInputSource.pnr),
+            ),
+          SquircleTile(
+            label: 'Photo',
+            icon: Icons.photo_camera_outlined,
+            onTap: () => choose(PassInputSource.photo),
+          ),
+          SquircleTile(
+            label: 'PDF',
+            icon: Icons.picture_as_pdf_outlined,
+            onTap: () => choose(PassInputSource.pdf),
+          ),
+        ],
+      );
+    },
   );
 }
 
