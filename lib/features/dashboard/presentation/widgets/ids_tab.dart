@@ -26,6 +26,7 @@ class IdsTab extends ConsumerStatefulWidget {
     required this.onDeletePassport,
     required this.onDeleteId,
     required this.pageNotifier,
+    this.revealItemId,
     this.backdropTilt,
   });
 
@@ -37,6 +38,11 @@ class IdsTab extends ConsumerStatefulWidget {
   final void Function(PassportProfile) onDeletePassport;
   final void Function(IdDocument) onDeleteId;
   final ValueNotifier<double> pageNotifier;
+
+  /// Id of a card the wallet should page to, set when a Manage row is tapped.
+  /// Cleared here once the request has been handled.
+  final ValueNotifier<String?>? revealItemId;
+
   final WalletBackdropTilt? backdropTilt;
 
   @override
@@ -52,14 +58,28 @@ class _IdsTabState extends ConsumerState<IdsTab> {
     _pageCtrl = PageController();
     _pageCtrl.addListener(_onScroll);
     _lastVisibleIds = _idsFor(widget.items);
+    widget.revealItemId?.addListener(_scheduleRevealJump);
+    // Switching back from Manage remounts this widget, so the request that was
+    // set before the mode flip arrives here as initial state, not as an event.
+    _scheduleRevealJump();
   }
 
   @override
   void didUpdateWidget(IdsTab oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.revealItemId != widget.revealItemId) {
+      oldWidget.revealItemId?.removeListener(_scheduleRevealJump);
+      widget.revealItemId?.addListener(_scheduleRevealJump);
+    }
+
     final List<String> nextIds = _idsFor(widget.items);
     if (!_listEquals(_lastVisibleIds, nextIds)) {
       _lastVisibleIds = nextIds;
+      // A pending reveal outranks the reset. Revealing clears the wallet
+      // filter, which changes the visible ids in the same frame — so without
+      // this the reset-to-first would fire after the reveal and quietly undo
+      // it, landing on card 0 every time.
+      if (widget.revealItemId?.value != null) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         if (_pageCtrl.hasClients) {
@@ -70,8 +90,36 @@ class _IdsTabState extends ConsumerState<IdsTab> {
     }
   }
 
+  /// Pages to the requested card, then clears the request.
+  ///
+  /// Post-frame is load-bearing: the request is set while this widget is
+  /// unmounted (Manage is on screen), so at listener time the new
+  /// [PageController] has no clients and `jumpToPage` would throw.
+  void _scheduleRevealJump() {
+    if (widget.revealItemId?.value == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final String? pending = widget.revealItemId?.value;
+      if (pending == null) return;
+
+      final int index = widget.items.indexWhere(
+        (Object item) => walletItemId(item) == pending,
+      );
+      // Consume the request either way. If the card is not in the visible list
+      // — filtered out, or removed between tap and frame — drop it rather than
+      // page to an arbitrary neighbour, which would look like it worked.
+      widget.revealItemId?.value = null;
+      if (index < 0 || !_pageCtrl.hasClients) return;
+
+      _pageCtrl.jumpToPage(index);
+      widget.pageNotifier.value = index.toDouble();
+      _lastVisibleIds = _idsFor(widget.items);
+    });
+  }
+
   @override
   void dispose() {
+    widget.revealItemId?.removeListener(_scheduleRevealJump);
     _pageCtrl.removeListener(_onScroll);
     _pageCtrl.dispose();
     super.dispose();
