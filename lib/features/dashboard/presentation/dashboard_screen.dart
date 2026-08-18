@@ -68,6 +68,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   final ValueNotifier<DashboardViewMode> _viewMode = ValueNotifier(
     DashboardViewMode.home,
   );
+
+  /// Wallet item id that Home should page to, set when a Manage row is tapped.
+  ///
+  /// Carried as an id rather than an index because the index Manage knows is
+  /// into the unfiltered list, while [IdsTab] pages through the filtered one.
+  /// [IdsTab] clears this once the jump lands.
+  final ValueNotifier<String?> _revealItemId = ValueNotifier<String?>(null);
+
   double _dragOffset = 0.0;
   bool _isDragging = false;
 
@@ -173,6 +181,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     _easterEggOffset.dispose();
     _showHomeMenu.dispose();
     _viewMode.dispose();
+    _revealItemId.dispose();
     super.dispose();
   }
 
@@ -291,6 +300,46 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
+  /// The one place a wallet item is removed.
+  ///
+  /// Three stores have to agree or the carousel order silently drifts: the
+  /// live list, the trash list, and the persisted order. `reconcileWalletOrder`
+  /// repairs drift on the next load, but only if it is reached — an id left in
+  /// the order sorts unknown entries to the end. Every surface that removes a
+  /// document (Home long-press, Manage swipe) routes through here rather than
+  /// repeating the sequence.
+  void _removeWalletItem(Object item) {
+    switch (item) {
+      case PassportProfile profile:
+        ref.read(passportListProvider.notifier).removePassport(profile.id);
+        ref.read(trashProvider.notifier).moveToTrash(profile);
+        ref
+            .read(walletOrderProvider.notifier)
+            .updateOrderOnItemRemoved(profile.id);
+      case IdDocument doc:
+        ref.read(idListProvider.notifier).removeDocument(doc.id);
+        ref.read(trashProvider.notifier).moveToTrash(doc);
+        ref.read(walletOrderProvider.notifier).updateOrderOnItemRemoved(doc.id);
+    }
+  }
+
+  /// Manage row tapped: return to Home and page to that document's card.
+  ///
+  /// Clearing the filter first matters. Manage lists the *unfiltered* wallet,
+  /// so the tapped card may not be in `displayItems` at all — without this the
+  /// jump silently lands on a neighbour, which looks like it worked.
+  void _revealWalletItem(Object item) {
+    HapticService.select();
+    if (ref.read(walletFilterEnabledProvider)) {
+      ref.read(walletFilterCategoryProvider.notifier).resetToAll();
+    }
+    if (_tabCtrl.index != 0) {
+      _tabCtrl.animateTo(0);
+    }
+    _revealItemId.value = walletItemId(item);
+    _viewMode.value = DashboardViewMode.home;
+  }
+
   void _showDeleteDialog(PassportProfile profile) {
     HapticService.destructive();
     showCupertinoModalPopup<void>(
@@ -304,13 +353,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           CupertinoActionSheetAction(
             isDestructiveAction: true,
             onPressed: () {
-              ref
-                  .read(passportListProvider.notifier)
-                  .removePassport(profile.id);
-              ref.read(trashProvider.notifier).moveToTrash(profile);
-              ref
-                  .read(walletOrderProvider.notifier)
-                  .updateOrderOnItemRemoved(profile.id);
+              _removeWalletItem(profile);
               Navigator.of(ctx).pop();
             },
             child: const Text('Remove'),
@@ -327,19 +370,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   /// Long-pressing an ID opens the attachment tray above the remove sheet,
   /// so the dimmed space over the card is where document copies are managed.
   ///
-  /// The removal itself is untouched: trash, then wallet order. Dropping
-  /// `updateOrderOnItemRemoved` here would leave the carousel order holding a
-  /// dead id, which sorts unknown entries to the end on the next reconcile.
+  /// The removal itself runs through [_removeWalletItem], which keeps the
+  /// trash list and the persisted wallet order in step.
   void _showDeleteIdDialog(IdDocument doc) {
     HapticService.destructive();
     showIdAttachmentSheet(
       context,
       document: doc,
-      onRemove: () {
-        ref.read(idListProvider.notifier).removeDocument(doc.id);
-        ref.read(trashProvider.notifier).moveToTrash(doc);
-        ref.read(walletOrderProvider.notifier).updateOrderOnItemRemoved(doc.id);
-      },
+      onRemove: () => _removeWalletItem(doc),
     );
   }
 
@@ -631,6 +669,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                                       onDeleteId:
                                                           _showDeleteIdDialog,
                                                       pageNotifier: _docPage,
+                                                      revealItemId:
+                                                          _revealItemId,
                                                       backdropTilt:
                                                           _backdropTilt,
                                                     ),
@@ -646,6 +686,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                                     'manage_view',
                                                   ),
                                                   items: items,
+                                                  onRevealItem:
+                                                      _revealWalletItem,
+                                                  onRemoveItem:
+                                                      _removeWalletItem,
+                                                  onOpenTrash: () {
+                                                    _viewMode.value =
+                                                        DashboardViewMode.trash;
+                                                  },
                                                 );
                                                 break;
                                               case DashboardViewMode.trash:
@@ -765,17 +813,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 valueListenable: _viewMode,
                 builder: (context, mode, child) {
                   final bool isHome = mode == DashboardViewMode.home;
-                  return AnimatedPositioned(
-                    duration: const Duration(milliseconds: 320),
-                    curve: Curves.easeInOutCubic,
-                    bottom: isHome ? 0 : -100,
+                  // Slide by a fraction of the island's own height, not a
+                  // fixed pixel count. This used to be `bottom: -100`, but the
+                  // child is `safe-area bottom + 16 + 82` tall (PillTabBar is
+                  // 82), so -100 only cleared it on a device with no bottom
+                  // inset. Everywhere else the tab bar stayed poking above the
+                  // edge in Manage and Trash — and stayed tappable there.
+                  // Offset(0, 1) is exactly one child-height, whatever it is.
+                  return Positioned(
+                    bottom: 0,
                     left: 0,
                     right: 0,
-                    child: Transform.translate(
-                      offset: Offset(0, motion.pillBarOffsetY),
-                      child: Opacity(
-                        opacity: motion.pillBarOpacity,
-                        child: child,
+                    child: AnimatedSlide(
+                      duration: const Duration(milliseconds: 320),
+                      curve: Curves.easeInOutCubic,
+                      offset: isHome ? Offset.zero : const Offset(0, 1),
+                      child: IgnorePointer(
+                        ignoring: !isHome,
+                        child: Transform.translate(
+                          offset: Offset(0, motion.pillBarOffsetY),
+                          child: Opacity(
+                            opacity: motion.pillBarOpacity,
+                            child: child,
+                          ),
+                        ),
                       ),
                     ),
                   );
