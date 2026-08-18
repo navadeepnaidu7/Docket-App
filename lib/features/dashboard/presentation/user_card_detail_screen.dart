@@ -10,6 +10,7 @@ import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
+import '../../journey/presentation/journey_teaser.dart';
 import '../application/space_archive_provider.dart';
 import 'settings_screen.dart';
 
@@ -95,12 +96,23 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
                 child: RepaintBoundary(
                   child: PageView.builder(
                     controller: _pageController,
-                    itemCount: stories.length,
+                    // One past the stories: the deck ends on the Journey globe.
+                    // It is a different kind of page - art rather than
+                    // typography - so it is appended here rather than forced
+                    // into the _StoryPage shape.
+                    itemCount: stories.length + 1,
                     onPageChanged: (int i) {
                       HapticService.select();
                       setState(() => _pageIndex = i);
                     },
                     itemBuilder: (BuildContext context, int index) {
+                      if (index == stories.length) {
+                        return JourneyTeaserPage(
+                          key: const ValueKey<String>('journey_teaser'),
+                          ink: ink,
+                          muted: muted,
+                        );
+                      }
                       return _StoryTypography(
                         key: ValueKey<int>(index),
                         page: stories[index],
@@ -118,7 +130,7 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 20),
               child: _PageDots(
-                count: stories.length,
+                count: stories.length + 1,
                 index: _pageIndex,
                 ink: ink,
                 muted: muted,

@@ -10,6 +10,7 @@ import 'package:docket/features/journey/domain/journey_cluster.dart';
 import 'package:docket/features/journey/domain/journey_index.dart';
 import 'package:docket/features/journey/domain/journey_level.dart';
 import 'package:docket/features/journey/domain/pin_declutter.dart';
+import 'package:docket/features/journey/presentation/journey_teaser.dart';
 import 'package:docket/features/journey/presentation/journey_view.dart';
 import 'package:docket/features/tickets/data/mock_pass_fixtures.dart';
 import 'package:docket/features/tickets/domain/pass_catalog.dart';
@@ -264,6 +265,56 @@ void main() {
         declutter(const <Offset>[Offset(5, 5)], minSpacing: 10.0),
         <Offset>[const Offset(5, 5)],
       );
+    });
+  });
+
+  group('card-detail teaser', () {
+    test('reach counts distinct places, not memories', () {
+      final JourneyReach reach = JourneyReach.of(index);
+      expect(reach.memories, index.placed.length);
+      expect(reach.countries, greaterThan(1));
+      expect(reach.cities, greaterThan(reach.countries));
+      // Every Indian state the fixtures touch, plus the flight destinations.
+      expect(reach.regions, greaterThan(4));
+    });
+
+    test('an empty atlas reads as empty rather than as zero', () {
+      const JourneyReach empty =
+          JourneyReach(countries: 0, regions: 0, cities: 0, memories: 0);
+      expect(empty.isEmpty, isTrue);
+    });
+
+    testWidgets('the teaser draws the real globe and a true headline',
+        (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: <Override>[
+            journeyEventsProvider.overrideWithValue(index),
+            journeyAtlasProvider.overrideWith((Ref ref) async => atlas),
+            placeTableProvider.overrideWith((Ref ref) async => table),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.darkTheme,
+            home: const Scaffold(
+              body: JourneyTeaserPage(
+                ink: Color(0xFFF2F2F7),
+                muted: Color(0xFF8E8E93),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 700));
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(JourneyTeaserGlobe), findsOneWidget);
+      expect(find.textContaining('You have been to'), findsOneWidget);
+      expect(find.textContaining('countries'), findsOneWidget);
     });
   });
 }
