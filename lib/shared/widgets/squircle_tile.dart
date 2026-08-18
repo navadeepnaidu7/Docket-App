@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../core/motion/entry_reveal.dart';
 import '../../core/theme/app_theme.dart';
@@ -14,16 +15,27 @@ class SquircleTile extends StatelessWidget {
     super.key,
     required this.label,
     this.icon,
+    this.iconAsset,
     this.art,
     this.sublabel,
     this.onTap,
     this.soon = false,
     this.aspectRatio = 1.0,
     this.radius = 28,
-  }) : assert(icon != null || art != null, 'Provide either an icon or art');
+  }) : assert(
+         icon != null || iconAsset != null || art != null,
+         'Provide an icon, an iconAsset, or art',
+       );
 
   final String label;
   final IconData? icon;
+
+  /// Path to a stroked SVG glyph, tinted to the theme's ink.
+  ///
+  /// Preferred over [icon] for the pass grid: Material's outlined set sits at a
+  /// different weight to the line icons the design calls for, and mixing the
+  /// two in one grid is visible.
+  final String? iconAsset;
 
   /// Custom tile contents, centred. Takes precedence over [icon].
   final Widget? art;
@@ -38,6 +50,20 @@ class SquircleTile extends StatelessWidget {
 
   final double aspectRatio;
   final double radius;
+
+  Widget _glyph(ColorScheme scheme) {
+    if (art != null) return art!;
+    final Color ink = scheme.onSurface.withValues(alpha: 0.88);
+    if (iconAsset != null) {
+      return SvgPicture.asset(
+        iconAsset!,
+        width: 34,
+        height: 34,
+        colorFilter: ColorFilter.mode(ink, BlendMode.srcIn),
+      );
+    }
+    return Icon(icon, size: 34, color: ink);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,15 +113,7 @@ class SquircleTile extends StatelessWidget {
         ),
         child: Stack(
           children: <Widget>[
-            Center(
-              child:
-                  art ??
-                  Icon(
-                    icon,
-                    size: 34,
-                    color: scheme.onSurface.withValues(alpha: 0.88),
-                  ),
-            ),
+            Center(child: _glyph(scheme)),
             if (soon)
               Positioned(
                 top: 8,

@@ -28,6 +28,24 @@ abstract final class AppAssets {
   /// Clock-history icon for past / expired passes.
   static const String passesHistory = 'assets/passes/history_clock.svg';
 
+  // ── Pass category icons ────────────────────────────────────────────────────
+
+  /// Line icons for the add-menu's pass grid, from Lucide (ISC) — bundled
+  /// unmodified, see ATTRIBUTIONS.md. Material's outlined set was close but a
+  /// different weight and silhouette, so the grid read as mixed.
+  ///
+  /// Each is a 24x24 viewBox stroked with `currentColor`, so they tint through
+  /// a [ColorFilter] and follow the theme.
+  static const String passIconTrain = 'assets/passes/icons/train-front.svg';
+  static const String passIconBus = 'assets/passes/icons/bus.svg';
+  static const String passIconPlane = 'assets/passes/icons/plane.svg';
+  static const String passIconTicket = 'assets/passes/icons/ticket.svg';
+  static const String passIconEvents = 'assets/passes/icons/calendar-days.svg';
+  static const String passIconMore = 'assets/passes/icons/ellipsis.svg';
+  static const String passIconCamera = 'assets/passes/icons/camera.svg';
+  static const String passIconFile = 'assets/passes/icons/file-text.svg';
+  static const String passIconPnr = 'assets/passes/icons/hash.svg';
+
   // ── Auth ─────────────────────────────────────────────────────────────────────
 
   /// Google Sign-In button assets (dark, rounded). Names follow Google branding.

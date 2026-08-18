@@ -1,9 +1,10 @@
 # Third-party asset attributions
 
-Docket bundles the following third-party assets. Each is redistributed **verbatim**,
-unmodified, under its own licence. This file satisfies the attribution requirement;
-the same credits are registered with Flutter's `LicenseRegistry` in `lib/main.dart`
-so they also appear in-app under Settings -> About -> Licences.
+Docket bundles the following third-party assets under their own licences. Each
+entry states whether it ships verbatim or modified, and what was changed. This
+file satisfies the attribution requirement; the same credits are registered with
+Flutter's `LicenseRegistry` from `lib/main.dart` so they also appear in-app under
+Settings -> About -> Licences.
 
 ## Passport cover artwork — CC BY-SA 4.0
 
@@ -29,6 +30,27 @@ originals; keep them that way and compose effects around them
 
 The Ashoka emblem depicted within the artwork is the State Emblem of India; its
 use here is depictive, as part of a rendering of a passport cover.
+
+## Pass category icons — ISC
+
+The line glyphs in the add menu's pass grid (`assets/passes/icons/`) are from
+[Lucide](https://lucide.dev), **modified**: `stroke-width` is reduced from
+Lucide's default `2` to `1.5`. At the ~95pt tile these render into, the stock
+weight read as chunky rather than as the thin line set the design calls for.
+No geometry was changed. ISC permits modification; the notice below still
+applies.
+
+Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of
+Feather (MIT). All other copyright (c) for Lucide are held by Lucide Contributors
+2022, under the [ISC License](https://github.com/lucide-icons/lucide/blob/main/LICENSE).
+
+Files: `train-front`, `bus`, `plane`, `ticket`, `calendar-days`, `ellipsis`,
+`camera`, `file-text`, `hash`.
+
+ISC is permissive: use, copy, modify and distribute freely, provided the
+copyright and permission notice travel with the work. That notice is registered
+with `LicenseRegistry` in `lib/core/assets/asset_licenses.dart` so it ships
+inside the app, not only in this file.
 
 ## Other bundled assets
 

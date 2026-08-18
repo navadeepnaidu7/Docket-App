@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/assets/app_assets.dart';
 import '../../../../core/haptics/haptic_service.dart';
 import '../../../../core/motion/studio_page_route.dart';
 import '../../../../shared/widgets/morph_sheet.dart';
@@ -36,7 +37,7 @@ Future<void> showAddPassFlow(BuildContext context, WidgetRef ref) {
           tiles: <Widget>[
             SquircleTile(
               label: 'Trains',
-              icon: Icons.train_outlined,
+              iconAsset: AppAssets.passIconTrain,
               onTap: () => controller.push(
                 _methodStep(context, ref, PassInputCategory.train),
               ),
@@ -46,7 +47,7 @@ Future<void> showAddPassFlow(BuildContext context, WidgetRef ref) {
             // category the server actually classifies.
             SquircleTile(
               label: 'Bus',
-              icon: Icons.directions_bus_outlined,
+              iconAsset: AppAssets.passIconBus,
               onTap: () => controller.push(
                 _methodStep(context, ref, PassInputCategory.bus),
               ),
@@ -56,24 +57,24 @@ Future<void> showAddPassFlow(BuildContext context, WidgetRef ref) {
             // but a tap would post an unclassifiable upload.
             const SquircleTile(
               label: 'Flights',
-              icon: Icons.flight_outlined,
+              iconAsset: AppAssets.passIconPlane,
               soon: true,
             ),
             SquircleTile(
               label: 'Movies',
-              icon: Icons.local_activity_outlined,
+              iconAsset: AppAssets.passIconTicket,
               onTap: () => controller.push(
                 _methodStep(context, ref, PassInputCategory.movie),
               ),
             ),
             const SquircleTile(
               label: 'Events',
-              icon: Icons.theater_comedy_outlined,
+              iconAsset: AppAssets.passIconEvents,
               soon: true,
             ),
             const SquircleTile(
               label: 'More',
-              icon: Icons.more_horiz_rounded,
+              iconAsset: AppAssets.passIconMore,
               soon: true,
             ),
           ],
@@ -112,17 +113,17 @@ MorphStep _methodStep(
           if (train)
             SquircleTile(
               label: 'Enter PNR',
-              icon: Icons.pin_outlined,
+              iconAsset: AppAssets.passIconPnr,
               onTap: () => choose(PassInputSource.pnr),
             ),
           SquircleTile(
             label: 'Photo',
-            icon: Icons.photo_camera_outlined,
+            iconAsset: AppAssets.passIconCamera,
             onTap: () => choose(PassInputSource.photo),
           ),
           SquircleTile(
             label: 'PDF',
-            icon: Icons.picture_as_pdf_outlined,
+            iconAsset: AppAssets.passIconFile,
             onTap: () => choose(PassInputSource.pdf),
           ),
         ],
