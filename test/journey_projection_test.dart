@@ -279,6 +279,41 @@ void main() {
       expect(mid.distance.isFinite, isTrue);
     });
 
+    test('the first flight starts from where the camera actually was', () {
+      // Regression. The navigator has already stored the destination by the
+      // time its listener fires, so an origin read back out of it equals the
+      // destination and the flight silently becomes a no-op -- the level still
+      // changes, the globe still redraws, the tests still pass, and the camera
+      // just snaps. Nothing visual would catch it.
+      expect(
+        flightOriginFor(rendered: null, previous: world, next: bengaluru),
+        world,
+      );
+    });
+
+    test('a later flight starts from what was last rendered', () {
+      expect(
+        flightOriginFor(
+          rendered: hyderabad,
+          previous: world,
+          next: bengaluru,
+        ),
+        hyderabad,
+        reason: 'the rendered camera outranks the listener previous',
+      );
+    });
+
+    test('no flight is started when there is nowhere to go', () {
+      expect(
+        flightOriginFor(rendered: world, previous: null, next: world),
+        isNull,
+      );
+      expect(
+        flightOriginFor(rendered: null, previous: null, next: world),
+        isNull,
+      );
+    });
+
     test('duration scales with ground covered', () {
       final Duration near = flightDuration(bengaluru, hyderabad);
       final Duration far = flightDuration(bengaluru, peru);

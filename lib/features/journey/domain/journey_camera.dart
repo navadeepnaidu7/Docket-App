@@ -77,6 +77,27 @@ double easeInOutCubicT(double t) {
   return 1.0 - (f * f * f) / 2.0;
 }
 
+/// Picks the camera a flight should start from, or null when none is needed.
+///
+/// Extracted from the view because getting it wrong is silent. The navigator
+/// has already stored the destination by the time its listener fires, so
+/// reading "the current camera" back out of it returns the *destination* and
+/// every flight is a no-op: the level still changes, the globe still redraws,
+/// every test still passes, and the camera simply snaps. The flight is the
+/// whole feature, so the choice is pinned here instead.
+///
+/// [rendered] is the camera the view last settled on, [previous] the state the
+/// listener saw before the change.
+GlobeCamera? flightOriginFor({
+  required GlobeCamera? rendered,
+  required GlobeCamera? previous,
+  required GlobeCamera next,
+}) {
+  final GlobeCamera? from = rendered ?? previous;
+  if (from == null || from == next) return null;
+  return from;
+}
+
 /// Interpolates a camera along a flight from [a] to [b].
 ///
 /// Three channels, each with its own curve, because one shared curve is exactly

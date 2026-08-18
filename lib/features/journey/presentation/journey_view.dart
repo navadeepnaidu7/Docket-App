@@ -46,6 +46,10 @@ class _JourneyViewState extends ConsumerState<JourneyView>
   GlobeCamera? _from;
   GlobeCamera? _to;
 
+  /// The last camera the view settled on. Distinct from the navigator's, which
+  /// is already the destination whenever a flight is being started.
+  GlobeCamera? _rendered;
+
   /// Drag offsets applied on top of the settled camera, reset on every descent
   /// so a level always opens framed on what was tapped.
   double _dragLat = 0.0;
@@ -91,21 +95,27 @@ class _JourneyViewState extends ConsumerState<JourneyView>
     super.dispose();
   }
 
-  void _flyTo(GlobeCamera next) {
-    final GlobeCamera current = _settledCamera;
-    if (current == next) return;
-    _from = current;
-    _to = next;
+  void _flyTo(GlobeCamera? previous, GlobeCamera next) {
+    // The origin must come from what was last rendered or from the listener's
+    // previous state -- never from re-reading the navigator, which already
+    // holds the destination by now. See flightOriginFor.
+    final GlobeCamera? from = flightOriginFor(
+      rendered: _rendered,
+      previous: previous,
+      next: next,
+    );
+    _rendered = next;
     _dragLat = 0.0;
     _dragLng = 0.0;
+    if (from == null) return;
+
+    _from = from;
+    _to = next;
     _flight
-      ..duration = flightDuration(current, next)
+      ..duration = flightDuration(from, next)
       ..forward(from: 0.0);
     _reveal.forward(from: 0.0);
   }
-
-  GlobeCamera get _settledCamera =>
-      _to ?? ref.read(journeyNavigatorProvider).camera;
 
   /// The camera actually rendered this frame: the flight, plus drag, plus idle.
   GlobeCamera _liveCamera(GlobeCamera anchor, JourneyLevel level) {
@@ -166,7 +176,9 @@ class _JourneyViewState extends ConsumerState<JourneyView>
 
     ref.listen<JourneyNavState>(journeyNavigatorProvider,
         (JourneyNavState? previous, JourneyNavState next) {
-      if (previous?.camera != next.camera) _flyTo(next.camera);
+      if (previous?.camera != next.camera) {
+        _flyTo(previous?.camera, next.camera);
+      }
     });
 
     // Arc geometry only changes when the visible memories do.
