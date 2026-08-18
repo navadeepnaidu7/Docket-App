@@ -15,6 +15,13 @@ const double _kCoverHeight = 84;
 /// two-line caption.
 const double _kDocumentTileAspect = 0.92;
 
+/// Displayed height of the wordmark close-up on the passport-kind step.
+///
+/// The kind step compares two covers that differ only in the chip symbol, so
+/// it frames the lower cover instead of the whole thing — at full-cover scale
+/// the chip is a few pixels.
+const double _kCropHeight = 62;
+
 /// Opens the Documents add menu — the IDs tab's `+`.
 ///
 /// Callbacks fire *after* the sheet closes, and run against the caller's
@@ -158,7 +165,8 @@ MorphStep _passportKindStep(void Function(bool isEPassport) onSelect) {
             aspectRatio: _kDocumentTileAspect,
             art: const PassportCoverArt(
               variant: PassportCoverVariant.ePassport,
-              height: _kCoverHeight,
+              crop: PassportCoverCrop.wordmark,
+              height: _kCropHeight,
             ),
             onTap: () {
               controller.close();
@@ -171,7 +179,8 @@ MorphStep _passportKindStep(void Function(bool isEPassport) onSelect) {
             aspectRatio: _kDocumentTileAspect,
             art: const PassportCoverArt(
               variant: PassportCoverVariant.regular,
-              height: _kCoverHeight,
+              crop: PassportCoverCrop.wordmark,
+              height: _kCropHeight,
             ),
             onTap: () {
               controller.close();
