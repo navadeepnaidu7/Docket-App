@@ -114,9 +114,12 @@ class _ViewPickerExpandedState extends State<ViewPickerExpanded>
         ? const Color(0xFFE8EEFF)
         : const Color(0xFF0D1B2A);
 
+    // Journey sits beside Home because it is another view of the user's own
+    // things. Trash stays terminal at the bottom.
     const modes = <DashboardViewMode>[
       DashboardViewMode.manage,
       DashboardViewMode.home,
+      DashboardViewMode.journey,
       DashboardViewMode.trash,
     ];
 
@@ -198,6 +201,9 @@ class _ViewPickerExpandedState extends State<ViewPickerExpanded>
                                 break;
                               case DashboardViewMode.manage:
                                 title = 'Manage';
+                                break;
+                              case DashboardViewMode.journey:
+                                title = 'Journey';
                                 break;
                               case DashboardViewMode.trash:
                                 title = 'Trash';

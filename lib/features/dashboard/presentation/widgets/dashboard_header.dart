@@ -119,6 +119,9 @@ class DashboardHeader extends StatelessWidget {
       case DashboardViewMode.manage:
         titleText = 'Manage';
         break;
+      case DashboardViewMode.journey:
+        titleText = 'Journey';
+        break;
       case DashboardViewMode.trash:
         titleText = 'Trash';
         break;
