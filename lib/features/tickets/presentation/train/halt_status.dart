@@ -83,6 +83,13 @@ HaltStatus? resolveHaltStatus({
           tone: HaltStatusTone.warning,
         );
       }
+      // Delayed run state with no magnitude means "running late, extent unknown"
+      if (runState == TrainRunState.delayed && delayMinutes == null) {
+        return const HaltStatus(
+          label: 'Delayed',
+          tone: HaltStatusTone.warning,
+        );
+      }
       if (runState == TrainRunState.onTime) {
         return const HaltStatus(
           label: 'On time',

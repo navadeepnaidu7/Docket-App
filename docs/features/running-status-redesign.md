@@ -30,15 +30,18 @@ claim "On time" when the backend actually said so.** `TrainRunState.onTime` is r
 mere absence of a delay is not evidence, and inferring it would put a confident green pill on
 every pass the server has never reported on.
 
-Resolution order per halt, in `_resolveHaltStatus`:
+Resolution order per halt, in `resolveHaltStatus`:
 
-| Halt state | Pill |
-|-----------|------|
-| `departed` | "Departed", neutral |
-| `arriving` | "Arriving", live |
-| `upcoming` + `isDelayed` | "<n> min late", warning |
-| `upcoming` + `runState == onTime` | "On time", positive |
-| `upcoming`, nothing known | **no pill** |
+| Precedence | Condition | Pill |
+|-----------|-----------|------|
+| 1 (highest) | `runState == cancelled` | "Cancelled", warning — for every halt state |
+| 2 | Completed journey + `arriving` | "Departed", neutral |
+| 3 | Completed journey + `upcoming` | **no pill** |
+| 4 | `departed` | "Departed", neutral |
+| 5 | `arriving` (active journey) | "Arriving", live |
+| 6 | `upcoming` + `isDelayed` | "<n> min late", warning |
+| 7 | `upcoming` + `runState == onTime` | "On time", positive |
+| 8 (fallback) | `upcoming`, nothing known | **no pill** |
 
 A halt whose `actual` differs from `time` shows both: the scheduled time struck through in the
 pill, the actual beside it in the status tone. Null `actual` is normal and means "no revision",

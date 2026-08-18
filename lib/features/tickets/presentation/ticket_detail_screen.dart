@@ -1136,7 +1136,7 @@ class _HaltRow extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: PassType.pill(
                                     _toneColor(
-                                      status?.tone ?? HaltStatusTone.warning,
+                                      status?.tone ?? HaltStatusTone.neutral,
                                       isDark: isDark,
                                       muted: muted,
                                     ),

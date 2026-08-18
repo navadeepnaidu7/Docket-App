@@ -30,9 +30,10 @@ abstract final class AppAssets {
 
   // ── Pass category icons ────────────────────────────────────────────────────
 
-  /// Line icons for the add-menu's pass grid, from Lucide (ISC) — bundled
-  /// unmodified, see ATTRIBUTIONS.md. Material's outlined set was close but a
-  /// different weight and silhouette, so the grid read as mixed.
+  /// Line icons for the add-menu's pass grid, from Lucide (ISC) — bundled with
+  /// stroke-width modified from 2 to 1.5, see ATTRIBUTIONS.md. Material's
+  /// outlined set was close but a different weight and silhouette, so the grid
+  /// read as mixed.
   ///
   /// Each is a 24x24 viewBox stroked with `currentColor`, so they tint through
   /// a [ColorFilter] and follow the theme.

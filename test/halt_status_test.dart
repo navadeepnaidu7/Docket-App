@@ -50,6 +50,17 @@ void main() {
       );
     });
 
+    test('delayed run state with null delayMinutes shows "Delayed"', () {
+      expect(
+        _resolve(
+          state: HaltState.upcoming,
+          runState: TrainRunState.delayed,
+          delayMinutes: null,
+        ),
+        const HaltStatus(label: 'Delayed', tone: HaltStatusTone.warning),
+      );
+    });
+
     test('"On time" needs runState to actually say so', () {
       expect(
         _resolve(state: HaltState.upcoming, runState: TrainRunState.onTime),

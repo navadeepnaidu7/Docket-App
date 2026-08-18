@@ -1,3 +1,4 @@
+import 'package:docket/core/theme/app_theme.dart';
 import 'package:docket/features/passport/presentation/widgets/passport_cover_art.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,8 +13,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: AppTheme.lightTheme,
         home: Scaffold(
-          backgroundColor: const Color(0xFFF5F0E8),
           body: Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,

@@ -132,8 +132,8 @@ wrong-direction artifact.
 
 Navigation and dismissal:
 
-- Header button is `✕` at depth 0 and `←` deeper, cross-faded via a small
-  `AnimatedSwitcher`.
+- The sheet keeps `✕` (Close) at every depth and adds `←` (Back) on nested steps,
+  both buttons present side-by-side rather than cross-fading.
 - `PopScope(canPop: depth == 0)` — Android back pops one *step*, and only closes
   the sheet from the root. Without this, system back dumps the whole flow from a
   sub-step, which is the bug the redesign exists to remove.
@@ -179,6 +179,9 @@ images — just two flat fills, navy `#070930` and gold `#f4ca81`. That is the c
 heights, so vector wins. Shipping unmodified also makes the CC BY-SA position
 trivial: redistribution, not adaptation.
 
+`PassportCoverArt` renders the SVG artwork without rotation — it displays upright
+cover art with a drop shadow and optional wordmark crop, but no tilt effect.
+
 ```
 assets/wallet/passport/covers/passport_regular.svg     (109 KB)
 assets/wallet/passport/covers/passport_epassport.svg   (83 KB)
@@ -207,14 +210,15 @@ both grounds) and only the tile behind it changes.
 - Fill: `isDark ? onSurface.withValues(alpha: 0.06) : onSurface.withValues(alpha: 0.04)`
   — the mockup's soft grey, expressed against the cream ground rather than a raw
   hex, per the design-token convention.
-- Radius: 26 on a 1:1 tile via `BorderRadius.circular`. No squircle package —
-  `ContinuousRectangleBorder` is not an Apple squircle and a new dependency is not
-  worth the delta at this size. `AppTheme.radiusCard` (20) reads too tight against
-  the mockup's proportions, so this is a deliberate local value.
-- Icon: thin line glyphs at 34 px, `scheme.onSurface` — `Icons.train_outlined`,
-  `Icons.directions_bus_outlined`, `Icons.flight_outlined`,
-  `Icons.local_activity_outlined`, `Icons.theater_comedy_outlined`,
-  `Icons.more_horiz_rounded`.
+- Radius: 28 on a 1:1 tile via `BorderRadius.circular` (default parameter value).
+  No squircle package — `ContinuousRectangleBorder` is not an Apple squircle and a
+  new dependency is not worth the delta at this size. `AppTheme.radiusCard` (20)
+  reads too tight against the mockup's proportions, so this remains a parameterized
+  local value rather than a shared token.
+- Icon: thin line glyphs at 34 px, `scheme.onSurface` — Lucide SVG assets
+  (`train-front.svg`, `bus.svg`, `plane.svg`, `ticket.svg`, `calendar-days.svg`,
+  `ellipsis.svg`) rendered via `SvgPicture.asset` rather than Material icons, for
+  consistent weight and silhouette across the grid.
 - Label sits **below** the tile: 13 px, `w700`, centred, up to two lines.
   Subtitle (Documents grid only) in `AppTokens.secondaryLabel(scheme)`.
 - `soon: true` -> 0.48 opacity, "Soon" pill reusing the `_IdOption` badge styling,
