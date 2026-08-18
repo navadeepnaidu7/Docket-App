@@ -197,6 +197,42 @@ flutter analyze
 and three `use_null_aware_elements` (`chip_payload.dart:75-79`). No warnings or
 errors.
 
+### 3.1b Journey globe — 19 Aug 2026
+
+Verified on this machine:
+
+- `flutter analyze` clean (the same 5 pre-existing infos; none in Journey).
+- **501 tests pass**, 89 of them Journey's. Notable ones, because they cover
+  things nothing visual would catch:
+  - the fast batch projection agrees with the readable reference to a hundredth
+    of a pixel over 4,000 random points
+  - the decoded atlas is probed against real geography — India, Brazil, Nigeria,
+    Australia, Siberia, Antarctica carry dots; mid-Pacific and mid-Atlantic do
+    not; the Caspian is correctly subtracted as a polygon hole
+  - a corrupted byte, a truncated file and a bad magic number each fail the
+    decode rather than producing a plausible wrong planet
+  - **100% of place strings in `mock_pass_fixtures.dart` resolve**, including
+    `BLR` used as a train endpoint and the `Hyderabad Decan` misspelling
+  - tap-to-descend is walked end to end, world through country and back
+- `flutter build apk --debug` succeeds, so the two new bundled assets are wired
+  correctly in `pubspec.yaml`.
+
+**One bug this caught late, recorded because the class of it matters.** The
+camera flight never ran: `_flyTo` took its origin by re-reading the navigator,
+which already held the destination, so the guard returned early and every
+descent snapped. The level changed, the globe redrew, the tap test passed and
+analyze was clean — the only symptom was on screen. The fix extracts
+`flightOriginFor` into the domain with three tests. Silent-failure work belongs
+in pure functions where it can be pinned.
+
+**Still unverified — needs a real device:**
+
+- Frame timing. Never measured. Measure at **city** level; world level enables
+  ~1,700 dots, will look fine, and proves nothing.
+- The feel of the camera flights. The ~20 constants in `journey_motion.dart`
+  were reasoned, not tuned on hardware, and no test can judge motion.
+- The globe's full-bleed framing behind the dashboard header.
+
 ### 3.2 Tests
 
 ```bash
