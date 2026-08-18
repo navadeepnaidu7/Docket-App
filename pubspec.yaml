@@ -105,6 +105,9 @@ flutter:
     - assets/passes/zomato.svg
     - assets/passes/district-logo.svg
     - assets/passes/history_clock.svg
+    # Lucide line icons (ISC) — see ATTRIBUTIONS.md. Directory entry: this set
+    # grows as pass categories are added.
+    - assets/passes/icons/
     - assets/auth/google/android_dark_rd_SI.svg
     - assets/auth/google/ios_dark_rd_SI.svg
     - assets/auth/google/ios_dark_rd_na.svg
@@ -123,6 +126,8 @@ flutter:
     - assets/wallet/passport/emblems/emblem_34.png
     - assets/wallet/passport/emblems/emblem_120.png
     - assets/wallet/passport/emblems/emblem_140.png
+    - assets/wallet/passport/covers/passport_regular.svg
+    - assets/wallet/passport/covers/passport_epassport.svg
     - assets/wallet/aadhaar/logo.svg
 
   # An image asset can refer to one or more resolution-specific "variants", see

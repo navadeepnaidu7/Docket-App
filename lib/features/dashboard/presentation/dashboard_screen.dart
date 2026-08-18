@@ -8,7 +8,6 @@ import '../../../core/motion/studio_page_route.dart';
 
 import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
-import '../../ids/presentation/add_id_sheet.dart';
 import '../../ids/application/attachment_open_service.dart';
 import '../../ids/application/attachment_providers.dart';
 import '../../ids/presentation/attachments/id_attachment_sheet.dart';
@@ -31,7 +30,8 @@ import '../application/wallet_order_provider.dart';
 
 // Modular widgets imports
 import 'widgets/add_fab.dart';
-import 'widgets/add_item_sheet.dart';
+import '../../passport/presentation/widgets/passport_cover_art.dart';
+import 'widgets/add_menu.dart';
 import 'widgets/dashboard_header.dart';
 import 'widgets/easter_egg_constants.dart';
 import 'widgets/easter_egg_drawer.dart';
@@ -116,6 +116,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     // Clears any decrypted copy left in the cache by an external PDF view that
     // was interrupted before the sheet could close.
     AttachmentOpenService.purge();
+    // The add menu's passport art is ~100 KB of path data each; parsing on
+    // first build would hitch the sheet open. Deliberately after first frame
+    // rather than in main(), which is already on a font-loading budget.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PassportCoverArt.warmUp();
+    });
     _showHomeMenu.addListener(_onMenuToggle);
     _docPage = ValueNotifier(0.0);
     _backdropTilt = WalletBackdropTilt();
@@ -236,55 +242,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     ).push(studioPageRoute<void>(builder: (_) => IdEntryScreen(type: type)));
   }
 
+  /// Both branches open one morphing sheet that carries its own sub-steps —
+  /// the haptic fires inside [showMorphSheet].
   void _showAddSheet() {
-    HapticService.confirm();
     if (_tabCtrl.index == 0) {
-      // Docs tab — choose Passport or ID
-      showModalBottomSheet<void>(
+      showAddDocumentsMenu(
         context: context,
-        useSafeArea: true,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => AddItemSheet(
-          onAddPassport: () {
-            Navigator.of(context).pop();
-            _showPassportTypeSheet();
-          },
-          onAddId: () {
-            Navigator.of(context).pop();
-            showModalBottomSheet<void>(
-              context: context,
-              useSafeArea: true,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (_) => AddIdSheet(onSelectType: _openIdEntry),
-            );
-          },
-        ),
+        onSelectPassportKind: _openPassportEntry,
+        onSelectIdType: _openIdEntry,
+        passesStep: () => passesRootStep(context, ref),
+        // Move the tab under the sheet as well, so dismissing leaves the user
+        // looking at the section they just switched into.
+        onSwitchToPasses: () => _tabCtrl.animateTo(1),
       );
     } else {
       showAddPassFlow(context, ref);
     }
-  }
-
-  void _showPassportTypeSheet() {
-    HapticService.confirm();
-    showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => PassportTypeSheet(
-        onSelectEPassport: () {
-          Navigator.of(context).pop();
-          _openPassportEntry(true);
-        },
-        onSelectRegularPassport: () {
-          Navigator.of(context).pop();
-          _openPassportEntry(false);
-        },
-      ),
-    );
   }
 
   bool _ordersEqual(List<String> a, List<String> b) {
@@ -463,7 +436,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         onDragEnd: _handleDragEnd,
                         passports: passports,
                         idDocs: idDocs,
-                        onAddPassport: _showPassportTypeSheet,
+                        onAddPassport: () => showPassportKindMenu(
+                          context: context,
+                          onSelect: _openPassportEntry,
+                        ),
                         onAddId: _openIdEntry,
                       ),
                     ),
