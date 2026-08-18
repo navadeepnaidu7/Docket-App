@@ -186,32 +186,55 @@ class _MorphSheetState extends State<MorphSheet>
   }
 
   Widget _buildHeader(ThemeData theme, ColorScheme scheme) {
+    final bool isDark = theme.brightness == Brightness.dark;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 6, 10, 2),
-      child: Stack(
-        alignment: Alignment.center,
-        children: <Widget>[
-          SizedBox(
-            height: 44,
-            width: double.infinity,
-            child: Align(
+      // 19, not the body's 24: each button's 44 tap box is 5 wider than its
+      // visual circle on either side, so this lands the circles' outer edges
+      // on 24 — flush with the step title below. Padding to 24 would push them
+      // visibly inboard of the text they head.
+      padding: const EdgeInsets.fromLTRB(19, 6, 19, 2),
+      child: SizedBox(
+        height: 44,
+        child: Stack(
+          alignment: Alignment.center,
+          children: <Widget>[
+            // Back only exists when there is somewhere to go. It keeps its slot
+            // reserved either way so the heading never shifts as it appears.
+            Align(
               alignment: Alignment.centerLeft,
-              child: _HeaderButton(
-                isRoot: isRoot,
-                onTap: isRoot ? close : back,
-                color: scheme.onSurface,
-                isDark: theme.brightness == Brightness.dark,
+              child: _HeaderSlot(
+                visible: !isRoot,
+                child: _HeaderButton(
+                  icon: Icons.arrow_back_rounded,
+                  semanticLabel: 'Back',
+                  onTap: back,
+                  color: scheme.onSurface,
+                  isDark: isDark,
+                ),
               ),
             ),
-          ),
-          Text(
-            widget.heading,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: scheme.onSurface,
-              fontWeight: FontWeight.w800,
+            Text(
+              widget.heading,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: scheme.onSurface,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-        ],
+            // Close never moves and never changes meaning — one tap out of the
+            // whole flow, from any depth, always in the same place.
+            Align(
+              alignment: Alignment.centerRight,
+              child: _HeaderButton(
+                icon: Icons.close_rounded,
+                semanticLabel: 'Close',
+                onTap: close,
+                color: scheme.onSurface,
+                isDark: isDark,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -258,12 +281,8 @@ class _MorphSheetState extends State<MorphSheet>
                       // Positioned children do not contribute to a Stack's
                       // size, so the Stack measures the incoming step alone.
                       ...previousChildren.map(
-                        (Widget child) => Positioned(
-                          left: 0,
-                          right: 0,
-                          top: 0,
-                          child: child,
-                        ),
+                        (Widget child) =>
+                            Positioned(left: 0, right: 0, top: 0, child: child),
                       ),
                       ?currentChild,
                     ],
@@ -337,21 +356,60 @@ class _MorphSheetState extends State<MorphSheet>
   }
 }
 
-/// Close at the root, back deeper in — the glyph cross-fades and rotates a
-/// little so the change reads as one control changing meaning.
+/// Reserves a button's slot whether or not the button is currently offered.
+///
+/// Holding the space means the heading never jumps sideways as back appears;
+/// fading and sliding it in from the left says where it came from. Hidden, it
+/// takes no taps and is invisible to a screen reader.
+class _HeaderSlot extends StatelessWidget {
+  const _HeaderSlot({required this.visible, required this.child});
+
+  final bool visible;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    const Duration duration = Duration(milliseconds: 280);
+    return ExcludeSemantics(
+      excluding: !visible,
+      child: IgnorePointer(
+        ignoring: !visible,
+        child: AnimatedSlide(
+          offset: visible ? Offset.zero : const Offset(-0.3, 0),
+          duration: duration,
+          curve: easeOutQuint,
+          child: AnimatedScale(
+            scale: visible ? 1 : 0.8,
+            duration: duration,
+            curve: easeOutQuint,
+            child: AnimatedOpacity(
+              opacity: visible ? 1 : 0,
+              duration: const Duration(milliseconds: 200),
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A circular header control.
 ///
 /// Deliberately not an [InkResponse]: Material's ink draws a rectangular
 /// highlight on a circular control, and nothing else in this app uses ink.
 /// [BounceTap] is the house press treatment.
 class _HeaderButton extends StatelessWidget {
   const _HeaderButton({
-    required this.isRoot,
+    required this.icon,
+    required this.semanticLabel,
     required this.onTap,
     required this.color,
     required this.isDark,
   });
 
-  final bool isRoot;
+  final IconData icon;
+  final String semanticLabel;
   final VoidCallback onTap;
   final Color color;
   final bool isDark;
@@ -360,41 +418,33 @@ class _HeaderButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: isRoot ? 'Close' : 'Back',
+      label: semanticLabel,
+      onTap: onTap,
       child: ExcludeSemantics(
         child: BounceTap(
           onTap: onTap,
-          scaleFactor: 0.90,
-          child: Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: isDark ? 0.10 : 0.06),
-              shape: BoxShape.circle,
-            ),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 260),
-              switchInCurve: easeOutQuint,
-              transitionBuilder: (Widget child, Animation<double> animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: ScaleTransition(
-                    scale: Tween<double>(begin: 0.7, end: 1).animate(animation),
-                    child: RotationTransition(
-                      turns: Tween<double>(
-                        begin: -0.12,
-                        end: 0,
-                      ).animate(animation),
-                      child: child,
-                    ),
-                  ),
-                );
-              },
-              child: Icon(
-                isRoot ? Icons.close_rounded : Icons.arrow_back_rounded,
-                key: ValueKey<bool>(isRoot),
-                color: color.withValues(alpha: 0.85),
-                size: 19,
+          // 0.96 is the app's press depth (BounceTap's own default, and what
+          // AddFab uses). 0.90 on a control this small read as rubbery.
+          scaleFactor: 0.96,
+          // The visual circle is 34, but the tap box is 44 — the platform
+          // minimum. BounceTap hit-tests its child, so sizing the target to
+          // the artwork made the button easy to miss.
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Center(
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: isDark ? 0.10 : 0.06),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: color.withValues(alpha: 0.85),
+                  size: 19,
+                ),
               ),
             ),
           ),

@@ -117,6 +117,41 @@ void main() {
     expect(find.byType(MorphSheet), findsNothing);
   });
 
+  testWidgets('close is still one tap out from a sub-step', (
+    WidgetTester tester,
+  ) async {
+    final List<bool> chosen = <bool>[];
+    await _openDocumentsMenu(tester, onSelectPassportKind: chosen.add);
+
+    await tester.tap(find.text('Passport'));
+    await tester.pumpAndSettle();
+    expect(find.text('E-Passport'), findsOneWidget);
+
+    // Close stays in the same slot at every depth, so leaving never requires
+    // walking back up the stack first.
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MorphSheet), findsNothing);
+    expect(chosen, isEmpty);
+  });
+
+  testWidgets('back is not offered at the root', (WidgetTester tester) async {
+    await _openDocumentsMenu(tester);
+
+    // The slot is reserved so the heading does not shift, but at the root it
+    // is transparent and takes no input.
+    expect(
+      tester.widget<IgnorePointer>(
+        find.ancestor(
+          of: find.byIcon(Icons.arrow_back_rounded),
+          matching: find.byType(IgnorePointer),
+        ).first,
+      ).ignoring,
+      isTrue,
+    );
+  });
+
   testWidgets('selecting a kind closes the sheet and reports the choice', (
     WidgetTester tester,
   ) async {
