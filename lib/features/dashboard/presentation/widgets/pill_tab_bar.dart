@@ -55,9 +55,9 @@ class _PillTabBarState extends ConsumerState<PillTabBar> {
     final bool passesVertical = iconStyles.passes == NavIconStyle.vertical;
 
     return Container(
-      // 15% narrower than the original 250. Kept even so the active-tab
+      // 7% narrower than the original 250. Kept even so the active-tab
       // highlight, which is a widthFactor of 0.5, still lands on whole pixels.
-      width: 212,
+      width: 232,
       height: 82,
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF141416) : Colors.white,

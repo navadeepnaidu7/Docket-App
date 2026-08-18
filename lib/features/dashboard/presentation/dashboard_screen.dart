@@ -250,6 +250,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         context: context,
         onSelectPassportKind: _openPassportEntry,
         onSelectIdType: _openIdEntry,
+        passesStep: () => passesRootStep(context, ref),
+        // Move the tab under the sheet as well, so dismissing leaves the user
+        // looking at the section they just switched into.
+        onSwitchToPasses: () => _tabCtrl.animateTo(1),
       );
     } else {
       showAddPassFlow(context, ref);

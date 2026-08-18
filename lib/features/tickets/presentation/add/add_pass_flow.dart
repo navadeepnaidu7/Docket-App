@@ -25,62 +25,66 @@ import 'pnr_entry_screen.dart';
 /// the sheet first and then push or open a picker, which has to happen on the
 /// navigator that outlives it.
 Future<void> showAddPassFlow(BuildContext context, WidgetRef ref) {
-  return showMorphSheet(
-    context: context,
-    root: MorphStep(
-      id: 'passes',
-      title: 'Passes',
-      subtitle: 'Add your everyday passes in one place',
-      builder: (BuildContext sheetContext, MorphSheetController controller) {
-        return SquircleTileGrid(
-          columns: 3,
-          tiles: <Widget>[
-            SquircleTile(
-              label: 'Trains',
-              iconAsset: AppAssets.passIconTrain,
-              onTap: () => controller.push(
-                _methodStep(context, ref, PassInputCategory.train),
-              ),
+  return showMorphSheet(context: context, root: passesRootStep(context, ref));
+}
+
+/// The Passes category grid.
+///
+/// Exposed rather than inlined so the Documents menu can switch straight into
+/// it, without closing one sheet to open another.
+MorphStep passesRootStep(BuildContext context, WidgetRef ref) {
+  return MorphStep(
+    id: 'passes',
+    title: 'Passes',
+    builder: (BuildContext sheetContext, MorphSheetController controller) {
+      return SquircleTileGrid(
+        columns: 3,
+        tiles: <Widget>[
+          SquircleTile(
+            label: 'Trains',
+            iconAsset: AppAssets.passIconTrain,
+            onTap: () => controller.push(
+              _methodStep(context, ref, PassInputCategory.train),
             ),
-            // Mockup said "Bus / Public Transport", but that wraps to four
-            // lines at the real tile width, and `bus` is the only transit
-            // category the server actually classifies.
-            SquircleTile(
-              label: 'Bus',
-              iconAsset: AppAssets.passIconBus,
-              onTap: () => controller.push(
-                _methodStep(context, ref, PassInputCategory.bus),
-              ),
+          ),
+          // Mockup said "Bus / Public Transport", but that wraps to four
+          // lines at the real tile width, and `bus` is the only transit
+          // category the server actually classifies.
+          SquircleTile(
+            label: 'Bus',
+            iconAsset: AppAssets.passIconBus,
+            onTap: () => controller.push(
+              _methodStep(context, ref, PassInputCategory.bus),
             ),
-            // Flights, Events and More have no PassInputCategory and no server
-            // route. They are shown so the grid reads as the finished shape,
-            // but a tap would post an unclassifiable upload.
-            const SquircleTile(
-              label: 'Flights',
-              iconAsset: AppAssets.passIconPlane,
-              soon: true,
+          ),
+          // Flights, Events and More have no PassInputCategory and no server
+          // route. They are shown so the grid reads as the finished shape,
+          // but a tap would post an unclassifiable upload.
+          const SquircleTile(
+            label: 'Flights',
+            iconAsset: AppAssets.passIconPlane,
+            soon: true,
+          ),
+          SquircleTile(
+            label: 'Movies',
+            iconAsset: AppAssets.passIconTicket,
+            onTap: () => controller.push(
+              _methodStep(context, ref, PassInputCategory.movie),
             ),
-            SquircleTile(
-              label: 'Movies',
-              iconAsset: AppAssets.passIconTicket,
-              onTap: () => controller.push(
-                _methodStep(context, ref, PassInputCategory.movie),
-              ),
-            ),
-            const SquircleTile(
-              label: 'Events',
-              iconAsset: AppAssets.passIconEvents,
-              soon: true,
-            ),
-            const SquircleTile(
-              label: 'More',
-              iconAsset: AppAssets.passIconMore,
-              soon: true,
-            ),
-          ],
-        );
-      },
-    ),
+          ),
+          const SquircleTile(
+            label: 'Events',
+            iconAsset: AppAssets.passIconEvents,
+            soon: true,
+          ),
+          const SquircleTile(
+            label: 'More',
+            iconAsset: AppAssets.passIconMore,
+            soon: true,
+          ),
+        ],
+      );
+    },
   );
 }
 
@@ -140,9 +144,9 @@ Future<void> _handleSource(
 ) async {
   switch (source) {
     case PassInputSource.pnr:
-      await Navigator.of(context).push(
-        studioPageRoute<void>(builder: (_) => const PnrEntryScreen()),
-      );
+      await Navigator.of(
+        context,
+      ).push(studioPageRoute<void>(builder: (_) => const PnrEntryScreen()));
     case PassInputSource.photo:
       await _pickPhoto(context, ref, category);
     case PassInputSource.pdf:
@@ -232,10 +236,9 @@ Future<void> _submitFile(
   );
 
   try {
-    await ref.read(passIngestServiceProvider).submitFile(
-          file: file,
-          category: category,
-        );
+    await ref
+        .read(passIngestServiceProvider)
+        .submitFile(file: file, category: category);
     if (!context.mounted) return;
     Navigator.of(context, rootNavigator: true).pop();
     HapticService.success();

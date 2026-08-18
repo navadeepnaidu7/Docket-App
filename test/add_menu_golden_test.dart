@@ -1,5 +1,6 @@
 import 'package:docket/core/theme/app_theme.dart';
 import 'package:docket/features/dashboard/presentation/widgets/add_menu.dart';
+import 'package:docket/shared/widgets/morph_sheet.dart';
 import 'package:docket/features/passport/presentation/widgets/passport_cover_art.dart';
 import 'package:docket/features/tickets/presentation/add/add_pass_flow.dart';
 import 'package:flutter/material.dart';
@@ -50,6 +51,12 @@ void main() {
                 context: context,
                 onSelectPassportKind: (_) {},
                 onSelectIdType: (_) {},
+                passesStep: () => MorphStep(
+                  id: 'passes',
+                  title: 'Passes',
+                  builder: (_, _) => const SizedBox.shrink(),
+                ),
+                onSwitchToPasses: () {},
               ),
               child: const Text('open'),
             ),

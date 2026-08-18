@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/bounce_tap.dart';
 import '../../../../shared/widgets/morph_sheet.dart';
 import '../../../../shared/widgets/squircle_tile.dart';
 import '../../../ids/domain/id_document.dart';
@@ -22,40 +24,110 @@ Future<void> showAddDocumentsMenu({
   required BuildContext context,
   required void Function(bool isEPassport) onSelectPassportKind,
   required void Function(IdDocumentType type) onSelectIdType,
+  MorphStep Function()? passesStep,
+  VoidCallback? onSwitchToPasses,
 }) {
   return showMorphSheet(
     context: context,
     root: MorphStep(
       id: 'documents',
       title: 'Documents',
-      subtitle: 'Add your important documents securely',
       builder: (BuildContext context, MorphSheetController controller) {
-        return SquircleTileGrid(
-          columns: 2,
-          tiles: <Widget>[
-            SquircleTile(
-              label: 'Passport',
-              sublabel: 'E-passport via NFC',
-              aspectRatio: _kDocumentTileAspect,
-              art: const PassportCoverArt(
-                variant: PassportCoverVariant.regular,
-                height: _kCoverHeight,
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            SquircleTileGrid(
+              columns: 2,
+              tiles: <Widget>[
+                SquircleTile(
+                  label: 'Passport',
+                  sublabel: 'E-passport via NFC',
+                  aspectRatio: _kDocumentTileAspect,
+                  art: const PassportCoverArt(
+                    variant: PassportCoverVariant.regular,
+                    height: _kCoverHeight,
+                  ),
+                  onTap: () =>
+                      controller.push(_passportKindStep(onSelectPassportKind)),
+                ),
+                SquircleTile(
+                  label: 'ID Cards',
+                  sublabel: 'Aadhaar, PAN and more',
+                  aspectRatio: _kDocumentTileAspect,
+                  icon: Icons.badge_outlined,
+                  onTap: () => controller.push(_idTypeStep(onSelectIdType)),
+                ),
+              ],
+            ),
+            // One-way on purpose. Someone on the IDs tab may not realise the
+            // passes wallet exists; someone already in Passes has no such gap,
+            // so there is no matching link back.
+            if (passesStep != null)
+              _SwitchLink(
+                label: 'Add a pass instead',
+                onTap: () {
+                  onSwitchToPasses?.call();
+                  controller.replaceRoot(passesStep());
+                },
               ),
-              onTap: () =>
-                  controller.push(_passportKindStep(onSelectPassportKind)),
-            ),
-            SquircleTile(
-              label: 'ID Cards',
-              sublabel: 'Aadhaar, PAN and more',
-              aspectRatio: _kDocumentTileAspect,
-              icon: Icons.badge_outlined,
-              onTap: () => controller.push(_idTypeStep(onSelectIdType)),
-            ),
           ],
         );
       },
     ),
   );
+}
+
+/// A quiet text link under a grid, for moving sideways to another section.
+///
+/// Deliberately not a filled button: it is an escape hatch for someone in the
+/// wrong place, not a call to action competing with the tiles above it.
+class _SwitchLink extends StatelessWidget {
+  const _SwitchLink({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final Color ink = AppTokens.secondaryLabel(scheme);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 18),
+      child: Semantics(
+        button: true,
+        label: label,
+        onTap: onTap,
+        child: ExcludeSemantics(
+          child: BounceTap(
+            onTap: onTap,
+            scaleFactor: 0.97,
+            child: Padding(
+              // Generous vertical padding: the text is small, the tap target
+              // should not be.
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: ink,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.1,
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  Icon(Icons.chevron_right_rounded, color: ink, size: 17),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Opens the passport-kind choice directly, skipping the Documents step.

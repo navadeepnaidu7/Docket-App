@@ -36,6 +36,13 @@ abstract class MorphSheetController {
   /// Advances to [step], growing or shrinking the sheet around it.
   void push(MorphStep step);
 
+  /// Replaces the whole stack with [step], so there is nothing to go back to.
+  ///
+  /// For lateral moves rather than drilling in — switching the sheet from one
+  /// section to another. [push] would leave a back arrow pointing at a section
+  /// the user has deliberately left.
+  void replaceRoot(MorphStep step);
+
   /// Returns to the previous step. No-op at the root.
   void back();
 
@@ -109,6 +116,11 @@ class _MorphSheetState extends State<MorphSheet>
   @override
   void push(MorphStep step) {
     setState(() => _stack = <MorphStep>[..._stack, step]);
+  }
+
+  @override
+  void replaceRoot(MorphStep step) {
+    setState(() => _stack = <MorphStep>[step]);
   }
 
   @override
@@ -310,47 +322,54 @@ class _MorphSheetState extends State<MorphSheet>
   }
 
   Widget _buildStep(MorphStep step, ThemeData theme, ColorScheme scheme) {
-    return Padding(
+    // Full width, always. The layoutBuilder pins outgoing steps with left and
+    // right at 0, so they inherit the *incoming* step's width — a narrow step
+    // following a wide one would crush the outgoing content and overflow it
+    // mid-transition. Pinning every step to the full width decouples them.
+    return SizedBox(
       key: ValueKey<String>(step.id),
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-      // Title, subtitle and grid arrive on a short cascade instead of together.
-      // A single block appearing at one instant is what reads as unconsidered;
-      // ~50 ms between elements is enough to feel authored without feeling slow.
-      // The grid itself staggers its own tiles on top of this.
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          EntryReveal(
-            slideY: 8,
-            duration: const Duration(milliseconds: 380),
-            child: Text(
-              step.title,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                color: scheme.onSurface,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.4,
-              ),
-            ),
-          ),
-          if (step.subtitle != null) ...<Widget>[
-            const SizedBox(height: 4),
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+        // Title, subtitle and grid arrive on a short cascade instead of together.
+        // A single block appearing at one instant is what reads as unconsidered;
+        // ~50 ms between elements is enough to feel authored without feeling slow.
+        // The grid itself staggers its own tiles on top of this.
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
             EntryReveal(
               slideY: 8,
-              delay: const Duration(milliseconds: 50),
               duration: const Duration(milliseconds: 380),
               child: Text(
-                step.subtitle!,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppTokens.secondaryLabel(scheme),
-                  fontWeight: FontWeight.w500,
+                step.title,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
                 ),
               ),
             ),
+            if (step.subtitle != null) ...<Widget>[
+              const SizedBox(height: 4),
+              EntryReveal(
+                slideY: 8,
+                delay: const Duration(milliseconds: 50),
+                duration: const Duration(milliseconds: 380),
+                child: Text(
+                  step.subtitle!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppTokens.secondaryLabel(scheme),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+            step.builder(context, this),
           ],
-          const SizedBox(height: 20),
-          step.builder(context, this),
-        ],
+        ),
       ),
     );
   }

@@ -136,6 +136,66 @@ void main() {
     expect(chosen, isEmpty);
   });
 
+  testWidgets('the passes link switches the sheet and the tab', (
+    WidgetTester tester,
+  ) async {
+    int switched = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (BuildContext context) => Center(
+              child: ElevatedButton(
+                onPressed: () => showAddDocumentsMenu(
+                  context: context,
+                  onSelectPassportKind: (_) {},
+                  onSelectIdType: (_) {},
+                  passesStep: () => MorphStep(
+                    id: 'passes',
+                    title: 'Passes',
+                    builder: (_, _) => const Text('pass grid'),
+                  ),
+                  onSwitchToPasses: () => switched++,
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Add a pass instead'));
+    await tester.pumpAndSettle();
+
+    expect(switched, 1, reason: 'the tab underneath should follow');
+    expect(find.text('pass grid'), findsOneWidget);
+    expect(find.text('Documents'), findsNothing);
+    // A lateral switch, not a drill-down: there is nothing to go back to.
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find
+                .ancestor(
+                  of: find.byIcon(Icons.arrow_back_rounded),
+                  matching: find.byType(IgnorePointer),
+                )
+                .first,
+          )
+          .ignoring,
+      isTrue,
+    );
+  });
+
+  testWidgets('no passes link when the caller does not offer one', (
+    WidgetTester tester,
+  ) async {
+    await _openDocumentsMenu(tester);
+    expect(find.text('Add a pass instead'), findsNothing);
+  });
+
   testWidgets('back is not offered at the root', (WidgetTester tester) async {
     await _openDocumentsMenu(tester);
 
