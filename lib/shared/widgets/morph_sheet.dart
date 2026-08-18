@@ -3,7 +3,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../core/haptics/haptic_service.dart';
+import '../../core/motion/entry_reveal.dart';
 import '../../core/theme/app_theme.dart';
+import 'bounce_tap.dart';
 
 /// Builds the body of one step. The [controller] lets a step advance the flow
 /// in place rather than opening another route.
@@ -81,7 +83,15 @@ class _MorphSheetState extends State<MorphSheet>
   late List<MorphStep> _stack = <MorphStep>[widget.root];
 
   /// How long the sheet takes to resize around a new step.
-  static const Duration _morph = Duration(milliseconds: 380);
+  ///
+  /// The resize deliberately outlasts the content swap below: the sheet leads,
+  /// the content settles into it. Equal timings read as one flat dissolve.
+  static const Duration _morph = Duration(milliseconds: 460);
+
+  /// Corner radius for the floating sheet. Larger than [AppTheme.radiusSheet],
+  /// which is tuned for sheets pinned to the screen edge — this one is inset
+  /// 16 on both sides and reads as a card, so it wants a rounder corner.
+  static const double _radius = 38;
 
   /// Fraction of the screen the *step body* may occupy before it scrolls.
   /// Header and chrome sit outside this, so the sheet still leaves the wallet
@@ -91,16 +101,19 @@ class _MorphSheetState extends State<MorphSheet>
   @override
   bool get isRoot => _stack.length == 1;
 
+  // No haptic in push/back. Every route into them is a BounceTap — a tile or
+  // the header button — which already pulses on touch down. Firing again here
+  // landed a second pulse about 100 ms later, which reads as a stutter rather
+  // than a confirmation.
+
   @override
   void push(MorphStep step) {
-    HapticService.select();
     setState(() => _stack = <MorphStep>[..._stack, step]);
   }
 
   @override
   void back() {
     if (isRoot) return;
-    HapticService.select();
     setState(() => _stack = _stack.sublist(0, _stack.length - 1));
   }
 
@@ -129,13 +142,13 @@ class _MorphSheetState extends State<MorphSheet>
       child: Padding(
         padding: EdgeInsets.fromLTRB(16, 0, 16, mq.padding.bottom + 12),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppTheme.radiusSheet),
+          borderRadius: BorderRadius.circular(_radius),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
             child: Container(
               decoration: BoxDecoration(
                 color: AppTokens.sheetBackground(scheme),
-                borderRadius: BorderRadius.circular(AppTheme.radiusSheet),
+                borderRadius: BorderRadius.circular(_radius),
                 border: Border.all(color: borderColor, width: 0.5),
                 boxShadow: <BoxShadow>[
                   BoxShadow(
@@ -187,6 +200,7 @@ class _MorphSheetState extends State<MorphSheet>
                 isRoot: isRoot,
                 onTap: isRoot ? close : back,
                 color: scheme.onSurface,
+                isDark: theme.brightness == Brightness.dark,
               ),
             ),
           ),
@@ -228,9 +242,13 @@ class _MorphSheetState extends State<MorphSheet>
         ),
         child: SingleChildScrollView(
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 260),
-            reverseDuration: const Duration(milliseconds: 200),
-            switchInCurve: Curves.easeOutCubic,
+            // Asymmetric on purpose. The outgoing step leaves quickly and gets
+            // out of the way; the incoming one takes its time arriving, under
+            // a resize that is longer still. Symmetric timings are what made
+            // this read as a plain dissolve.
+            duration: const Duration(milliseconds: 300),
+            reverseDuration: const Duration(milliseconds: 130),
+            switchInCurve: easeOutQuint,
             switchOutCurve: Curves.easeInCubic,
             layoutBuilder:
                 (Widget? currentChild, List<Widget> previousChildren) {
@@ -252,17 +270,15 @@ class _MorphSheetState extends State<MorphSheet>
                   );
                 },
             transitionBuilder: (Widget child, Animation<double> animation) {
-              // Vertical drift rather than a horizontal slide: it reads the
-              // same forwards and backwards, so there is no wrong-direction
-              // artifact when AnimatedSwitcher replays an outgoing child's
-              // transition in reverse.
+              // Scale as well as fade, so a step recedes and its replacement
+              // grows into the space rather than simply appearing there. Kept
+              // direction-agnostic: AnimatedSwitcher replays an outgoing
+              // child's own transition in reverse, so anything with a left/
+              // right sense would run the wrong way on the way out.
               return FadeTransition(
                 opacity: animation,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.04),
-                    end: Offset.zero,
-                  ).animate(animation),
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.94, end: 1).animate(animation),
                   child: child,
                 ),
               );
@@ -278,25 +294,38 @@ class _MorphSheetState extends State<MorphSheet>
     return Padding(
       key: ValueKey<String>(step.id),
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      // Title, subtitle and grid arrive on a short cascade instead of together.
+      // A single block appearing at one instant is what reads as unconsidered;
+      // ~50 ms between elements is enough to feel authored without feeling slow.
+      // The grid itself staggers its own tiles on top of this.
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            step.title,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: scheme.onSurface,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.4,
+          EntryReveal(
+            slideY: 8,
+            duration: const Duration(milliseconds: 380),
+            child: Text(
+              step.title,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                color: scheme.onSurface,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.4,
+              ),
             ),
           ),
           if (step.subtitle != null) ...<Widget>[
             const SizedBox(height: 4),
-            Text(
-              step.subtitle!,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppTokens.secondaryLabel(scheme),
-                fontWeight: FontWeight.w500,
+            EntryReveal(
+              slideY: 8,
+              delay: const Duration(milliseconds: 50),
+              duration: const Duration(milliseconds: 380),
+              child: Text(
+                step.subtitle!,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppTokens.secondaryLabel(scheme),
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],
@@ -308,36 +337,65 @@ class _MorphSheetState extends State<MorphSheet>
   }
 }
 
-/// Close at the root, back deeper in — cross-faded so the change is visible.
+/// Close at the root, back deeper in — the glyph cross-fades and rotates a
+/// little so the change reads as one control changing meaning.
+///
+/// Deliberately not an [InkResponse]: Material's ink draws a rectangular
+/// highlight on a circular control, and nothing else in this app uses ink.
+/// [BounceTap] is the house press treatment.
 class _HeaderButton extends StatelessWidget {
   const _HeaderButton({
     required this.isRoot,
     required this.onTap,
     required this.color,
+    required this.isDark,
   });
 
   final bool isRoot;
   final VoidCallback onTap;
   final Color color;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
       label: isRoot ? 'Close' : 'Back',
-      child: InkResponse(
-        onTap: onTap,
-        radius: 24,
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: Icon(
-              isRoot ? Icons.close_rounded : Icons.arrow_back_rounded,
-              key: ValueKey<bool>(isRoot),
-              color: color,
-              size: 24,
+      child: ExcludeSemantics(
+        child: BounceTap(
+          onTap: onTap,
+          scaleFactor: 0.90,
+          child: Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: isDark ? 0.10 : 0.06),
+              shape: BoxShape.circle,
+            ),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              switchInCurve: easeOutQuint,
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.7, end: 1).animate(animation),
+                    child: RotationTransition(
+                      turns: Tween<double>(
+                        begin: -0.12,
+                        end: 0,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  ),
+                );
+              },
+              child: Icon(
+                isRoot ? Icons.close_rounded : Icons.arrow_back_rounded,
+                key: ValueKey<bool>(isRoot),
+                color: color.withValues(alpha: 0.85),
+                size: 19,
+              ),
             ),
           ),
         ),

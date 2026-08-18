@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/motion/entry_reveal.dart';
 import '../../core/theme/app_theme.dart';
 import 'bounce_tap.dart';
 
@@ -18,7 +19,7 @@ class SquircleTile extends StatelessWidget {
     this.onTap,
     this.soon = false,
     this.aspectRatio = 1.0,
-    this.radius = 26,
+    this.radius = 28,
   }) : assert(icon != null || art != null, 'Provide either an icon or art');
 
   final String label;
@@ -44,16 +45,45 @@ class SquircleTile extends StatelessWidget {
     final ColorScheme scheme = theme.colorScheme;
     final bool isDark = theme.brightness == Brightness.dark;
 
-    final Color fill = isDark
-        ? scheme.onSurface.withValues(alpha: 0.07)
-        : scheme.onSurface.withValues(alpha: 0.05);
+    // A flat fill reads as a hole punched in the sheet. The gradient deepens
+    // toward the bottom, the hairline catches the top edge like a lip, and the
+    // light-mode shadow lifts the tile off the surface — together they make the
+    // tile an object sitting on the sheet rather than an absence in it.
+    final List<Color> fill = isDark
+        ? <Color>[
+            scheme.onSurface.withValues(alpha: 0.10),
+            scheme.onSurface.withValues(alpha: 0.055),
+          ]
+        : <Color>[
+            scheme.onSurface.withValues(alpha: 0.035),
+            scheme.onSurface.withValues(alpha: 0.075),
+          ];
 
     final Widget tile = AspectRatio(
       aspectRatio: aspectRatio,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: fill,
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: fill,
+          ),
           borderRadius: BorderRadius.circular(radius),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.07)
+                : Colors.white.withValues(alpha: 0.70),
+            width: 0.5,
+          ),
+          boxShadow: isDark
+              ? null
+              : <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
         ),
         child: Stack(
           children: <Widget>[
@@ -166,12 +196,20 @@ class SquircleTileGrid extends StatelessWidget {
     this.spacing = 12,
     this.runSpacing = 20,
     this.maxTileWidth = 148,
+    this.stagger = true,
   });
 
   final int columns;
   final List<Widget> tiles;
   final double spacing;
   final double runSpacing;
+
+  /// Reveals tiles on a short cascade rather than all at once.
+  ///
+  /// The delay is per *row*, not per tile: staggering across a row makes the
+  /// eye track left-to-right and the grid feel slow, while a row at a time
+  /// reads as the grid assembling.
+  final bool stagger;
 
   /// Ceiling on a single tile's width.
   ///
@@ -205,8 +243,21 @@ class SquircleTileGrid extends StatelessWidget {
       }
 
       if (rows.isNotEmpty) rows.add(SizedBox(height: runSpacing));
+
+      final Widget row = Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: cells,
+      );
       rows.add(
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: cells),
+        stagger
+            ? EntryReveal(
+                slideY: 12,
+                duration: const Duration(milliseconds: 420),
+                // Picks up after the sheet's title and subtitle have landed.
+                delay: Duration(milliseconds: 90 + (start ~/ columns) * 55),
+                child: row,
+              )
+            : row,
       );
     }
 
