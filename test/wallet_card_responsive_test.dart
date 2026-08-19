@@ -239,5 +239,27 @@ void main() {
       );
       expect(size.width, 345);
     });
+
+    // The train canvas was 366x630 (0.581) against the movie face's 0.616, so
+    // in a phone-sized carousel page the train card was the one clamped by
+    // *height*: it filled the page top to bottom, left no clearance, and then
+    // could not use the full width either, rendering 339 wide where the movie
+    // card got 342. Both faces are portrait passes in the same carousel, so
+    // they have to frame the same. Pinned here rather than in the train face's
+    // own test because it is a relationship between two canvases.
+    test('a train pass and a movie pass resolve to the same box', () {
+      const BoxConstraints page = BoxConstraints(maxWidth: 342, maxHeight: 584);
+
+      final Size train =
+          WalletCardMetrics.resolve(page, WalletCardMetrics.trainAspect);
+      final Size movie =
+          WalletCardMetrics.resolve(page, WalletCardMetrics.ticketAspect);
+
+      expect(train.width, closeTo(movie.width, 0.5));
+      expect(train.height, closeTo(movie.height, 0.5));
+      // And it clears the page box rather than exactly filling it, which is
+      // what made the old card read as oversized.
+      expect(train.height, lessThan(584));
+    });
   });
 }
