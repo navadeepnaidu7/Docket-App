@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/wallet/wallet_card_metrics.dart';
 import '../../../../shared/widgets/studio_backdrop.dart';
 import '../../domain/bus_pass_models.dart';
 import '../pass_typography.dart';
@@ -44,9 +45,20 @@ class BusPassDetailScreen extends StatelessWidget {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
                     children: <Widget>[
+                      // The face is authored at a fixed canvas, so it needs the
+                      // same scale-to-fit wrapper the wallet card uses. This
+                      // was a bare 0.72 while the wallet card rendered the same
+                      // face at ticketAspect, so the card changed shape when
+                      // you opened it.
                       AspectRatio(
-                        aspectRatio: 0.72,
-                        child: BusTicketFace(pass: pass),
+                        aspectRatio: WalletCardMetrics.ticketAspect,
+                        child: WalletCardCanvas(
+                          designSize: WalletCardMetrics.ticketCanvas,
+                          child: BusTicketFace(
+                            pass: pass,
+                            useBrandColors: true,
+                          ),
+                        ),
                       ),
                       if (pass.passengers.isNotEmpty) ...<Widget>[
                         const SizedBox(height: 24),

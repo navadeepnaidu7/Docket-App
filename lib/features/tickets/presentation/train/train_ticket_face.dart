@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/ticket_models.dart';
+import '../pass_code_block.dart';
 import 'train_pass_theme.dart';
 import 'train_status_band.dart';
 
@@ -116,14 +117,12 @@ class TrainTicketFace extends StatelessWidget {
               right: TrainPassMetrics.inset,
               top: TrainPassMetrics.connectorY - 1,
               height: 2,
-              child: CustomPaint(
+              child: PassDashedRule(
                 key: TrainTicketFace.connectorKey,
-                painter: _DashedRulePainter(
-                  color: c.rule,
-                  strokeWidth: 2,
-                  dash: 4,
-                  gap: 4,
-                ),
+                color: c.rule,
+                strokeWidth: 2,
+                dash: 4,
+                gap: 4,
               ),
             ),
             _Baselined(
@@ -232,13 +231,11 @@ class TrainTicketFace extends StatelessWidget {
               right: TrainPassMetrics.inset,
               top: TrainPassMetrics.tearRuleY - 0.75,
               height: 1.5,
-              child: CustomPaint(
-                painter: _DashedRulePainter(
-                  color: c.rule,
-                  strokeWidth: 1.5,
-                  dash: 6,
-                  gap: 4,
-                ),
+              child: PassDashedRule(
+                color: c.rule,
+                strokeWidth: 1.5,
+                dash: 6,
+                gap: 4,
               ),
             ),
 
@@ -308,8 +305,10 @@ class TrainTicketFace extends StatelessWidget {
               top: TrainPassMetrics.qrTop,
               width: TrainPassMetrics.qrSize,
               height: TrainPassMetrics.qrSize,
-              child: _QrBlock(
-                colors: c,
+              child: PassCodeBlock(
+                size: TrainPassMetrics.qrSize,
+                ink: c.ink,
+                borderColor: c.qrBorder,
                 onTap: _detail ? onOpenCodes : null,
               ),
             ),
@@ -543,45 +542,6 @@ class _CodeMask extends StatelessWidget {
   }
 }
 
-class _DashedRulePainter extends CustomPainter {
-  const _DashedRulePainter({
-    required this.color,
-    required this.strokeWidth,
-    required this.dash,
-    required this.gap,
-  });
-
-  final Color color;
-  final double strokeWidth;
-  final double dash;
-  final double gap;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.butt;
-    final double y = size.height / 2;
-    double x = 0;
-    while (x < size.width) {
-      canvas.drawLine(
-        Offset(x, y),
-        Offset((x + dash).clamp(0, size.width), y),
-        paint,
-      );
-      x += dash + gap;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DashedRulePainter old) =>
-      old.color != color ||
-      old.strokeWidth != strokeWidth ||
-      old.dash != dash ||
-      old.gap != gap;
-}
-
 // ── Pieces ────────────────────────────────────────────────────────────────────
 
 class _BookingChip extends StatelessWidget {
@@ -606,80 +566,4 @@ class _BookingChip extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Decorative code block, not a scannable one.
-///
-/// The pattern is the fixed 7x7 grid from the design export; it encodes
-/// nothing. The real boarding code lives behind [onTap] on the detail screen,
-/// which is why the glance card leaves this inert rather than inviting a scan
-/// that would fail at a gate.
-class _QrBlock extends StatelessWidget {
-  const _QrBlock({required this.colors, this.onTap});
-
-  final TrainPassColors colors;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final Widget block = Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(TrainPassMetrics.qrRadius),
-            border: Border.all(color: colors.qrBorder),
-          ),
-        ),
-        CustomPaint(painter: _QrPainter(color: colors.ink)),
-      ],
-    );
-
-    if (onTap == null) return block;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: block,
-    );
-  }
-}
-
-class _QrPainter extends CustomPainter {
-  const _QrPainter({required this.color});
-
-  final Color color;
-
-  /// Verbatim from the export's 7x7 rect grid.
-  static const List<List<int>> _pattern = <List<int>>[
-    <int>[1, 1, 1, 0, 1, 1, 1],
-    <int>[1, 0, 1, 1, 0, 0, 1],
-    <int>[1, 1, 1, 0, 1, 1, 1],
-    <int>[0, 0, 0, 1, 0, 1, 0],
-    <int>[1, 1, 0, 0, 1, 0, 1],
-    <int>[1, 0, 1, 1, 0, 1, 1],
-    <int>[1, 1, 1, 0, 1, 0, 1],
-  ];
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()..color = color;
-    for (int r = 0; r < TrainPassMetrics.qrModules; r++) {
-      for (int col = 0; col < TrainPassMetrics.qrModules; col++) {
-        if (_pattern[r][col] == 0) continue;
-        canvas.drawRect(
-          Rect.fromLTWH(
-            TrainPassMetrics.qrInset + col * TrainPassMetrics.qrPitch,
-            TrainPassMetrics.qrInset + r * TrainPassMetrics.qrPitch,
-            TrainPassMetrics.qrCell,
-            TrainPassMetrics.qrCell,
-          ),
-          paint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _QrPainter old) => old.color != color;
 }

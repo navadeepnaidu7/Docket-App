@@ -168,11 +168,6 @@ abstract final class TrainPassMetrics {
   static const double qrLeft = 272.5;
   static const double qrTop = 441.5;
   static const double qrSize = 69;
-  static const double qrRadius = 11.5;
-  static const double qrInset = 7.5;
-  static const int qrModules = 7;
-  static const double qrCell = 6;
-  static const double qrPitch = 8;
 
   // ── Status band ──
   static const double bandTop = 540;

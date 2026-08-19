@@ -42,12 +42,13 @@ class WalletCardMetrics {
   /// at ~597dp tall and the movie face at ~595dp. 620 clears both with room to
   /// spare. These faces size themselves from their content, so without a fixed
   /// canvas they simply grew past short viewports — badly in landscape.
-  static const double _ticketW = 382;
-  static const double _ticketH = 620;
-  static const Size ticketCanvas = Size(_ticketW, _ticketH);
+  static const double ticketCanvasWidth = 382;
+  static const double ticketCanvasHeight = 620;
+  static const Size ticketCanvas =
+      Size(ticketCanvasWidth, ticketCanvasHeight);
 
   /// Portrait ticket ratio, kept in step with [ticketCanvas].
-  static const double ticketAspect = _ticketW / _ticketH;
+  static const double ticketAspect = ticketCanvasWidth / ticketCanvasHeight;
 
   /// Design canvas for the train pass face.
   ///

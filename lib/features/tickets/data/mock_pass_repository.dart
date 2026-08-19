@@ -12,6 +12,7 @@ class MockPassRepository implements PassRepository {
             buildWalletPassCatalog(
               trains: mockTrainPasses,
               movies: mockMoviePasses,
+              buses: mockBusPasses,
             );
 
   final List<WalletPassItem> _items;

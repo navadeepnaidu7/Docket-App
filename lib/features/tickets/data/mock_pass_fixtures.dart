@@ -1,3 +1,4 @@
+import '../domain/bus_pass_models.dart';
 import '../domain/movie_pass_models.dart';
 import '../domain/ticket_models.dart';
 
@@ -722,6 +723,71 @@ final List<MoviePass> mockMoviePasses = <MoviePass>[
     runtime: '3h 01m',
     // TMDB 872585
     posterUrl: _mockPosterUrl('8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg'),
+  ),
+];
+
+/// Demo coach bookings.
+///
+/// The active ones date themselves relative to launch for the same reason the
+/// train fixtures do. The expired one keeps a pinned date so the archive's
+/// month grouping stays stable.
+///
+/// Boarding points are written the way operators actually send them — "city,
+/// landmark" free text, no station codes — because that shape is what the bus
+/// face's place split is built around.
+final List<BusPass> mockBusPasses = <BusPass>[
+  BusPass(
+    id: 'mock_b1',
+    operator: 'Orange Travels',
+    boardingLocation: 'Hyderabad, Miyapur Bay 12',
+    dropLocation: 'Bengaluru, Madiwala Checkpost',
+    departTime: '10:30 PM',
+    arriveTime: '06:45 AM',
+    date: _dateIn(2),
+    arrivalDate: _dateIn(3),
+    departAt: _departsIn(2, 22, 30),
+    arriveAt: _departsIn(3, 6, 45),
+    seatDetails: 'L7, L8',
+    passengers: const <BusPassenger>[
+      BusPassenger(name: 'Navadeep Naidu', seat: 'L7'),
+      BusPassenger(name: 'Ananya Rao', seat: 'L8'),
+    ],
+    bookingId: 'OT8842119',
+    status: TicketStatus.active,
+  ),
+  BusPass(
+    id: 'mock_b2',
+    operator: 'KSRTC Airavat',
+    boardingLocation: 'Bengaluru, Shantinagar',
+    dropLocation: 'Mangaluru',
+    departTime: '11:15 PM',
+    arriveTime: '05:30 AM',
+    date: _dateIn(9),
+    arrivalDate: _dateIn(10),
+    departAt: _departsIn(9, 23, 15),
+    arriveAt: _departsIn(10, 5, 30),
+    seatDetails: 'W4',
+    passengers: const <BusPassenger>[
+      BusPassenger(name: 'Navadeep Naidu', seat: 'W4'),
+    ],
+    bookingId: 'KA5510073',
+    status: TicketStatus.active,
+  ),
+  const BusPass(
+    id: 'mock_b3',
+    operator: 'VRL Travels',
+    boardingLocation: 'Pune, Swargate',
+    dropLocation: 'Goa, Panaji',
+    departTime: '09:00 PM',
+    arriveTime: '06:10 AM',
+    date: '18 Feb 2026',
+    arrivalDate: '19 Feb 2026',
+    seatDetails: 'A2',
+    passengers: <BusPassenger>[
+      BusPassenger(name: 'Navadeep Naidu', seat: 'A2'),
+    ],
+    bookingId: 'VRL3390215',
+    status: TicketStatus.expired,
   ),
 ];
 
