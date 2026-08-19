@@ -1,0 +1,12 @@
+{
+  "sampleCount": 42000,
+  "dotCount": 12125,
+  "bandOffsets": [
+    1731,
+    5194,
+    12125
+  ],
+  "ringCount": 65,
+  "ringVertexTotal": 1455,
+  "landFraction": 0.28869
+}

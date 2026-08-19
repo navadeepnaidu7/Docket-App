@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "note": "Hand-curated. Coordinates are WGS84 decimal degrees. A row is only reachable by name if its kind is city/station/airport/venue - country and region rows exist for hierarchy and labels and are deliberately NOT name-searchable, so an address ending in a state name cannot resolve a whole state. See docs/features/journey.md.",
+  "places": [
+    {"id": "country:IN", "k": "country", "n": "India", "lat": 20.5937, "lng": 78.9629, "c": "IN"},
+
+    {"id": "region:IN-KA", "k": "region", "n": "Karnataka", "lat": 15.3173, "lng": 75.7139, "r": "IN-KA", "c": "IN"},
+    {"id": "region:IN-TG", "k": "region", "n": "Telangana", "lat": 17.1232, "lng": 79.2088, "r": "IN-TG", "c": "IN"},
+    {"id": "region:IN-DL", "k": "region", "n": "Delhi", "lat": 28.7041, "lng": 77.1025, "r": "IN-DL", "c": "IN"},
+    {"id": "region:IN-TN", "k": "region", "n": "Tamil Nadu", "lat": 11.1271, "lng": 78.6569, "r": "IN-TN", "c": "IN"},
+    {"id": "region:IN-MH", "k": "region", "n": "Maharashtra", "lat": 19.7515, "lng": 75.7139, "r": "IN-MH", "c": "IN"},
+    {"id": "region:IN-AP", "k": "region", "n": "Andhra Pradesh", "lat": 15.9129, "lng": 79.7400, "r": "IN-AP", "c": "IN"},
+    {"id": "region:IN-UP", "k": "region", "n": "Uttar Pradesh", "lat": 26.8467, "lng": 80.9462, "r": "IN-UP", "c": "IN"},
+
+    {"id": "city:bengaluru", "k": "city", "n": "Bengaluru", "lat": 12.9716, "lng": 77.5946, "r": "IN-KA", "c": "IN",
+     "codes": ["BLR"],
+     "a": ["bangalore", "bengaluru city"],
+     "why": "BLR is Kempegowda airport's IATA code, but fixture mock_t1 uses it as a train endpoint. Pinning the city is right for both that and a future flight; add apt:BLR only if terminal precision is ever needed."},
+    {"id": "city:hyderabad", "k": "city", "n": "Hyderabad", "lat": 17.3850, "lng": 78.4867, "r": "IN-TG", "c": "IN", "codes": ["HYD"], "a": ["hyd"]},
+    {"id": "city:new-delhi", "k": "city", "n": "New Delhi", "lat": 28.6139, "lng": 77.2090, "r": "IN-DL", "c": "IN", "codes": ["DEL"], "a": ["delhi"]},
+    {"id": "city:chennai", "k": "city", "n": "Chennai", "lat": 13.0827, "lng": 80.2707, "r": "IN-TN", "c": "IN", "a": ["madras"]},
+    {"id": "city:mumbai", "k": "city", "n": "Mumbai", "lat": 19.0760, "lng": 72.8777, "r": "IN-MH", "c": "IN", "a": ["bombay"]},
+    {"id": "city:vijayawada", "k": "city", "n": "Vijayawada", "lat": 16.5062, "lng": 80.6480, "r": "IN-AP", "c": "IN", "a": ["bezawada"]},
+    {"id": "city:guntur", "k": "city", "n": "Guntur", "lat": 16.3067, "lng": 80.4365, "r": "IN-AP", "c": "IN"},
+    {"id": "city:guntakal", "k": "city", "n": "Guntakal", "lat": 15.1710, "lng": 77.3660, "r": "IN-AP", "c": "IN"},
+    {"id": "city:jhansi", "k": "city", "n": "Jhansi", "lat": 25.4484, "lng": 78.5685, "r": "IN-UP", "c": "IN"},
+    {"id": "city:warangal", "k": "city", "n": "Warangal", "lat": 17.9689, "lng": 79.5941, "r": "IN-TG", "c": "IN", "a": ["kazipet"]},
+
+    {"id": "country:AE", "k": "country", "n": "United Arab Emirates", "lat": 23.4241, "lng": 53.8478, "c": "AE"},
+    {"id": "country:SG", "k": "country", "n": "Singapore", "lat": 1.3521, "lng": 103.8198, "c": "SG"},
+    {"id": "country:GB", "k": "country", "n": "United Kingdom", "lat": 54.0000, "lng": -2.0000, "c": "GB"},
+    {"id": "country:TH", "k": "country", "n": "Thailand", "lat": 15.8700, "lng": 100.9925, "c": "TH"},
+
+    {"id": "region:AE-DU", "k": "region", "n": "Dubai", "lat": 25.0700, "lng": 55.3000, "r": "AE-DU", "c": "AE"},
+    {"id": "region:SG-01", "k": "region", "n": "Singapore", "lat": 1.3521, "lng": 103.8198, "r": "SG-01", "c": "SG"},
+    {"id": "region:GB-LND", "k": "region", "n": "Greater London", "lat": 51.5074, "lng": -0.1278, "r": "GB-LND", "c": "GB"},
+    {"id": "region:TH-10", "k": "region", "n": "Bangkok", "lat": 13.7563, "lng": 100.5018, "r": "TH-10", "c": "TH"},
+
+    {"id": "city:dubai", "k": "city", "n": "Dubai", "lat": 25.2048, "lng": 55.2708, "r": "AE-DU", "c": "AE", "codes": ["DXB"]},
+    {"id": "city:singapore", "k": "city", "n": "Singapore", "lat": 1.3521, "lng": 103.8198, "r": "SG-01", "c": "SG", "codes": ["SIN"]},
+    {"id": "city:london", "k": "city", "n": "London", "lat": 51.5074, "lng": -0.1278, "r": "GB-LND", "c": "GB", "codes": ["LHR"]},
+    {"id": "city:bangkok", "k": "city", "n": "Bangkok", "lat": 13.7563, "lng": 100.5018, "r": "TH-10", "c": "TH", "codes": ["BKK"]},
+
+    {"id": "stn:HYB", "k": "station", "n": "Hyderabad Deccan", "lat": 17.3866, "lng": 78.4681, "city": "city:hyderabad", "r": "IN-TG", "c": "IN",
+     "codes": ["HYB"],
+     "a": ["hyderabad decan", "nampally"],
+     "why": "'Hyderabad Decan' is a real misspelling in mock_pass_fixtures.dart. Carried as an alias rather than corrected upstream, because extracted tickets will keep arriving with typos and the table is where that is absorbed."},
+    {"id": "stn:SBC", "k": "station", "n": "KSR Bengaluru", "lat": 12.9784, "lng": 77.5731, "city": "city:bengaluru", "r": "IN-KA", "c": "IN",
+     "codes": ["SBC"], "a": ["bangalore city", "ksr bengaluru city", "krantivira sangolli rayanna"]},
+    {"id": "stn:NDLS", "k": "station", "n": "New Delhi", "lat": 28.6425, "lng": 77.2197, "city": "city:new-delhi", "r": "IN-DL", "c": "IN", "codes": ["NDLS"]},
+    {"id": "stn:NZM", "k": "station", "n": "Hazrat Nizamuddin", "lat": 28.5885, "lng": 77.2530, "city": "city:new-delhi", "r": "IN-DL", "c": "IN",
+     "codes": ["NZM"], "a": ["h nizamuddin", "nizamuddin"]},
+    {"id": "stn:MAS", "k": "station", "n": "Chennai Central", "lat": 13.0827, "lng": 80.2755, "city": "city:chennai", "r": "IN-TN", "c": "IN",
+     "codes": ["MAS"], "a": ["mgr chennai central", "puratchi thalaivar dr mgr central"]},
+    {"id": "stn:BCT", "k": "station", "n": "Mumbai Central", "lat": 18.9690, "lng": 72.8193, "city": "city:mumbai", "r": "IN-MH", "c": "IN", "codes": ["BCT"]},
+    {"id": "stn:BZA", "k": "station", "n": "Vijayawada", "lat": 16.5175, "lng": 80.6236, "city": "city:vijayawada", "r": "IN-AP", "c": "IN", "codes": ["BZA"]},
+    {"id": "stn:GNT", "k": "station", "n": "Guntur", "lat": 16.3067, "lng": 80.4365, "city": "city:guntur", "r": "IN-AP", "c": "IN", "codes": ["GNT"]},
+    {"id": "stn:GTL", "k": "station", "n": "Guntakal", "lat": 15.1667, "lng": 77.3667, "city": "city:guntakal", "r": "IN-AP", "c": "IN", "codes": ["GTL"]},
+    {"id": "stn:JHS", "k": "station", "n": "Jhansi", "lat": 25.4484, "lng": 78.5685, "city": "city:jhansi", "r": "IN-UP", "c": "IN", "codes": ["JHS"], "a": ["virangana lakshmibai jhansi"]},
+    {"id": "stn:KZJ", "k": "station", "n": "Kazipet", "lat": 17.9784, "lng": 79.5106, "city": "city:warangal", "r": "IN-TG", "c": "IN", "codes": ["KZJ"]}
+  ]
+}

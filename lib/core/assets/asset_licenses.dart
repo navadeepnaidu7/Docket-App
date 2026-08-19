@@ -38,6 +38,20 @@ void registerAssetLicenses() {
       'PERFORMANCE OF THIS SOFTWARE.',
     );
     yield const LicenseEntryWithLineBreaks(
+      <String>['Journey globe geometry (assets/journey)'],
+      'Derived from Natural Earth (https://www.naturalearthdata.com/), which '
+      'is in the public domain and requires neither permission nor '
+      'attribution. Credited voluntarily.\n'
+      '\n'
+      'Heavily modified: land polygons were used only to decide which points '
+      'of a sphere fall on land and were then discarded, so what ships is a '
+      'point field rather than a coastline. India state boundary lines were '
+      'filtered from the global set, simplified, and quantised to 16-bit.\n'
+      '\n'
+      'Place coordinates in places_v1.json are separately sourced and '
+      'hand-curated for this app; they are not Natural Earth data.',
+    );
+    yield const LicenseEntryWithLineBreaks(
       <String>['Passport cover artwork (assets/wallet/passport/covers)'],
       'Indian passport cover illustrations, bundled unmodified.\n'
       '\n'
