@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/wallet/wallet_card_metrics.dart';
+
 /// Palette and geometry for the train pass face.
 ///
 /// Every number here was measured off the Figma export by taking the min/max of
@@ -112,8 +114,12 @@ class TrainPassColors {
 abstract final class TrainPassMetrics {
   TrainPassMetrics._();
 
-  static const double width = 366;
-  static const double height = 630;
+  /// Derived from [WalletCardMetrics.trainCanvas] rather than restated, because
+  /// the two were independent literals and the card is scaled by the canvas
+  /// while it is *laid out* against these — so a change to one and not the
+  /// other silently stretched every baseline instead of failing.
+  static const double width = WalletCardMetrics.trainCanvasWidth;
+  static const double height = WalletCardMetrics.trainCanvasHeight;
   static const Size canvas = Size(width, height);
 
   static const double cornerR = 32;
@@ -170,8 +176,24 @@ abstract final class TrainPassMetrics {
   static const double qrSize = 69;
 
   // ── Status band ──
-  static const double bandTop = 540;
-  static const double bandHeight = height - bandTop; // 90
+  //
+  // The export gave the band 90dp for a single 15dp line, which made the card
+  // taller than every other pass for no content — see
+  // [WalletCardMetrics.trainCanvas]. 58dp still centres the line with 21dp of
+  // clear space above it (the content block ends at [pnrValueBaseline]) and
+  // leaves the band reading as its own zone, which is all it was doing with 90.
+  static const double bandTop = 536;
+  static const double bandHeight = height - bandTop; // 58
+
+  /// Size of the ghosted wordmark behind the band messages, and how far its
+  /// baseline is pushed past the card's bottom edge so the clip cuts it.
+  ///
+  /// Both are ratios of [bandHeight], not literals: at the export's 68/-24
+  /// against a 58dp band the wordmark's cap line rose to the band's top edge
+  /// and crowded the message it is supposed to sit behind. Expressed this way,
+  /// retuning the band height carries the backdrop with it.
+  static const double bandGhostSize = bandHeight * 0.755;
+  static const double bandGhostDrop = bandHeight * 0.267;
 }
 
 /// Type ramp. Geist for everything structural, Instrument Serif for the codes.
@@ -252,7 +274,7 @@ abstract final class TrainPassType {
 
   static TextStyle bandGhost(Color color) => GoogleFonts.instrumentSerif(
         color: color,
-        fontSize: 68,
+        fontSize: TrainPassMetrics.bandGhostSize,
         fontWeight: FontWeight.w400,
         height: 1.0,
       );

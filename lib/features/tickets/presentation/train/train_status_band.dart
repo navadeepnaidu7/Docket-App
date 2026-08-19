@@ -430,8 +430,9 @@ class _BandGhost extends StatelessWidget {
       left: 0,
       right: 0,
       // Sits low enough that the card's own clip cuts the baseline off, which
-      // is what the 6%-opacity layer in the export does.
-      bottom: -24,
+      // is what the 6%-opacity layer in the export does. Kept as a ratio of the
+      // band height by [TrainPassMetrics.bandGhostDrop] so the two stay in step.
+      bottom: -TrainPassMetrics.bandGhostDrop,
       child: IgnorePointer(
         child: ImageFiltered(
           imageFilter: ui.ImageFilter.blur(sigmaX: 2.2, sigmaY: 2.2),

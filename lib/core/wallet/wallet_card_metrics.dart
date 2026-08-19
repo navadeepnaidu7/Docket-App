@@ -50,23 +50,28 @@ class WalletCardMetrics {
   /// Portrait ticket ratio, kept in step with [ticketCanvas].
   static const double ticketAspect = ticketCanvasWidth / ticketCanvasHeight;
 
-  /// Design canvas for the train pass face.
+  /// Design canvas for the train pass face. `TrainPassMetrics` derives its own
+  /// width/height from here, so this is the single place the train card's size
+  /// is declared.
   ///
-  /// Taken straight from the Figma export rather than reusing [ticketCanvas]:
-  /// the train card is narrower and taller (0.581 vs 0.616) and its layout is
-  /// absolutely positioned, so it cannot be poured into a differently-shaped
-  /// box without breaking every measured baseline. Retuning [ticketCanvas]
-  /// instead would have dragged the movie face along with it.
+  /// The width and every interior baseline come straight from the Figma export.
+  /// The *height* does not: the export's 630 left the status band 90dp tall for
+  /// one line of text, and at that ratio (0.581) the card was taller than the
+  /// movie face and got height-clamped by the carousel page — it filled the
+  /// page box top to bottom and then could not even use the full width.
+  /// Trimming the band to 58dp lands the canvas on 594, which is [ticketAspect]
+  /// to three decimals, so a train pass and a movie pass now frame identically
+  /// in the wallet. Interior baselines were untouched; only the band moved.
   ///
-  /// Train and movie passes therefore have different aspect ratios, which is
-  /// safe: `tickets_tab.dart` gives each pass its own `PageView` page and
-  /// [resolve] centres the card inside it, so pages need not match heights.
-  static const double _trainW = 366;
-  static const double _trainH = 630;
-  static const Size trainCanvas = Size(_trainW, _trainH);
+  /// Keep this in step with `TrainPassMetrics.bandHeight` — the band absorbs
+  /// the whole difference between the content block and the card's bottom edge.
+  static const double trainCanvasWidth = 366;
+  static const double trainCanvasHeight = 594;
+  static const Size trainCanvas =
+      Size(trainCanvasWidth, trainCanvasHeight);
 
   /// Train pass ratio, kept in step with [trainCanvas].
-  static const double trainAspect = _trainW / _trainH;
+  static const double trainAspect = trainCanvasWidth / trainCanvasHeight;
 
   /// Resolve the card box for the space available, honouring both axes and the
   /// tablet cap. Using only `maxWidth` (the previous behaviour) produced cards
