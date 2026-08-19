@@ -2,10 +2,14 @@
 
 What is built and verified in `docket_app`.
 
-**Snapshot:** 19 Aug 2026 · **v0.1.0-alpha** (build 1) · branch `worktree-journey-atlas` (off `master` @ `5c2c05c`) · `flutter analyze` 5 info-level lints, no warnings/errors · **495/495** tests pass, no suite hangs (§3.2) · last measured release APK **93.0 MB** on 10 Aug (x86_64 slice still present); no release APK in the tree today.
+**Snapshot:** 19 Aug 2026 · **v0.1.0-alpha** (build 1) · `master` @ `5c2c05c` · `flutter analyze` 5 info-level lints, no warnings/errors · last measured release APK **93.0 MB** on 10 Aug (x86_64 slice still present); no release APK in the tree today.
 
-> The Journey globe (§1.4) landed on this branch and adds ~60KB of bundled
-> assets. Its on-device performance has never been measured.
+> **Journey (§1.4) is a planned feature, not a shipped one.** A working v1 exists
+> on the unmerged branch `worktree-journey-atlas` (PR #35, draft) and was parked
+> on 19 Aug: it works, but it does not yet reach the product vision. It is not in
+> the app on `master`, and its ~60KB of bundled assets are not in any build made
+> from `master`. The 501-test / analyze-clean / APK-builds figures in §1.4 and
+> §3.1b were measured **on that branch**, not here.
 
 The app is **feature-complete on local documents and can connect to a remote server for server-backed passes**. `RemotePassRepository` fetches passes from `GET /v1/passes`, the API client handles session refresh on `401`, and debug builds can exchange a developer token against `POST /v1/auth/google` to obtain access and refresh tokens. Full Google Sign-In integration (via `google_sign_in`) is not yet implemented.
 
@@ -91,10 +95,16 @@ The input layer is in (`docs/features/pass-input.md`): train PNR / photo / PDF, 
 - Fixtures: **6 train passes and 4 movie passes** in `mock_pass_fixtures.dart`. Movie fixtures point at the image proxy via `--dart-define=MOCK_POSTER_ORIGIN=http://10.0.2.2:8080`; with no origin set they render the gradient.
 - Source selection via `devFlagsProvider` → `MockPassRepository` or `RemotePassRepository`; a purple **MOCK** chip shows in the Passes tab while mock mode is active.
 
-### 1.4 Journey — the memory atlas (globe)
+### 1.4 Journey — the memory atlas (globe) · PLANNED, parked on a branch
+
+> **Not on `master`.** Kept in this section rather than under §2 because it is
+> built and green, not stubbed — but nothing described here is in the app today.
+> Branch `worktree-journey-atlas`, PR #35 (draft), parked 19 Aug 2026.
+> **`docs/features/journey.md` §10 is the pickup note** — read it before
+> anything else.
 
 Fourth dashboard view alongside Home / Manage / Trash, reached from the header's
-view picker. Spec and revision log in `docs/features/journey.md`.
+view picker. Spec, revision log and resume guide in `docs/features/journey.md`.
 
 - **A globe, not a map.** Four discrete levels — World, Country, Region, City.
   No free zoom: tapping a cluster flies the camera to it. Great-circle slerp for
@@ -197,9 +207,9 @@ flutter analyze
 and three `use_null_aware_elements` (`chip_payload.dart:75-79`). No warnings or
 errors.
 
-### 3.1b Journey globe — 19 Aug 2026
+### 3.1b Journey globe — 19 Aug 2026 (on the parked branch, not `master`)
 
-Verified on this machine:
+Verified on this machine, on `worktree-journey-atlas`:
 
 - `flutter analyze` clean (the same 5 pre-existing infos; none in Journey).
 - **501 tests pass**, 89 of them Journey's. Notable ones, because they cover

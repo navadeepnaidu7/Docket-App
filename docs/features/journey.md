@@ -1,10 +1,20 @@
 # Journey — a visual memory atlas
 
-Branch: `worktree-journey-atlas` (off `master` @ `5c2c05c`)
-Status: **built** — the globe ships as the fourth dashboard view. `flutter analyze`
-clean (5 pre-existing infos, none in this feature), **495 tests pass**, 86 of them
-new. On-device behaviour and frame timing are still unverified — see
-"What is not done".
+Branch: `worktree-journey-atlas` (off `master` @ `5c2c05c`) · PR [#35](https://github.com/navadeepnaidu7/Docket-App/pull/35) (draft)
+Status: **PLANNED — parked on 19 Aug 2026, deliberately not merged.**
+
+> A working v1 exists on the branch above and is not going to master yet. The
+> call was made after seeing it run: it works, but it does not reach the product
+> vision in section 1, and shipping a globe that is merely functional would set
+> the wrong bar for a feature whose whole point is that it feels expensive.
+>
+> **Nothing here is abandoned or blocked.** The branch is green — `flutter
+> analyze` clean, 501 tests pass, debug APK builds with both assets bundled.
+> Resume by reading section 10 first; it is the only part written for someone
+> picking this up cold.
+
+Everything below section 1 is the original spec, kept intact as the statement of
+intent, with a revision log in section 9 recording where the build deviated.
 
 ## Context
 
@@ -434,3 +444,69 @@ arcs to draw. When a real flight pass lands:
 
 Nothing else changes, because nothing downstream of `JourneyEvent` knows what a
 flight is.
+
+---
+
+## 10. Picking this up later
+
+Read this section first. Sections 1-8 are the spec; section 9 is what got built.
+
+### Where it is
+
+`git worktree list` will show the branch checked out at
+`.claude/worktrees/journey-atlas`, or check it out fresh — it is pushed. Four
+commits off `master` @ `5c2c05c`:
+
+| Commit | What |
+|---|---|
+| `76f5ded` | The feature: domain, atlas pipeline, rendering, fourth view mode |
+| `621f744` | Teaser page on the membership story deck |
+| `9b8750a` | Fix: the camera flight was never running |
+| `b6e599b` | Verification log |
+
+It is behind `master` by whatever has landed since. Rebase before doing anything
+else; the only files it shares with the rest of the app are
+`dashboard_screen.dart`, `dashboard_header.dart`, `view_picker.dart` (one enum
+case and three switch arms each), `user_card_detail_screen.dart`, `pubspec.yaml`
+and the two asset registries.
+
+### What is solid and should not be rebuilt
+
+These were the expensive parts and they are done and tested:
+
+- **The atlas pipeline.** `tool/generate_journey_atlas.py` plus the binary
+  format and decoder. Real Earth, CRC-guarded, probed against actual geography.
+  Regenerating is one command.
+- **The place resolution layer.** `PlaceResolver`, the query parser, and the
+  100%-fixture-coverage test. This was the genuinely hard problem — the app had
+  no geography at all — and the answer holds regardless of how the globe looks.
+- **The projection and camera math.** Pure functions with hand-computed
+  expectations, including the fast path agreeing with its own reference.
+- **The one-idea data model** — a memory is an ordered list of stops — which is
+  what keeps the renderer free of per-pass-kind branches and lets flights slot
+  in later without rework.
+
+### What the vision needs that this does not have
+
+Ordered by how much they matter to "it should feel like opening a memory":
+
+1. **Motion tuning on real hardware.** The ~20 constants in
+   `journey_motion.dart` were reasoned, never felt. This is the single largest
+   gap between what exists and what was described, and no test can close it.
+   Build the debug slider overlay behind the Developer flag first — Risk 3.
+2. **Performance measured at city level**, where the full 12,125-dot field is
+   enabled. Never done. World level draws ~1,700 dots, will look fine, and
+   proves nothing — Risk 2. The binary format already reserves header slots for
+   a spherical-cell index if traversal turns out to be the cost.
+3. **The visual language of the markers.** Cluster bubbles and pins are
+   functional placeholders, not designed objects. The spec asks for Apple-grade
+   polish and this is where it visibly is not there yet.
+4. **Level transitions beyond the camera.** Markers currently swap; nothing
+   cross-fades, staggers or settles. The calm the spec describes lives here.
+5. **Real flights.** Still mocked by design — see section 9.
+
+### The trap to remember
+
+`PassKind.fromJson` maps any unknown value to `train` (`pass_status.dart:62`).
+The first time the server sends `"flight"`, Journey will draw a rail arc between
+two airports and nothing will error.
