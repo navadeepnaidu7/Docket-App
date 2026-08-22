@@ -38,14 +38,24 @@ abstract final class BusPassMetrics {
 
   /// Width of the coach image. Wider than the space it occupies because of
   /// [coachOverflow].
-  static const double coachWidth = 252;
+  ///
+  /// Retuned for the close-up photograph, which is 1.31:1 where the previous
+  /// full-side shot was 2.19:1. Holding the old 252 width would have made the
+  /// vehicle 192dp tall instead of 115 and pushed it into the wordmark.
+  static const double coachWidth = 218;
 
   /// How far the coach sits above the header's bottom edge.
   ///
-  /// Tuned so the vehicle clears the route line beneath it. At the first pass
-  /// the coach sat low and the destination city ran underneath it — legible in
-  /// the design mock only because the mock's city names were short.
-  static const double coachBottom = 86;
+  /// The coach and the route line are stacked, not side by side: at this card
+  /// width there is no arrangement where a legible close-up sits beside a
+  /// single-line "Bengaluru to Mysuru" without one running into the other.
+  /// This lands the vehicle between the wordmark and the route, overlapping
+  /// neither — the wordmark is short and stays left of the coach's edge.
+  static const double coachBottom = 96;
+
+  /// Left edge the coach occupies once [coachOverflow] is accounted for.
+  /// Header type has to stay clear of this, or it renders under the vehicle.
+  static const double coachLeft = width + coachOverflow - coachWidth;
 
   /// Route rail between the FROM and TO dots on the body.
   static const double stopDotSize = 10;
