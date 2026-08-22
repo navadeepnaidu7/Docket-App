@@ -7,10 +7,11 @@ import 'package:flutter/material.dart';
 /// [onTap] on a detail screen, which is why a glance card leaves this inert
 /// rather than inviting a scan that would fail at a gate.
 ///
-/// Shared by the train and bus faces. Every dimension is a ratio of [size], so
-/// the two stay identical at whatever scale their canvas gives them — the
-/// alternative was a second copy of the pattern and its painter drifting
-/// against the first.
+/// Used by the train face. Every dimension is a ratio of [size], so it stays
+/// proportional at whatever scale its canvas gives it. Kept as a shared widget
+/// rather than folded back into the train file because the code square and the
+/// dashed rule are pass chrome, not train chrome — the bus face happens not to
+/// use them, since its brand header carries the identity instead.
 class PassCodeBlock extends StatelessWidget {
   const PassCodeBlock({
     super.key,

@@ -25,6 +25,12 @@ abstract final class AppAssets {
   /// Zomato District official logo vector (for footer).
   static const String districtLogo = 'assets/passes/district-logo.svg';
 
+  /// redBus coach photograph for the bus pass header (transparent PNG).
+  ///
+  /// Downscaled from the 1855px source to 1000px: it renders about 250dp wide,
+  /// so 1000px still covers a 3x screen while cutting the bundle cost.
+  static const String redBusCoach = 'assets/passes/redbus_coach.png';
+
   /// Clock-history icon for past / expired passes.
   static const String passesHistory = 'assets/passes/history_clock.svg';
 

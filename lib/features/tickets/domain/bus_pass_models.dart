@@ -1,5 +1,39 @@
 import 'pass_status.dart';
 
+/// Operator whose chrome the bus pass wears.
+///
+/// Mirrors [MoviePassBrand]: layout reads a resolved style object instead of
+/// scattering `operator ==` checks. Unknown operators fall to [universal],
+/// which is a neutral slate card rather than anyone's branding.
+enum BusPassBrand {
+  redBus,
+  universal;
+
+  static BusPassBrand fromJson(Object? raw) {
+    final String n =
+        (raw?.toString() ?? '').toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '');
+    return switch (n) {
+      'redbus' => BusPassBrand.redBus,
+      _ => BusPassBrand.universal,
+    };
+  }
+
+  /// Best-effort brand for a booking whose payload carries no explicit brand.
+  ///
+  /// Extracted tickets arrive with an operator name and nothing else, so the
+  /// name is the only signal available. Deliberately a containment check on a
+  /// squashed string: operators are written "redBus", "Red Bus", "RedBus Trips"
+  /// and an exact match would miss all but the first.
+  static BusPassBrand fromOperator(String operator) {
+    final String n =
+        operator.toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '');
+    if (n.contains('redbus')) return BusPassBrand.redBus;
+    return BusPassBrand.universal;
+  }
+
+  String toJson() => name;
+}
+
 /// One traveller on a bus booking.
 class BusPassenger {
   const BusPassenger({
@@ -40,6 +74,12 @@ class BusPass {
     this.bookingId = '',
     this.departAt,
     this.arriveAt,
+    this.brand,
+    this.fromCity = '',
+    this.toCity = '',
+    this.boardingPoint = '',
+    this.platform = '',
+    this.fare = '',
   });
 
   final String id;
@@ -56,6 +96,40 @@ class BusPass {
   final String bookingId;
   final String? departAt;
   final String? arriveAt;
+
+  /// Explicit brand when the payload names one. Null means "infer from
+  /// [operator]" — see [resolvedBrand].
+  final BusPassBrand? brand;
+
+  /// City endpoints, used for the header route line. Empty falls back to the
+  /// leading segment of the stop, which is how operators write it.
+  final String fromCity;
+  final String toCity;
+
+  /// Where to physically stand, when the operator distinguishes it from the
+  /// drop/boarding *location*. Empty falls back to [boardingLocation].
+  final String boardingPoint;
+
+  /// Bay or platform number at the boarding point.
+  final String platform;
+
+  /// Fare as a display string, currency symbol included. Deliberately not a
+  /// number: the server sends it formatted, and a bus fare is never arithmetic
+  /// on the client.
+  final String fare;
+
+  /// The brand to dress this pass in — explicit when given, inferred from the
+  /// operator name otherwise.
+  BusPassBrand get resolvedBrand =>
+      brand ?? BusPassBrand.fromOperator(operator);
+
+  /// City for the origin, falling back to the leading segment of the stop.
+  String get resolvedFromCity =>
+      fromCity.trim().isNotEmpty ? fromCity.trim() : _leadSegment(boardingLocation);
+
+  /// City for the destination, same fallback.
+  String get resolvedToCity =>
+      toCity.trim().isNotEmpty ? toCity.trim() : _leadSegment(dropLocation);
 
   String get routeLabel {
     final String from = boardingLocation.trim();
@@ -87,6 +161,12 @@ class BusPass {
       bookingId: json['bookingId']?.toString() ?? '',
       departAt: json['departAt']?.toString(),
       arriveAt: json['arriveAt']?.toString(),
+      brand: json['brand'] == null ? null : BusPassBrand.fromJson(json['brand']),
+      fromCity: json['fromCity']?.toString() ?? '',
+      toCity: json['toCity']?.toString() ?? '',
+      boardingPoint: json['boardingPoint']?.toString() ?? '',
+      platform: json['platform']?.toString() ?? '',
+      fare: json['fare']?.toString() ?? '',
     );
   }
 
@@ -107,5 +187,20 @@ class BusPass {
         if (bookingId.isNotEmpty) 'bookingId': bookingId,
         if (departAt != null) 'departAt': departAt,
         if (arriveAt != null) 'arriveAt': arriveAt,
+        if (brand != null) 'brand': brand!.toJson(),
+        if (fromCity.isNotEmpty) 'fromCity': fromCity,
+        if (toCity.isNotEmpty) 'toCity': toCity,
+        if (boardingPoint.isNotEmpty) 'boardingPoint': boardingPoint,
+        if (platform.isNotEmpty) 'platform': platform,
+        if (fare.isNotEmpty) 'fare': fare,
       };
+}
+
+/// Leading comma-separated segment of a free-text stop, which is where
+/// operators put the city ("Bengaluru, Kempegowda Bus Station").
+String _leadSegment(String raw) {
+  final String value = raw.trim();
+  if (value.isEmpty) return '';
+  final int i = value.indexOf(',');
+  return i <= 0 ? value : value.substring(0, i).trim();
 }

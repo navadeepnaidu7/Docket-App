@@ -104,6 +104,7 @@ flutter:
     - assets/passes/bookmyshow-logo-vector.svg
     - assets/passes/zomato.svg
     - assets/passes/district-logo.svg
+    - assets/passes/redbus_coach.png
     - assets/passes/history_clock.svg
     # Lucide line icons (ISC) — see ATTRIBUTIONS.md. Directory entry: this set
     # grows as pass categories are added.

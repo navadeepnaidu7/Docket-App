@@ -4,39 +4,51 @@ import 'package:docket/features/tickets/data/mock_pass_repository.dart';
 import 'package:docket/features/tickets/domain/bus_pass_models.dart';
 import 'package:docket/features/tickets/domain/pass_catalog.dart';
 import 'package:docket/features/tickets/domain/pass_status.dart';
+import 'package:docket/features/tickets/presentation/bus/bus_brand_style.dart';
 import 'package:docket/features/tickets/presentation/bus/bus_pass_theme.dart';
 import 'package:docket/features/tickets/presentation/bus/bus_ticket_face.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 BusPass _pass({
-  String boarding = 'Hyderabad, Miyapur Bay 12',
-  String drop = 'Bengaluru, Madiwala Checkpost',
-  String? departAt = '2026-08-20T22:30:00',
-  String? arriveAt = '2026-08-21T06:45:00',
+  String operator = 'redBus',
+  BusPassBrand? brand = BusPassBrand.redBus,
+  String boarding = 'Bengaluru, Kempegowda Bus Station',
+  String drop = 'Mysuru, Mysuru City Bus Stand',
+  String fromCity = 'Bengaluru',
+  String toCity = 'Mysuru',
+  String boardingPoint = 'Kempegowda Bus Station',
+  String platform = 'Platform 15',
+  String fare = '₹650',
+  String? departAt = '2026-08-20T08:30:00',
+  String? arriveAt = '2026-08-20T11:45:00',
   String date = '20 Aug 2026',
-  String arrivalDate = '21 Aug 2026',
-  String seatDetails = 'L7, L8',
+  String arrivalDate = '20 Aug 2026',
+  String seatDetails = '12A',
   TicketStatus status = TicketStatus.active,
-  List<BusPassenger> passengers = const <BusPassenger>[
-    BusPassenger(name: 'Navadeep Naidu', seat: 'L7'),
-    BusPassenger(name: 'Ananya Rao', seat: 'L8'),
-  ],
 }) {
   return BusPass(
     id: 'b',
-    operator: 'Orange Travels',
+    operator: operator,
+    brand: brand,
+    fromCity: fromCity,
+    toCity: toCity,
     boardingLocation: boarding,
     dropLocation: drop,
-    departTime: '10:30 PM',
-    arriveTime: '06:45 AM',
+    boardingPoint: boardingPoint,
+    platform: platform,
+    departTime: '08:30 AM',
+    arriveTime: '11:45 AM',
     date: date,
     arrivalDate: arrivalDate,
     departAt: departAt,
     arriveAt: arriveAt,
     seatDetails: seatDetails,
-    passengers: passengers,
-    bookingId: 'OT8842119',
+    fare: fare,
+    passengers: const <BusPassenger>[
+      BusPassenger(name: 'Navadeep Naidu', seat: '12A'),
+    ],
+    bookingId: 'RB8842119',
     status: status,
   );
 }
@@ -65,11 +77,7 @@ Future<void> _pumpFace(WidgetTester tester, BusPass pass) async {
 }
 
 void main() {
-  group('bus face layout', () {
-    // The first-cut face used a Spacer inside a Column that was itself poured
-    // into a fixed canvas, so it depended on the canvas being at least as tall
-    // as its content. Pumping at the exact design size is what catches an
-    // overflow, which otherwise only shows as a stripe on a device.
+  group('layout', () {
     testWidgets('lays out inside its canvas without overflowing',
         (WidgetTester tester) async {
       await _pumpFace(tester, _pass());
@@ -80,118 +88,197 @@ void main() {
       expect(size.height, BusPassMetrics.height);
     });
 
-    // A long single-segment place has no comma to split on, and a two-line
-    // detail is the widest the block ever gets.
-    testWidgets('survives places with no comma and long names',
+    // The body is the half that can run out of room: five stacked rows, two of
+    // which carry free text from an operator.
+    testWidgets('survives long stops, a long operator and no fare',
         (WidgetTester tester) async {
       await _pumpFace(
         tester,
         _pass(
-          boarding: 'Thiruvananthapuram Central Bus Station East Wing',
-          drop: 'Kanyakumari',
+          operator: 'Thiruvananthapuram Interstate Coach Services Limited',
+          brand: null,
+          boarding: 'Thiruvananthapuram, Central Bus Station East Wing Bay 22',
+          drop: 'Kanyakumari, Vivekananda Kendra Junction Stand',
+          boardingPoint: '',
+          fare: '',
+          platform: '',
         ),
       );
       expect(tester.takeException(), isNull);
-      expect(find.text('Kanyakumari'), findsOneWidget);
     });
   });
 
-  group('place split', () {
-    testWidgets('sets the city large and the landmark beneath it',
+  group('brand', () {
+    test('resolves redBus from an explicit brand and from the operator name',
+        () {
+      expect(_pass().resolvedBrand, BusPassBrand.redBus);
+      expect(
+        _pass(brand: null, operator: 'redBus').resolvedBrand,
+        BusPassBrand.redBus,
+      );
+      // Operators write it every which way; an exact match would miss these.
+      expect(
+        _pass(brand: null, operator: 'Red Bus').resolvedBrand,
+        BusPassBrand.redBus,
+      );
+    });
+
+    test('an unknown operator falls to universal, not to redBus chrome', () {
+      final BusPass p = _pass(brand: null, operator: 'KSRTC Airavat');
+      expect(p.resolvedBrand, BusPassBrand.universal);
+
+      final BusBrandStyle style = BusBrandStyle.forPass(p);
+      expect(style.headerGradient, isNot(BusBrandStyle.redBus.headerGradient));
+      expect(style.coachAsset, isNull);
+    });
+
+    // A spent ticket keeps the operator's wordmark and coach so it is still
+    // recognisably theirs, but loses the colour.
+    test('expired drains the colour and keeps the wordmark', () {
+      final BusBrandStyle style =
+          BusBrandStyle.forPass(_pass(status: TicketStatus.expired));
+
+      expect(style.headerGradient, isNot(BusBrandStyle.redBus.headerGradient));
+      expect(style.wordmarkLead, BusBrandStyle.redBus.wordmarkLead);
+      expect(style.wordmarkTail, BusBrandStyle.redBus.wordmarkTail);
+      expect(style.coachAsset, BusBrandStyle.redBus.coachAsset);
+    });
+
+    test('useBrandColors overrides the expiry drain', () {
+      final BusBrandStyle style = BusBrandStyle.forPass(
+        _pass(status: TicketStatus.expired),
+        useBrandColors: true,
+      );
+      expect(style.headerGradient, BusBrandStyle.redBus.headerGradient);
+    });
+  });
+
+  group('stops', () {
+    testWidgets('sets the station large and the city under it',
         (WidgetTester tester) async {
       await _pumpFace(tester, _pass());
 
-      expect(find.text('Hyderabad'), findsOneWidget);
-      expect(find.text('Miyapur Bay 12'), findsOneWidget);
+      expect(find.text('Kempegowda Bus Station'), findsWidgets);
+      expect(find.text('Mysuru City Bus Stand'), findsOneWidget);
       expect(find.text('Bengaluru'), findsOneWidget);
-      expect(find.text('Madiwala Checkpost'), findsOneWidget);
     });
 
-    testWidgets('keeps an uncommaed place whole rather than inventing a detail',
+    // "Mangaluru" has no comma, so station and city resolve to the same
+    // string. Printing it on both lines looks like a bug.
+    testWidgets('does not print the city twice when the stop has no comma',
         (WidgetTester tester) async {
-      await _pumpFace(tester, _pass(drop: 'Mangaluru'));
+      await _pumpFace(
+        tester,
+        _pass(drop: 'Mangaluru', toCity: 'Mangaluru'),
+      );
       expect(find.text('Mangaluru'), findsOneWidget);
     });
+
+    testWidgets('the header states the city pair', (WidgetTester tester) async {
+      await _pumpFace(tester, _pass());
+      expect(find.textContaining('Bengaluru'), findsWidgets);
+      expect(find.textContaining('Mysuru'), findsWidgets);
+    });
   });
 
-  group('journey duration', () {
-    testWidgets('is computed from the ISO instants', (WidgetTester tester) async {
+  group('body fields', () {
+    testWidgets('shows date, departure, seat, platform and fare',
+        (WidgetTester tester) async {
       await _pumpFace(tester, _pass());
-      expect(find.text('8h 15m'), findsOneWidget);
+
+      expect(find.text('20 Aug 2026'), findsOneWidget);
+      expect(find.text('08:30 AM'), findsOneWidget);
+      expect(find.text('12A'), findsOneWidget);
+      expect(find.text('Platform 15'), findsOneWidget);
+      expect(find.text('₹650'), findsOneWidget);
+    });
+
+    // An expired pass must not tell you to be somewhere 30 minutes early.
+    testWidgets('the advisory changes once the journey is done',
+        (WidgetTester tester) async {
+      await _pumpFace(tester, _pass());
+      expect(find.textContaining('30 minutes'), findsOneWidget);
+
+      await _pumpFace(tester, _pass(status: TicketStatus.expired));
+      expect(find.textContaining('30 minutes'), findsNothing);
+    });
+  });
+
+  group('derived journey values', () {
+    test('duration comes from the ISO instants', () {
+      expect(busDurationLabel(_pass()), '3h 15m');
     });
 
     // The display times carry no date, so an overnight run computed from them
-    // would come out negative. Absent instants must drop the label, not guess.
-    testWidgets('is absent when the pass carries no ISO instants',
-        (WidgetTester tester) async {
-      await _pumpFace(tester, _pass(departAt: null, arriveAt: null));
-      expect(find.text('8h 15m'), findsNothing);
-      expect(tester.takeException(), isNull);
+    // alone would come out negative. Absent instants must yield nothing.
+    test('duration is empty without ISO instants', () {
+      expect(busDurationLabel(_pass(departAt: null, arriveAt: null)), '');
     });
 
-    testWidgets('drops a whole-hour trip to hours only',
-        (WidgetTester tester) async {
-      await _pumpFace(
-        tester,
-        _pass(
-          departAt: '2026-08-20T22:00:00',
-          arriveAt: '2026-08-21T06:00:00',
+    test('a whole-hour trip drops the minutes', () {
+      expect(
+        busDurationLabel(
+          _pass(
+            departAt: '2026-08-20T22:00:00',
+            arriveAt: '2026-08-21T06:00:00',
+          ),
         ),
+        '8h',
       );
-      expect(find.text('8h'), findsOneWidget);
+    });
+
+    test('the overnight offset counts calendar days, with a date fallback', () {
+      expect(busArrivalDayOffset(_pass()), 0);
+      expect(
+        busArrivalDayOffset(
+          _pass(
+            departAt: '2026-08-20T22:00:00',
+            arriveAt: '2026-08-21T06:00:00',
+          ),
+        ),
+        1,
+      );
+      expect(
+        busArrivalDayOffset(
+          _pass(
+            departAt: null,
+            arriveAt: null,
+            date: '20 Aug 2026',
+            arrivalDate: '21 Aug 2026',
+          ),
+        ),
+        1,
+      );
     });
   });
 
-  group('overnight marker', () {
-    testWidgets('marks an arrival that lands on the next day',
-        (WidgetTester tester) async {
-      await _pumpFace(tester, _pass());
-      expect(find.text('+1'), findsOneWidget);
-    });
+  group('json', () {
+    test('the new fields round-trip and stay optional', () {
+      final BusPass p = _pass();
+      final BusPass back = BusPass.fromJson(p.toJson());
 
-    testWidgets('is absent on a same-day run', (WidgetTester tester) async {
-      await _pumpFace(
-        tester,
-        _pass(
-          departAt: '2026-08-20T08:00:00',
-          arriveAt: '2026-08-20T14:00:00',
-          arrivalDate: '20 Aug 2026',
-        ),
-      );
-      expect(find.text('+1'), findsNothing);
-    });
+      expect(back.resolvedBrand, BusPassBrand.redBus);
+      expect(back.fromCity, 'Bengaluru');
+      expect(back.boardingPoint, 'Kempegowda Bus Station');
+      expect(back.platform, 'Platform 15');
+      expect(back.fare, '₹650');
 
-    // Falls back to the display dates when the ISO fields are missing, which is
-    // what an extracted ticket without timestamps looks like.
-    testWidgets('falls back to the display dates', (WidgetTester tester) async {
-      await _pumpFace(tester, _pass(departAt: null, arriveAt: null));
-      expect(find.text('+1'), findsOneWidget);
-    });
-  });
-
-  group('palette', () {
-    // The card is a paper facsimile: it must not follow the app theme, or it
-    // becomes the only pass in the carousel that inverts in dark mode.
-    test('is fixed-light and drains when expired', () {
-      expect(
-        BusPassColors.of(isExpired: false).surface,
-        BusPassPalette.surface,
-      );
-      expect(
-        BusPassColors.of(isExpired: false).accent,
-        BusPassPalette.pine,
-      );
-      expect(
-        BusPassColors.of(isExpired: true).accent,
-        isNot(BusPassPalette.pine),
-      );
+      // A payload from before these fields existed must still parse.
+      final BusPass legacy = BusPass.fromJson(<String, dynamic>{
+        'id': 'x',
+        'operator': 'redBus',
+        'boardingLocation': 'Bengaluru, Kempegowda Bus Station',
+        'dropLocation': 'Mysuru, Mysuru City Bus Stand',
+        'status': 'active',
+      });
+      expect(legacy.fare, '');
+      expect(legacy.platform, '');
+      expect(legacy.resolvedBrand, BusPassBrand.redBus);
+      expect(legacy.resolvedFromCity, 'Bengaluru');
     });
   });
 
   group('wallet wiring', () {
-    // buildWalletPassCatalog has always accepted `buses:`, but the mock
-    // repository never passed any, so a bus pass could not appear in the wallet
-    // at all. That is a data gap no widget test would have caught.
     test('the mock repository serves bus passes', () async {
       final List<WalletPassItem> items =
           await MockPassRepository(artificialDelay: Duration.zero)
