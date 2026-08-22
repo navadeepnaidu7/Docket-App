@@ -20,7 +20,6 @@ class BusBrandStyle {
     required this.ink,
     required this.muted,
     required this.rule,
-    required this.tagline,
     this.wordmarkLead = '',
     this.wordmarkTail = '',
     this.coachAsset,
@@ -34,7 +33,7 @@ class BusBrandStyle {
   /// Type colour on the header panel.
   final Color headerInk;
 
-  /// Secondary type on the header panel — labels, tagline.
+  /// Secondary type on the header panel.
   final Color headerMuted;
 
   /// Route dots and rules on the body. The brand colour at body contrast.
@@ -46,9 +45,6 @@ class BusBrandStyle {
   final Color ink;
   final Color muted;
   final Color rule;
-
-  /// Small caps line under the wordmark.
-  final String tagline;
 
   /// The wordmark is set as two runs so a brand like redBus keeps its
   /// light-then-bold lockup ("red" + "Bus") without shipping a logo asset that
@@ -76,7 +72,6 @@ class BusBrandStyle {
     ink: Color(0xFF1A1A1A),
     muted: Color(0xFF6E6A66),
     rule: Color(0xFFD8D1CA),
-    tagline: 'YOUR JOURNEY',
     wordmarkLead: 'red',
     wordmarkTail: 'Bus',
     coachAsset: AppAssets.redBusCoach,
@@ -93,7 +88,6 @@ class BusBrandStyle {
     ink: Color(0xFF1A1A1A),
     muted: Color(0xFF6E6A66),
     rule: Color(0xFFD8D1CA),
-    tagline: 'BUS TICKET',
   );
 
   /// A spent ticket: same layout, colour drained out, so it can never be
@@ -108,7 +102,6 @@ class BusBrandStyle {
     ink: Color(0xFF4A4D4C),
     muted: Color(0xFF8A8D8C),
     rule: Color(0xFFDCDAD7),
-    tagline: 'BUS TICKET',
     coachOpacity: 0.28,
     shadowAlpha: 0.12,
   );
@@ -133,7 +126,6 @@ class BusBrandStyle {
       ink: _expired.ink,
       muted: _expired.muted,
       rule: _expired.rule,
-      tagline: base.tagline,
       wordmarkLead: base.wordmarkLead,
       wordmarkTail: base.wordmarkTail,
       coachAsset: base.coachAsset,

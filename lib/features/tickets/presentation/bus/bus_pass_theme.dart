@@ -27,8 +27,8 @@ abstract final class BusPassMetrics {
 
   /// Height of the brand header panel.
   ///
-  /// A little under half the card: enough for the wordmark, the tagline and
-  /// the city route line to breathe with the coach behind them, while leaving
+  /// A little under half the card: enough for the wordmark and the city route
+  /// line to sit at opposite ends with the coach between them, while leaving
   /// the body room for four rows of booking detail without crowding.
   static const double headerHeight = 286;
 
@@ -59,9 +59,9 @@ abstract final class BusPassMetrics {
 /// into its baselines; the bus card has no such constraint, and the brief was
 /// to read as cleanly as the movie ticket, which means the same letterforms.
 ///
-/// Sizes stay on a small ladder — 38 / 24 / 17 / 15 / 12 / 11 / 10 — so a
-/// label is the same size wherever it appears on the card. Reach for the
-/// closest role rather than adding a step.
+/// Sizes stay on a small ladder — 38 / 24 / 17 / 15 / 12 / 11 — so a label is
+/// the same size wherever it appears on the card. Reach for the closest role
+/// rather than adding a step.
 abstract final class BusPassType {
   BusPassType._();
 
@@ -92,15 +92,6 @@ abstract final class BusPassType {
         height: 1.1,
       );
 
-  /// Small caps under the wordmark.
-  static TextStyle tagline(Color color) => GoogleFonts.inter(
-        color: color,
-        fontSize: 11,
-        fontWeight: FontWeight.w500,
-        letterSpacing: 4.0,
-        height: 1.0,
-      );
-
   /// The city pair on the header — "Bengaluru to Mysuru".
   static TextStyle headerRoute(Color color) => GoogleFonts.inter(
         color: color,
@@ -110,12 +101,16 @@ abstract final class BusPassType {
         height: 1.15,
       );
 
-  /// Every small caps field label on the card.
+  /// Every field label on the card.
+  ///
+  /// Sentence case at the train face's label metrics, not the letterspaced
+  /// small caps this started as: the other passes set "Date" and "Passenger"
+  /// this way, and an all-caps ramp made the bus card the odd one out.
   static TextStyle label(Color color) => GoogleFonts.inter(
         color: color,
-        fontSize: 10,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 1.2,
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+        letterSpacing: 0.1,
         height: 1.0,
       );
 

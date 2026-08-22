@@ -120,19 +120,7 @@ class _Header extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   _Wordmark(pass: pass, brand: brand),
-                  const SizedBox(height: 14),
-                  Text(
-                    brand.tagline,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: BusPassType.tagline(brand.headerMuted),
-                  ),
                   const Spacer(),
-                  Text(
-                    'FROM',
-                    style: BusPassType.label(brand.headerMuted),
-                  ),
-                  const SizedBox(height: 10),
                   Text(
                     _routeLine(pass),
                     maxLines: 2,
@@ -213,9 +201,9 @@ class _Body extends StatelessWidget {
           _TripleField(
             brand: brand,
             fields: <(String, String)>[
-              ('DATE', _orDash(pass.date)),
-              ('DEPARTURE', _orDash(pass.departTime)),
-              ('SEAT', _seatLabel(pass)),
+              ('Date', _orDash(pass.date)),
+              ('Departure', _orDash(pass.departTime)),
+              ('Seat', _seatLabel(pass)),
             ],
           ),
           _Rule(brand: brand, top: 13, bottom: 13),
@@ -264,11 +252,10 @@ class _StopRow extends StatelessWidget {
         children: <Widget>[
           Expanded(
             child: _Stop(
-              label: 'FROM',
+              label: 'From',
               name: _stationOf(pass.boardingLocation, pass.boardingPoint),
               city: pass.resolvedFromCity,
               brand: brand,
-              leadingDot: true,
             ),
           ),
           SizedBox(
@@ -277,11 +264,10 @@ class _StopRow extends StatelessWidget {
           ),
           Expanded(
             child: _Stop(
-              label: 'TO',
+              label: 'To',
               name: _stationOf(pass.dropLocation, ''),
               city: pass.resolvedToCity,
               brand: brand,
-              leadingDot: false,
             ),
           ),
         ],
@@ -337,14 +323,12 @@ class _Stop extends StatelessWidget {
     required this.name,
     required this.city,
     required this.brand,
-    required this.leadingDot,
   });
 
   final String label;
   final String name;
   final String city;
   final BusBrandStyle brand;
-  final bool leadingDot;
 
   @override
   Widget build(BuildContext context) {
@@ -356,21 +340,11 @@ class _Stop extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            if (leadingDot) ...<Widget>[
-              _Dot(color: brand.accent),
-              const SizedBox(width: 8),
-            ],
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: BusPassType.label(brand.muted),
-              ),
-            ),
-          ],
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: BusPassType.label(brand.muted),
         ),
         const SizedBox(height: 10),
         Text(
@@ -488,7 +462,7 @@ class _BoardingRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  'BOARDING POINT',
+                  'Boarding point',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: BusPassType.label(brand.muted),
@@ -519,7 +493,7 @@ class _BoardingRow extends StatelessWidget {
             ),
             Expanded(
               flex: 2,
-              child: _Field(label: 'FARE', value: fare, brand: brand),
+              child: _Field(label: 'Fare', value: fare, brand: brand),
             ),
           ],
         ],
