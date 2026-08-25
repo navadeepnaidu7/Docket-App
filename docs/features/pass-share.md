@@ -10,9 +10,15 @@ ticket was a manual screenshot of a screen that was never composed to be one.
 
 ## Surface
 
-Every pass detail screen — train, bus and movie — carries a bottom bar with two **text-only**
-buttons, `Save` and `Share`. No icons: the same rule the boarding-code row already follows, and
-for the same reason (these need to be the obvious thing to press, not a glyph to hunt for).
+Every pass detail screen — train, bus and movie — ends with two **text-only** buttons, `Save`
+and `Share`. No icons: the same rule the boarding-code row already follows, and for the same
+reason (these need to be the obvious thing to press, not a glyph to hunt for).
+
+They are the **last item in the scroll view**, not a pinned bar. Sharing is something you decide
+to do after reading the pass, not the first thing the screen should offer, and a sticky plate
+over the ticket face would cost vertical space on every visit for an action most visits do not
+want. So `PassActionBar` carries no plate, no hairline and no safe-area inset — it scrolls away
+with everything else.
 
 | Piece | Path |
 |---|---|
@@ -22,10 +28,11 @@ for the same reason (these need to be the obvious thing to press, not a glyph to
 | Capture / files / gallery | `lib/features/tickets/application/pass_share_service.dart` |
 | Share text + QR rule | `lib/features/tickets/domain/pass_share_summary.dart` |
 
-`PassActionBar` is a deliberate sibling of `_StickyCta` in `document_entry_scaffold.dart` rather
-than a refactor of it — same 56pt height, 18pt radius and Inter 16/w700 — because that widget is
-built around a single full-width CTA and widening its contract would complicate every document
-entry screen for one caller's benefit.
+It borrows `_StickyCta`'s type and metrics from `document_entry_scaffold.dart` (56pt tall, Inter
+16/w700) but not its chrome, and is a sibling rather than a refactor of it: that widget is built
+around a single full-width CTA and widening its contract would complicate every document entry
+screen for one caller's benefit. The corner radius is 24 rather than that CTA's 18 — sitting
+inline on the page, they need more shape to read as buttons and not as another grouped row.
 
 The label is the progress indicator: `Save → Saving → Saved`, settling back after 1.6s. A
 spinner on a two-second operation reads as a stall; a word that changes reads as a reply. Share
@@ -36,7 +43,15 @@ two off-screen copies in the overlay at once.
 
 ## What the image is
 
-The wallet **glance** face plus a code block on a fixed dark plate — not the detail screen.
+The wallet **glance** face, a code block, and a wordmark, on a fixed dark plate — not the
+detail screen. Nothing sits above the face: a header naming the app and the pass kind was tried
+and cut, because a banner across the top of someone else's ticket is the app talking over the
+thing being shared.
+
+Branding closes the image instead — one big translucent "Docket", the same treatment as the
+watermark at the foot of Settings. It reads as a mark on the artwork rather than a line of text
+competing with the pass's own type. No version string: Settings shows one because that screen is
+about the app, and a build number on a forwarded ticket is noise.
 
 The `PassInfoCard` rows on the detail screen are readable text, and they travel in the share
 *message* instead, where they can be selected, searched and quoted. Burning them into pixels
@@ -76,6 +91,10 @@ The QR itself is `qr_flutter`'s `QrImageView`, pinned to black on white. A brand
 loses contrast when a phone screen is photographed by another phone, which is exactly how a
 forwarded ticket gets scanned.
 
+Its white plate hugs the code rather than spanning the card, and the human reference sits below
+it on the dark ground. A small code centred in a full-width white slab reads as a mistake, and
+the quiet zone a scanner needs is only a few modules — the rest was empty paper.
+
 No API response emits `codePayload` yet, so **mock fixtures carry realistic values on their
 active passes** and none on their expired ones. That keeps both paths visible in the running app
 rather than only in tests.
@@ -95,6 +114,18 @@ during the first. Network art is pre-warmed before the entry is inserted, becaus
 is a `CachedNetworkImage` and a cold capture would export its shimmer placeholder forever. That
 pre-warm swallows every failure on a timeout — offline, a blocked host, or a film with no
 artwork are all normal, and the face already falls back to its `posterHint` gradient.
+
+### The card supplies its own text style
+
+`PassShareCard` installs an explicit `DefaultTextStyle` at its root, and that is load-bearing.
+An Overlay entry has no `Material` above it, so it inherits the fallback style `WidgetsApp`
+installs for that case: red type under a **yellow double underline**. Every `PassType` role sets
+colour, size and weight but not `decoration`, so the underline inherited straight through into
+the exported PNG. The style is written out in full rather than read from the theme, because the
+export must not change with the viewer's light/dark setting.
+
+The test for this pumps the card **without** a `MaterialApp` on purpose — the other card tests
+wrap it in one, which supplies a sane default, and that is exactly why they did not catch it.
 
 Capture scale is `min(3.0, 2400 / logicalHeight)`. A full 3× capture of a ~1000pt card is a
 multi-megabyte PNG, and some share targets silently drop or recompress attachments past a few
@@ -138,6 +169,17 @@ and dismissing a share sheet are ordinary things a person does, not exceptions.
   commits for now"), so the edit exists on one machine and will be absent from a fresh clone.
   Adding it is a required step whenever iOS work starts, alongside the `NSAllowsLocalNetworking`
   exception the main `CLAUDE.md` already flags.
+
+## Known wart: the train face brings its own code square
+
+The train face prints a decorative `PassCodeBlock` as part of its design, so a shared train pass
+carries that square **and** the real QR below it — two code-like marks, one of them unscannable.
+The movie and bus glance faces contribute none, so only trains are affected.
+
+Fixing it means changing the train pass face (a flag to suppress the block when it is being
+exported, or dropping it from the face outright), which is a wider decision than this feature.
+A test in `pass_share_card_test.dart` pins the current behaviour deliberately, so the next
+person meets the fact rather than finding it in a screenshot.
 
 ## Not verified from a dev machine
 

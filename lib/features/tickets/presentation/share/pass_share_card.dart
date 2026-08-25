@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import '../../../../core/assets/app_assets.dart';
 import '../../../../core/wallet/wallet_card_metrics.dart';
 import '../../domain/bus_pass_models.dart';
 import '../../domain/movie_pass_models.dart';
@@ -12,7 +11,6 @@ import '../../domain/ticket_models.dart';
 import '../bus/bus_pass_theme.dart';
 import '../bus/bus_ticket_face.dart';
 import '../movie/movie_ticket_face.dart';
-import '../pass_typography.dart';
 import '../train/train_pass_theme.dart';
 import '../train/train_ticket_face.dart';
 
@@ -37,16 +35,18 @@ class PassShareCard extends StatelessWidget {
   static const double _pad = 24;
   static const double _gap = 20;
 
-  /// Side of the QR module grid. Large enough that a 2400px-tall export still
-  /// leaves the code scannable off someone else's screen.
-  static const double _qrSize = 168;
+  /// Side of the QR module grid.
+  ///
+  /// Sized to sit under the card rather than compete with it. At the export's
+  /// capture scale this is still ~290px of modules, which scans fine off
+  /// another phone's screen — the constraint is aesthetic, not optical.
+  static const double _qrSize = 116;
 
   /// Plate the pass sits on. Fixed rather than theme-derived: an exported image
   /// has no theme, and a pass shared at night should not arrive looking like a
   /// different product than one shared at noon.
   static const Color _plate = Color(0xFF101014);
   static const Color _plateInk = Color(0xFFF3F3F5);
-  static const Color _plateMuted = Color(0xFF8E8E96);
 
   /// Total logical width of the exported image, gutters included.
   static double get exportWidth => _faceWidth + _pad * 2;
@@ -72,46 +72,47 @@ class PassShareCard extends StatelessWidget {
     return MediaQuery.withNoTextScaling(
       child: Directionality(
         textDirection: TextDirection.ltr,
-        child: Container(
-          width: exportWidth,
-          color: _plate,
-          padding: const EdgeInsets.all(_pad),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              _header(),
-              const SizedBox(height: _gap),
-              KeyedSubtree(key: faceKey, child: _face()),
-              // Omitted entirely when the pass carries no payload. A pass with
-              // no scannable code exports without one rather than with a
-              // decorative square that would fail at a gate.
-              if (payload != null) ...<Widget>[
+        // An explicit base style, and not merely a tidy one.
+        //
+        // This subtree is an Overlay entry, so it has no Material above it, and
+        // the fallback DefaultTextStyle that WidgetsApp installs for that case
+        // is the debug style: red text under a yellow double underline. Every
+        // PassType role sets colour, size and weight but not `decoration`, so
+        // the underline was inheriting straight through into the exported PNG.
+        //
+        // Stated in full rather than borrowed from the theme, because the
+        // export must not change with the viewer's light/dark setting.
+        child: DefaultTextStyle(
+          style: const TextStyle(
+            color: _plateInk,
+            decoration: TextDecoration.none,
+            decorationColor: Color(0x00000000),
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+          ),
+          child: Container(
+            width: exportWidth,
+            color: _plate,
+            padding: const EdgeInsets.fromLTRB(_pad, _pad, _pad, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                KeyedSubtree(key: faceKey, child: _face()),
+                // Omitted entirely when the pass carries no payload. A pass
+                // with no scannable code exports without one rather than with
+                // a decorative square that would fail at a gate.
+                if (payload != null) ...<Widget>[
+                  const SizedBox(height: _gap),
+                  _codeBlock(payload),
+                ],
                 const SizedBox(height: _gap),
-                _codeBlock(payload),
+                _footer(),
               ],
-              const SizedBox(height: _gap),
-              _footer(),
-            ],
+            ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _header() {
-    return Row(
-      children: <Widget>[
-        SvgPicture.asset(
-          AppAssets.docketLogo,
-          width: 20,
-          height: 20,
-        ),
-        const SizedBox(width: 8),
-        Text('Docket', style: PassType.pill(_plateInk)),
-        const Spacer(),
-        Text(passShareKindLabel(item), style: PassType.micro(_plateMuted)),
-      ],
     );
   }
 
@@ -162,19 +163,24 @@ class PassShareCard extends StatelessWidget {
     );
   }
 
+  /// A white tile just big enough for the code, with the reference under it.
+  ///
+  /// The white plate hugs the QR rather than spanning the card. A small code
+  /// centred in a full-width slab reads as a mistake, and the quiet zone a
+  /// scanner needs is only a few modules — the rest was empty paper.
   Widget _codeBlock(String payload) {
     final String? caption = passShareCodeCaption(item);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          QrImageView(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: QrImageView(
             key: qrKey,
             data: payload,
             version: QrVersions.auto,
@@ -193,24 +199,59 @@ class PassShareCard extends StatelessWidget {
               color: Color(0xFF000000),
             ),
           ),
-          if (caption != null) ...<Widget>[
-            const SizedBox(height: 14),
-            Text(
+        ),
+        if (caption != null) ...<Widget>[
+          const SizedBox(height: 12),
+          // On the plate, not on the tile: it is for a person to read out when
+          // the scanner fails, and it does not belong inside the code's quiet
+          // zone.
+          //
+          // Smaller than `PassType.code`, and scaled down rather than wrapped.
+          // That role's 17/2.2 is sized for a detail screen and put a long
+          // booking reference onto two ragged lines here; a reference read
+          // aloud has to stay one run.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
               caption,
-              textAlign: TextAlign.center,
-              style: PassType.code(const Color(0xFF111113)),
+              maxLines: 1,
+              softWrap: false,
+              style: GoogleFonts.inter(
+                color: _plateInk.withValues(alpha: 0.72),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.2,
+              ),
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 
+  /// The wordmark that closes the image.
+  ///
+  /// The same treatment as the watermark at the foot of Settings — one big
+  /// translucent "Docket", set tight — rather than a caption. It reads as a
+  /// mark on the artwork instead of a line of text competing with the pass's
+  /// own type, and it is the last thing in the frame rather than a banner
+  /// across the top of someone else's ticket.
+  ///
+  /// No version string here: Settings shows one because that screen is about
+  /// the app, and a build number on a forwarded ticket is noise.
   Widget _footer() {
-    return Text(
-      'Shared from Docket',
-      textAlign: TextAlign.center,
-      style: PassType.micro(_plateMuted),
+    return Center(
+      child: Text(
+        'Docket',
+        maxLines: 1,
+        style: GoogleFonts.inter(
+          fontSize: 44,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -2.0,
+          height: 1.0,
+          color: _plateInk.withValues(alpha: 0.13),
+        ),
+      ),
     );
   }
 }

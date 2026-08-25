@@ -47,11 +47,7 @@ class BusPassDetailScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      bottomNavigationBar: PassShareActions(item: BusPassItem(pass)),
       body: SafeArea(
-        // The action bar supplies its own bottom inset, so the body must not
-        // also claim it or the two stack into a gap.
-        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
@@ -144,6 +140,8 @@ class BusPassDetailScreen extends StatelessWidget {
                       ],
                     ),
                   ],
+                  const SizedBox(height: 24),
+                  PassShareActions(item: BusPassItem(pass)),
                 ],
               ),
             ),

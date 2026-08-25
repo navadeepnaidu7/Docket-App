@@ -10,17 +10,21 @@ import 'bounce_tap.dart';
 /// reads as a stall; a word that changes reads as a reply.
 enum PassActionState { idle, busy, done }
 
-/// Two text buttons pinned to the bottom of a pass detail screen.
+/// Two text buttons that sit at the end of a pass detail screen's content.
 ///
 /// Text only, no icons — the same rule the boarding-code row on the bus pass
 /// already follows: these need to be the obvious thing to press, not a glyph to
 /// hunt for.
 ///
-/// Visually a sibling of `_StickyCta` in `document_entry_scaffold.dart` (same
-/// 56pt height, 18pt radius, Inter 16/w700 and hairline-topped plate) rather
-/// than a refactor of it: that one is built around a single full-width CTA and
-/// widening its contract to carry a second button would complicate every
-/// document entry screen for one caller's benefit.
+/// Deliberately **not** a pinned bar. Sharing is something you decide to do
+/// after reading the pass, not the first thing the screen should offer, and a
+/// sticky plate over the ticket face costs vertical space on every visit for an
+/// action most of them do not want. So this carries no plate, no hairline and
+/// no safe-area inset — it is an ordinary widget the host drops in as the last
+/// item of its scroll view, and it scrolls away with everything else.
+///
+/// It borrows `_StickyCta`'s type and metrics (56pt tall, Inter 16/w700) but
+/// not its chrome.
 class PassActionBar extends StatelessWidget {
   const PassActionBar({
     super.key,
@@ -52,6 +56,11 @@ class PassActionBar extends StatelessWidget {
   final String? primaryBusyLabel;
   final String? primaryDoneLabel;
 
+  /// Corner radius. Rounder than the entry-screen CTA's 18: these sit inline on
+  /// the page rather than on a bar of their own, so they need more shape to
+  /// read as buttons and not as another grouped row.
+  static const double radius = 24;
+
   /// True while either button is mid-operation. Both are disabled together:
   /// sharing and saving both rasterise the same card, and letting the second
   /// start while the first is still capturing would put two off-screen copies
@@ -65,56 +74,40 @@ class PassActionBar extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
     final bool isDark = theme.brightness == Brightness.dark;
-    final double bottomInset = MediaQuery.viewPaddingOf(context).bottom;
 
-    return Material(
-      color: theme.scaffoldBackgroundColor.withValues(alpha: 0.96),
-      elevation: 8,
-      shadowColor: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(color: AppTokens.separator(scheme), width: 0.5),
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: _ActionButton(
+            label: secondaryLabel,
+            busyLabel: secondaryBusyLabel,
+            doneLabel: secondaryDoneLabel,
+            state: secondaryState,
+            enabled: !_locked,
+            fill: AppTokens.groupedFieldFill(scheme, isDark: isDark),
+            ink: scheme.onSurface,
+            glow: false,
+            onTap: onSecondary,
           ),
         ),
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + bottomInset),
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: _ActionButton(
-                  label: secondaryLabel,
-                  busyLabel: secondaryBusyLabel,
-                  doneLabel: secondaryDoneLabel,
-                  state: secondaryState,
-                  enabled: !_locked,
-                  fill: AppTokens.groupedFieldFill(scheme, isDark: isDark),
-                  ink: scheme.onSurface,
-                  glow: false,
-                  onTap: onSecondary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                // Wider than the secondary: sharing is the action people came
-                // to this bar for, and the reference sets the same balance.
-                flex: 3,
-                child: _ActionButton(
-                  label: primaryLabel,
-                  busyLabel: primaryBusyLabel,
-                  doneLabel: primaryDoneLabel,
-                  state: primaryState,
-                  enabled: !_locked,
-                  fill: isDark ? scheme.primary : scheme.onSurface,
-                  ink: isDark ? scheme.onPrimary : scheme.surface,
-                  glow: true,
-                  onTap: onPrimary,
-                ),
-              ),
-            ],
+        const SizedBox(width: 12),
+        Expanded(
+          // Wider than the secondary: sharing is the action people scrolled
+          // down for, and the reference sets the same balance.
+          flex: 3,
+          child: _ActionButton(
+            label: primaryLabel,
+            busyLabel: primaryBusyLabel,
+            doneLabel: primaryDoneLabel,
+            state: primaryState,
+            enabled: !_locked,
+            fill: isDark ? scheme.primary : scheme.onSurface,
+            ink: isDark ? scheme.onPrimary : scheme.surface,
+            glow: true,
+            onTap: onPrimary,
           ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -177,7 +170,7 @@ class _ActionButton extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: fill,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(PassActionBar.radius),
             boxShadow: glow && enabled
                 ? <BoxShadow>[
                     BoxShadow(

@@ -38,11 +38,7 @@ class MoviePassDetailScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      bottomNavigationBar: PassShareActions(item: MoviePassItem(p)),
       body: SafeArea(
-        // The action bar supplies its own bottom inset, so the body must not
-        // also claim it or the two stack into a gap.
-        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
@@ -110,6 +106,8 @@ class MoviePassDetailScreen extends StatelessWidget {
                       ('Screen', p.screen),
                     ],
                   ),
+                  const SizedBox(height: 24),
+                  PassShareActions(item: MoviePassItem(p)),
                 ],
               ),
             ),

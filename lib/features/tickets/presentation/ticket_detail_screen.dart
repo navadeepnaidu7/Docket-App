@@ -113,11 +113,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      bottomNavigationBar: PassShareActions(item: TrainPassItem(t)),
       body: SafeArea(
-        // The action bar supplies its own bottom inset, so the body must not
-        // also claim it or the two stack into a gap.
-        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
@@ -219,6 +215,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                             isDark: isDark,
                           ),
                   ),
+                  const SizedBox(height: 24),
+                  // Below the tab content, so it is the last thing on either
+                  // tab rather than something that moves when the tab changes.
+                  PassShareActions(item: TrainPassItem(t)),
                 ],
               ),
             ),

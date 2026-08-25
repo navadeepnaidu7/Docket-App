@@ -153,21 +153,47 @@ void main() {
       });
     }
 
-    // The faces draw decorative code art of their own — a hardcoded 7x7 grid on
-    // the train, a procedural painter on the movie. Neither encodes anything.
-    // If one of those ever reached the exported image it would look scannable
-    // and fail at a gate, which is the exact failure this feature must not ship.
-    testWidgets('no decorative code art reaches the exported card',
+    // The faces draw decorative code art of their own — a hardcoded 7x7 grid in
+    // `PassCodeBlock`, a procedural `TicketQrPainter` on the movie chrome.
+    // Neither encodes anything, so neither may stand in for the real code.
+    for (final (String kind, WalletPassItem item) in <(String, WalletPassItem)>[
+      ('movie', MoviePassItem(_movie(codePayload: 'REAL'))),
+      ('bus', BusPassItem(_bus(codePayload: 'REAL'))),
+      ('train', TrainPassItem(_train(codePayload: 'REAL'))),
+    ]) {
+      testWidgets('$kind draws no procedural QR painter anywhere',
+          (WidgetTester tester) async {
+        await _pumpCard(tester, item);
+
+        final Iterable<CustomPaint> painters =
+            tester.widgetList<CustomPaint>(find.byType(CustomPaint));
+        for (final CustomPaint p in painters) {
+          expect(p.painter, isNot(isA<TicketQrPainter>()));
+          expect(p.foregroundPainter, isNot(isA<TicketQrPainter>()));
+        }
+      });
+    }
+
+    testWidgets('the movie and bus faces contribute no code square',
         (WidgetTester tester) async {
       await _pumpCard(tester, MoviePassItem(_movie(codePayload: 'REAL')));
       expect(find.byType(PassCodeBlock), findsNothing);
 
-      final Iterable<CustomPaint> painters =
-          tester.widgetList<CustomPaint>(find.byType(CustomPaint));
-      for (final CustomPaint p in painters) {
-        expect(p.painter, isNot(isA<TicketQrPainter>()));
-        expect(p.foregroundPainter, isNot(isA<TicketQrPainter>()));
-      }
+      await _pumpCard(tester, BusPassItem(_bus(codePayload: 'REAL')));
+      expect(find.byType(PassCodeBlock), findsNothing);
+    });
+
+    // KNOWN, and deliberately pinned rather than asserted away: the train face
+    // prints a decorative `PassCodeBlock` as part of its design, so a shared
+    // train pass carries that square *and* the real QR below it. Two code-like
+    // marks where one is unscannable is a real wart. Changing it means changing
+    // the train pass face, which is a wider decision than this feature — this
+    // test exists so the next person meets the fact rather than discovering it
+    // in a screenshot.
+    testWidgets('train face still contributes its decorative code square',
+        (WidgetTester tester) async {
+      await _pumpCard(tester, TrainPassItem(_train(codePayload: 'REAL')));
+      expect(find.byType(PassCodeBlock), findsOneWidget);
     });
   });
 
@@ -236,6 +262,56 @@ void main() {
       final MovieTicketFace face =
           tester.widget<MovieTicketFace>(find.byType(MovieTicketFace));
       expect(face.onOpenCodes, isNull);
+    });
+  });
+
+  group('text styling', () {
+    // Regression: the card is an Overlay entry with no Material above it, so
+    // it inherits the fallback DefaultTextStyle WidgetsApp installs for that
+    // case -- red type under a yellow double underline. Every PassType role
+    // sets colour, size and weight but not `decoration`, so the underline came
+    // straight through into the exported PNG.
+    //
+    // Pumped WITHOUT a MaterialApp on purpose. The other tests in this file
+    // wrap the card in one, which supplies a sane default and is exactly why
+    // they did not catch it.
+    testWidgets('carries its own base style, so no debug underline inherits',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1200, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        PassShareCard(item: TrainPassItem(_train(codePayload: 'STYLE'))),
+      );
+
+      final DefaultTextStyle base = tester.widget<DefaultTextStyle>(
+        find
+            .descendant(
+              of: find.byType(PassShareCard),
+              matching: find.byType(DefaultTextStyle),
+            )
+            .first,
+      );
+      expect(base.style.decoration, TextDecoration.none);
+      expect(base.style.color, isNotNull);
+    });
+
+    testWidgets('no text in the exported card is underlined',
+        (WidgetTester tester) async {
+      await _pumpCard(tester, MoviePassItem(_movie(codePayload: 'STYLE')));
+
+      for (final Element e in find.byType(Text).evaluate()) {
+        final Text text = e.widget as Text;
+        final TextStyle effective = DefaultTextStyle.of(e)
+            .style
+            .merge(text.style);
+        expect(
+          effective.decoration ?? TextDecoration.none,
+          TextDecoration.none,
+          reason: 'underlined text in the export: ${text.data}',
+        );
+      }
     });
   });
 
