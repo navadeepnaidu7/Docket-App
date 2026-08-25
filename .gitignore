@@ -106,3 +106,9 @@ app.*.map.json
 # Local design references (do not commit)
 tool/train_ref.png
 
+
+# Claude Code local state. Looks like a small settings folder and is not: it
+# also holds agent worktrees with their own .dart_tool build output, which was
+# 2.3 GB across 4,555 files when this entry was added. A stray `git add -A`
+# would otherwise try to commit all of it.
+/.claude/
