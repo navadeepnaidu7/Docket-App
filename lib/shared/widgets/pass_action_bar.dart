@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../core/theme/app_theme.dart';
 import 'bounce_tap.dart';
 
 /// What a [PassActionBar] button is currently doing.
@@ -61,6 +60,17 @@ class PassActionBar extends StatelessWidget {
   /// read as buttons and not as another grouped row.
   static const double radius = 24;
 
+  /// Fill for the secondary button.
+  ///
+  /// Not `AppTokens.groupedFieldFill`: that tint is calibrated to separate a
+  /// row from the card *behind* it, and at 0.08 / 0.55 it barely reads as a
+  /// button when it is sitting next to a solid one. This is the same ink,
+  /// carried far enough to look deliberately grey against either background.
+  /// Kept local rather than pushed into the token, which a dozen other screens
+  /// depend on at its current weight.
+  static Color secondaryFill(ColorScheme scheme, {required bool isDark}) =>
+      scheme.onSurface.withValues(alpha: isDark ? 0.16 : 0.12);
+
   /// True while either button is mid-operation. Both are disabled together:
   /// sharing and saving both rasterise the same card, and letting the second
   /// start while the first is still capturing would put two off-screen copies
@@ -84,9 +94,8 @@ class PassActionBar extends StatelessWidget {
             doneLabel: secondaryDoneLabel,
             state: secondaryState,
             enabled: !_locked,
-            fill: AppTokens.groupedFieldFill(scheme, isDark: isDark),
+            fill: secondaryFill(scheme, isDark: isDark),
             ink: scheme.onSurface,
-            glow: false,
             onTap: onSecondary,
           ),
         ),
@@ -103,7 +112,6 @@ class PassActionBar extends StatelessWidget {
             enabled: !_locked,
             fill: isDark ? scheme.primary : scheme.onSurface,
             ink: isDark ? scheme.onPrimary : scheme.surface,
-            glow: true,
             onTap: onPrimary,
           ),
         ),
@@ -121,7 +129,6 @@ class _ActionButton extends StatelessWidget {
     required this.enabled,
     required this.fill,
     required this.ink,
-    required this.glow,
     required this.onTap,
   });
 
@@ -132,7 +139,6 @@ class _ActionButton extends StatelessWidget {
   final bool enabled;
   final Color fill;
   final Color ink;
-  final bool glow;
   final VoidCallback onTap;
 
   String get _shownLabel => switch (state) {
@@ -168,18 +174,12 @@ class _ActionButton extends StatelessWidget {
         child: Container(
           height: 56,
           alignment: Alignment.center,
+          // Flat on purpose. The drop glow the entry-screen CTA uses is there to
+          // lift a floating bar off the content it covers; these sit in the
+          // content, and the halo only made them look unseated.
           decoration: BoxDecoration(
             color: fill,
             borderRadius: BorderRadius.circular(PassActionBar.radius),
-            boxShadow: glow && enabled
-                ? <BoxShadow>[
-                    BoxShadow(
-                      color: fill.withValues(alpha: 0.28),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8),
-                    ),
-                  ]
-                : null,
           ),
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),

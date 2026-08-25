@@ -34,6 +34,18 @@ around a single full-width CTA and widening its contract would complicate every 
 screen for one caller's benefit. The corner radius is 24 rather than that CTA's 18 — sitting
 inline on the page, they need more shape to read as buttons and not as another grouped row.
 
+Both buttons are **flat**. That CTA's drop glow exists to lift a floating bar off the content it
+covers; these sit in the content, where a halo only made them look unseated.
+
+The secondary fill is `PassActionBar.secondaryFill`, not `AppTokens.groupedFieldFill`. That
+token is calibrated to separate a row from the card behind it, and in light mode it resolves to
+`#FBF8F5` on a `#F5F0E8` page — *lighter* than the background, so the button read as blank
+space rather than as a control. The local value carries the same ink far enough to be plainly
+grey: `#2F2F32` on dark, `#D9D6D1` on light. It is kept local because a dozen other screens
+depend on the token at its current weight. `pass_action_bar_test.dart` pins the property rather
+than the hex — composited onto the page, the secondary must sit clearly off the background and
+still below the filled primary.
+
 The label is the progress indicator: `Save → Saving → Saved`, settling back after 1.6s. A
 spinner on a two-second operation reads as a stall; a word that changes reads as a reply. Share
 has a `Preparing` state but no `Shared` one — the OS sheet is its own confirmation, and a button
