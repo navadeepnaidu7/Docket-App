@@ -8,6 +8,11 @@
          This previously reached release only because ML Kit / Play Services plugin manifests
          merged it in, which is too fragile to rely on for a core feature. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Saving an exported pass image to the photo library. API 29+ goes through
+         MediaStore and needs no permission at all; minSdk is 26, so the 26-28
+         window is the only reason this is declared, hence maxSdkVersion. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+                     android:maxSdkVersion="28" />
 
 
     <!-- Backup disabled: encrypted document copies and sensitive local storage should not ride into cloud backups. -->

@@ -4,10 +4,12 @@ import 'package:flutter/services.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/movie_pass_models.dart';
+import '../domain/pass_catalog.dart';
 import 'movie/movie_ticket_code_screen.dart';
 import 'pass_info_card.dart';
 import 'movie/movie_ticket_face.dart';
 import 'pass_typography.dart';
+import 'share/pass_share_actions.dart';
 
 /// Fullscreen e-ticket detail — shared face + booking/cinema sections.
 class MoviePassDetailScreen extends StatelessWidget {
@@ -36,7 +38,11 @@ class MoviePassDetailScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      bottomNavigationBar: PassShareActions(item: MoviePassItem(p)),
       body: SafeArea(
+        // The action bar supplies its own bottom inset, so the body must not
+        // also claim it or the two stack into a gap.
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
@@ -133,11 +139,6 @@ class MoviePassDetailScreen extends StatelessWidget {
                     const SnackBar(content: Text('Booking ID copied')),
                   );
                 },
-              ),
-              ListTile(
-                leading: const Icon(Icons.share_rounded),
-                title: const Text('Share ticket'),
-                onTap: () => Navigator.pop(ctx),
               ),
             ],
           ),

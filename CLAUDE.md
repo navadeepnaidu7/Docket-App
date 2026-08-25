@@ -185,6 +185,7 @@ with zero commits and nothing to resume from.
 | `docs/api/passes.md` | Passes API contract — field-by-field train/movie shapes |
 | `docs/dev-flags.md` | Mock vs remote switching, dart-defines, Settings → Developer |
 | `docs/features/id-media-attachments.md` | ID attachments (#11) — storage/encryption decisions, tray geometry, lifecycle |
+| `docs/features/pass-share.md` | Pass share — off-screen PNG capture, the omit-when-absent QR rule, temp-file lifecycle |
 | `PLAN.md` | Original phased build plan (historical; predates tickets/passes) |
 | `../docket_server/docs/architecture.md` | Backend design, pass taxonomy |
 

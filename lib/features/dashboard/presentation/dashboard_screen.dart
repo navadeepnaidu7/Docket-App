@@ -15,6 +15,7 @@ import '../../ids/presentation/id_entry_screen.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../passport/presentation/passport_prompt_screen.dart';
+import '../../tickets/application/pass_share_service.dart';
 import '../../tickets/presentation/add/add_pass_flow.dart';
 import '../../tickets/presentation/history/passes_archive_screen.dart';
 import '../../tickets/presentation/tickets_tab.dart';
@@ -124,6 +125,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     // Clears any decrypted copy left in the cache by an external PDF view that
     // was interrupted before the sheet could close.
     AttachmentOpenService.purge();
+    // Same, for the PNG a share hands to another app. That file deliberately
+    // outlives its share sheet -- the receiver may still be reading it -- so
+    // app start is where its lifetime ends.
+    PassShareService.purge();
     // The add menu's passport art is ~100 KB of path data each; parsing on
     // first build would hitch the sheet open. Deliberately after first frame
     // rather than in main(), which is already on a font-loading budget.

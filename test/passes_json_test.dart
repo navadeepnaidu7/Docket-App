@@ -224,6 +224,7 @@ void main() {
               'arrivalDate': '15 Aug 2026',
               'status': 'active',
               'seatDetails': 'L12',
+              'codePayload': 'ORNG-QR-4471',
             },
           },
         ],
@@ -234,6 +235,44 @@ void main() {
       expect(pass.operator, 'Orange Travels');
       expect(pass.status, TicketStatus.active);
       expect(pass.routeLabel, 'Hyderabad → Bengaluru');
+      expect(pass.codePayload, 'ORNG-QR-4471');
+    });
+
+    test('bus codePayload round-trips, and is absent when omitted', () {
+      final BusPass withCode = BusPass.fromJson(<String, dynamic>{
+        'id': 'bus-2',
+        'operator': 'redBus',
+        'boardingLocation': 'Bengaluru',
+        'dropLocation': 'Mysuru',
+        'departTime': '08:30 AM',
+        'arriveTime': '11:45 AM',
+        'date': '20 Aug 2026',
+        'arrivalDate': '20 Aug 2026',
+        'status': 'active',
+        'codePayload': 'RBQR8842119',
+      });
+      expect(withCode.codePayload, 'RBQR8842119');
+      expect(withCode.toJson()['codePayload'], 'RBQR8842119');
+      expect(
+        BusPass.fromJson(withCode.toJson()).codePayload,
+        'RBQR8842119',
+      );
+
+      final BusPass without = BusPass.fromJson(<String, dynamic>{
+        'id': 'bus-3',
+        'operator': 'redBus',
+        'boardingLocation': 'Bengaluru',
+        'dropLocation': 'Mysuru',
+        'departTime': '08:30 AM',
+        'arriveTime': '11:45 AM',
+        'date': '20 Aug 2026',
+        'arrivalDate': '20 Aug 2026',
+        'status': 'active',
+      });
+      expect(without.codePayload, isNull);
+      // Omitted, not serialised as null — the wire shape stays the same as
+      // every other optional field on this model.
+      expect(without.toJson().containsKey('codePayload'), isFalse);
     });
 
     test('round-trips catalog envelope', () {

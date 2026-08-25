@@ -72,6 +72,11 @@ dependencies:
   # can talk to docket_server without a heavier client stack.
   http: ^1.2.2
   http_parser: ^4.1.2
+  # Pass export. share_plus hands the rendered PNG plus its summary text to the
+  # OS share sheet and ships its own FileProvider, so no <provider> is declared
+  # by hand. gal writes the same bytes to the photo library.
+  share_plus: ^12.0.2
+  gal: ^2.3.3
 
 dev_dependencies:
   flutter_test:

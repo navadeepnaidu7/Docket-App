@@ -4,8 +4,10 @@ import '../../../../core/haptics/haptic_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/wallet/wallet_card_metrics.dart';
 import '../../domain/bus_pass_models.dart';
+import '../../domain/pass_catalog.dart';
 import '../pass_info_card.dart';
 import '../pass_typography.dart';
+import '../share/pass_share_actions.dart';
 import 'bus_brand_style.dart';
 import 'bus_ticket_code_screen.dart';
 import 'bus_ticket_face.dart';
@@ -45,7 +47,11 @@ class BusPassDetailScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      bottomNavigationBar: PassShareActions(item: BusPassItem(pass)),
       body: SafeArea(
+        // The action bar supplies its own bottom inset, so the body must not
+        // also claim it or the two stack into a gap.
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[

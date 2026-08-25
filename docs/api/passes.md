@@ -226,6 +226,29 @@ than substituting other artwork.
 
 ---
 
+## Bus object
+
+The bus shape post-dates this document and is not yet written out field by field; read
+`lib/features/tickets/domain/bus_pass_models.dart` for the authoritative list. One field is
+called out here because it is shared with the other two kinds:
+
+| Field | Type | Req | Notes |
+|-------|------|-----|-------|
+| `codePayload` | string | no | real code data, same meaning as on train and movie |
+
+There is no `codeType` on a bus: every operator we have seen issues a QR, so the client renders
+one unconditionally when a payload is present.
+
+### On `codePayload` across all three kinds
+
+Absent is the normal state today — nothing in the API emits it yet. The client treats absent as
+**"this pass has no scannable code"** and draws nothing in its place, on the pass face and in a
+shared image alike. It does **not** fall back to a PNR or a booking ID: those identify a
+booking, they are not what a gate scanner reads, and a code that scans to the wrong thing is
+worse at a turnstile than no code. See `docs/features/pass-share.md`.
+
+---
+
 ## Example: movie list item
 
 ```json

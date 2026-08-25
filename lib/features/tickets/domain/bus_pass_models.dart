@@ -80,6 +80,7 @@ class BusPass {
     this.boardingPoint = '',
     this.platform = '',
     this.fare = '',
+    this.codePayload,
   });
 
   final String id;
@@ -117,6 +118,12 @@ class BusPass {
   /// number: the server sends it formatted, and a bus fare is never arithmetic
   /// on the client.
   final String fare;
+
+  /// Raw payload for a real QR/barcode library. Matches the field trains and
+  /// movies already carry, and is nullable for the same reason: the server does
+  /// not emit it yet. Null means this pass has no scannable code — callers must
+  /// render nothing rather than inventing one.
+  final String? codePayload;
 
   /// The brand to dress this pass in — explicit when given, inferred from the
   /// operator name otherwise.
@@ -167,6 +174,7 @@ class BusPass {
       boardingPoint: json['boardingPoint']?.toString() ?? '',
       platform: json['platform']?.toString() ?? '',
       fare: json['fare']?.toString() ?? '',
+      codePayload: json['codePayload']?.toString(),
     );
   }
 
@@ -193,6 +201,7 @@ class BusPass {
         if (boardingPoint.isNotEmpty) 'boardingPoint': boardingPoint,
         if (platform.isNotEmpty) 'platform': platform,
         if (fare.isNotEmpty) 'fare': fare,
+        if (codePayload != null) 'codePayload': codePayload,
       };
 }
 

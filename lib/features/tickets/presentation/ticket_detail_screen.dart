@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/wallet/wallet_card_metrics.dart';
+import '../domain/pass_catalog.dart';
 import '../domain/ticket_models.dart';
 import 'pass_typography.dart';
+import 'share/pass_share_actions.dart';
 import 'train/halt_status.dart';
 import 'train/train_ticket_face.dart';
 
@@ -111,7 +113,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      bottomNavigationBar: PassShareActions(item: TrainPassItem(t)),
       body: SafeArea(
+        // The action bar supplies its own bottom inset, so the body must not
+        // also claim it or the two stack into a gap.
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[

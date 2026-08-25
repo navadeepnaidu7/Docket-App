@@ -72,6 +72,7 @@ The input layer is in (`docs/features/pass-input.md`): train PNR / photo / PDF, 
 - **NFC e-passport** (`features/nfc/` + `MainActivity.kt`): BAC using number + DOB + expiry, reads **DG1** (MRZ), **DG2** (face image, JP2 decoded to JPEG then base64), **DG11**/**DG12** (additional personal and document details). Returns a flat map the passport draft consumes, including `photoBase64` for the card portrait.
 - **ID documents** (`features/ids/`): Aadhaar and PAN, each with a bespoke card face and rendered QR (`qr_flutter`). `IdScannerService` combines barcode, text, and face detection; records persist under `saved_id_documents`.
 - **ID media attachments** (`features/ids/presentation/attachments/`, issue #11): up to 3 images + 1 PDF per ID, reached by long-pressing the card — the tray occupies the dimmed space above the existing remove sheet. Add from the system picker, swipe between attachments, long-press a thumbnail to remove. The scanner's captured original is attached automatically on save. Bytes are **AES-GCM files** under `<app documents>/id_attachments/<docId>/`, keyed from `attachment_key_v1`; only metadata rides in `saved_id_documents`. PDFs render page one in-app from decrypted bytes via `pdfx` — nothing plaintext is ever written to disk. Design decisions in `docs/features/id-media-attachments.md`.
+- **Pass share** (`features/tickets/presentation/share/`, `application/pass_share_service.dart`): every pass detail screen — train, bus and movie — carries a text-only `Save` / `Share` bar. Both render the wallet glance face plus a QR to a PNG off-screen via an `Overlay` + `RepaintBoundary`; Share hands it to the OS sheet with the booking details as text, Save writes it to the photo library through `gal`. The QR is drawn **only** when the pass carries a `codePayload` and never falls back to a PNR or booking ID. Movies export the title logo rather than the one-sheet, which is what glance density already selects. Design decisions in `docs/features/pass-share.md`.
 - **Wallet organisation**: drag-to-reorder in Manage Cards (`ReorderableListView`), persisted order reconciled on add/remove, trash with restore/permanent delete, category filter, and a "Space" archive screen with counts, top category, milestones and peak month.
 
 ### 1.3 Passes — UI complete, data mocked
@@ -133,6 +134,7 @@ Landed in `a3fe742` + `a66c039`. Universal release APK measured at **59.0 MB**, 
 | **Push** | No FCM dependency and no `POST /v1/devices` registration, although the server's Phase D outbox is ready. |
 | **iOS NFC** | Not implemented; `MainActivity.kt` is Android-only. |
 | **Search** | `README.md` lists search among wallet features; there is no search UI in the codebase. |
+| **Pass share on iOS** | Implemented and analyzed, but the photo-library permission prompt and save are unverified — no iOS toolchain in this repo's flow. The Android 26-28 `WRITE_EXTERNAL_STORAGE` path is likewise unexercised; the emulators in use are newer, where MediaStore needs no permission. |
 | **Release signing** | `buildTypes.release` still uses the debug signing config (`TODO` in `build.gradle.kts`). |
 
 ---
@@ -143,16 +145,15 @@ Landed in `a3fe742` + `a66c039`. Universal release APK measured at **59.0 MB**, 
 ```bash
 flutter analyze
 ```
-5 issues, all `info` level and all pre-dating the attachments work: two
-`deprecated_member_use` (`settings_screen.dart:131`, `manage_cards_view.dart:174`)
-and three `use_null_aware_elements` (`chip_payload.dart:75-79`). No warnings or
-errors.
+4 issues as of 25 Aug 2026, all `info` level and all pre-existing: one
+`deprecated_member_use` (`settings_screen.dart:135`) and three
+`use_null_aware_elements` (`chip_payload.dart:75-79`). No warnings or errors.
 
 ### 3.2 Tests
 
 ```bash
 flutter test
-# 337 tests, All tests passed! (~37s)   # 14 Aug 2026
+# 473 tests, All tests passed! (~65s)   # 25 Aug 2026
 ```
 
 | Suite | Covers | Result |
