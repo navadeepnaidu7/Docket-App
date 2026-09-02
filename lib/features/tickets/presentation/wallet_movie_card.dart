@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/haptics/haptic_service.dart';
+import '../../../core/sound/sound_service.dart';
 import '../../../core/wallet/wallet_card_metrics.dart';
 import '../domain/movie_pass_models.dart';
 import 'movie/movie_ticket_face.dart';
@@ -8,9 +9,14 @@ import 'movie_pass_detail_screen.dart';
 
 /// Movie pass glance card — press shell around [MovieTicketFace].
 class WalletMovieCard extends StatefulWidget {
-  const WalletMovieCard({super.key, required this.pass});
+  const WalletMovieCard({
+    super.key,
+    required this.pass,
+    this.onLongPress,
+  });
 
   final MoviePass pass;
+  final VoidCallback? onLongPress;
 
   @override
   State<WalletMovieCard> createState() => _WalletMovieCardState();
@@ -66,6 +72,14 @@ class _WalletMovieCardState extends State<WalletMovieCard>
           onTapUp: (_) => _pressCtrl.reverse(),
           onTapCancel: () => _pressCtrl.reverse(),
           onTap: _openDetail,
+          onLongPress: widget.onLongPress == null
+              ? null
+              : () {
+                  _pressCtrl.reverse();
+                  HapticService.longPress();
+                  SoundService.longPress();
+                  widget.onLongPress!();
+                },
           child: ScaleTransition(
             scale: _scaleAnim,
             child: SizedBox(

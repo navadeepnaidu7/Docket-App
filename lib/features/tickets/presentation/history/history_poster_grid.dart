@@ -57,10 +57,16 @@ PageRoute<T> posterScaleRoute<T>({required WidgetBuilder builder}) {
 
 /// One archived film: its poster, framed in the ticket provider's colours.
 class HistoryPosterTile extends StatelessWidget {
-  const HistoryPosterTile({super.key, required this.pass, this.dateLabel});
+  const HistoryPosterTile({
+    super.key,
+    required this.pass,
+    this.dateLabel,
+    this.onLongPress,
+  });
 
   final MoviePass pass;
   final String? dateLabel;
+  final VoidCallback? onLongPress;
 
   void _open(BuildContext context) {
     HapticService.confirm();
@@ -75,7 +81,7 @@ class HistoryPosterTile extends StatelessWidget {
   Widget build(BuildContext context) {
     // Archived passes are expired, and the expired palette is grey for every
     // brand — which would make the whole grid identical. Force brand chrome so
-    // a BookMyShow ticket still reads as one, exactly as the folder chips do.
+    // a BookMyShow ticket still reads as one.
     final MovieBrandStyle style = MovieBrandStyle.forPass(
       pass,
       useBrandColors: true,
@@ -88,6 +94,7 @@ class HistoryPosterTile extends StatelessWidget {
           : '${pass.movieTitle}, $dateLabel',
       child: BounceTap(
         onTap: () => _open(context),
+        onLongPress: onLongPress,
         scaleFactor: 0.96,
         child: DecoratedBox(
           decoration: BoxDecoration(

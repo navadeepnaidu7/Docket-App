@@ -8,8 +8,7 @@ import 'package:docket/features/tickets/presentation/history/history_pass_card.d
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Fixtures deliberately carry no posterUrl/posterAsset, so the thumbnails take
-/// the gradient path and nothing here touches the network.
+/// Fixtures carry no posterUrl/posterAsset so nothing here touches the network.
 MoviePass movie({required String id, required String title}) {
   return MoviePass(
     id: id,
@@ -95,7 +94,7 @@ void main() {
   }
 
   group('HistoryFolderTile', () {
-    testWidgets('lays out a full fan of movie chips', (WidgetTester t) async {
+    testWidgets('lays out a movie folder', (WidgetTester t) async {
       await pumpTile(
         t,
         folder(<WalletPassItem>[
@@ -109,9 +108,13 @@ void main() {
       expect(find.text('Movies'), findsOneWidget);
       expect(find.text('3 passes'), findsOneWidget);
       expect(find.text('Last added 10 Feb 2025'), findsNothing);
+      expect(find.byIcon(Icons.arrow_outward_rounded), findsOneWidget);
+      expect(find.bySemanticsLabel('Movies, 3 passes'), findsOneWidget);
     });
 
-    testWidgets('renders train route chips', (WidgetTester t) async {
+    testWidgets('lays out a train folder without peeking contents', (
+      WidgetTester t,
+    ) async {
       await pumpTile(
         t,
         folder(<WalletPassItem>[
@@ -122,9 +125,9 @@ void main() {
 
       expect(takeLayoutError(), isNull);
       expect(find.text('Trains'), findsOneWidget);
-      // Two chips, each showing both station codes.
-      expect(find.text('MAS'), findsNWidgets(2));
-      expect(find.text('SBC'), findsNWidgets(2));
+      expect(find.text('2 passes'), findsOneWidget);
+      expect(find.text('MAS'), findsNothing);
+      expect(find.text('SBC'), findsNothing);
     });
 
     testWidgets('handles a single-item folder', (WidgetTester t) async {
@@ -135,6 +138,7 @@ void main() {
 
       expect(takeLayoutError(), isNull);
       expect(find.text('1 pass'), findsOneWidget);
+      expect(find.bySemanticsLabel('Movies, 1 pass'), findsOneWidget);
     });
 
     testWidgets('lays out in dark mode', (WidgetTester t) async {
@@ -148,6 +152,8 @@ void main() {
       );
 
       expect(takeLayoutError(), isNull);
+      expect(find.text('Trains'), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_outward_rounded), findsOneWidget);
     });
 
     testWidgets('keeps the label block compact at large text scale', (

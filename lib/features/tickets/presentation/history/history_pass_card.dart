@@ -16,9 +16,14 @@ import '../ticket_detail_screen.dart';
 /// repeat what the header says. Height follows content rather than a fixed row
 /// so long titles get two full lines.
 class HistoryPassCard extends StatelessWidget {
-  const HistoryPassCard({super.key, required this.item});
+  const HistoryPassCard({
+    super.key,
+    required this.item,
+    this.onLongPress,
+  });
 
   final WalletPassItem item;
+  final VoidCallback? onLongPress;
 
   void _open(BuildContext context) {
     HapticService.confirm();
@@ -62,6 +67,7 @@ class HistoryPassCard extends StatelessWidget {
       label: date == null ? title : '$title, $date',
       child: BounceTap(
         onTap: () => _open(context),
+        onLongPress: onLongPress,
         scaleFactor: 0.985,
         child: Container(
           width: double.infinity,
