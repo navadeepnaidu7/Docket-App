@@ -25,6 +25,9 @@ abstract class DocketApi {
   });
 
   Future<String> createFromPnr(String pnr);
+
+  /// `DELETE /v1/passes/{id}`. A 404 is success — the row is already gone.
+  Future<void> deletePass(String id);
 }
 
 class DocketApiClient implements DocketApi {
@@ -152,6 +155,20 @@ class DocketApiClient implements DocketApi {
     });
     _throwIfFailed(res, fallback: 'Could not read that ticket.');
     return _ticketIdFrom(res.body);
+  }
+
+  @override
+  Future<void> deletePass(String id) async {
+    final http.Response res = await _authed(
+      (Map<String, String> headers) => _withTimeout(
+        () => _http.delete(
+          _uri(PassApiPaths.passById(id)),
+          headers: headers,
+        ),
+      ),
+    );
+    if (res.statusCode == 404) return;
+    _throwIfFailed(res, fallback: 'Could not remove that pass.');
   }
 
   @override

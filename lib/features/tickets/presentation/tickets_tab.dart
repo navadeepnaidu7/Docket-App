@@ -10,6 +10,7 @@ import '../../../shared/widgets/bounce_tap.dart';
 import '../../../shared/widgets/rolling_card_page.dart';
 import '../application/pass_list_provider.dart';
 import '../domain/pass_catalog.dart';
+import 'pass_remove_flow.dart';
 import 'wallet_bus_card.dart';
 import 'wallet_movie_card.dart';
 import 'wallet_ticket_card.dart';
@@ -94,14 +95,29 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
                           TrainPassItem(:final ticket) => WalletTicketCard(
                               key: ValueKey<String>(ticket.id),
                               ticket: ticket,
+                              onLongPress: () => confirmAndRemovePass(
+                                context,
+                                ref,
+                                item,
+                              ),
                             ),
                           MoviePassItem(:final pass) => WalletMovieCard(
                               key: ValueKey<String>(pass.id),
                               pass: pass,
+                              onLongPress: () => confirmAndRemovePass(
+                                context,
+                                ref,
+                                item,
+                              ),
                             ),
                           BusPassItem(:final pass) => WalletBusCard(
                               key: ValueKey<String>(pass.id),
                               pass: pass,
+                              onLongPress: () => confirmAndRemovePass(
+                                context,
+                                ref,
+                                item,
+                              ),
                             ),
                         },
                       );

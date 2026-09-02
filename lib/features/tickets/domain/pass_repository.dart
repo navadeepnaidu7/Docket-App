@@ -10,4 +10,7 @@ abstract class PassRepository {
 
   /// Single pass by server id, or null if missing.
   Future<WalletPassItem?> fetchPassById(String id);
+
+  /// Drops [id] from the wallet. Missing ids are a no-op.
+  Future<void> deletePass(String id);
 }

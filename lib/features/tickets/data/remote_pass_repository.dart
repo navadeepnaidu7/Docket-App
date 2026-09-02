@@ -20,6 +20,11 @@ class RemotePassRepository implements PassRepository {
   Future<WalletPassItem?> fetchPassById(String id) {
     return _api.fetchPassById(id);
   }
+
+  @override
+  Future<void> deletePass(String id) {
+    return _api.deletePass(id);
+  }
 }
 
 /// Documented paths for the backend contract (see docs/api/passes.md).

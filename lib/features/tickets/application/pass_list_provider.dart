@@ -36,6 +36,8 @@ final passListProvider =
 );
 
 class PassListNotifier extends AsyncNotifier<List<WalletPassItem>> {
+  Future<void> _mutate = Future<void>.value();
+
   @override
   Future<List<WalletPassItem>> build() {
     // Depend on flags so toggle invalidates and reloads.
@@ -58,6 +60,35 @@ class PassListNotifier extends AsyncNotifier<List<WalletPassItem>> {
     // instead of the list it is already showing, resetting scroll position.
     state = const AsyncLoading<List<WalletPassItem>>().copyWithPrevious(state);
     state = await AsyncValue.guard(() => _load(status: status));
+  }
+
+  /// Drops [id] from the wallet. The row leaves the list first; a repository
+  /// failure puts the previous list back so the card does not vanish on a
+  /// network error. Calls are queued so two confirms cannot interleave that
+  /// rollback.
+  Future<void> removePass(String id) {
+    final Future<void> op = _mutate.then((_) => _removePass(id));
+    _mutate = op.catchError((_) {});
+    return op;
+  }
+
+  Future<void> _removePass(String id) async {
+    final List<WalletPassItem>? previous = state.valueOrNull;
+    if (previous != null) {
+      state = AsyncData<List<WalletPassItem>>(
+        previous
+            .where((WalletPassItem p) => p.id != id)
+            .toList(growable: false),
+      );
+    }
+    try {
+      await _repo.deletePass(id);
+    } catch (e, st) {
+      if (previous != null) {
+        state = AsyncData<List<WalletPassItem>>(previous);
+      }
+      Error.throwWithStackTrace(e, st);
+    }
   }
 }
 
