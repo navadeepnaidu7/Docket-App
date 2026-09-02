@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/wallet/wallet_card_metrics.dart';
 import '../domain/pass_catalog.dart';
 import '../domain/ticket_models.dart';
+import 'pass_remove_flow.dart';
 import 'pass_typography.dart';
 import 'share/pass_share_actions.dart';
 import 'train/halt_status.dart';
@@ -132,7 +133,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                       style: PassType.screenTitle(ink),
                     ),
                   ),
-                  const SizedBox(width: 48),
+                  PassOverflowButton(
+                    item: TrainPassItem(t),
+                    copyLabel: 'Copy PNR',
+                    copyValue: t.pnr,
+                  ),
                 ],
               ),
             ),

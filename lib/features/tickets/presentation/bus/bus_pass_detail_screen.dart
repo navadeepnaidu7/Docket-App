@@ -6,6 +6,7 @@ import '../../../../core/wallet/wallet_card_metrics.dart';
 import '../../domain/bus_pass_models.dart';
 import '../../domain/pass_catalog.dart';
 import '../pass_info_card.dart';
+import '../pass_remove_flow.dart';
 import '../pass_typography.dart';
 import '../share/pass_share_actions.dart';
 import 'bus_brand_style.dart';
@@ -66,7 +67,11 @@ class BusPassDetailScreen extends StatelessWidget {
                       style: PassType.screenTitle(ink),
                     ),
                   ),
-                  const SizedBox(width: 48),
+                  PassOverflowButton(
+                    item: BusPassItem(pass),
+                    copyLabel: 'Copy booking ID',
+                    copyValue: pass.bookingId,
+                  ),
                 ],
               ),
             ),

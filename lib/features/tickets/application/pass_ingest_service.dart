@@ -126,6 +126,49 @@ class PassIngestService {
         'Saved, but this pass kind is not on the wallet yet.',
       );
     }
+    _backfillPoster(api, item);
     return item;
   }
+
+  /// Re-reads a freshly added movie pass until its poster arrives.
+  ///
+  /// `POST /tickets/extract` returns as soon as the ticket is stored and enqueues the TMDB
+  /// lookup for the worker to run, so a movie pass is almost always saved *before* its art
+  /// exists. Nothing else would ever re-read it: there is no pull-to-refresh on the passes
+  /// tab, so without this the pass keeps its gradient fallback until the app is restarted.
+  ///
+  /// Fire-and-forget on purpose — the add flow must not wait on artwork, and the pass is
+  /// already saved and on screen by the time this runs.
+  void _backfillPoster(DocketApi api, WalletPassItem item) {
+    if (item is! MoviePassItem || item.pass.resolvedPosterUrl != null) return;
+
+    unawaited(() async {
+      for (final Duration wait in _posterBackfillDelays) {
+        await Future<void>.delayed(wait);
+        try {
+          final WalletPassItem? fresh = await api.fetchPassById(item.id);
+          if (fresh is MoviePassItem && fresh.pass.resolvedPosterUrl != null) {
+            await _ref.read(passListProvider.notifier).refresh();
+            return;
+          }
+        } catch (_) {
+          // The pass itself is saved; a failed poll is not worth a second error dialog.
+          // This also catches reads against a torn-down ProviderScope on app exit.
+          return;
+        }
+      }
+    }());
+  }
+
+  /// Bounded, and front-loaded because the worker usually resolves within a second or two —
+  /// the later probes only exist for a cold or backed-up queue.
+  ///
+  /// It gives up rather than retrying forever because **no poster is a legitimate final
+  /// answer**: TMDB may not carry the film, or the match may have scored below the server's
+  /// threshold, which deliberately emits nothing rather than another film's artwork.
+  static const List<Duration> _posterBackfillDelays = <Duration>[
+    Duration(seconds: 2),
+    Duration(seconds: 5),
+    Duration(seconds: 10),
+  ];
 }

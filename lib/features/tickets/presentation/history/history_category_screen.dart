@@ -9,6 +9,7 @@ import '../../domain/history_folder.dart';
 import '../../domain/pass_catalog.dart';
 import '../../domain/pass_history_category.dart';
 import 'archive_scaffold.dart';
+import '../pass_remove_flow.dart';
 import 'history_pass_card.dart';
 import 'history_poster_grid.dart';
 import 'history_visuals.dart';
@@ -82,6 +83,9 @@ class HistoryCategoryScreen extends ConsumerWidget {
                   ? HistorySectionSpan.year
                   : HistorySectionSpan.month,
             ),
+            onRemove: (WalletPassItem item) {
+              confirmAndRemovePass(context, ref, item);
+            },
           );
         },
       ),
@@ -90,10 +94,15 @@ class HistoryCategoryScreen extends ConsumerWidget {
 }
 
 class _DateSections extends StatelessWidget {
-  const _DateSections({required this.category, required this.sections});
+  const _DateSections({
+    required this.category,
+    required this.sections,
+    required this.onRemove,
+  });
 
   final PassHistoryCategory category;
   final List<HistoryDateSection> sections;
+  final ValueChanged<WalletPassItem> onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -150,7 +159,10 @@ class _DateSections extends StatelessWidget {
               // Films are recognised by their artwork long before their title,
               // so the movies folder shows posters rather than titled rows.
               sliver: category == PassHistoryCategory.movie
-                  ? _PosterSection(items: section.items)
+                  ? _PosterSection(
+                      items: section.items,
+                      onRemove: onRemove,
+                    )
                   : SliverList.separated(
                       itemCount: section.items.length,
                       separatorBuilder: (BuildContext context, int index) =>
@@ -160,6 +172,7 @@ class _DateSections extends StatelessWidget {
                         return HistoryPassCard(
                           key: ValueKey<String>(item.id),
                           item: item,
+                          onLongPress: () => onRemove(item),
                         );
                       },
                     ),
@@ -181,9 +194,10 @@ class _DateSections extends StatelessWidget {
 /// A non-movie pass can only appear here if the category bucketing changes, so
 /// it falls back to the titled row rather than being dropped from the archive.
 class _PosterSection extends StatelessWidget {
-  const _PosterSection({required this.items});
+  const _PosterSection({required this.items, required this.onRemove});
 
   final List<WalletPassItem> items;
+  final ValueChanged<WalletPassItem> onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -202,8 +216,13 @@ class _PosterSection extends StatelessWidget {
             key: ValueKey<String>(item.id),
             pass: pass,
             dateLabel: HistoryPassPresentation.shortDateLabel(item),
+            onLongPress: () => onRemove(item),
           ),
-          _ => HistoryPassCard(key: ValueKey<String>(item.id), item: item),
+          _ => HistoryPassCard(
+            key: ValueKey<String>(item.id),
+            item: item,
+            onLongPress: () => onRemove(item),
+          ),
         };
       },
     );
@@ -219,7 +238,6 @@ class _CategoryIntro extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme scheme = Theme.of(context).colorScheme;
-    final Color accent = HistoryStripLook.forCategory(category).gradient.first;
     final int passCount = sections.fold<int>(
       0,
       (int total, HistoryDateSection section) => total + section.items.length,
@@ -231,15 +249,8 @@ class _CategoryIntro extends StatelessWidget {
         Hero(
           tag: 'history-category-${category.name}',
           child: Material(
-            color: Colors.transparent,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
-              child: Center(
-                child: HistoryCategoryMark(category: category, size: 18),
-              ),
-            ),
+            type: MaterialType.transparency,
+            child: HistoryCategoryWell(category: category),
           ),
         ),
         const SizedBox(width: Space.x3),

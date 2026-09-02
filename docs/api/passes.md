@@ -16,6 +16,7 @@ is still a stub that throws `UnimplementedError`. See [`../current_state.md`](..
 |--------|------|---------|
 | `GET` | `/v1/passes` | List wallet passes — **live on the server** |
 | `GET` | `/v1/passes/{id}` | Single pass (train or movie envelope) — **live** |
+| `DELETE` | `/v1/passes/{id}` | Remove a pass the caller owns — **live** |
 | `GET` | `/v1/passes/{id}/live` | Train live status only (`?force=1` to bypass cache) — **live** |
 | `GET` | `/v1/passes/{id}/code` | *(not implemented)* gate code payload / image URL |
 
@@ -37,9 +38,14 @@ Accept: application/json
 | Code | Meaning |
 |------|---------|
 | `200` | OK |
+| `204` | Deleted (`DELETE /v1/passes/{id}`) |
 | `401` | Auth required / expired |
-| `404` | Pass id not found |
+| `404` | Pass id not found (or not owned by the caller) |
 | `500` | Server error |
+
+`DELETE /v1/passes/{id}` is user-scoped the same way `GET` is. A row that
+does not exist, or belongs to someone else, is `404`. The client treats
+`204` and `404` as success so a double-remove is a no-op.
 
 Empty wallet → `200` with `"items": []` (preferred over `404`).
 

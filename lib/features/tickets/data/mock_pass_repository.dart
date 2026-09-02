@@ -41,4 +41,10 @@ class MockPassRepository implements PassRepository {
     }
     return null;
   }
+
+  @override
+  Future<void> deletePass(String id) async {
+    await _simulateLatency();
+    _items.removeWhere((WalletPassItem p) => p.id == id);
+  }
 }

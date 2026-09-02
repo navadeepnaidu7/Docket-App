@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -8,6 +7,7 @@ import '../domain/pass_catalog.dart';
 import 'movie/movie_ticket_code_screen.dart';
 import 'pass_info_card.dart';
 import 'movie/movie_ticket_face.dart';
+import 'pass_remove_flow.dart';
 import 'pass_typography.dart';
 import 'share/pass_share_actions.dart';
 
@@ -57,12 +57,10 @@ class MoviePassDetailScreen extends StatelessWidget {
                       style: PassType.screenTitle(ink),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.more_horiz_rounded, size: 24),
-                    onPressed: () {
-                      HapticService.select();
-                      _showActions(context, p);
-                    },
+                  PassOverflowButton(
+                    item: MoviePassItem(p),
+                    copyLabel: 'Copy booking ID',
+                    copyValue: p.bookingId,
                   ),
                 ],
               ),
@@ -117,31 +115,4 @@ class MoviePassDetailScreen extends StatelessWidget {
     );
   }
 
-  void _showActions(BuildContext context, MoviePass p) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (BuildContext ctx) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              ListTile(
-                leading: const Icon(Icons.copy_rounded),
-                title: const Text('Copy booking ID'),
-                onTap: () {
-                  Clipboard.setData(ClipboardData(text: p.bookingId));
-                  Navigator.pop(ctx);
-                  HapticService.confirm();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Booking ID copied')),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 }

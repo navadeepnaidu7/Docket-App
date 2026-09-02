@@ -33,20 +33,16 @@ a pass whose date string will not parse is never dropped, whichever span is in p
 Archived passes are expired, and `MovieBrandStyle`'s expired palette is grey for *every* brand —
 which would make the whole grid identical. The tile forces brand chrome
 (`MovieBrandStyle.forPass(pass, useBrandColors: true)`) so a BookMyShow ticket still reads red
-and a District one purple. `HistoryStripLook.forMovie` already does exactly this for the folder
-chips, for the same reason.
+and a District one purple. `HistoryStripLook.forMovie` is the same brand-chrome path the
+glance strip uses.
 
 ### No poster is a normal state
 
 TMDB may have no match, or the async lookup may not have finished. `MoviePosterArt` paints the
 `posterHint` gradient first and never removes it, so it shows through while the image loads and
 stays as the art when there is none. The archive tile adds the **film's title** over that
-gradient — at grid size an unnamed gradient rectangle is unidentifiable, whereas the folder
-chips are too small for text and keep the brand mark instead. Another film's artwork is never
-substituted.
-
-`MoviePosterArt` is shared by the grid and the folder chips, which previously carried their own
-copy of this fallback ladder.
+gradient — at grid size an unnamed gradient rectangle is unidentifiable. Another film's
+artwork is never substituted.
 
 ## Opening a pass
 
@@ -71,7 +67,8 @@ uses the poster.
 
 ## Not covered
 
-- The glance card keeps the title logo; only the archive and folder chips use the poster
+- The glance card keeps the title logo; only the movies archive grid uses the poster
+- The Archive root folders no longer preview posters (see `archive-folders.md`)
 - Grid density is fixed at 3 columns — it does not adapt on tablets
 - Fixture posters point at `image.tmdb.org` directly rather than the Docket proxy, so they do
   not load on ISPs that block it (see `movie-logo-glance.md`)

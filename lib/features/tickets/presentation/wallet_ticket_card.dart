@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/haptics/haptic_service.dart';
+import '../../../core/sound/sound_service.dart';
 import '../../../core/wallet/wallet_card_metrics.dart';
 import '../domain/ticket_models.dart';
 import 'ticket_detail_screen.dart';
@@ -10,9 +11,14 @@ export '../domain/ticket_models.dart';
 
 /// Train pass glance card — press shell around [TrainTicketFace].
 class WalletTicketCard extends StatefulWidget {
-  const WalletTicketCard({super.key, required this.ticket});
+  const WalletTicketCard({
+    super.key,
+    required this.ticket,
+    this.onLongPress,
+  });
 
   final MockTicket ticket;
+  final VoidCallback? onLongPress;
 
   @override
   State<WalletTicketCard> createState() => _WalletTicketCardState();
@@ -68,6 +74,14 @@ class _WalletTicketCardState extends State<WalletTicketCard>
           onTapUp: (_) => _pressCtrl.reverse(),
           onTapCancel: () => _pressCtrl.reverse(),
           onTap: _openDetail,
+          onLongPress: widget.onLongPress == null
+              ? null
+              : () {
+                  _pressCtrl.reverse();
+                  HapticService.longPress();
+                  SoundService.longPress();
+                  widget.onLongPress!();
+                },
           child: ScaleTransition(
             scale: _scaleAnim,
             child: SizedBox(

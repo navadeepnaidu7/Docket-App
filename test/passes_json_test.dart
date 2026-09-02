@@ -328,5 +328,22 @@ void main() {
       expect(found!.id, mockTrainPasses.first.id);
       expect(await repo.fetchPassById('missing'), isNull);
     });
+
+    test('deletePass drops the id and is a no-op when missing', () async {
+      final MockPassRepository repo = MockPassRepository(
+        artificialDelay: Duration.zero,
+        seed: buildWalletPassCatalog(
+          trains: mockTrainPasses.take(2).toList(),
+          movies: const <MoviePass>[],
+        ),
+      );
+      final String id = mockTrainPasses.first.id;
+      await repo.deletePass(id);
+      expect(await repo.fetchPassById(id), isNull);
+      expect((await repo.fetchPasses()).map((WalletPassItem p) => p.id),
+          isNot(contains(id)));
+      await repo.deletePass(id);
+      expect(await repo.fetchPassById('missing'), isNull);
+    });
   });
 }

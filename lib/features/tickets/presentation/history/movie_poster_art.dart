@@ -10,8 +10,8 @@ import '../../domain/movie_pass_models.dart';
 /// removed, so it shows through while the image loads and stays as the art when
 /// there is none. Another film's artwork is never substituted.
 ///
-/// This is the full one-sheet — the archive and the folder chips both want the
-/// poster, not the title logo the glance card uses.
+/// This is the full one-sheet — the movies archive grid wants the poster, not
+/// the title logo the glance card uses.
 class MoviePosterArt extends StatelessWidget {
   const MoviePosterArt({super.key, required this.pass, this.fallback});
 

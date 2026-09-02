@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:docket/features/tickets/data/mock_pass_fixtures.dart';
@@ -17,7 +18,9 @@ const List<Size> _viewports = <Size>[
 
 Future<void> _pumpLiveTab(WidgetTester tester, TrainPass pass) async {
   await tester.pumpWidget(
-    MaterialApp(home: TicketDetailScreen(ticket: pass)),
+    ProviderScope(
+      child: MaterialApp(home: TicketDetailScreen(ticket: pass)),
+    ),
   );
   await tester.pump();
 
