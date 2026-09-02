@@ -12,6 +12,7 @@ import '../../../../core/motion/studio_page_route.dart';
 import '../../../../shared/widgets/morph_sheet.dart';
 import '../../../../shared/widgets/squircle_tile.dart';
 import '../../application/pass_ingest_service.dart';
+import '../../domain/pass_catalog.dart';
 import '../../domain/pass_ingest.dart';
 import 'pass_ingest_feedback.dart';
 import 'pnr_entry_screen.dart';
@@ -215,6 +216,11 @@ Future<void> _submitFile(
   File file,
   PassInputCategory category,
 ) async {
+  // Captured before the dialog: the confirmation is shown after the spinner is
+  // popped, and looking a messenger up from a context that has just lost a
+  // route is how these end up on the wrong navigator.
+  final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+
   showDialog<void>(
     context: context,
     barrierDismissible: true,
@@ -236,12 +242,13 @@ Future<void> _submitFile(
   );
 
   try {
-    await ref
+    final WalletPassItem item = await ref
         .read(passIngestServiceProvider)
         .submitFile(file: file, category: category);
     if (!context.mounted) return;
     Navigator.of(context, rootNavigator: true).pop();
     HapticService.success();
+    showPassIngestSuccess(messenger, item);
   } on PassIngestException catch (e) {
     if (!context.mounted) return;
     Navigator.of(context, rootNavigator: true).pop();

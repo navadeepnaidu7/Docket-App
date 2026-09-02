@@ -6,6 +6,7 @@ import '../../../../core/haptics/haptic_service.dart';
 import '../../../../shared/widgets/entry/document_entry_scaffold.dart';
 import '../../../../shared/widgets/studio_field.dart';
 import '../../application/pass_ingest_service.dart';
+import '../../domain/pass_catalog.dart';
 import '../../domain/pass_ingest.dart';
 import '../../domain/pnr_format.dart';
 import 'pass_ingest_feedback.dart';
@@ -33,15 +34,21 @@ class _PnrEntryScreenState extends ConsumerState<PnrEntryScreen> {
 
   Future<void> _submit() async {
     if (!_canSubmit) return;
+    // Captured before the await: this screen pops itself on success, and a
+    // popped context can no longer resolve a messenger.
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     setState(() {
       _submitting = true;
       _error = null;
     });
     try {
-      await ref.read(passIngestServiceProvider).submitPnr(_controller.text);
+      final WalletPassItem item = await ref
+          .read(passIngestServiceProvider)
+          .submitPnr(_controller.text);
       if (!mounted) return;
       HapticService.success();
       Navigator.of(context).pop(true);
+      showPassIngestSuccess(messenger, item);
     } on PassIngestException catch (e) {
       if (!mounted) return;
       HapticService.error();
