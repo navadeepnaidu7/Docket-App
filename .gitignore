@@ -112,3 +112,8 @@ tool/train_ref.png
 # 2.3 GB across 4,555 files when this entry was added. A stray `git add -A`
 # would otherwise try to commit all of it.
 /.claude/
+
+# Golden-test failure dumps. `flutter test` writes the actual/expected/diff PNGs
+# here on any golden mismatch; they are output, never source. Four of them were
+# committed by accident in #32.
+/test/failures/
