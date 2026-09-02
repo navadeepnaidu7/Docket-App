@@ -37,6 +37,7 @@ import 'widgets/dashboard_header.dart';
 import 'widgets/easter_egg_constants.dart';
 import 'widgets/easter_egg_drawer.dart';
 import 'widgets/easter_egg_sheet_motion.dart';
+import '../../journey/presentation/journey_view.dart';
 import 'widgets/ids_tab.dart';
 import 'widgets/manage_cards_view.dart';
 import 'widgets/membership_mesh.dart';
@@ -46,7 +47,7 @@ import 'widgets/trash_view.dart';
 import 'widgets/view_picker.dart';
 import 'widgets/wallet_backdrop.dart';
 
-enum DashboardViewMode { home, manage, trash }
+enum DashboardViewMode { home, manage, trash, journey }
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -704,6 +705,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                               case DashboardViewMode.trash:
                                                 viewChild = const TrashView(
                                                   key: ValueKey('trash_view'),
+                                                );
+                                                break;
+                                              case DashboardViewMode.journey:
+                                                viewChild = const JourneyView(
+                                                  key: ValueKey('journey_view'),
                                                 );
                                                 break;
                                             }

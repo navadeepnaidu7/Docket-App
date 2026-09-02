@@ -6,6 +6,28 @@ file satisfies the attribution requirement; the same credits are registered with
 Flutter's `LicenseRegistry` from `lib/main.dart` so they also appear in-app under
 Settings -> About -> Licences.
 
+## Journey globe geometry — Natural Earth (public domain)
+
+The Journey globe's land-dot field and India state outlines derive from
+[Natural Earth](https://www.naturalearthdata.com/), which is in the public
+domain and explicitly requires neither permission nor attribution. Credited
+here anyway, because knowing where map data came from matters.
+
+| Bundled as | Derived from | Licence |
+|---|---|---|
+| `assets/journey/atlas_v1.bin` | `ne_110m_land`, `ne_50m_admin_1_states_provinces_lines` | Public domain |
+
+**Heavily modified — this is not Natural Earth data in any recognisable form.**
+`tool/generate_journey_atlas.py` uses the land polygons only to decide which
+points of a Fibonacci sphere fall on land, then **discards the polygons
+entirely**; what ships is a list of points, not a coastline. The India admin-1
+lines are filtered out of the global set, Douglas-Peucker simplified at 0.02
+degrees, and quantised to int16 (about 300m of error). Masters live in
+`tool/design_src/naturalearth/` and are not bundled.
+
+Place coordinates in `assets/journey/places_v1.json` are separately sourced and
+hand-curated in this repository; they are not Natural Earth data.
+
 ## Passport cover artwork — CC BY-SA 4.0
 
 Used in the add menu to illustrate the Passport option and the e-passport /
