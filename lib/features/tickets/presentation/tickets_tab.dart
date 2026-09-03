@@ -8,6 +8,8 @@ import '../../../core/dev/dev_flags_provider.dart';
 import '../../../core/wallet/wallet_layout.dart';
 import '../../../shared/widgets/bounce_tap.dart';
 import '../../../shared/widgets/rolling_card_page.dart';
+import '../../../shared/widgets/stacked_card_deck.dart';
+import '../../dashboard/application/pass_deck_provider.dart';
 import '../application/pass_list_provider.dart';
 import '../domain/pass_catalog.dart';
 import 'pass_remove_flow.dart';
@@ -45,6 +47,7 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
 
     final bool showMockBadge = DevConfig.showDevMenu &&
         ref.watch(devFlagsProvider).isMockPassesActive;
+    final bool deckMode = ref.watch(passDeckModeProvider);
     final double fabClearance = WalletLayout.fabClearance(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,6 +78,15 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
                 return const _EmptyState();
               }
 
+              if (deckMode) {
+                return _PassDeckView(
+                  items: filtered,
+                  fabClearance: fabClearance,
+                  onRemove: (WalletPassItem item) =>
+                      confirmAndRemovePass(context, ref, item),
+                );
+              }
+
               return Stack(
                 children: <Widget>[
                   PageView.builder(
@@ -91,35 +103,11 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
                         index: index,
                         padding:
                             EdgeInsets.fromLTRB(20, 0, 28, fabClearance),
-                        child: switch (item) {
-                          TrainPassItem(:final ticket) => WalletTicketCard(
-                              key: ValueKey<String>(ticket.id),
-                              ticket: ticket,
-                              onLongPress: () => confirmAndRemovePass(
-                                context,
-                                ref,
-                                item,
-                              ),
-                            ),
-                          MoviePassItem(:final pass) => WalletMovieCard(
-                              key: ValueKey<String>(pass.id),
-                              pass: pass,
-                              onLongPress: () => confirmAndRemovePass(
-                                context,
-                                ref,
-                                item,
-                              ),
-                            ),
-                          BusPassItem(:final pass) => WalletBusCard(
-                              key: ValueKey<String>(pass.id),
-                              pass: pass,
-                              onLongPress: () => confirmAndRemovePass(
-                                context,
-                                ref,
-                                item,
-                              ),
-                            ),
-                        },
+                        child: _passCardFor(
+                          item,
+                          onLongPress: () =>
+                              confirmAndRemovePass(context, ref, item),
+                        ),
                       );
                     },
                   ),
@@ -138,6 +126,7 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
                             return _DotIndicator(
                               count: filtered.length,
                               page: page,
+                              axis: Axis.vertical,
                             );
                           },
                         ),
@@ -153,20 +142,126 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
   }
 }
 
-// ── Dot indicator ─────────────────────────────────────────────────────────────
+// ── Deck mode ───────────────────────────────────────────────────
 
-class _DotIndicator extends StatelessWidget {
-  const _DotIndicator({required this.count, required this.page});
-  final int count;
-  final double page;
+/// The face for one pass. Shared by both carousel modes so a card can never
+/// gain a behaviour in one and not the other.
+Widget _passCardFor(WalletPassItem item, {VoidCallback? onLongPress}) {
+  return switch (item) {
+    TrainPassItem(:final ticket) => WalletTicketCard(
+        key: ValueKey<String>(ticket.id),
+        ticket: ticket,
+        onLongPress: onLongPress,
+      ),
+    MoviePassItem(:final pass) => WalletMovieCard(
+        key: ValueKey<String>(pass.id),
+        pass: pass,
+        onLongPress: onLongPress,
+      ),
+    BusPassItem(:final pass) => WalletBusCard(
+        key: ValueKey<String>(pass.id),
+        pass: pass,
+        onLongPress: onLongPress,
+      ),
+  };
+}
 
-  static const int _dotThreshold = 5;
-  static const double _trackH = 48.0;
+/// Passes as a horizontal deck of overlapping cards, swiped sideways.
+///
+/// Opt-in through Settings → Experimental. Spec in `docs/features/pass-deck.md`.
+class _PassDeckView extends StatefulWidget {
+  const _PassDeckView({
+    required this.items,
+    required this.fabClearance,
+    required this.onRemove,
+  });
+
+  final List<WalletPassItem> items;
+  final double fabClearance;
+  final ValueChanged<WalletPassItem> onRemove;
+
+  @override
+  State<_PassDeckView> createState() => _PassDeckViewState();
+}
+
+class _PassDeckViewState extends State<_PassDeckView> {
+  final DeckController _deck = DeckController();
+
+  @override
+  void dispose() {
+    _deck.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 10),
+            child: StackedCardDeck(
+              controller: _deck,
+              itemCount: widget.items.length,
+              itemBuilder: (BuildContext context, int index) {
+                final WalletPassItem item = widget.items[index];
+                return _passCardFor(
+                  item,
+                  onLongPress: () => widget.onRemove(item),
+                );
+              },
+            ),
+          ),
+        ),
+        if (widget.items.length > 1)
+          AnimatedBuilder(
+            animation: _deck,
+            builder: (BuildContext context, Widget? _) => _DotIndicator(
+              count: widget.items.length,
+              page: _deck.position,
+              axis: Axis.horizontal,
+            ),
+          ),
+        // Keeps the dots clear of the floating add button rather than
+        // overlapping it the way the vertical rail can afford to.
+        SizedBox(height: widget.fabClearance),
+      ],
+    );
+  }
+}
+
+// ── Dot indicator ────────────────────────────────────────────────
+
+/// Dots (or a scroll pill past [_dotThreshold]) laid out along [axis].
+///
+/// The roll carousel runs it vertically down the right edge; the deck runs it
+/// horizontally under the cards.
+class _DotIndicator extends StatelessWidget {
+  const _DotIndicator({
+    required this.count,
+    required this.page,
+    required this.axis,
+  });
+
+  final int count;
+  final double page;
+  final Axis axis;
+
+  static const int _dotThreshold = 5;
+  static const double _track = 48.0;
+  static const double _thickness = 4.0;
+
+  bool get _isVertical => axis == Axis.vertical;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color ink = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : const Color(0xFF1C1C1E);
+
     if (count <= _dotThreshold) {
-      return Column(
+      return Flex(
+        direction: axis,
         mainAxisSize: MainAxisSize.min,
         children: List<Widget>.generate(count, (int i) {
           final double distance = (page - i).abs().clamp(0.0, 1.0);
@@ -177,12 +272,11 @@ class _DotIndicator extends StatelessWidget {
             curve: Curves.easeOutCubic,
             width: size,
             height: size,
-            margin: const EdgeInsets.symmetric(vertical: 3),
+            margin: _isVertical
+                ? const EdgeInsets.symmetric(vertical: 3)
+                : const EdgeInsets.symmetric(horizontal: 3),
             decoration: BoxDecoration(
-              color: (Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : const Color(0xFF1C1C1E))
-                  .withValues(alpha: opacity),
+              color: ink.withValues(alpha: opacity),
               shape: BoxShape.circle,
             ),
           );
@@ -190,36 +284,34 @@ class _DotIndicator extends StatelessWidget {
       );
     }
 
-    final double pillH = (_trackH / count).clamp(6.0, _trackH * 0.5);
-    final double travel = _trackH - pillH;
-    final double offset = (page / (count - 1)).clamp(0.0, 1.0) * travel;
-    final Color trackColor = Theme.of(context).brightness == Brightness.dark
-        ? Colors.white
-        : const Color(0xFF1C1C1E);
+    final double pill = (_track / count).clamp(6.0, _track * 0.5);
+    final double offset =
+        (page / (count - 1)).clamp(0.0, 1.0) * (_track - pill);
 
     return SizedBox(
-      width: 4,
-      height: _trackH,
+      width: _isVertical ? _thickness : _track,
+      height: _isVertical ? _track : _thickness,
       child: Stack(
         children: <Widget>[
-          Container(
-            width: 4,
-            height: _trackH,
-            decoration: BoxDecoration(
-              color: trackColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(2),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: ink.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(_thickness / 2),
+              ),
             ),
           ),
           AnimatedPositioned(
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOutCubic,
-            top: offset,
+            top: _isVertical ? offset : 0,
+            left: _isVertical ? 0 : offset,
             child: Container(
-              width: 4,
-              height: pillH,
+              width: _isVertical ? _thickness : pill,
+              height: _isVertical ? pill : _thickness,
               decoration: BoxDecoration(
-                color: trackColor.withValues(alpha: 0.60),
-                borderRadius: BorderRadius.circular(2),
+                color: ink.withValues(alpha: 0.60),
+                borderRadius: BorderRadius.circular(_thickness / 2),
               ),
             ),
           ),
