@@ -203,7 +203,7 @@ class HistoryCategoryWell extends StatelessWidget {
   const HistoryCategoryWell({
     super.key,
     required this.category,
-    this.size = 36,
+    this.size = 40,
   });
 
   final PassHistoryCategory category;

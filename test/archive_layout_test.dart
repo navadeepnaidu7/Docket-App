@@ -108,7 +108,8 @@ void main() {
       expect(find.text('Movies'), findsOneWidget);
       expect(find.text('3 passes'), findsOneWidget);
       expect(find.text('Last added 10 Feb 2025'), findsNothing);
-      expect(find.byIcon(Icons.arrow_outward_rounded), findsOneWidget);
+      // The whole tile is the target; a per-tile arrow badge would be chrome.
+      expect(find.byIcon(Icons.arrow_outward_rounded), findsNothing);
       expect(find.bySemanticsLabel('Movies, 3 passes'), findsOneWidget);
     });
 
@@ -153,7 +154,7 @@ void main() {
 
       expect(takeLayoutError(), isNull);
       expect(find.text('Trains'), findsOneWidget);
-      expect(find.byIcon(Icons.arrow_outward_rounded), findsOneWidget);
+      expect(find.text('2 passes'), findsOneWidget);
     });
 
     testWidgets('keeps the label block compact at large text scale', (
@@ -171,6 +172,18 @@ void main() {
       expect(takeLayoutError(), isNull);
       expect(find.text('Movies'), findsOneWidget);
       expect(find.text('Last added 10 Feb 2025'), findsNothing);
+    });
+
+    test('paper thickness tracks how full the folder is', () {
+      // Bands, not a per-pass count: the stack has to stay legible at 167dp.
+      expect(HistoryFolderTile.sheetsFor(1), 1);
+      expect(HistoryFolderTile.sheetsFor(2), 2);
+      expect(HistoryFolderTile.sheetsFor(4), 2);
+      expect(HistoryFolderTile.sheetsFor(5), 3);
+      expect(HistoryFolderTile.sheetsFor(200), 3);
+      // buildHistoryFolders never emits an empty folder, but a zero must not
+      // paint a folder with no paper in it at all.
+      expect(HistoryFolderTile.sheetsFor(0), 1);
     });
   });
 
