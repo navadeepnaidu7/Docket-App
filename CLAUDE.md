@@ -12,6 +12,11 @@ tickets). It is **local-first** — passport/ID records never leave the device �
 Sibling repo: `../docket_server` (Go backend: AI ticket extraction, train PNR sync, push).
 The two repos are developed together; the shared contract lives in `docs/api/passes.md`.
 
+**That backend is deployed**, so you do not need to run one locally to test against a real API:
+`https://api-production-5f3a7.up.railway.app`, reachable over HTTPS from a physical device with
+no `adb reverse`. `../docket_server/docs/server_state.md` records what is switched on there and
+where to read the dev auth token that Settings → Developer asks for.
+
 ## Commands
 
 ```bash
@@ -189,6 +194,7 @@ with zero commits and nothing to resume from.
 | `docs/features/pass-share.md` | Pass share — off-screen PNG capture, the omit-when-absent QR rule, temp-file lifecycle |
 | `docs/features/ticket-code-extraction.md` | Gate codes — on-device ML Kit decode, symbology handling, why no code beats a fake one |
 | `PLAN.md` | Original phased build plan (historical; predates tickets/passes) |
+| `../docket_server/docs/server_state.md` | The live staging backend — base URL, what is switched on, how to authenticate |
 | `../docket_server/docs/architecture.md` | Backend design, pass taxonomy |
 
 ## Gotchas
