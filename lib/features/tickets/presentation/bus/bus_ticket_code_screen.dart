@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/bus_pass_models.dart';
-import '../movie/movie_ticket_chrome.dart' show TicketQrPainter;
+import '../pass_code_view.dart';
 import '../pass_typography.dart';
 
 /// Fullscreen scan view — code, route, and departure only.
 ///
 /// Deliberately the same shape as `MovieTicketCodeScreen`: at a gate you want
 /// the largest possible code and the least possible else, and a traveller who
-/// has used one pass should not have to relearn the other. The painter is the
-/// movie chrome's, so the two render identically rather than approximately.
+/// has used one pass should not have to relearn the other. Both go through
+/// [PassCodePlate], so the two render identically rather than approximately.
 class BusTicketCodeScreen extends StatelessWidget {
   const BusTicketCodeScreen({super.key, required this.pass});
 
@@ -69,24 +69,7 @@ class BusTicketCodeScreen extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: 36),
-                    Container(
-                      width: 260,
-                      height: 260,
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: <BoxShadow>[
-                          BoxShadow(
-                            color: Colors.black
-                                .withValues(alpha: isDark ? 0.35 : 0.10),
-                            blurRadius: 24,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: const CustomPaint(painter: TicketQrPainter()),
-                    ),
+                    PassCodePlate(code: pass.passCode),
                     if (pass.bookingId.trim().isNotEmpty) ...<Widget>[
                       const SizedBox(height: 28),
                       Text(

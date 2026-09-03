@@ -5,7 +5,6 @@ import 'package:docket/features/tickets/domain/bus_pass_models.dart';
 import 'package:docket/features/tickets/domain/movie_pass_models.dart';
 import 'package:docket/features/tickets/domain/pass_catalog.dart';
 import 'package:docket/features/tickets/domain/ticket_models.dart';
-import 'package:docket/features/tickets/presentation/movie/movie_ticket_chrome.dart';
 import 'package:docket/features/tickets/presentation/movie/movie_ticket_face.dart';
 import 'package:docket/features/tickets/presentation/pass_code_block.dart';
 import 'package:docket/features/tickets/presentation/share/pass_share_card.dart';
@@ -153,24 +152,22 @@ void main() {
       });
     }
 
-    // The faces draw decorative code art of their own — a hardcoded 7x7 grid in
-    // `PassCodeBlock`, a procedural `TicketQrPainter` on the movie chrome.
-    // Neither encodes anything, so neither may stand in for the real code.
+    // The faces used to draw decorative code art of their own — a hardcoded 7x7
+    // grid in `PassCodeBlock`, a procedural `TicketQrPainter` on the movie
+    // chrome. Neither encoded anything, so neither could stand in for the real
+    // code; both are gone, and the QR on an exported card must be the only one
+    // in the image. See docs/features/ticket-code-extraction.md.
     for (final (String kind, WalletPassItem item) in <(String, WalletPassItem)>[
       ('movie', MoviePassItem(_movie(codePayload: 'REAL'))),
       ('bus', BusPassItem(_bus(codePayload: 'REAL'))),
       ('train', TrainPassItem(_train(codePayload: 'REAL'))),
     ]) {
-      testWidgets('$kind draws no procedural QR painter anywhere',
+      testWidgets('$kind draws exactly one code, the real one',
           (WidgetTester tester) async {
         await _pumpCard(tester, item);
 
-        final Iterable<CustomPaint> painters =
-            tester.widgetList<CustomPaint>(find.byType(CustomPaint));
-        for (final CustomPaint p in painters) {
-          expect(p.painter, isNot(isA<TicketQrPainter>()));
-          expect(p.foregroundPainter, isNot(isA<TicketQrPainter>()));
-        }
+        expect(find.byType(QrImageView), findsOneWidget);
+        expect(find.byKey(PassShareCard.qrKey), findsOneWidget);
       });
     }
 
@@ -183,17 +180,16 @@ void main() {
       expect(find.byType(PassCodeBlock), findsNothing);
     });
 
-    // KNOWN, and deliberately pinned rather than asserted away: the train face
-    // prints a decorative `PassCodeBlock` as part of its design, so a shared
-    // train pass carries that square *and* the real QR below it. Two code-like
-    // marks where one is unscannable is a real wart. Changing it means changing
-    // the train pass face, which is a wider decision than this feature — this
-    // test exists so the next person meets the fact rather than discovering it
-    // in a screenshot.
-    testWidgets('train face still contributes its decorative code square',
+    // This used to be a pinned wart: the train face printed a decorative
+    // `PassCodeBlock`, so a shared train pass carried that square *and* the real
+    // QR below it. The square now draws the real code, which would put two
+    // copies of the same symbol in one image, so the share card turns the
+    // face's off (`showCode: false`) and stays the only code in the export.
+    testWidgets('train face contributes no second code to the export',
         (WidgetTester tester) async {
       await _pumpCard(tester, TrainPassItem(_train(codePayload: 'REAL')));
-      expect(find.byType(PassCodeBlock), findsOneWidget);
+      expect(find.byType(PassCodeBlock), findsNothing);
+      expect(find.byType(QrImageView), findsOneWidget);
     });
   });
 

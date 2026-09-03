@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/wallet/wallet_card_metrics.dart';
 import '../domain/pass_catalog.dart';
 import '../domain/ticket_models.dart';
+import 'pass_code_view.dart';
 import 'pass_remove_flow.dart';
 import 'pass_typography.dart';
 import 'share/pass_share_actions.dart';
@@ -31,7 +32,6 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 
   void _showQrSheet(BuildContext context, MockTicket t) {
     final ThemeData theme = Theme.of(context);
-    final bool isDark = theme.brightness == Brightness.dark;
     final Color ink = theme.colorScheme.onSurface;
 
     showModalBottomSheet<void>(
@@ -58,30 +58,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                 const SizedBox(height: 20),
                 Text('Boarding code', style: PassType.screenTitle(ink)),
                 const SizedBox(height: 18),
-                Container(
+                PassCodePlate(
+                  code: t.passCode,
                   width: 188,
-                  height: 188,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: isDark
-                        ? null
-                        : Border.all(
-                            color: Colors.black.withValues(alpha: 0.05),
-                          ),
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(
-                        color: _kMint.withValues(alpha: 0.18),
-                        blurRadius: 24,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.qr_code_2_rounded,
-                    size: 148,
-                    color: Color(0xFF0F1410),
-                  ),
+                  shadowColor: _kMint,
+                  emptyLabel: 'This ticket has no scannable code. '
+                      'Show the PNR below at the counter.',
                 ),
                 const SizedBox(height: 16),
                 Text(t.pnr, style: PassType.code(ink)),

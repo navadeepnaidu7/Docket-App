@@ -1,10 +1,10 @@
 import 'package:docket/core/dev/dev_flags.dart';
 import 'package:docket/core/dev/dev_flags_provider.dart';
 import 'package:docket/features/tickets/application/pass_ingest_service.dart';
+import 'package:docket/features/tickets/application/ticket_code_scanner.dart';
 import 'package:docket/features/tickets/data/docket_api_client.dart';
 import 'package:docket/features/tickets/domain/movie_pass_models.dart';
 import 'package:docket/features/tickets/domain/pass_catalog.dart';
-import 'package:docket/features/tickets/domain/pass_status.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -20,7 +20,7 @@ MoviePassItem _movie({String? posterUrl}) {
       'id': 'm1',
       'movieTitle': 'Irumudi',
       'status': 'expired',
-      if (posterUrl != null) 'posterUrl': posterUrl,
+      'posterUrl': ?posterUrl,
     }),
   );
 }
@@ -58,6 +58,7 @@ class _FakeApi implements DocketApi {
     required String filename,
     required String mimeType,
     required String categoryHint,
+    ScannedTicketCode? code,
   }) async =>
       'm1';
 

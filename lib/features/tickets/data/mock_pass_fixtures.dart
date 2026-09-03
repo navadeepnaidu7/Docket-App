@@ -496,6 +496,9 @@ final List<MoviePass> mockMoviePasses = <MoviePass>[
     gateType: 'Barcode',
     sourcePlatform: 'PVR',
     codeType: MovieTicketCodeType.barcode,
+    // Exercises the non-QR renderer in mock mode: cinemas print Code 128
+    // strips as often as QR, and re-rendering one as a QR scans nowhere.
+    codeFormat: 'code128',
     // TMDB 969681
     posterUrl: _mockPosterUrl('lH6LQcUhkVOK6ekvXzthQAogUnR.jpg'),
     logoUrl: _mockLogoUrl('vbZcDHC5IFylYuRnp3eyOs5rTV1.png'),

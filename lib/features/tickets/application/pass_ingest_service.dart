@@ -12,6 +12,7 @@ import '../domain/pass_catalog.dart';
 import '../domain/pass_ingest.dart';
 import '../domain/pnr_format.dart';
 import 'pass_list_provider.dart';
+import 'ticket_code_scanner.dart';
 
 final apiSessionStoreProvider = Provider<ApiSessionStore>((Ref ref) {
   return ApiSessionStore();
@@ -28,6 +29,10 @@ final docketApiProvider = Provider<DocketApi?>((Ref ref) {
         ? flags.devAuthIdToken.trim()
         : '',
   );
+});
+
+final ticketCodeScannerProvider = Provider<TicketCodeScanner>((Ref ref) {
+  return TicketCodeScanner();
 });
 
 final passIngestServiceProvider = Provider<PassIngestService>((Ref ref) {
@@ -101,12 +106,24 @@ class PassIngestService {
     final Uint8List bytes = await file.readAsBytes();
     final String filename = path.split(RegExp(r'[\\/]')).last;
     final DocketApi api = _requireApi();
+
+    // Decode the gate code here rather than on the server. It costs nothing —
+    // ML Kit runs on device — and a decoded symbol is ground truth where the
+    // extractor can only ever copy text it saw printed. Null is the ordinary
+    // outcome for a ticket that carries no code, and for a first run where the
+    // Play Services model has not downloaded yet; the upload proceeds either
+    // way. See docs/features/ticket-code-extraction.md.
+    final ScannedTicketCode? code = await _ref
+        .read(ticketCodeScannerProvider)
+        .scan(file: file, mimeType: mime);
+
     try {
       final String id = await api.extractFile(
         bytes: bytes,
         filename: filename.isEmpty ? 'ticket' : filename,
         mimeType: mime,
         categoryHint: category.hint,
+        code: code,
       ).timeout(_ingestTimeout);
       return _resolve(api, id);
     } on TimeoutException {

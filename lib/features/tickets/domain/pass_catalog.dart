@@ -1,5 +1,6 @@
 import 'bus_pass_models.dart';
 import 'movie_pass_models.dart';
+import 'pass_code.dart';
 import 'ticket_models.dart';
 
 /// Unified pass entry for the Passes tab (train + movie + bus).
@@ -9,6 +10,13 @@ sealed class WalletPassItem {
   String get id;
   TicketStatus get status;
   PassKind get kind;
+
+  /// The scannable code on this pass, or null when it carries none.
+  ///
+  /// Null is the normal state and the only no-code signal every surface reads:
+  /// nothing draws a placeholder code. See
+  /// `docs/features/ticket-code-extraction.md`.
+  PassCode? get passCode;
 
   Map<String, dynamic> toJson();
 }
@@ -25,6 +33,9 @@ final class TrainPassItem extends WalletPassItem {
 
   @override
   PassKind get kind => PassKind.train;
+
+  @override
+  PassCode? get passCode => ticket.passCode;
 
   @override
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -55,6 +66,9 @@ final class MoviePassItem extends WalletPassItem {
   PassKind get kind => PassKind.movie;
 
   @override
+  PassCode? get passCode => pass.passCode;
+
+  @override
   Map<String, dynamic> toJson() => <String, dynamic>{
         'kind': kind.toJson(),
         'movie': pass.toJson(),
@@ -81,6 +95,9 @@ final class BusPassItem extends WalletPassItem {
 
   @override
   PassKind get kind => PassKind.bus;
+
+  @override
+  PassCode? get passCode => pass.passCode;
 
   @override
   Map<String, dynamic> toJson() => <String, dynamic>{

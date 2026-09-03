@@ -107,7 +107,8 @@ Pass JSON models are hand-written (`ticket_models.dart`, `movie_pass_models.dart
 - **OCR/MRZ**: Google ML Kit. Text recognition is **bundled** in the APK, so MRZ scanning
   works offline on a fresh install. Face detection and barcode scanning use the Play
   Services variants — models download on first use, and `id_scanner_service.dart` degrades
-  silently (skips face crop / QR) until they arrive.
+  silently (skips face crop / QR) until they arrive. `ticket_code_scanner.dart` shares that
+  caveat and degrades the same way: no model, no code, upload proceeds regardless.
 
 ## Conventions
 
@@ -186,6 +187,7 @@ with zero commits and nothing to resume from.
 | `docs/dev-flags.md` | Mock vs remote switching, dart-defines, Settings → Developer |
 | `docs/features/id-media-attachments.md` | ID attachments (#11) — storage/encryption decisions, tray geometry, lifecycle |
 | `docs/features/pass-share.md` | Pass share — off-screen PNG capture, the omit-when-absent QR rule, temp-file lifecycle |
+| `docs/features/ticket-code-extraction.md` | Gate codes — on-device ML Kit decode, symbology handling, why no code beats a fake one |
 | `PLAN.md` | Original phased build plan (historical; predates tickets/passes) |
 | `../docket_server/docs/architecture.md` | Backend design, pass taxonomy |
 
@@ -213,6 +215,12 @@ with zero commits and nothing to resume from.
   over records that are still on disk.
 - `reconcileWalletOrder` must be called whenever items are added/removed, or the persisted
   carousel order drifts and unknown ids sort to the end.
+- **Nothing draws a code a scanner cannot read.** A pass with no `codePayload` draws no code
+  block at all — on the face, the code screen and the shared PNG alike — and never falls back
+  to a PNR or booking id. The decorative `TicketQrPainter` / `PassCodeBlock` grids are deleted
+  on purpose; don't reintroduce placeholder code art, because a user cannot tell it from the
+  real thing until a turnstile rejects it. Render only through `PassCodeView`, which picks the
+  symbology from `codeFormat` — a Code 128 payload drawn as a QR scans nowhere.
 - ID **attachments** never go in secure storage — only their metadata does. Bytes are AES-GCM
   files under `<app documents>/id_attachments/<docId>/`, keyed from `attachment_key_v1`.
   Putting 6-15 MB of base64 back into `saved_id_documents` would drag it through every
