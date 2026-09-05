@@ -69,9 +69,10 @@ meaningless, so a null `rawValue` there is treated as "no code found".
 
 ## Picking the right code
 
-A ticket screenshot often carries more than one symbol: the gate code, plus an app-store QR, a
-"rate us" link, a UPI intent, an operator logo QR. Choosing wrong is worse than choosing
-nothing. The selection rule, kept as a pure function so it is unit testable without ML Kit:
+**Exactly one code is kept per pass.** A ticket screenshot often carries more than one symbol:
+the gate code, plus an app-store QR, a "rate us" link, a UPI intent, an operator logo QR.
+Choosing wrong is worse than choosing nothing. The selection rule, kept as a pure function so
+it is unit testable without ML Kit:
 
 1. Drop candidates with no usable payload.
 2. Drop known non-ticket payloads — `play.google.com`, `apps.apple.com`, `itunes.apple.com`,
@@ -136,6 +137,53 @@ Validation is not optional — these fields are client-supplied and land in a JS
 back by every device on the account: format must be in the allowlist, payload is capped at 4096
 bytes (above every symbology's own capacity), base64 must decode, and the payload is **never
 logged** (`CLAUDE.md`: never log full booking payloads).
+
+## Known gap: a document with several genuine codes
+
+The selection rule above solves *one* of the two multiple-code cases.
+
+- **One real code among decoration** — gate QR plus a store badge, a UPI intent, a marketing
+  link. Handled, and tested.
+- **Several codes that are all real** — one per passenger, a multi-leg journey, or a family's
+  tickets forwarded as a single PDF. **Not handled.** One is kept and the rest are dropped
+  silently.
+
+Two specifics make the second case worse than it first looks:
+
+- `TicketCodeScanner._scanPdf` returns on the **first page** that yields a code, so a second
+  passenger on page two is never looked at. `_maxPdfPages` caps the sweep at three pages
+  regardless.
+- `selectTicketCode` compares on `area` with a document-order tie-break. Per-passenger codes on
+  one page are printed *identically sized*, so area does not discriminate between them at all
+  and the winner falls to ML Kit's return order — which carries no spatial guarantee. Which
+  passenger's code you get is arbitrary, stable for a given image but not meaningfully chosen,
+  and nothing tells the user a choice was made.
+
+Single-code is baked in well below the scanner, which is why this is a gap and not a bug to
+patch there: `codePayload` is one nullable string on each of the three pass models, `PassCode`
+is a single value object, the server stores one set of metadata keys, and `ProcessExtraction`
+creates exactly one ticket per upload.
+
+**How much it matters today:** BookMyShow, District, IRCTC and RedBus all issue one code per
+booking covering every seat, so the shipped path is correct for every category that currently
+has wallet UI. Per-passenger codes are mainly a *flight* pattern, and flight passes are stored
+but not mapped to the wallet yet.
+
+Ways forward, smallest first:
+
+1. **Make the choice honest.** Order candidates spatially (top-left first) rather than by ML
+   Kit's arbitrary order, and when two genuine codes survive at comparable size, surface it
+   instead of silently picking — either choose deterministically and say so, or ask which
+   ticket this pass is. No contract change.
+2. **Codes as a list on one pass.** `codes: [{format, payload, label}]`, with the code screen
+   becoming a pager ("Ticket 1 of 3"). Touches the three models, the mapper, the stored
+   metadata shape and the code screens. The right fit for per-passenger tickets on one booking.
+3. **Split one upload into several passes.** Only correct when a document holds genuinely
+   separate bookings, and it is an extraction-level change rather than a scanner one.
+
+Suggested order: (1) whenever it next comes up, (2) when flight passes land — per-passenger
+codes are the flight case, and fixing the list shape before there is UI consuming it means
+guessing at it.
 
 ## Not in this change
 
