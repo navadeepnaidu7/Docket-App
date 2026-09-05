@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/pass_code.dart';
 import '../../domain/ticket_models.dart';
 import '../pass_code_block.dart';
 import 'train_pass_theme.dart';
@@ -33,6 +34,7 @@ class TrainTicketFace extends StatelessWidget {
     this.useBrandColors = false,
     this.widthFactor,
     this.onOpenCodes,
+    this.showCode = true,
     this.clock = DateTime.now,
   });
 
@@ -47,6 +49,11 @@ class TrainTicketFace extends StatelessWidget {
   final double? widthFactor;
 
   final VoidCallback? onOpenCodes;
+
+  /// Draw the code square on the face. Off for the shared PNG, which prints the
+  /// pass's code once, large, below the face — two copies of the same symbol in
+  /// one image gives a scanner a choice it should not have to make.
+  final bool showCode;
 
   /// Injected for tests so the status band's countdown is deterministic.
   final DateTime Function() clock;
@@ -64,6 +71,7 @@ class TrainTicketFace extends StatelessWidget {
     final bool isExpired =
         !useBrandColors && t.status == TicketStatus.expired;
     final TrainPassColors c = TrainPassColors.of(isExpired: isExpired);
+    final PassCode? code = t.passCode;
 
     final Widget card = Container(
       width: TrainPassMetrics.width,
@@ -299,19 +307,24 @@ class TrainTicketFace extends StatelessWidget {
               ),
             ),
 
-            // ── QR ──
-            Positioned(
-              left: TrainPassMetrics.qrLeft,
-              top: TrainPassMetrics.qrTop,
-              width: TrainPassMetrics.qrSize,
-              height: TrainPassMetrics.qrSize,
-              child: PassCodeBlock(
-                size: TrainPassMetrics.qrSize,
-                ink: c.ink,
-                borderColor: c.qrBorder,
-                onTap: _detail ? onOpenCodes : null,
+            // ── Code ──
+            //
+            // Omitted outright when the ticket has none. The square used to be
+            // decorative art that always drew; a code-shaped mark that encodes
+            // nothing is worse than a gap, because it only fails at the gate.
+            if (showCode && code != null)
+              Positioned(
+                left: TrainPassMetrics.qrLeft,
+                top: TrainPassMetrics.qrTop,
+                width: TrainPassMetrics.qrSize,
+                height: TrainPassMetrics.qrSize,
+                child: PassCodeBlock(
+                  size: TrainPassMetrics.qrSize,
+                  code: code,
+                  borderColor: c.qrBorder,
+                  onTap: _detail ? onOpenCodes : null,
+                ),
               ),
-            ),
 
             // Border last so the clip never eats it.
             Positioned.fill(

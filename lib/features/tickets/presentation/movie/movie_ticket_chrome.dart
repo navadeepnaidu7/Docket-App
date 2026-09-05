@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// Shared ticket geometry: notches, tear line, barcode, decorative QR.
+/// Shared ticket geometry: notches and the dashed tear line.
+///
+/// This file used to own the procedural code art too — a seeded 13x13 grid and
+/// a hand-tuned bar pattern. Both are gone: a pass draws its real code through
+/// `PassCodeView` or draws none at all, because a user cannot tell decorative
+/// code art from the real thing until a scanner rejects it.
+/// See `docs/features/ticket-code-extraction.md`.
 ///
 /// Footer height is defined in one place so [TicketShapeClipper] notches
 /// stay aligned with the dashed tear without hand-recomputing pads.
@@ -26,7 +32,6 @@ abstract final class MovieTicketMetrics {
   static const double posterAspect = 2 / 3;
 
   static const double tearHeight = 20;
-  static const double barcodeHeight = 40;
   static const double footerPadTop = 8;
   static const double footerPadBottom = 14;
   static const double footerIdGap = 6;
@@ -118,131 +123,6 @@ class TicketDashPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant TicketDashPainter old) => old.notchR != notchR;
-}
-
-class TicketBarcodePainter extends CustomPainter {
-  const TicketBarcodePainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()..color = Colors.white.withValues(alpha: 0.90);
-    const List<double> widths = <double>[
-      1.5, 1, 2.6, 1, 1, 3, 1.5, 1, 2.1, 1, 1.5, 2.6, 1, 3, 1, 1.5, 1, 2.1, 1,
-      2.6, 1, 1, 3, 1.5, 1, 2.1, 1.5, 1, 1, 2.6, 1, 1.5, 3, 1, 2.1, 1, 1.5, 1,
-      2.6, 1, 2.1, 1, 1, 3, 1.5, 2.6, 1, 1, 2.1, 1.5,
-    ];
-    double x = 0;
-    int i = 0;
-    while (x < size.width) {
-      final double w = widths[i % widths.length];
-      if (i.isEven) {
-        canvas.drawRect(Rect.fromLTWH(x, 0, w, size.height), paint);
-      }
-      x += w + 1.15;
-      i++;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Decorative QR (not scannable).
-class TicketQrPainter extends CustomPainter {
-  const TicketQrPainter({this.color = const Color(0xFF111113)});
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint p = Paint()..color = color;
-    const int n = 13;
-    final double cell = size.width / n;
-
-    void finder(int ox, int oy) {
-      for (int y = 0; y < 3; y++) {
-        for (int x = 0; x < 3; x++) {
-          if (x == 0 || x == 2 || y == 0 || y == 2 || (x == 1 && y == 1)) {
-            canvas.drawRect(
-              Rect.fromLTWH((ox + x) * cell, (oy + y) * cell, cell, cell),
-              p,
-            );
-          }
-        }
-      }
-    }
-
-    finder(0, 0);
-    finder(n - 3, 0);
-    finder(0, n - 3);
-
-    int seed = 97;
-    for (int y = 0; y < n; y++) {
-      for (int x = 0; x < n; x++) {
-        final bool inFinder = (x < 4 && y < 4) ||
-            (x >= n - 4 && y < 4) ||
-            (x < 4 && y >= n - 4);
-        if (inFinder) continue;
-        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-        if (seed % 3 != 0) {
-          canvas.drawRect(
-            Rect.fromLTWH(x * cell, y * cell, cell * 0.9, cell * 0.9),
-            p,
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant TicketQrPainter old) => old.color != color;
-}
-
-class TicketBarcodeStrip extends StatelessWidget {
-  const TicketBarcodeStrip({super.key, this.height = 40});
-
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: height,
-      width: double.infinity,
-      child: const CustomPaint(painter: TicketBarcodePainter()),
-    );
-  }
-}
-
-class TicketQrTile extends StatelessWidget {
-  const TicketQrTile({
-    super.key,
-    required this.size,
-    required this.accent,
-  });
-
-  final double size;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: accent.withValues(alpha: 0.30),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: const CustomPaint(painter: TicketQrPainter()),
-    );
-  }
 }
 
 class TicketTearLine extends StatelessWidget {

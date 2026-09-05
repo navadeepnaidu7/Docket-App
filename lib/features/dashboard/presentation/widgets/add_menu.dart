@@ -9,7 +9,7 @@ import '../../../ids/domain/id_document_catalog.dart';
 import '../../../passport/presentation/widgets/passport_cover_art.dart';
 
 /// Height of the passport artwork inside a Documents tile.
-const double _kCoverHeight = 84;
+const double _kCoverHeight = 99; // 84 * 1.18
 
 /// Documents tiles are a little taller than wide to seat the cover art plus a
 /// two-line caption.

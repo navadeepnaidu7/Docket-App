@@ -136,6 +136,11 @@ class PassShareCard extends StatelessWidget {
             ticket: ticket,
             density: TrainTicketDensity.glance,
             useBrandColors: true,
+            // The card prints the code once, large, below the face. The train
+            // face is the only one that carries a code square of its own, and
+            // two copies of the same symbol in one image gives a scanner a
+            // choice it should not have to make.
+            showCode: false,
           ),
         ),
       BusPassItem(:final BusPass pass) => (

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
+import '../application/ticket_code_scanner.dart';
 import '../domain/pass_catalog.dart';
 import '../domain/pass_ingest.dart';
 import '../domain/pass_status.dart';
@@ -22,6 +23,7 @@ abstract class DocketApi {
     required String filename,
     required String mimeType,
     required String categoryHint,
+    ScannedTicketCode? code,
   });
 
   Future<String> createFromPnr(String pnr);
@@ -132,6 +134,7 @@ class DocketApiClient implements DocketApi {
     required String filename,
     required String mimeType,
     required String categoryHint,
+    ScannedTicketCode? code,
   }) async {
     final http.Response res = await _authed((Map<String, String> headers) async {
       final http.MultipartRequest req = http.MultipartRequest(
@@ -140,6 +143,18 @@ class DocketApiClient implements DocketApi {
       );
       req.headers.addAll(headers);
       req.fields['category'] = categoryHint;
+      // The code decoded on device, when there was one. Sent as fields rather
+      // than folded into the file so the server stores it verbatim instead of
+      // asking a model to read a bitmap it cannot read.
+      if (code != null) {
+        req.fields['codeFormat'] = code.format.wire;
+        final String? payload = code.payload;
+        final String? payloadBase64 = code.payloadBase64;
+        if (payload != null) req.fields['codePayload'] = payload;
+        if (payloadBase64 != null) {
+          req.fields['codePayloadBase64'] = payloadBase64;
+        }
+      }
       req.files.add(
         http.MultipartFile.fromBytes(
           'file',

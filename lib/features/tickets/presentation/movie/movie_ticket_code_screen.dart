@@ -2,15 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../domain/movie_pass_models.dart';
-import 'movie_ticket_chrome.dart';
+import '../pass_code_view.dart';
 
 /// Fullscreen scan view — code, movie name, and show time only.
 class MovieTicketCodeScreen extends StatelessWidget {
   const MovieTicketCodeScreen({super.key, required this.pass});
 
   final MoviePass pass;
-
-  bool get _isQr => pass.codeType == MovieTicketCodeType.qr;
 
   @override
   Widget build(BuildContext context) {
@@ -62,46 +60,22 @@ class MovieTicketCodeScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 36),
-                    if (_isQr)
-                      Container(
-                        width: 260,
-                        height: 260,
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: <BoxShadow>[
-                            BoxShadow(
-                              color: Colors.black
-                                  .withValues(alpha: isDark ? 0.35 : 0.10),
-                              blurRadius: 24,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
+                    PassCodePlate(code: pass.passCode),
+                    if (pass.bookingId.trim().isNotEmpty) ...<Widget>[
+                      const SizedBox(height: 18),
+                      // The reference to read out when the scanner will not
+                      // cooperate. Below the code, never inside its quiet zone.
+                      Text(
+                        pass.bookingId,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.robotoMono(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.4,
+                          color: muted,
                         ),
-                        child: const CustomPaint(painter: TicketQrPainter()),
-                      )
-                    else
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 28,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: <BoxShadow>[
-                            BoxShadow(
-                              color: Colors.black
-                                  .withValues(alpha: isDark ? 0.35 : 0.10),
-                              blurRadius: 24,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: const TicketBarcodeStrip(height: 72),
                       ),
+                    ],
                   ],
                 ),
               ),

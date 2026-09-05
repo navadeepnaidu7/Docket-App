@@ -52,6 +52,11 @@ dependencies:
   google_mlkit_face_detection: ^0.14.0
   google_mlkit_barcode_scanning: ^0.15.0
   qr_flutter: ^4.1.0
+  # Renders the non-QR symbologies a real ticket can carry: cinemas print Code
+  # 128 strips as often as QR, airlines use PDF417 and Aztec. Re-rendering one
+  # of those payloads as a QR produces a symbol no gate reads, so the format
+  # travels with the payload and this draws it. qr_flutter still owns QR.
+  barcode_widget: ^2.0.4
   permission_handler: ^13.0.0
   url_launcher: ^6.3.2
   # File picking for attaching PDF documents and images manually from system storage.

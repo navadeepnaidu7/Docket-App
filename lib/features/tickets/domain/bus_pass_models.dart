@@ -1,3 +1,4 @@
+import 'pass_code.dart';
 import 'pass_status.dart';
 
 /// Operator whose chrome the bus pass wears.
@@ -81,6 +82,8 @@ class BusPass {
     this.platform = '',
     this.fare = '',
     this.codePayload,
+    this.codePayloadBase64,
+    this.codeFormat,
   });
 
   final String id;
@@ -119,11 +122,26 @@ class BusPass {
   /// on the client.
   final String fare;
 
-  /// Raw payload for a real QR/barcode library. Matches the field trains and
-  /// movies already carry, and is nullable for the same reason: the server does
-  /// not emit it yet. Null means this pass has no scannable code — callers must
-  /// render nothing rather than inventing one.
+  /// Raw payload for a real QR/barcode library, decoded off the uploaded
+  /// ticket on device. Matches the field trains and movies already carry, and
+  /// is nullable for the same reason: plenty of passes have no code. Null means
+  /// this pass has no scannable code — callers must render nothing rather than
+  /// inventing one. See `docs/features/ticket-code-extraction.md`.
   final String? codePayload;
+
+  /// Base64 payload, set instead of [codePayload] when the symbol's bytes are
+  /// not valid UTF-8.
+  final String? codePayloadBase64;
+
+  /// Symbology wire value; absent means QR. See [PassCodeFormat].
+  final String? codeFormat;
+
+  /// The scannable code, or null when this pass has none.
+  PassCode? get passCode => PassCode.parse(
+        payload: codePayload,
+        payloadBase64: codePayloadBase64,
+        format: codeFormat,
+      );
 
   /// The brand to dress this pass in — explicit when given, inferred from the
   /// operator name otherwise.
@@ -175,6 +193,8 @@ class BusPass {
       platform: json['platform']?.toString() ?? '',
       fare: json['fare']?.toString() ?? '',
       codePayload: json['codePayload']?.toString(),
+      codePayloadBase64: json['codePayloadBase64']?.toString(),
+      codeFormat: json['codeFormat']?.toString(),
     );
   }
 
@@ -202,6 +222,8 @@ class BusPass {
         if (platform.isNotEmpty) 'platform': platform,
         if (fare.isNotEmpty) 'fare': fare,
         if (codePayload != null) 'codePayload': codePayload,
+        if (codePayloadBase64 != null) 'codePayloadBase64': codePayloadBase64,
+        if (codeFormat != null) 'codeFormat': codeFormat,
       };
 }
 

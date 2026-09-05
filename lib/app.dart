@@ -123,7 +123,20 @@ class _DocketAppState extends ConsumerState<DocketApp>
       animation: _curve,
       builder: (BuildContext context, Widget? _) {
         final double t = _curve.value;
-        final ThemeData theme = ThemeData.lerp(_fromTheme, _toTheme, t);
+        // Settle on the endpoints instead of lerping to them. ThemeData.lerp
+        // walks every text style and component sub-theme, and its
+        // `identical(a, b)` short-circuit stops helping after the first
+        // transition — _fromTheme becomes a lerped copy, so the two are never
+        // identical again and every rebuild pays the full walk for a result
+        // equal to what we already hold. Returning the endpoint object also
+        // keeps `theme` identical across rebuilds, so Theme's
+        // updateShouldNotify hits identity rather than a field-by-field
+        // ThemeData ==.
+        final ThemeData theme = t >= 1.0
+            ? _toTheme
+            : t <= 0.0
+                ? _fromTheme
+                : ThemeData.lerp(_fromTheme, _toTheme, t);
 
         // Soft veil that peaks at mid-transition to hide the brightness snap.
         final double veil = (t < 0.5 ? t : 1.0 - t) * 2.0; // 0 → 1 → 0

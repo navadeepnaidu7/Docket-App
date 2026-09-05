@@ -26,6 +26,7 @@ import '../application/auth_session_provider.dart';
 import '../application/card_shine_border_provider.dart';
 import '../application/profile_avatar_shape_provider.dart';
 import '../application/nav_labels_provider.dart';
+import '../application/pass_deck_provider.dart';
 import '../application/wallet_filter_provider.dart';
 import 'manage_account_screen.dart';
 import 'user_card_detail_screen.dart';
@@ -58,14 +59,27 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  /// While true, pause continuous effects so scroll isn't fighting paint work.
-  bool _isScrolling = false;
+  /// While false, pause continuous effects so scroll isn't fighting paint work.
+  ///
+  /// A notifier rather than `setState`: only the membership card and the
+  /// shimmer label care, and rebuilding the whole screen for them meant every
+  /// scroll gesture rebuilt all fifteen list children — sections, the
+  /// Developer block, and the two dozen GoogleFonts lookups in them — twice,
+  /// at the two moments the list could least afford it.
+  final ValueNotifier<bool> _effectsOn = ValueNotifier<bool>(true);
   Timer? _scrollIdleTimer;
 
   @override
   void dispose() {
     _scrollIdleTimer?.cancel();
+    _effectsOn.dispose();
     super.dispose();
+  }
+
+  void _resumeEffectsAfter(Duration delay) {
+    _scrollIdleTimer = Timer(delay, () {
+      if (mounted) _effectsOn.value = true;
+    });
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
@@ -74,21 +88,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         notification is ScrollUpdateNotification ||
         notification is OverscrollNotification) {
       _scrollIdleTimer?.cancel();
-      if (!_isScrolling) {
-        setState(() => _isScrolling = true);
-      }
-      _scrollIdleTimer = Timer(const Duration(milliseconds: 140), () {
-        if (mounted && _isScrolling) {
-          setState(() => _isScrolling = false);
-        }
-      });
+      _effectsOn.value = false;
+      _resumeEffectsAfter(const Duration(milliseconds: 140));
     } else if (notification is ScrollEndNotification) {
       _scrollIdleTimer?.cancel();
-      _scrollIdleTimer = Timer(const Duration(milliseconds: 80), () {
-        if (mounted && _isScrolling) {
-          setState(() => _isScrolling = false);
-        }
-      });
+      _resumeEffectsAfter(const Duration(milliseconds: 80));
     }
     return false;
   }
@@ -107,8 +111,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final List<PassportProfile> passports = ref.watch(passportListProvider);
     final List<IdDocument> idDocs = ref.watch(idListProvider);
     final AuthSession session = ref.watch(authSessionProvider);
-
-    final bool effectsOn = !_isScrolling;
 
     return Scaffold(
       backgroundColor: scaffoldBg,
@@ -149,11 +151,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       },
                       child: SizedBox(
                         height: kSettingsHeroHeight,
-                        child: WalletMembershipCard(
-                          passports: passports,
-                          idDocs: idDocs,
-                          isDark: isDark,
-                          enableMotion: effectsOn,
+                        child: ValueListenableBuilder<bool>(
+                          valueListenable: _effectsOn,
+                          builder: (BuildContext context, bool effectsOn, _) {
+                            return WalletMembershipCard(
+                              passports: passports,
+                              idDocs: idDocs,
+                              isDark: isDark,
+                              enableMotion: effectsOn,
+                            );
+                          },
                         ),
                       ),
                     ),
@@ -161,10 +168,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: 8),
                   Center(
                     child: RepaintBoundary(
-                      child: _TapToOpenShineLabel(
-                        isDark: isDark,
-                        ink: ink,
-                        enabled: effectsOn,
+                      child: ValueListenableBuilder<bool>(
+                        valueListenable: _effectsOn,
+                        builder: (BuildContext context, bool effectsOn, _) {
+                          return _TapToOpenShineLabel(
+                            isDark: isDark,
+                            ink: ink,
+                            enabled: effectsOn,
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -250,6 +262,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ref
                               .read(walletFilterEnabledProvider.notifier)
                               .toggle();
+                        },
+                      ),
+                      const _SettingsDivider(),
+                      _SettingsToggleRow(
+                        icon: Icons.style_rounded,
+                        iconColor: const Color(0xFF0FA968),
+                        title: 'Stacked pass deck',
+                        subtitle:
+                            'Passes overlap in a deck you swipe sideways, '
+                            'instead of the vertical roll',
+                        value: ref.watch(passDeckModeProvider),
+                        onChanged: (_) {
+                          HapticService.select();
+                          ref.read(passDeckModeProvider.notifier).toggle();
                         },
                       ),
                     ],
@@ -473,6 +499,17 @@ class WalletMembershipCard extends ConsumerStatefulWidget {
 
   /// When false (e.g. parent list is scrolling), freeze the fluid wash.
   final bool enableMotion;
+
+  /// Requests Roboto Mono so `main()`'s `pendingFonts()` wait covers it.
+  ///
+  /// The membership number is the only Roboto Mono in the app, and this card
+  /// only appears once Settings or the card detail is opened — so without this
+  /// the family was fetched on that first open, hitching the screen and then
+  /// reflowing the number out of a fallback face. The return value is
+  /// deliberately discarded: asking is what starts the load.
+  static void warmUp() {
+    GoogleFonts.robotoMono(fontWeight: FontWeight.w700);
+  }
 
   @override
   ConsumerState<WalletMembershipCard> createState() => _WalletMembershipCardState();

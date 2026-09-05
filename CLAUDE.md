@@ -12,6 +12,11 @@ tickets). It is **local-first** — passport/ID records never leave the device �
 Sibling repo: `../docket_server` (Go backend: AI ticket extraction, train PNR sync, push).
 The two repos are developed together; the shared contract lives in `docs/api/passes.md`.
 
+**That backend is deployed**, so you do not need to run one locally to test against a real API:
+`https://api-production-5f3a7.up.railway.app`, reachable over HTTPS from a physical device with
+no `adb reverse`. `../docket_server/docs/server_state.md` records what is switched on there and
+where to read the dev auth token that Settings → Developer asks for.
+
 ## Commands
 
 ```bash
@@ -107,7 +112,8 @@ Pass JSON models are hand-written (`ticket_models.dart`, `movie_pass_models.dart
 - **OCR/MRZ**: Google ML Kit. Text recognition is **bundled** in the APK, so MRZ scanning
   works offline on a fresh install. Face detection and barcode scanning use the Play
   Services variants — models download on first use, and `id_scanner_service.dart` degrades
-  silently (skips face crop / QR) until they arrive.
+  silently (skips face crop / QR) until they arrive. `ticket_code_scanner.dart` shares that
+  caveat and degrades the same way: no model, no code, upload proceeds regardless.
 
 ## Conventions
 
@@ -186,7 +192,9 @@ with zero commits and nothing to resume from.
 | `docs/dev-flags.md` | Mock vs remote switching, dart-defines, Settings → Developer |
 | `docs/features/id-media-attachments.md` | ID attachments (#11) — storage/encryption decisions, tray geometry, lifecycle |
 | `docs/features/pass-share.md` | Pass share — off-screen PNG capture, the omit-when-absent QR rule, temp-file lifecycle |
+| `docs/features/ticket-code-extraction.md` | Gate codes — on-device ML Kit decode, symbology handling, why no code beats a fake one |
 | `PLAN.md` | Original phased build plan (historical; predates tickets/passes) |
+| `../docket_server/docs/server_state.md` | The live staging backend — base URL, what is switched on, how to authenticate |
 | `../docket_server/docs/architecture.md` | Backend design, pass taxonomy |
 
 ## Gotchas
@@ -213,6 +221,12 @@ with zero commits and nothing to resume from.
   over records that are still on disk.
 - `reconcileWalletOrder` must be called whenever items are added/removed, or the persisted
   carousel order drifts and unknown ids sort to the end.
+- **Nothing draws a code a scanner cannot read.** A pass with no `codePayload` draws no code
+  block at all — on the face, the code screen and the shared PNG alike — and never falls back
+  to a PNR or booking id. The decorative `TicketQrPainter` / `PassCodeBlock` grids are deleted
+  on purpose; don't reintroduce placeholder code art, because a user cannot tell it from the
+  real thing until a turnstile rejects it. Render only through `PassCodeView`, which picks the
+  symbology from `codeFormat` — a Code 128 payload drawn as a QR scans nowhere.
 - ID **attachments** never go in secure storage — only their metadata does. Bytes are AES-GCM
   files under `<app documents>/id_attachments/<docId>/`, keyed from `attachment_key_v1`.
   Putting 6-15 MB of base64 back into `saved_id_documents` would drag it through every

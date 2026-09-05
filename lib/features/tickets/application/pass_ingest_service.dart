@@ -12,6 +12,7 @@ import '../domain/pass_catalog.dart';
 import '../domain/pass_ingest.dart';
 import '../domain/pnr_format.dart';
 import 'pass_list_provider.dart';
+import 'ticket_code_scanner.dart';
 
 final apiSessionStoreProvider = Provider<ApiSessionStore>((Ref ref) {
   return ApiSessionStore();
@@ -30,9 +31,19 @@ final docketApiProvider = Provider<DocketApi?>((Ref ref) {
   );
 });
 
+final ticketCodeScannerProvider = Provider<TicketCodeScanner>((Ref ref) {
+  return TicketCodeScanner();
+});
+
 final passIngestServiceProvider = Provider<PassIngestService>((Ref ref) {
   return PassIngestService(ref);
 });
+
+/// Real milestones emitted by pass ingestion. The UI deliberately does not
+/// invent a percentage for work whose duration is controlled by the server.
+enum PassIngestPhase { readingSource, submitting, syncingWallet }
+
+typedef PassIngestProgressCallback = void Function(PassIngestPhase phase);
 
 class PassIngestService {
   PassIngestService(this._ref);
@@ -59,7 +70,10 @@ class PassIngestService {
     return api;
   }
 
-  Future<WalletPassItem> submitPnr(String raw) async {
+  Future<WalletPassItem> submitPnr(
+    String raw, {
+    PassIngestProgressCallback? onPhase,
+  }) async {
     final String pnr = PnrFormat.normalize(raw);
     if (!PnrFormat.isValid(pnr)) {
       throw const PassIngestException(
@@ -68,9 +82,10 @@ class PassIngestService {
       );
     }
     final DocketApi api = _requireApi();
+    onPhase?.call(PassIngestPhase.submitting);
     try {
       final String id = await api.createFromPnr(pnr).timeout(_ingestTimeout);
-      return _resolve(api, id);
+      return _resolve(api, id, onPhase: onPhase);
     } on TimeoutException {
       throw const PassIngestException(
         PassIngestCode.failed,
@@ -82,7 +97,9 @@ class PassIngestService {
   Future<WalletPassItem> submitFile({
     required File file,
     required PassInputCategory category,
+    PassIngestProgressCallback? onPhase,
   }) async {
+    onPhase?.call(PassIngestPhase.readingSource);
     final String path = file.path;
     final String? mime = PassUpload.mimeForPath(path);
     if (mime == null) {
@@ -101,14 +118,29 @@ class PassIngestService {
     final Uint8List bytes = await file.readAsBytes();
     final String filename = path.split(RegExp(r'[\\/]')).last;
     final DocketApi api = _requireApi();
+
+    // Decode the gate code here rather than on the server. It costs nothing —
+    // ML Kit runs on device — and a decoded symbol is ground truth where the
+    // extractor can only ever copy text it saw printed. Null is the ordinary
+    // outcome for a ticket that carries no code, and for a first run where the
+    // Play Services model has not downloaded yet; the upload proceeds either
+    // way. See docs/features/ticket-code-extraction.md.
+    final ScannedTicketCode? code = await _ref
+        .read(ticketCodeScannerProvider)
+        .scan(file: file, mimeType: mime);
+
+    onPhase?.call(PassIngestPhase.submitting);
     try {
-      final String id = await api.extractFile(
-        bytes: bytes,
-        filename: filename.isEmpty ? 'ticket' : filename,
-        mimeType: mime,
-        categoryHint: category.hint,
-      ).timeout(_ingestTimeout);
-      return _resolve(api, id);
+      final String id = await api
+          .extractFile(
+            bytes: bytes,
+            filename: filename.isEmpty ? 'ticket' : filename,
+            mimeType: mime,
+            categoryHint: category.hint,
+            code: code,
+          )
+          .timeout(_ingestTimeout);
+      return _resolve(api, id, onPhase: onPhase);
     } on TimeoutException {
       throw const PassIngestException(
         PassIngestCode.failed,
@@ -117,7 +149,12 @@ class PassIngestService {
     }
   }
 
-  Future<WalletPassItem> _resolve(DocketApi api, String id) async {
+  Future<WalletPassItem> _resolve(
+    DocketApi api,
+    String id, {
+    PassIngestProgressCallback? onPhase,
+  }) async {
+    onPhase?.call(PassIngestPhase.syncingWallet);
     final WalletPassItem? item = await api.fetchPassById(id);
     await _ref.read(passListProvider.notifier).refresh();
     if (item == null) {

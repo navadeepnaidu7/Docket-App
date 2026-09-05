@@ -15,6 +15,7 @@ import '../../ids/presentation/id_entry_screen.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../passport/presentation/passport_prompt_screen.dart';
+import '../../tickets/application/pass_ingest_controller.dart';
 import '../../tickets/application/pass_share_service.dart';
 import '../../tickets/presentation/add/add_pass_flow.dart';
 import '../../tickets/presentation/history/passes_archive_screen.dart';
@@ -431,6 +432,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         : items;
 
     final AuthSession session = ref.watch(authSessionProvider);
+    final PassIngestUiState passIngest = ref.watch(
+      passIngestControllerProvider,
+    );
     final String meshSeed = _profileMeshSeed(
       session: session,
       passports: passports,
@@ -680,7 +684,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                                           _backdropTilt,
                                                     ),
                                                     passes: _passesTabMounted
-                                                        ? const TicketsTab()
+                                                        ? TicketsTab(
+                                                            isActive:
+                                                                _tabCtrl
+                                                                    .index ==
+                                                                1,
+                                                          )
                                                         : const SizedBox.expand(),
                                                   ),
                                                 );
@@ -860,7 +869,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 children: [
                   PillTabBar(controller: _tabCtrl),
                   const SizedBox(width: 10),
-                  AddFab(onTap: _showAddSheet),
+                  AddFab(
+                    onTap: _showAddSheet,
+                    enabled: _tabCtrl.index == 0 || passIngest.isIdle,
+                    semanticLabel: _tabCtrl.index == 1
+                        ? 'Add pass'
+                        : 'Add document',
+                  ),
                 ],
               ),
             ),

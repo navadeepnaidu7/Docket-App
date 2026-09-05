@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'core/assets/asset_licenses.dart';
 import 'core/theme/app_theme.dart';
+import 'features/dashboard/presentation/settings_screen.dart';
 import 'features/dashboard/presentation/wallet_passport_card.dart';
 import 'features/tickets/presentation/pass_typography.dart';
 import 'features/tickets/presentation/train/train_pass_theme.dart';
@@ -50,6 +51,7 @@ void main() async {
   TrainPassType.warmUp();
   WalletPassportCard.warmUp();
   PassType.warmUp();
+  WalletMembershipCard.warmUp();
 
   final SharedPreferences prefs = await prefsFuture;
   await chromeFuture;

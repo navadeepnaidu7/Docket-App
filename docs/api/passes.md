@@ -105,7 +105,9 @@ Either the same envelope as one list item, or the nested object only. Client acc
 | `progressFraction` | number | no | 0–1 |
 | `halts` | array | no | live timeline |
 | `departAt` / `arriveAt` | string (ISO-8601) | no | preferred machine times |
-| `codeType` / `codePayload` | string | no | future scannable QR |
+| `codeType` / `codePayload` | string | no | scannable gate code — see On the pass code |
+| `codeFormat` | string | no | symbology of `codePayload`; absent means `qr` |
+| `codePayloadBase64` | string | no | raw bytes instead of `codePayload`, matrix symbologies only |
 
 \*Client currently shows string fields; ISO fields are optional until formatters land.
 
@@ -180,8 +182,10 @@ they existed.
 | `certification` / `runtime` | string | no | |
 | `gateType` | string | no | e.g. QR Scan |
 | `sourcePlatform` | string | no | universal footer only |
-| `codeType` | string | no | `qr` \| `barcode` |
+| `codeType` | string | no | `qr` \| `barcode` — picks the gate label only |
 | `codePayload` | string | no | real code data |
+| `codeFormat` | string | no | symbology of `codePayload`; absent means `qr` |
+| `codePayloadBase64` | string | no | raw bytes instead of `codePayload`, matrix symbologies only |
 | `posterUrl` | string | no | Absolute Docket image-proxy URL. **May be absent** — see Poster art |
 | `logoUrl` | string | no | Absolute Docket image-proxy URL for the film's **title logo**. **May be absent** — see Title logo. *Not emitted yet* |
 | `posterHint` | string | no | UI fallback gradient family |
@@ -241,17 +245,49 @@ called out here because it is shared with the other two kinds:
 | Field | Type | Req | Notes |
 |-------|------|-----|-------|
 | `codePayload` | string | no | real code data, same meaning as on train and movie |
+| `codeFormat` | string | no | symbology of `codePayload`; absent means `qr` |
+| `codePayloadBase64` | string | no | raw bytes instead of `codePayload`, matrix symbologies only |
 
 There is no `codeType` on a bus: every operator we have seen issues a QR, so the client renders
 one unconditionally when a payload is present.
 
-### On `codePayload` across all three kinds
+### On the pass code across all three kinds
 
-Absent is the normal state today — nothing in the API emits it yet. The client treats absent as
-**"this pass has no scannable code"** and draws nothing in its place, on the pass face and in a
-shared image alike. It does **not** fall back to a PNR or a booking ID: those identify a
-booking, they are not what a gate scanner reads, and a code that scans to the wrong thing is
-worse at a turnstile than no code. See `docs/features/pass-share.md`.
+Absent is a normal state: plenty of tickets carry no code, and plenty of uploads are a photo
+too soft to decode. The client treats absent as **"this pass has no scannable code"** and draws
+nothing in its place — on the pass face, on the code screen, and in a shared image alike. It
+does **not** fall back to a PNR or a booking ID: those identify a booking, they are not what a
+gate scanner reads, and a code that scans to the wrong thing is worse at a turnstile than no
+code. See `docs/features/ticket-code-extraction.md` and `docs/features/pass-share.md`.
+
+Where it comes from: the app decodes the symbol off the uploaded image or PDF with ML Kit
+**before** the upload and sends it as extra fields on `POST /tickets/extract` (`codePayload`,
+`codePayloadBase64`, `codeFormat`). The server validates and stores it in `metadata`. The
+extraction model never supplies it — it cannot read a bitmap, and the server strips any code
+field it returns.
+
+`codeFormat` carries the symbology and is what rendering reads: `qr`, `aztec`, `dataMatrix`,
+`pdf417`, `code128`, `code39`, `code93`, `codabar`, `ean13`, `ean8`, `itf`, `upcA`, `upcE`.
+Absent or unrecognised means `qr`, which is what the client assumed before the field existed.
+A Code 128 booking reference re-rendered as a QR is a symbol no gate reads, so this is not
+cosmetic. Movie's `codeType` (`qr` | `barcode`) is a **separate, coarser** field that only
+picks the gate label; it does not drive rendering.
+
+`codePayloadBase64` carries the payload when the symbol's bytes are not valid UTF-8. It is only
+ever set for a matrix symbology (`qr`, `aztec`, `dataMatrix`, `pdf417`) — a linear barcode
+encodes characters, so bytes that are not text cannot be reproduced as one. The two payload
+fields are mutually exclusive; when both somehow arrive, the client prefers `codePayload`.
+
+#### Request fields on `POST /tickets/extract`
+
+| Field | Type | Req | Notes |
+|-------|------|-----|-------|
+| `codePayload` | string | no | decoded text, max 4096 bytes |
+| `codePayloadBase64` | string | no | decoded bytes, max 4096 bytes, matrix symbologies only |
+| `codeFormat` | string | no | one of the values above; unknown values drop the whole code |
+
+All three are silently ignored when malformed. Extraction is the request's real job, and a
+rejected code leaves the pass exactly where a codeless ticket would.
 
 ---
 

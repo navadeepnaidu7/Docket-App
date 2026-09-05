@@ -1,5 +1,6 @@
 // Train pass domain models (API-serializable).
 
+import 'pass_code.dart';
 import 'pass_status.dart';
 
 export 'pass_status.dart' show TicketStatus, PassKind, TrainRunState;
@@ -137,6 +138,8 @@ class TrainPass {
     this.arriveAt,
     this.codeType,
     this.codePayload,
+    this.codePayloadBase64,
+    this.codeFormat,
   }) : assert(passengers.length >= 1 && passengers.length <= 6);
 
   final String id;
@@ -180,9 +183,24 @@ class TrainPass {
   final String? departAt;
   final String? arriveAt;
 
-  /// Optional gate code metadata for future scannable tickets.
+  /// Optional gate code metadata. Populated by decoding the symbol off the
+  /// uploaded ticket on device — see `docs/features/ticket-code-extraction.md`.
   final String? codeType;
   final String? codePayload;
+
+  /// Base64 payload, set instead of [codePayload] when the symbol's bytes are
+  /// not valid UTF-8.
+  final String? codePayloadBase64;
+
+  /// Symbology wire value; absent means QR. See [PassCodeFormat].
+  final String? codeFormat;
+
+  /// The scannable code, or null when this pass has none.
+  PassCode? get passCode => PassCode.parse(
+        payload: codePayload,
+        payloadBase64: codePayloadBase64,
+        format: codeFormat,
+      );
 
   String get trainTitle => '$trainNumber · $trainName';
 
@@ -330,6 +348,8 @@ class TrainPass {
       arriveAt: json['arriveAt']?.toString(),
       codeType: json['codeType']?.toString(),
       codePayload: json['codePayload']?.toString(),
+      codePayloadBase64: json['codePayloadBase64']?.toString(),
+      codeFormat: json['codeFormat']?.toString(),
     );
   }
 
@@ -364,6 +384,8 @@ class TrainPass {
         if (arriveAt != null) 'arriveAt': arriveAt,
         if (codeType != null) 'codeType': codeType,
         if (codePayload != null) 'codePayload': codePayload,
+        if (codePayloadBase64 != null) 'codePayloadBase64': codePayloadBase64,
+        if (codeFormat != null) 'codeFormat': codeFormat,
       };
 }
 

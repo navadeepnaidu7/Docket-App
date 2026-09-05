@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'pass_code.dart';
 import 'pass_status.dart';
 
 export 'pass_status.dart' show TicketStatus;
@@ -201,6 +202,8 @@ class MoviePass {
     this.sourcePlatform,
     this.codeType = MovieTicketCodeType.qr,
     this.codePayload,
+    this.codePayloadBase64,
+    this.codeFormat,
     this.posterUrl,
     this.posterAsset,
     this.logoUrl,
@@ -229,8 +232,27 @@ class MoviePass {
   final String? sourcePlatform;
   final MovieTicketCodeType codeType;
 
-  /// Raw payload for a real QR/barcode library (optional until backend ships it).
+  /// Raw payload for a real QR/barcode library, decoded off the uploaded
+  /// ticket on device. See `docs/features/ticket-code-extraction.md`.
   final String? codePayload;
+
+  /// Base64 payload, set instead of [codePayload] when the symbol's bytes are
+  /// not valid UTF-8.
+  final String? codePayloadBase64;
+
+  /// Symbology wire value; absent means QR. See [PassCodeFormat].
+  ///
+  /// Finer grained than [codeType], which only says "qr or not" and exists to
+  /// pick the gate label. A Code 128 strip re-rendered as a QR scans nowhere,
+  /// so rendering reads this.
+  final String? codeFormat;
+
+  /// The scannable code, or null when this pass has none.
+  PassCode? get passCode => PassCode.parse(
+        payload: codePayload,
+        payloadBase64: codePayloadBase64,
+        format: codeFormat,
+      );
 
   /// Network poster URL from API (preferred).
   final String? posterUrl;
@@ -341,6 +363,8 @@ class MoviePass {
       sourcePlatform: json['sourcePlatform']?.toString(),
       codeType: MovieTicketCodeType.fromJson(json['codeType']),
       codePayload: json['codePayload']?.toString(),
+      codePayloadBase64: json['codePayloadBase64']?.toString(),
+      codeFormat: json['codeFormat']?.toString(),
       posterUrl: json['posterUrl']?.toString(),
       posterAsset: json['posterAsset']?.toString(),
       logoUrl: json['logoUrl']?.toString(),
@@ -371,6 +395,8 @@ class MoviePass {
     if (sourcePlatform != null) 'sourcePlatform': sourcePlatform,
     'codeType': codeType.toJson(),
     if (codePayload != null) 'codePayload': codePayload,
+    if (codePayloadBase64 != null) 'codePayloadBase64': codePayloadBase64,
+    if (codeFormat != null) 'codeFormat': codeFormat,
     if (posterUrl != null) 'posterUrl': posterUrl,
     if (posterAsset != null) 'posterAsset': posterAsset,
     if (logoUrl != null) 'logoUrl': logoUrl,

@@ -101,7 +101,9 @@ class _FolderGrid extends StatelessWidget {
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                mainAxisSpacing: 16,
+                // A little more air down the page than across it: the tiles
+                // now carry a drop shadow, and rows read as shelves.
+                mainAxisSpacing: 18,
                 crossAxisSpacing: 16,
                 childAspectRatio: HistoryFolderTile.aspectRatio,
               ),

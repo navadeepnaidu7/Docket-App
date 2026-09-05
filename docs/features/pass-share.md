@@ -95,9 +95,13 @@ absent entirely — no placeholder, no caption, no decorative square.
 booking ID. Those identify a booking; they are not what a gate scanner reads, and a QR that
 scans to the wrong thing is worse at a turnstile than no QR at all.
 
-This matters more than it looks, because the faces draw decorative code art of their own — a
-hardcoded 7×7 grid in `PassCodeBlock`, a procedural `TicketQrPainter` on the movie chrome. Both
-are documented as encoding nothing. A test asserts neither reaches the exported card.
+This used to matter more than it looked, because the faces drew decorative code art of their
+own — a hardcoded 7×7 grid in `PassCodeBlock`, a procedural `TicketQrPainter` on the movie
+chrome, both documented as encoding nothing. Both are now gone: a face draws its real code or
+none (`docs/features/ticket-code-extraction.md`). The train face still carries a code square,
+so the share card passes it `showCode: false` — two copies of the same symbol in one image
+gives a scanner a choice it should not have to make. A test asserts the exported card contains
+exactly one code.
 
 The QR itself is `qr_flutter`'s `QrImageView`, pinned to black on white. A brand-tinted code
 loses contrast when a phone screen is photographed by another phone, which is exactly how a
@@ -107,9 +111,14 @@ Its white plate hugs the code rather than spanning the card, and the human refer
 it on the dark ground. A small code centred in a full-width white slab reads as a mistake, and
 the quiet zone a scanner needs is only a few modules — the rest was empty paper.
 
-No API response emits `codePayload` yet, so **mock fixtures carry realistic values on their
-active passes** and none on their expired ones. That keeps both paths visible in the running app
-rather than only in tests.
+`codePayload` is now populated for real, by decoding the symbol off the uploaded ticket on
+device (`docs/features/ticket-code-extraction.md`). **Mock fixtures still carry realistic values
+on their active passes** and none on their expired ones, so both paths stay visible in the
+running app without a backend.
+
+The share card renders through `PassCodeView` like every other surface, so a pass whose code is
+a Code 128 strip exports as a Code 128 strip. Only `qr_flutter` is involved for QR; the rest go
+through `barcode_widget`.
 
 ## Capture
 
