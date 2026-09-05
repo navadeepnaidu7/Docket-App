@@ -25,49 +25,16 @@ class HistoryFolderSummary {
   String get countLabel => count == 1 ? '1 pass' : '$count passes';
 }
 
-/// One month bucket inside a category, newest first.
-/// How far apart archive section headers are spaced.
-enum HistorySectionSpan {
-  /// "February 2025" — the default, and what dated rows use.
-  month,
-
-  /// "2025". Posters are dense enough that a header per month would leave
-  /// one- and two-tile sections stranded between rules.
-  year,
-}
-
-class HistoryDateSection {
-  const HistoryDateSection({
-    required this.label,
-    required this.items,
-    this.periodStart,
-  });
-
-  /// "February 2025", "2025", or "Undated" when no date could be resolved.
-  final String label;
-
-  /// Start of the section's period — first of the month or first of the year —
-  /// or null for the undated bucket.
-  final DateTime? periodStart;
-
-  final List<WalletPassItem> items;
-
-  bool get isUndated => periodStart == null;
-}
-
-/// Label for the trailing bucket of passes whose date could not be resolved.
-const String kUndatedSectionLabel = 'Undated';
-
 /// Presentation helpers for archive rows.
 abstract final class HistoryPassPresentation {
   HistoryPassPresentation._();
 
   /// Primary title on an archive pass card.
   static String title(WalletPassItem item) => switch (item) {
-        TrainPassItem(:final ticket) => _trainTitle(ticket),
-        MoviePassItem(:final pass) => pass.movieTitle,
-        BusPassItem(:final pass) => _busTitle(pass),
-      };
+    TrainPassItem(:final ticket) => _trainTitle(ticket),
+    MoviePassItem(:final pass) => pass.movieTitle,
+    BusPassItem(:final pass) => _busTitle(pass),
+  };
 
   static String _busTitle(BusPass pass) {
     final String dest = pass.dropLocation.trim();
@@ -93,13 +60,13 @@ abstract final class HistoryPassPresentation {
   ///
   /// Fallback for when [PassActivityDate.of] cannot resolve a real date.
   static String? activityDateLabel(WalletPassItem item) => switch (item) {
-        TrainPassItem(:final ticket) =>
-          ticket.date.trim().isEmpty ? null : ticket.date.trim(),
-        MoviePassItem(:final pass) =>
-          pass.showDate.trim().isEmpty ? null : pass.showDate.trim(),
-        BusPassItem(:final pass) =>
-          pass.date.trim().isEmpty ? null : pass.date.trim(),
-      };
+    TrainPassItem(:final ticket) =>
+      ticket.date.trim().isEmpty ? null : ticket.date.trim(),
+    MoviePassItem(:final pass) =>
+      pass.showDate.trim().isEmpty ? null : pass.showDate.trim(),
+    BusPassItem(:final pass) =>
+      pass.date.trim().isEmpty ? null : pass.date.trim(),
+  };
 
   /// Date line under the title: normalised when parseable, raw otherwise.
   static String? shortDateLabel(WalletPassItem item) {
@@ -133,8 +100,9 @@ List<HistoryFolderSummary> buildHistoryFolders(List<WalletPassItem> all) {
     );
 
   for (final PassHistoryCategory category in keys) {
-    final List<WalletPassItem> ordered =
-        _sortByActivityDateDesc(grouped[category]!);
+    final List<WalletPassItem> ordered = _sortByActivityDateDesc(
+      grouped[category]!,
+    );
     folders.add(
       HistoryFolderSummary(
         category: category,
@@ -148,76 +116,13 @@ List<HistoryFolderSummary> buildHistoryFolders(List<WalletPassItem> all) {
   return folders;
 }
 
-/// Buckets passes into dated sections, newest first, undated last.
-///
-/// [span] controls how coarse the buckets are — see [HistorySectionSpan].
-///
-/// Undated passes are never dropped — hiding a pass because a date string did
-/// not parse would be worse than showing it without one.
-List<HistoryDateSection> buildHistorySections(
-  List<WalletPassItem> items, {
-  HistorySectionSpan span = HistorySectionSpan.month,
-}) {
-  final List<HistoryDateSection> sections = <HistoryDateSection>[];
-  final List<WalletPassItem> undated = <WalletPassItem>[];
-
-  DateTime startOf(DateTime date) => switch (span) {
-    HistorySectionSpan.month => DateTime(date.year, date.month),
-    HistorySectionSpan.year => DateTime(date.year),
-  };
-
-  String labelFor(DateTime start) => switch (span) {
-    HistorySectionSpan.month => PassActivityDate.monthLabel(start),
-    HistorySectionSpan.year => PassActivityDate.yearLabel(start),
-  };
-
-  DateTime? currentStart;
-  List<WalletPassItem> bucket = <WalletPassItem>[];
-
-  void flush() {
-    if (currentStart == null || bucket.isEmpty) return;
-    sections.add(
-      HistoryDateSection(
-        label: labelFor(currentStart),
-        periodStart: currentStart,
-        items: bucket,
-      ),
-    );
-  }
-
-  // Sorted first, so every dated pass precedes every undated one and periods
-  // arrive already in descending order.
-  for (final WalletPassItem item in _sortByActivityDateDesc(items)) {
-    final DateTime? date = PassActivityDate.of(item);
-    if (date == null) {
-      undated.add(item);
-      continue;
-    }
-    final DateTime start = startOf(date);
-    if (start != currentStart) {
-      flush();
-      currentStart = start;
-      bucket = <WalletPassItem>[];
-    }
-    bucket.add(item);
-  }
-  flush();
-
-  if (undated.isNotEmpty) {
-    sections.add(
-      HistoryDateSection(label: kUndatedSectionLabel, items: undated),
-    );
-  }
-  return sections;
-}
-
 /// Newest first. Undated passes keep their catalog order and sort last.
 List<WalletPassItem> _sortByActivityDateDesc(List<WalletPassItem> items) {
   final List<({int index, WalletPassItem item, DateTime? date})> decorated =
       <({int index, WalletPassItem item, DateTime? date})>[
-    for (int i = 0; i < items.length; i++)
-      (index: i, item: items[i], date: PassActivityDate.of(items[i])),
-  ];
+        for (int i = 0; i < items.length; i++)
+          (index: i, item: items[i], date: PassActivityDate.of(items[i])),
+      ];
 
   decorated.sort((
     ({int index, WalletPassItem item, DateTime? date}) a,

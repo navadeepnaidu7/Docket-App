@@ -4,7 +4,6 @@ import 'package:docket/features/tickets/domain/pass_catalog.dart';
 import 'package:docket/features/tickets/domain/pass_history_category.dart';
 import 'package:docket/features/tickets/domain/ticket_models.dart';
 import 'package:docket/features/tickets/presentation/history/history_folder_tile.dart';
-import 'package:docket/features/tickets/presentation/history/history_pass_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -186,71 +185,6 @@ void main() {
       expect(HistoryFolderTile.sheetsFor(0), 1);
     });
   });
-
-  group('HistoryPassCard', () {
-    testWidgets('shows title and normalised date, nothing else', (
-      WidgetTester t,
-    ) async {
-      await t.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Padding(
-              padding: const EdgeInsets.all(20),
-              child: HistoryPassCard(
-                item: MoviePassItem(movie(id: 'a', title: 'Dune: Part Two')),
-              ),
-            ),
-          ),
-        ),
-      );
-      await t.pump(const Duration(milliseconds: 300));
-
-      expect(takeLayoutError(), isNull);
-      expect(find.text('Dune: Part Two'), findsOneWidget);
-      // "Mon, 10 Feb 2025" is normalised; the year lives in the month header.
-      expect(find.text('10 Feb'), findsOneWidget);
-      expect(find.text('Test Cinema'), findsNothing);
-      expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
-    });
-
-    testWidgets('falls back to the raw date when unparseable', (
-      WidgetTester t,
-    ) async {
-      final MoviePass pass = MoviePass(
-        id: 'x',
-        brand: MoviePassBrand.universal,
-        movieTitle: 'Mystery',
-        movieSubtitle: 'Drama',
-        cinemaName: 'Test Cinema',
-        cinemaAddress: 'Somewhere',
-        screen: 'Screen 1',
-        showDate: 'sometime soon',
-        showTime: '7:00 PM',
-        format: '2D',
-        language: 'English',
-        seats: const <MovieSeat>[MovieSeat(row: 'A', number: '1')],
-        bookingId: 'BK',
-        orderId: 'OR',
-        status: TicketStatus.expired,
-      );
-
-      await t.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Padding(
-              padding: const EdgeInsets.all(20),
-              child: HistoryPassCard(item: MoviePassItem(pass)),
-            ),
-          ),
-        ),
-      );
-      await t.pump(const Duration(milliseconds: 300));
-
-      expect(find.text('sometime soon'), findsOneWidget);
-    });
-  });
 }
 
-/// Surfaces layout overflow and painter assertions, which otherwise only print
-/// to the console and would let a broken tile pass silently.
 Object? takeLayoutError() => TestWidgetsFlutterBinding.instance.takeException();

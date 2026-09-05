@@ -1,22 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/motion/entry_reveal.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/theme/prompt_typography.dart';
 import '../../application/history_folders_provider.dart';
 import '../../domain/history_folder.dart';
 import '../../domain/pass_catalog.dart';
 import '../../domain/pass_history_category.dart';
-import 'archive_scaffold.dart';
 import '../pass_remove_flow.dart';
-import 'history_pass_card.dart';
-import 'history_poster_grid.dart';
-import 'history_visuals.dart';
+import 'archive_pass_deck.dart';
+import 'archive_scaffold.dart';
 import 'passes_archive_screen.dart';
 
-/// Every archived pass in one category, newest first — bucketed by year for
-/// the movie poster grid, by month everywhere else.
+/// Every archived pass in one category, newest first, as a single deck you
+/// move through card by card. See [ArchivePassDeck].
 class HistoryCategoryScreen extends ConsumerWidget {
   const HistoryCategoryScreen({
     super.key,
@@ -72,17 +67,9 @@ class HistoryCategoryScreen extends ConsumerWidget {
               onAction: () => Navigator.of(context).maybePop(),
             );
           }
-          return _DateSections(
+          return ArchivePassDeck(
             category: category,
-            // Posters are dense — three to a row — so a header per month would
-            // strand one- and two-tile sections between rules. Years give the
-            // grid room to actually read as a shelf.
-            sections: buildHistorySections(
-              folder.items,
-              span: category == PassHistoryCategory.movie
-                  ? HistorySectionSpan.year
-                  : HistorySectionSpan.month,
-            ),
+            items: folder.items,
             onRemove: (WalletPassItem item) {
               confirmAndRemovePass(context, ref, item);
             },
@@ -91,195 +78,4 @@ class HistoryCategoryScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-class _DateSections extends StatelessWidget {
-  const _DateSections({
-    required this.category,
-    required this.sections,
-    required this.onRemove,
-  });
-
-  final PassHistoryCategory category;
-  final List<HistoryDateSection> sections;
-  final ValueChanged<WalletPassItem> onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final TextStyle headerStyle = theme.textTheme.promptSectionLabel(
-      theme.colorScheme,
-    );
-
-    // One reveal for the whole list — see the note in PassesArchiveScreen.
-    return EntryReveal(
-      child: CustomScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        slivers: <Widget>[
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
-              Space.gutter,
-              Space.x4,
-              Space.gutter,
-              Space.x2,
-            ),
-            sliver: SliverToBoxAdapter(
-              child: _CategoryIntro(category: category, sections: sections),
-            ),
-          ),
-          for (final HistoryDateSection section in sections) ...<Widget>[
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                Space.gutter,
-                Space.x5,
-                Space.gutter,
-                Space.x2,
-              ),
-              sliver: SliverToBoxAdapter(
-                child: Row(
-                  children: <Widget>[
-                    Text(section.label, style: headerStyle),
-                    const SizedBox(width: Space.x3),
-                    Expanded(
-                      child: Container(
-                        height: 0.5,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-              // Films are recognised by their artwork long before their title,
-              // so the movies folder shows posters rather than titled rows.
-              sliver: category == PassHistoryCategory.movie
-                  ? _PosterSection(
-                      items: section.items,
-                      onRemove: onRemove,
-                    )
-                  : SliverList.separated(
-                      itemCount: section.items.length,
-                      separatorBuilder: (BuildContext context, int index) =>
-                          const SizedBox(height: 10),
-                      itemBuilder: (BuildContext context, int index) {
-                        final WalletPassItem item = section.items[index];
-                        return HistoryPassCard(
-                          key: ValueKey<String>(item.id),
-                          item: item,
-                          onLongPress: () => onRemove(item),
-                        );
-                      },
-                    ),
-            ),
-          ],
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: MediaQuery.paddingOf(context).bottom + Space.x6,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One year's films as a poster grid.
-///
-/// A non-movie pass can only appear here if the category bucketing changes, so
-/// it falls back to the titled row rather than being dropped from the archive.
-class _PosterSection extends StatelessWidget {
-  const _PosterSection({required this.items, required this.onRemove});
-
-  final List<WalletPassItem> items;
-  final ValueChanged<WalletPassItem> onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    return SliverGrid.builder(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: kPosterAspect,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 14,
-      ),
-      itemCount: items.length,
-      itemBuilder: (BuildContext context, int index) {
-        final WalletPassItem item = items[index];
-        return switch (item) {
-          MoviePassItem(:final pass) => HistoryPosterTile(
-            key: ValueKey<String>(item.id),
-            pass: pass,
-            dateLabel: HistoryPassPresentation.shortDateLabel(item),
-            onLongPress: () => onRemove(item),
-          ),
-          _ => HistoryPassCard(
-            key: ValueKey<String>(item.id),
-            item: item,
-            onLongPress: () => onRemove(item),
-          ),
-        };
-      },
-    );
-  }
-}
-
-class _CategoryIntro extends StatelessWidget {
-  const _CategoryIntro({required this.category, required this.sections});
-
-  final PassHistoryCategory category;
-  final List<HistoryDateSection> sections;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-    final int passCount = sections.fold<int>(
-      0,
-      (int total, HistoryDateSection section) => total + section.items.length,
-    );
-    final String passLabel = passCount == 1 ? 'pass' : 'passes';
-
-    return Row(
-      children: <Widget>[
-        Hero(
-          tag: 'history-category-${category.name}',
-          child: Material(
-            type: MaterialType.transparency,
-            child: HistoryCategoryWell(category: category),
-          ),
-        ),
-        const SizedBox(width: Space.x3),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                '$passCount archived $passLabel',
-                style: themeText(context, scheme),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Finished ${category.label.toLowerCase()}, ordered by date.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurface.withValues(alpha: 0.60),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  TextStyle themeText(BuildContext context, ColorScheme scheme) =>
-      Theme.of(context).textTheme.titleSmall!.copyWith(
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.2,
-        color: scheme.onSurface,
-      );
 }

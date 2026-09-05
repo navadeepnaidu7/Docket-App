@@ -1,10 +1,10 @@
 # Archive folders
 
 The Passes-tab **Archive** root is a 2-column grid of category folders. Opening one
-pushes `HistoryCategoryScreen` (titled rows, or the movie poster grid).
+pushes `HistoryCategoryScreen`, which is now a single swipeable deck of pass faces.
 
-This note is the tile. Category lists are unchanged; see `movie-archive-posters.md`
-for the movies folder interior.
+This note is the tile. See `archive-pass-deck.md` for the folder interior;
+`movie-archive-posters.md` describes the poster grid that deck replaced.
 
 ## Two tiles that failed first
 
@@ -64,9 +64,14 @@ to a 168dp cell when constraints are unbounded rather than painting a NaN path.
 
 ## Hero
 
-Tag `history-category-{name}` flies `HistoryCategoryWell` into `_CategoryIntro`. Both ends
-take the widget's default size, so they cannot drift apart — a disc or a naked mark has no
-counterpart on the tile.
+Tag `history-category-{name}` flew `HistoryCategoryWell` into `_CategoryIntro`. Both ends
+took the widget's default size, so they could not drift apart — a disc or a naked mark has
+no counterpart on the tile.
+
+**Currently one-sided.** `_CategoryIntro` went away with the date-sectioned category list,
+and the deck has nothing for the mark to land on. A Hero with no counterpart does not
+throw; the flight simply does not happen. Either give the deck a landing mark or drop the
+tag — leaving it is a transition that works for nobody and fails visibly to nobody.
 
 ## What it does not do
 

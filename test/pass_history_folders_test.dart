@@ -39,10 +39,7 @@ void main() {
       final List<HistoryFolderSummary> folders = buildHistoryFolders(all);
 
       expect(folders, isNotEmpty);
-      expect(
-        folders.every((HistoryFolderSummary f) => f.count > 0),
-        isTrue,
-      );
+      expect(folders.every((HistoryFolderSummary f) => f.count > 0), isTrue);
       expect(
         folders.map((HistoryFolderSummary f) => f.category),
         isNot(contains(PassHistoryCategory.flight)),
@@ -124,10 +121,11 @@ void main() {
       );
 
       // mock_t2 10 Jan 2024, mock_t5 14 Nov 2023, mock_t6 03 Sep 2023
-      expect(
-        trains.items.map((WalletPassItem i) => i.id),
-        <String>['mock_t2', 'mock_t5', 'mock_t6'],
-      );
+      expect(trains.items.map((WalletPassItem i) => i.id), <String>[
+        'mock_t2',
+        'mock_t5',
+        'mock_t6',
+      ]);
       // Newest archived booking is Kalki (10 Feb 2025), oldest is Oppenheimer
       // (22 Jul 2023). Asserted as an ordering rather than a fixed list so
       // adding an archive fixture does not break this.
@@ -161,159 +159,12 @@ void main() {
     });
   });
 
-  group('buildHistorySections', () {
-    List<WalletPassItem> expiredMovies() => mockMoviePasses
-        .where((MoviePass m) => m.status == TicketStatus.expired)
-        .map(MoviePassItem.new)
-        .toList();
-
-    test('returns empty list for empty input', () {
-      expect(buildHistorySections(const <WalletPassItem>[]), isEmpty);
-    });
-
-    test('buckets by month, newest section first', () {
-      final List<HistoryDateSection> sections =
-          buildHistorySections(expiredMovies());
-
-      // Newest archived booking is Kalki, 10 Feb 2025.
-      expect(sections.first.label, 'February 2025');
-      expect(sections.first.items.single.id, 'movie_bms_2');
-
-      // Headers descend, and every dated one names its month and year.
-      final List<DateTime> starts = sections
-          .where((HistoryDateSection s) => !s.isUndated)
-          .map((HistoryDateSection s) => s.periodStart!)
-          .toList();
-      expect(starts, isNotEmpty);
-      for (int i = 1; i < starts.length; i++) {
-        expect(
-          starts[i].isBefore(starts[i - 1]),
-          isTrue,
-          reason: '${starts[i]} should follow ${starts[i - 1]}',
-        );
-      }
-      // Month buckets are first-of-month.
-      expect(starts.every((DateTime d) => d.day == 1), isTrue);
-    });
-
-    test('buckets by year when asked, newest first', () {
-      final List<HistoryDateSection> sections = buildHistorySections(
-        expiredMovies(),
-        span: HistorySectionSpan.year,
-      );
-
-      expect(
-        sections.map((HistoryDateSection s) => s.label),
-        <String>['2025', '2024', '2023'],
-      );
-      // Year buckets start on 1 January.
-      for (final HistoryDateSection s in sections) {
-        expect(s.periodStart!.month, 1);
-        expect(s.periodStart!.day, 1);
-      }
-      // Same passes, just coarser headers.
-      expect(
-        sections.fold<int>(
-          0,
-          (int sum, HistoryDateSection s) => sum + s.items.length,
-        ),
-        expiredMovies().length,
-      );
-    });
-
-    test('a year section keeps its films newest first', () {
-      final List<HistoryDateSection> sections = buildHistorySections(
-        expiredMovies(),
-        span: HistorySectionSpan.year,
-      );
-      final HistoryDateSection y2024 = sections.firstWhere(
-        (HistoryDateSection s) => s.label == '2024',
-      );
-
-      expect(
-        y2024.items.map((WalletPassItem i) => i.id),
-        // 14 Dec, 22 Nov, 27 Sep, 15 Aug.
-        <String>['movie_dist_2', 'movie_uni_2', 'movie_bms_3', 'movie_dist_3'],
-      );
-    });
-
-    test('two months in one year collapse into a single year section', () {
-      final List<HistoryDateSection> byMonth = buildHistorySections(
-        expiredMovies(),
-      );
-      final List<HistoryDateSection> byYear = buildHistorySections(
-        expiredMovies(),
-        span: HistorySectionSpan.year,
-      );
-
-      expect(byMonth.length, greaterThan(byYear.length));
-    });
-
-    test('two passes in the same month share one section', () {
-      final MoviePass first = mockMoviePasses
-          .firstWhere((MoviePass m) => m.id == 'movie_bms_2');
-
-      final List<HistoryDateSection> sections = buildHistorySections(
-        <WalletPassItem>[
-          MoviePassItem(first),
-          MoviePassItem(
-            expiredMovie(id: 'same_month', showDate: 'Fri, 21 Feb 2025'),
-          ),
-        ],
-      );
-
-      expect(sections, hasLength(1));
-      expect(sections.single.label, 'February 2025');
-      // 21 Feb is newer than 10 Feb.
-      expect(
-        sections.single.items.map((WalletPassItem i) => i.id),
-        <String>['same_month', 'movie_bms_2'],
-      );
-    });
-
-    test('undated passes land in a trailing section and are never dropped', () {
-      final List<HistoryDateSection> sections = buildHistorySections(
-        <WalletPassItem>[
-          MoviePassItem(
-            expiredMovie(id: 'no_date', showDate: 'sometime soon'),
-          ),
-          ...expiredMovies(),
-        ],
-      );
-
-      expect(sections.last.label, kUndatedSectionLabel);
-      expect(sections.last.isUndated, isTrue);
-      expect(sections.last.items.single.id, 'no_date');
-      expect(
-        sections.fold<int>(
-          0,
-          (int sum, HistoryDateSection s) => sum + s.items.length,
-        ),
-        expiredMovies().length + 1,
-      );
-    });
-
-    test('undated passes survive year bucketing too', () {
-      final List<HistoryDateSection> sections = buildHistorySections(
-        <WalletPassItem>[
-          MoviePassItem(expiredMovie(id: 'no_date', showDate: 'who knows')),
-          ...expiredMovies(),
-        ],
-        span: HistorySectionSpan.year,
-      );
-
-      expect(sections.last.label, kUndatedSectionLabel);
-      expect(sections.last.items.single.id, 'no_date');
-    });
-  });
-
   group('HistoryPassPresentation', () {
     test('train title uses destination city', () {
       final TrainPass ticket = mockTrainPasses.firstWhere(
         (TrainPass t) => t.status == TicketStatus.expired,
       );
-      final String title =
-          HistoryPassPresentation.title(TrainPassItem(ticket));
+      final String title = HistoryPassPresentation.title(TrainPassItem(ticket));
       expect(title, 'Train to ${ticket.toName}');
     });
 
@@ -321,8 +172,7 @@ void main() {
       final MoviePass pass = mockMoviePasses.firstWhere(
         (MoviePass m) => m.status == TicketStatus.expired,
       );
-      final String title =
-          HistoryPassPresentation.title(MoviePassItem(pass));
+      final String title = HistoryPassPresentation.title(MoviePassItem(pass));
       expect(title, pass.movieTitle);
     });
 
@@ -343,12 +193,7 @@ void main() {
         duration: '2h',
         ticketClass: 'SL',
         passengers: const <TicketPassenger>[
-          TicketPassenger(
-            name: 'Test',
-            coach: 'S1',
-            seat: '1',
-            berth: 'Lower',
-          ),
+          TicketPassenger(name: 'Test', coach: 'S1', seat: '1', berth: 'Lower'),
         ],
         pnr: '0000000000',
         bookingId: 'E0',
