@@ -2,19 +2,15 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/assets/app_assets.dart';
-import '../../../../core/haptics/haptic_service.dart';
 import '../../../../core/motion/studio_page_route.dart';
 import '../../../../shared/widgets/morph_sheet.dart';
 import '../../../../shared/widgets/squircle_tile.dart';
-import '../../application/pass_ingest_service.dart';
-import '../../domain/pass_catalog.dart';
+import '../../application/pass_ingest_controller.dart';
 import '../../domain/pass_ingest.dart';
-import 'pass_ingest_feedback.dart';
 import 'pnr_entry_screen.dart';
 
 /// Opens the Passes-tab add flow: category → method → PNR screen or picker.
@@ -187,7 +183,7 @@ Future<void> _pickPhoto(
     imageQuality: 85,
   );
   if (picked == null || !context.mounted) return;
-  await _submitFile(context, ref, File(picked.path), category);
+  _submitFile(ref, File(picked.path), category);
 }
 
 Future<void> _pickFile(
@@ -207,63 +203,11 @@ Future<void> _pickFile(
   if (files.isEmpty) return;
   final String? path = files.first.path;
   if (path == null || path.isEmpty || !context.mounted) return;
-  await _submitFile(context, ref, File(path), category);
+  _submitFile(ref, File(path), category);
 }
 
-Future<void> _submitFile(
-  BuildContext context,
-  WidgetRef ref,
-  File file,
-  PassInputCategory category,
-) async {
-  // Captured before the dialog: the confirmation is shown after the spinner is
-  // popped, and looking a messenger up from a context that has just lost a
-  // route is how these end up on the wrong navigator.
-  final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-
-  showDialog<void>(
-    context: context,
-    barrierDismissible: true,
-    builder: (BuildContext ctx) => const Center(
-      child: Card(
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(28, 24, 28, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              CupertinoActivityIndicator(),
-              SizedBox(height: 14),
-              Text('Reading ticket…'),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-
-  try {
-    final WalletPassItem item = await ref
-        .read(passIngestServiceProvider)
-        .submitFile(file: file, category: category);
-    if (!context.mounted) return;
-    Navigator.of(context, rootNavigator: true).pop();
-    HapticService.success();
-    showPassIngestSuccess(messenger, item);
-  } on PassIngestException catch (e) {
-    if (!context.mounted) return;
-    Navigator.of(context, rootNavigator: true).pop();
-    HapticService.error();
-    await showPassIngestError(context, e);
-  } catch (_) {
-    if (!context.mounted) return;
-    Navigator.of(context, rootNavigator: true).pop();
-    HapticService.error();
-    await showPassIngestError(
-      context,
-      const PassIngestException(
-        PassIngestCode.failed,
-        'Could not read that ticket.',
-      ),
-    );
-  }
+void _submitFile(WidgetRef ref, File file, PassInputCategory category) {
+  ref
+      .read(passIngestControllerProvider.notifier)
+      .startFile(path: file.path, category: category);
 }
