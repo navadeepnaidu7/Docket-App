@@ -61,6 +61,7 @@ class PromptStep {
     this.inputFormatters,
     this.style = PromptInputStyle.prose,
     this.maxLength,
+    this.maxLines = 1,
     this.choices = const <PromptChoice>[],
     this.label,
     this.confirmQuestion,
@@ -95,6 +96,7 @@ class PromptStep {
   final List<TextInputFormatter>? inputFormatters;
   final PromptInputStyle style;
   final int? maxLength;
+  final int maxLines;
 
   /// Options for [PromptStepKind.choice].
   final List<PromptChoice> choices;
@@ -144,11 +146,11 @@ class PromptFlowState {
   });
 
   const PromptFlowState.empty()
-      : values = const <String, String>{},
-        sources = const <String, FieldSource>{},
-        path = PromptPath.undecided,
-        confirmMode = false,
-        flags = const <String, bool>{};
+    : values = const <String, String>{},
+      sources = const <String, FieldSource>{},
+      path = PromptPath.undecided,
+      confirmMode = false,
+      flags = const <String, bool>{};
 
   final Map<String, String> values;
   final Map<String, FieldSource> sources;

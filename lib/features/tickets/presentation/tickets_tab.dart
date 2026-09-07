@@ -407,33 +407,389 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double fabClearance = WalletLayout.fabClearance(context);
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color contentColor = isDark
-        ? Colors.white.withValues(alpha: 0.35)
-        : Colors.black.withValues(alpha: 0.35);
 
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(
-            Icons.confirmation_number_outlined,
-            size: 44,
-            color: contentColor.withValues(alpha: 0.58),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'No active passes',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: contentColor,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(32, 0, 32, fabClearance),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const EmptyPassesPreview(),
+            const SizedBox(height: 28),
+            Text(
+              'No Passes Yet',
+              style: TextStyle(
+                color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              'Tap + to import a boarding pass, transit ticket, or movie pass.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDark
+                    ? const Color(0xFF8E8E93)
+                    : const Color(0xFF64748B),
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
+
+class EmptyPassesPreview extends StatefulWidget {
+  const EmptyPassesPreview({super.key});
+
+  @override
+  State<EmptyPassesPreview> createState() => _EmptyPassesPreviewState();
+}
+
+class _EmptyPassesPreviewState extends State<EmptyPassesPreview>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _shimmerCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _shimmerCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _shimmerCtrl,
+      builder: (context, _) {
+        final double shimmerX = lerpDouble(-120, 120, _shimmerCtrl.value)!;
+        return SizedBox(
+          width: 220,
+          height: 168,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Bus / Transit pass (back left)
+              _GhostPassCard(
+                offset: const Offset(-22, 10),
+                rotation: -0.12,
+                scale: 0.88,
+                color: const Color(0xFF007AFF), // Blue transit
+                shimmerX: shimmerX - 30,
+                alpha: 0.45,
+                passType: _GhostPassType.transit,
+              ),
+              // Movie / Event pass (back right)
+              _GhostPassCard(
+                offset: const Offset(20, 4),
+                rotation: 0.11,
+                scale: 0.94,
+                color: const Color(0xFFE50914), // Crimson movie / event
+                shimmerX: shimmerX + 22,
+                alpha: 0.55,
+                passType: _GhostPassType.event,
+              ),
+              // Train / Flight boarding pass (center front)
+              _GhostPassCard(
+                offset: const Offset(0, -4),
+                rotation: -0.015,
+                scale: 1.0,
+                color: const Color(0xFFE05638), // Warm train / rail terracotta
+                shimmerX: shimmerX,
+                alpha: 0.72,
+                passType: _GhostPassType.boarding,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+enum _GhostPassType { transit, event, boarding }
+
+class _GhostPassCard extends StatelessWidget {
+  const _GhostPassCard({
+    required this.offset,
+    required this.rotation,
+    required this.scale,
+    required this.color,
+    required this.shimmerX,
+    required this.alpha,
+    required this.passType,
+  });
+
+  final Offset offset;
+  final double rotation;
+  final double scale;
+  final Color color;
+  final double shimmerX;
+  final double alpha;
+  final _GhostPassType passType;
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.translate(
+      offset: offset,
+      child: Transform.rotate(
+        angle: rotation,
+        child: Transform.scale(
+          scale: scale,
+          child: ClipPath(
+            clipper: const _TicketNotchClipper(notchRadius: 7, notchYFraction: 0.65),
+            child: Container(
+              width: 146,
+              height: 122,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                color: Colors.white.withValues(alpha: 0.54),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.82),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.16 * alpha),
+                    blurRadius: 26,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  // Subtle card gradient background
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            color.withValues(alpha: 0.15 * alpha),
+                            Colors.white.withValues(alpha: 0.38),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Header band with badge/icon
+                  Positioned(
+                    left: 14,
+                    top: 14,
+                    right: 14,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.32 * alpha),
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        ),
+                        Container(
+                          width: 38,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.20 * alpha),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Route / title ghost bars
+                  Positioned(
+                    left: 14,
+                    top: 36,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.28 * alpha),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          child: Icon(
+                            switch (passType) {
+                              _GhostPassType.transit => Icons.arrow_forward_rounded,
+                              _GhostPassType.event => Icons.local_activity_rounded,
+                              _GhostPassType.boarding => Icons.flight_takeoff_rounded,
+                            },
+                            size: 11,
+                            color: color.withValues(alpha: 0.38 * alpha),
+                          ),
+                        ),
+                        Container(
+                          width: 32,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.28 * alpha),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Perforated line above the stub
+                  Positioned(
+                    left: 10,
+                    right: 10,
+                    top: 79,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final count = (constraints.maxWidth / 6).floor();
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: List.generate(
+                            count,
+                            (_) => Container(
+                              width: 3,
+                              height: 1.5,
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.22 * alpha),
+                                borderRadius: BorderRadius.circular(1),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  // Mini barcode lines in the stub
+                  Positioned(
+                    left: 18,
+                    right: 18,
+                    bottom: 12,
+                    height: 18,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (int i = 0; i < 15; i++)
+                          Container(
+                            width: (i % 3 == 0 || i % 5 == 0) ? 2.5 : 1.2,
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: (0.18 + (i % 3) * 0.08) * alpha),
+                              borderRadius: BorderRadius.circular(1),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+
+                  // Shimmer shine highlight
+                  Positioned(
+                    left: shimmerX,
+                    top: -20,
+                    bottom: -20,
+                    child: Transform.rotate(
+                      angle: -0.42,
+                      child: Container(
+                        width: 32,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withValues(alpha: 0),
+                              Colors.white.withValues(alpha: 0.40 * alpha),
+                              Colors.white.withValues(alpha: 0),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A clipper that cuts ticket stub notches into the left and right edges.
+class _TicketNotchClipper extends CustomClipper<Path> {
+  const _TicketNotchClipper({
+    required this.notchRadius,
+    required this.notchYFraction,
+  });
+
+  final double notchRadius;
+  final double notchYFraction;
+
+  @override
+  Path getClip(Size size) {
+    final Path path = Path();
+    final double r = 20.0; // corner radius
+    final double ny = size.height * notchYFraction;
+    final double nr = notchRadius;
+
+    // Start top-left
+    path.moveTo(r, 0);
+    // Top edge
+    path.lineTo(size.width - r, 0);
+    path.arcToPoint(Offset(size.width, r), radius: Radius.circular(r));
+
+    // Right edge down to notch
+    path.lineTo(size.width, ny - nr);
+    // Inward semi-circle notch on right
+    path.arcToPoint(
+      Offset(size.width, ny + nr),
+      radius: Radius.circular(nr),
+      clockwise: false,
+    );
+    path.lineTo(size.width, size.height - r);
+    path.arcToPoint(Offset(size.width - r, size.height), radius: Radius.circular(r));
+
+    // Bottom edge
+    path.lineTo(r, size.height);
+    path.arcToPoint(Offset(0, size.height - r), radius: Radius.circular(r));
+
+    // Left edge up to notch
+    path.lineTo(0, ny + nr);
+    // Inward semi-circle notch on left
+    path.arcToPoint(
+      Offset(0, ny - nr),
+      radius: Radius.circular(nr),
+      clockwise: false,
+    );
+    path.lineTo(0, r);
+    path.arcToPoint(Offset(r, 0), radius: Radius.circular(r));
+
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant _TicketNotchClipper oldClipper) =>
+      oldClipper.notchRadius != notchRadius ||
+      oldClipper.notchYFraction != notchYFraction;
 }
 
 class _ErrorState extends StatelessWidget {

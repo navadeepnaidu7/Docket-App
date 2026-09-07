@@ -258,10 +258,7 @@ class _StopRow extends StatelessWidget {
               brand: brand,
             ),
           ),
-          SizedBox(
-            width: BusPassMetrics.stopRailWidth,
-            child: _StopRail(brand: brand),
-          ),
+          const SizedBox(width: 16),
           Expanded(
             child: _Stop(
               label: 'To',
@@ -272,47 +269,6 @@ class _StopRow extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// A dot at each end joined by a hairline, in the brand accent.
-class _StopRail extends StatelessWidget {
-  const _StopRail({required this.brand});
-
-  final BusBrandStyle brand;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          _Dot(color: brand.accent),
-          Expanded(
-            child: SizedBox(
-              width: 2,
-              child: ColoredBox(color: brand.accent),
-            ),
-          ),
-          _Dot(color: brand.accent),
-        ],
-      ),
-    );
-  }
-}
-
-class _Dot extends StatelessWidget {
-  const _Dot({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: BusPassMetrics.stopDotSize,
-      height: BusPassMetrics.stopDotSize,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }

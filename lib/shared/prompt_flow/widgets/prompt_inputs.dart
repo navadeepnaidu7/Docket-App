@@ -108,7 +108,10 @@ class _PromptTextInputState extends State<PromptTextInput>
     _lastLength = value.length;
     widget.onChanged(value);
     final int? max = widget.step.maxLength;
-    if (max != null && value.length == max && previous < max) {
+    if (widget.step.maxLines <= 1 &&
+        max != null &&
+        value.length == max &&
+        previous < max) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) widget.onSubmitted();
       });
@@ -146,10 +149,13 @@ class _PromptTextInputState extends State<PromptTextInput>
               color: ink,
             );
 
+    final int lines = widget.step.maxLines < 1 ? 1 : widget.step.maxLines;
+    final bool multiline = lines > 1;
+
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         return SizedBox(
-          height: 64,
+          height: multiline ? 36.0 + lines * 28 : 64,
           child: Stack(
             children: <Widget>[
               TextField(
@@ -158,12 +164,17 @@ class _PromptTextInputState extends State<PromptTextInput>
                 showCursor: false,
                 cursorColor: Colors.transparent,
                 onChanged: _changed,
-                onSubmitted: (_) => widget.onSubmitted(),
-                textInputAction: TextInputAction.next,
-                keyboardType: widget.step.keyboardType,
+                onSubmitted: multiline ? null : (_) => widget.onSubmitted(),
+                textInputAction: multiline
+                    ? TextInputAction.newline
+                    : TextInputAction.next,
+                keyboardType: multiline
+                    ? TextInputType.multiline
+                    : widget.step.keyboardType,
                 textCapitalization: widget.step.capitalization,
                 inputFormatters: widget.step.inputFormatters,
                 maxLength: widget.step.maxLength,
+                maxLines: lines,
                 style: style,
                 decoration: InputDecoration(
                   isDense: true,
@@ -197,7 +208,10 @@ class _PromptTextInputState extends State<PromptTextInput>
                         focused: _focus.hasFocus,
                         reduced: MediaQuery.disableAnimationsOf(context),
                         ink: ink,
-                        caretX: _caretX(style, constraints.maxWidth),
+                        caretX: multiline
+                            ? 0
+                            : _caretX(style, constraints.maxWidth),
+                        caretWidth: multiline ? constraints.maxWidth : 22,
                       );
                     },
                   ),

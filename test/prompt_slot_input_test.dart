@@ -137,6 +137,34 @@ void main() {
     expect(complete, isTrue);
   });
 
+  testWidgets('a 12-digit Aadhaar row completes at twelve', (
+    WidgetTester tester,
+  ) async {
+    String value = '';
+    var complete = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PromptSlotInput(
+            value: value,
+            label: 'Aadhaar',
+            length: 12,
+            digitsOnly: true,
+            onChanged: (String v) => value = v,
+            onSubmitted: () {},
+            onComplete: () => complete = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), '123412341234');
+    await tester.pump();
+
+    expect(value, '123412341234');
+    expect(complete, isTrue);
+  });
+
   testWidgets('a free-text prompt keeps a full field, not character slots', (
     WidgetTester tester,
   ) async {
