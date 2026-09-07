@@ -30,9 +30,9 @@ TRANSPARENT = (0, 0, 0, 0)
 
 # Monogram geometry from branding SVGs (viewBox 512).
 # circle path:  M136 120 H250 C344 120 392 170 392 256 C392 342 344 392 250 392 H136 Z
-#               hole cx=315 cy=256 r=22
+#               hole cx=315 cy=256 r=27
 # square path:  M120 104 H250 C355 104 408 160 408 256 C408 352 355 408 250 408 H120 Z
-#               hole cx=324 cy=256 r=24
+#               hole cx=324 cy=256 r=29
 MONOGRAM = {
     "circle": {
         "start": (136, 120),
@@ -40,7 +40,7 @@ MONOGRAM = {
         "top_right_ctrl": ((344, 120), (392, 170), (392, 256)),
         "bot_right_ctrl": ((392, 342), (344, 392), (250, 392)),
         "mid_top": (250, 120),
-        "hole": (315, 256, 22),
+        "hole": (315, 256, 27),
     },
     "square": {
         "start": (120, 104),
@@ -48,7 +48,7 @@ MONOGRAM = {
         "top_right_ctrl": ((355, 104), (408, 160), (408, 256)),
         "bot_right_ctrl": ((408, 352), (355, 408), (250, 408)),
         "mid_top": (250, 104),
-        "hole": (324, 256, 24),
+        "hole": (324, 256, 29),
     },
 }
 # squircle uses the same monogram as square (only outer radius differs)

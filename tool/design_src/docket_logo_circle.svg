@@ -8,7 +8,7 @@
        C392 342 344 392 250 392
        H136
        Z"
-    fill="white"/>
+    fill="#FFFFFF"/>
 
-  <circle cx="315" cy="256" r="22" fill="#0F172A"/>
+  <circle cx="315" cy="256" r="27" fill="#0F172A"/>
 </svg>

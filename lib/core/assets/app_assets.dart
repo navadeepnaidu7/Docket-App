@@ -10,8 +10,11 @@ abstract final class AppAssets {
 
   // ── Branding ─────────────────────────────────────────────────────────────────
 
-  /// Docket wordmark / app icon SVG (rounded square + monogram).
+  /// Docket app icon SVG (circle monogram).
   static const String docketLogo = 'assets/branding/docket_logo.svg';
+  static const String docketLogoCircle = 'assets/branding/docket_logo_circle.svg';
+  static const String docketLogoSquare = 'assets/branding/docket_logo_square.svg';
+  static const String docketLogoSquircle = 'assets/branding/docket_logo_squircle.svg';
 
   /// BookMyShow mark (movie pass chrome).
   static const String bookMyShowLogo = 'assets/passes/bookmyshow.svg';
