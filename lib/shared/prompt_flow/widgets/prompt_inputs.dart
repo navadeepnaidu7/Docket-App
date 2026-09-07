@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -8,6 +11,7 @@ import '../../../core/theme/prompt_typography.dart';
 import '../../../core/validation/document_validators.dart';
 import '../../widgets/bounce_tap.dart';
 import '../prompt_step.dart';
+import 'prompt_caret.dart';
 
 /// A single large text field, the only thing on its screen.
 ///
@@ -33,20 +37,51 @@ class PromptTextInput extends StatefulWidget {
   State<PromptTextInput> createState() => _PromptTextInputState();
 }
 
-class _PromptTextInputState extends State<PromptTextInput> {
+class _PromptTextInputState extends State<PromptTextInput>
+    with SingleTickerProviderStateMixin {
   late final TextEditingController _controller;
-  late final FocusNode _focus;
+  final FocusNode _focus = FocusNode();
+  late final AnimationController _blink;
+  Timer? _focusTimer;
+  late int _lastLength;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.value);
-    _focus = FocusNode();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future<void>.delayed(const Duration(milliseconds: 200), () {
-        if (mounted) _focus.requestFocus();
-      });
+    _lastLength = widget.value.length;
+    _blink = AnimationController(vsync: this, duration: PromptCaret.period);
+    _focus.addListener(_syncBlink);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _requestFocus());
+  }
+
+  void _requestFocus() {
+    if (!mounted) return;
+    _focusTimer?.cancel();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _focus.requestFocus();
+      return;
+    }
+    _focusTimer = Timer(const Duration(milliseconds: 280), () {
+      if (mounted) _focus.requestFocus();
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncBlink();
+  }
+
+  void _syncBlink() {
+    final bool live =
+        _focus.hasFocus && !MediaQuery.disableAnimationsOf(context);
+    if (live) {
+      if (!_blink.isAnimating) _blink.repeat();
+    } else {
+      _blink.stop();
+      _blink.value = 0;
+    }
   }
 
   @override
@@ -60,9 +95,40 @@ class _PromptTextInputState extends State<PromptTextInput> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    _focusTimer?.cancel();
+    _focus.removeListener(_syncBlink);
     _focus.dispose();
+    _controller.dispose();
+    _blink.dispose();
     super.dispose();
+  }
+
+  void _changed(String value) {
+    final int previous = _lastLength;
+    _lastLength = value.length;
+    widget.onChanged(value);
+    final int? max = widget.step.maxLength;
+    if (max != null && value.length == max && previous < max) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onSubmitted();
+      });
+    }
+  }
+
+  double _caretX(TextStyle style, double maxWidth) {
+    final int offset = _controller.selection.extentOffset.clamp(
+      0,
+      _controller.text.length,
+    );
+    final TextPainter painter = TextPainter(
+      text: TextSpan(text: _controller.text.substring(0, offset), style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    final double width = painter.width;
+    painter.dispose();
+    const double dash = 22;
+    return math.max(0, math.min(width, math.max(0, maxWidth - dash)));
   }
 
   @override
@@ -70,51 +136,74 @@ class _PromptTextInputState extends State<PromptTextInput> {
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
     final bool mono = widget.step.style == PromptInputStyle.mono;
+    final Color ink = widget.hasError ? scheme.error : scheme.onSurface;
+    final TextStyle style =
+        (mono ? theme.textTheme.promptInputMono : theme.textTheme.promptInput)
+            .copyWith(
+              fontSize: 22,
+              fontWeight: FontWeight.w500,
+              letterSpacing: mono ? 1.4 : -0.3,
+              color: ink,
+            );
 
-    return AnimatedBuilder(
-      animation: _focus,
-      builder: (BuildContext context, Widget? _) {
-        final bool focused = _focus.hasFocus;
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: Space.x5),
-          decoration: BoxDecoration(
-            color: AppTokens.fieldFill(scheme, focused: focused),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: widget.hasError
-                  ? AppTheme.danger.withValues(alpha: 0.55)
-                  : focused
-                  ? scheme.primary.withValues(alpha: 0.55)
-                  : AppTokens.separator(scheme),
-              width: focused ? 1.5 : 1.0,
-            ),
-          ),
-          child: TextField(
-            controller: _controller,
-            focusNode: _focus,
-            onChanged: widget.onChanged,
-            onSubmitted: (_) => widget.onSubmitted(),
-            textInputAction: TextInputAction.next,
-            keyboardType: widget.step.keyboardType,
-            textCapitalization: widget.step.capitalization,
-            inputFormatters: widget.step.inputFormatters,
-            maxLength: widget.step.maxLength,
-            style: mono
-                ? theme.textTheme.promptInputMono
-                : theme.textTheme.promptInput,
-            cursorColor: scheme.primary,
-            decoration: InputDecoration(
-              isDense: true,
-              border: InputBorder.none,
-              counterText: '',
-              hintText: widget.step.placeholder,
-              hintStyle:
-                  (mono
-                          ? theme.textTheme.promptInputMono
-                          : theme.textTheme.promptInput)
-                      .copyWith(color: AppTokens.tertiaryLabel(scheme)),
-              contentPadding: const EdgeInsets.symmetric(vertical: Space.x5),
-            ),
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        return SizedBox(
+          height: 64,
+          child: Stack(
+            children: <Widget>[
+              TextField(
+                controller: _controller,
+                focusNode: _focus,
+                showCursor: false,
+                cursorColor: Colors.transparent,
+                onChanged: _changed,
+                onSubmitted: (_) => widget.onSubmitted(),
+                textInputAction: TextInputAction.next,
+                keyboardType: widget.step.keyboardType,
+                textCapitalization: widget.step.capitalization,
+                inputFormatters: widget.step.inputFormatters,
+                maxLength: widget.step.maxLength,
+                style: style,
+                decoration: InputDecoration(
+                  isDense: true,
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  counterText: '',
+                  hintText: widget.step.placeholder,
+                  hintStyle: style.copyWith(
+                    color: AppTokens.tertiaryLabel(scheme),
+                    fontWeight: FontWeight.w400,
+                  ),
+                  contentPadding: const EdgeInsets.only(top: 12, bottom: 20),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 8,
+                child: IgnorePointer(
+                  child: AnimatedBuilder(
+                    animation: Listenable.merge(<Listenable>[
+                      _blink,
+                      _controller,
+                      _focus,
+                    ]),
+                    builder: (BuildContext context, Widget? _) {
+                      return PromptCaretLine(
+                        blink: _blink.value,
+                        focused: _focus.hasFocus,
+                        reduced: MediaQuery.disableAnimationsOf(context),
+                        ink: ink,
+                        caretX: _caretX(style, constraints.maxWidth),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -415,29 +504,25 @@ class PromptConfirmValue extends StatelessWidget {
     final ColorScheme scheme = theme.colorScheme;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(
-            horizontal: Space.x4,
-            vertical: Space.x4,
-          ),
-          decoration: BoxDecoration(
-            color: AppTokens.groupedFieldFill(
-              scheme,
-              isDark: theme.brightness == Brightness.dark,
-            ),
-            borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-          ),
-          child: Text(
-            value,
-            style: mono
-                ? theme.textTheme.promptInputMono
-                : theme.textTheme.promptInput,
-          ),
+        Text(
+          value,
+          textAlign: TextAlign.center,
+          style:
+              (mono
+                      ? theme.textTheme.promptInputMono
+                      : theme.textTheme.promptInput)
+                  .copyWith(fontSize: 22, fontWeight: FontWeight.w500),
         ),
-        const SizedBox(height: Space.x3),
+        const SizedBox(height: 12),
+        PromptCaretLine(
+          blink: 0,
+          focused: false,
+          reduced: true,
+          ink: scheme.onSurface,
+          caretX: 0,
+        ),
+        const SizedBox(height: Space.x4),
         Row(
           children: <Widget>[
             _SourceMarker(source: source, trusted: trusted),

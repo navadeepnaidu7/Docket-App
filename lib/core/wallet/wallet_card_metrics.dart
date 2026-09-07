@@ -44,8 +44,7 @@ class WalletCardMetrics {
   /// canvas they simply grew past short viewports — badly in landscape.
   static const double ticketCanvasWidth = 382;
   static const double ticketCanvasHeight = 620;
-  static const Size ticketCanvas =
-      Size(ticketCanvasWidth, ticketCanvasHeight);
+  static const Size ticketCanvas = Size(ticketCanvasWidth, ticketCanvasHeight);
 
   /// Portrait ticket ratio, kept in step with [ticketCanvas].
   static const double ticketAspect = ticketCanvasWidth / ticketCanvasHeight;
@@ -54,21 +53,15 @@ class WalletCardMetrics {
   /// width/height from here, so this is the single place the train card's size
   /// is declared.
   ///
-  /// The width and every interior baseline come straight from the Figma export.
-  /// The *height* does not: the export's 630 left the status band 90dp tall for
-  /// one line of text, and at that ratio (0.581) the card was taller than the
-  /// movie face and got height-clamped by the carousel page — it filled the
-  /// page box top to bottom and then could not even use the full width.
-  /// Trimming the band to 58dp lands the canvas on 594, which is [ticketAspect]
-  /// to three decimals, so a train pass and a movie pass now frame identically
-  /// in the wallet. Interior baselines were untouched; only the band moved.
+  /// Compact train-specific layout: 442dp of ticket content and a 50dp status
+  /// strip. It keeps the original width without borrowing poster-height gaps
+  /// from the movie card.
   ///
   /// Keep this in step with `TrainPassMetrics.bandHeight` — the band absorbs
   /// the whole difference between the content block and the card's bottom edge.
   static const double trainCanvasWidth = 366;
-  static const double trainCanvasHeight = 594;
-  static const Size trainCanvas =
-      Size(trainCanvasWidth, trainCanvasHeight);
+  static const double trainCanvasHeight = 492;
+  static const Size trainCanvas = Size(trainCanvasWidth, trainCanvasHeight);
 
   /// Train pass ratio, kept in step with [trainCanvas].
   static const double trainAspect = trainCanvasWidth / trainCanvasHeight;

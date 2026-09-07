@@ -8,6 +8,7 @@ import '../../../shared/prompt_flow/prompt_flow_controller.dart';
 import '../../../shared/prompt_flow/prompt_flow_screen.dart';
 import '../../../shared/prompt_flow/prompt_step.dart';
 import '../../../shared/prompt_flow/widgets/prompt_inputs.dart';
+import '../../../shared/prompt_flow/widgets/prompt_slot_input.dart';
 import '../../../shared/prompt_flow/widgets/prompt_review.dart';
 import '../../../shared/widgets/completion_celebration.dart';
 import '../../mrz_scanner/domain/mrz_result.dart';
@@ -222,6 +223,16 @@ class _PassportPromptScreenState extends ConsumerState<PassportPromptScreen> {
     _flow.next();
   }
 
+  /// Auto-advance once the slot row is full. Deferred a frame so the field
+  /// is not disposed in the middle of [TextField.onChanged].
+  void _advanceWhenFilled(String stepId) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_flow.current.id != stepId) return;
+      if (_flow.next()) HapticService.select();
+    });
+  }
+
   void _choosePath(PromptPath path) {
     HapticService.select();
     _flow.setPath(path);
@@ -324,14 +335,22 @@ class _PassportPromptScreenState extends ConsumerState<PassportPromptScreen> {
       );
     }
 
+    if (step.id == PassportField.passportNumber ||
+        step.kind == PromptStepKind.date) {
+      final String stepId = step.id;
+      return PromptSlotInput(
+        key: ValueKey<String>(stepId),
+        value: _flow.state.value(stepId),
+        label: step.label ?? stepId,
+        isDate: step.kind == PromptStepKind.date,
+        hasError: _flow.currentError != null,
+        onChanged: (String value) => _flow.setValue(stepId, value),
+        onSubmitted: _onPrimary,
+        onComplete: () => _advanceWhenFilled(stepId),
+      );
+    }
+
     return switch (step.kind) {
-      PromptStepKind.date => PromptDateInput(
-        value: _flow.state.value(step.id),
-        mode: step.id == PassportField.expiryDate
-            ? PromptDateMode.future
-            : PromptDateMode.past,
-        onChanged: (String v) => _flow.setValue(step.id, v),
-      ),
       PromptStepKind.choice => PromptChoiceList(
         choices: step.choices,
         value: _flow.state.value(step.id),
@@ -417,11 +436,11 @@ class _PassportPromptScreenState extends ConsumerState<PassportPromptScreen> {
         NfcPhase.failed => _labelFor(_nfcFailure?.primary),
         NfcPhase.success => 'Continue',
         NfcPhase.waiting || NfcPhase.reading => 'Cancel',
-        NfcPhase.idle => 'Start reading',
+        NfcPhase.idle => 'Scan now',
       };
     }
     if (_flow.isConfirming) return "Yes, that's right";
-    return 'Continue';
+    return 'Next';
   }
 
   static String _labelFor(NfcRecovery? action) => switch (action) {
@@ -465,10 +484,13 @@ class _PassportPromptScreenState extends ConsumerState<PassportPromptScreen> {
     return AnimatedBuilder(
       animation: _flow,
       builder: (BuildContext context, Widget? _) {
-        final bool isMethod = _flow.current.id == PassportField.method;
+        final String id = _flow.current.id;
+        final bool isMethod = id == PassportField.method;
+        final bool isReview = id == PassportField.review;
 
         return PromptFlowScreen(
           controller: _flow,
+          minimal: !isMethod && !isReview,
           stepBuilder: _buildStep,
           primaryLabel: _primaryLabel,
           onPrimary: _onPrimary,

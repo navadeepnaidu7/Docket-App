@@ -31,6 +31,7 @@ class PromptFlowScreen extends StatefulWidget {
     this.primaryEnabled = true,
     this.showPrimary = true,
     this.showChrome = true,
+    this.minimal = false,
   });
 
   final PromptFlowController controller;
@@ -56,6 +57,7 @@ class PromptFlowScreen extends StatefulWidget {
 
   /// Action steps (camera, NFC) hide the question block and own the body.
   final bool showChrome;
+  final bool minimal;
 
   @override
   State<PromptFlowScreen> createState() => _PromptFlowScreenState();
@@ -120,20 +122,45 @@ class _PromptFlowScreenState extends State<PromptFlowScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              _Chrome(controller: c, onBack: _handleBack),
-              _Progress(value: c.progress, scheme: scheme),
+              _Chrome(
+                controller: c,
+                onBack: _handleBack,
+                minimal: widget.minimal,
+              ),
+              if (!widget.minimal) _Progress(value: c.progress, scheme: scheme),
               Expanded(
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 240),
+                  duration: Duration(
+                    milliseconds: MediaQuery.disableAnimationsOf(context)
+                        ? 120
+                        : 400,
+                  ),
                   switchInCurve: easeOutQuint,
                   switchOutCurve: Curves.easeInCubic,
                   transitionBuilder: (Widget child, Animation<double> anim) {
+                    final bool reduced = MediaQuery.disableAnimationsOf(
+                      context,
+                    );
+                    if (reduced) {
+                      return FadeTransition(opacity: anim, child: child);
+                    }
+                    // Incoming and outgoing must travel opposite ways or both
+                    // drift off the same edge and the heading appears to swap
+                    // in place. Key equality tells us which child is arriving.
                     final bool back = c.direction == PromptDirection.backward;
+                    final bool incoming =
+                        child.key == ValueKey<String>(step.id);
+                    final double dx = back ? -0.06 : 0.06;
+                    final Offset begin = incoming
+                        ? Offset(dx, 0)
+                        : Offset(-dx, 0);
                     return FadeTransition(
-                      opacity: anim,
+                      opacity: anim.drive(
+                        CurveTween(curve: const Interval(0.0, 0.9)),
+                      ),
                       child: SlideTransition(
                         position: Tween<Offset>(
-                          begin: Offset(back ? -0.06 : 0.06, 0),
+                          begin: begin,
                           end: Offset.zero,
                         ).animate(anim),
                         child: child,
@@ -145,7 +172,16 @@ class _PromptFlowScreenState extends State<PromptFlowScreen> {
                     // centre-jump against a tall one mid-crossfade.
                     return Stack(
                       alignment: Alignment.topLeft,
-                      children: <Widget>[...previous, ?current],
+                      fit: StackFit.expand,
+                      children: <Widget>[
+                        for (final child in previous)
+                          ExcludeFocus(
+                            child: IgnorePointer(
+                              child: ExcludeSemantics(child: child),
+                            ),
+                          ),
+                        ?current,
+                      ],
                     );
                   },
                   // Keyed on the step id, not an index. Keying on an index is
@@ -153,8 +189,10 @@ class _PromptFlowScreenState extends State<PromptFlowScreen> {
                   // two steps that happened to share a progress position.
                   child: _StepBody(
                     key: ValueKey<String>(step.id),
-                    controller: c,
-                    step: step,
+                    question: c.currentQuestion,
+                    helper: step.helper?.call(c.state),
+                    error: c.currentError,
+                    minimal: widget.minimal,
                     showChrome: widget.showChrome,
                     child: widget.stepBuilder(context, step),
                   ),
@@ -178,7 +216,13 @@ class _PromptFlowScreenState extends State<PromptFlowScreen> {
 
 /// Back control and step counter.
 class _Chrome extends StatelessWidget {
-  const _Chrome({required this.controller, required this.onBack});
+  const _Chrome({
+    required this.controller,
+    required this.onBack,
+    required this.minimal,
+  });
+
+  final bool minimal;
 
   final PromptFlowController controller;
   final VoidCallback onBack;
@@ -214,7 +258,7 @@ class _Chrome extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            if (controller.stepCount > 1)
+            if (!minimal && controller.stepCount > 1)
               Padding(
                 padding: const EdgeInsets.only(right: Space.x3),
                 child: Text(
@@ -270,14 +314,18 @@ class _Progress extends StatelessWidget {
 class _StepBody extends StatelessWidget {
   const _StepBody({
     super.key,
-    required this.controller,
-    required this.step,
+    required this.question,
+    required this.helper,
+    required this.error,
+    required this.minimal,
     required this.child,
     required this.showChrome,
   });
 
-  final PromptFlowController controller;
-  final PromptStep step;
+  final String question;
+  final String? helper;
+  final String? error;
+  final bool minimal;
   final Widget child;
   final bool showChrome;
 
@@ -286,8 +334,6 @@ class _StepBody extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
     final TextTheme text = theme.textTheme;
-    final String? helper = step.helper?.call(controller.state);
-    final String? error = controller.currentError;
 
     // Centred in the space between the progress bar and the CTA, rather than
     // pinned to the top with the rest of the screen left empty. On a tall
@@ -307,19 +353,34 @@ class _StepBody extends StatelessWidget {
             // column grow past it and scroll when the keyboard is up or the
             // text is scaled.
             constraints: BoxConstraints(
-              minHeight: constraints.maxHeight - Space.x6 * 2,
+              minHeight: (constraints.maxHeight - Space.x6 * 2).clamp(
+                0.0,
+                double.infinity,
+              ),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: minimal
+                  ? CrossAxisAlignment.stretch
+                  : CrossAxisAlignment.start,
               children: <Widget>[
                 if (showChrome) ...<Widget>[
                   EntryReveal(
+                    enabled:
+                        !minimal && !MediaQuery.disableAnimationsOf(context),
                     slideY: 12,
                     duration: const Duration(milliseconds: 320),
                     child: Text(
-                      controller.currentQuestion,
-                      style: text.promptQuestion,
+                      question,
+                      textAlign: minimal ? TextAlign.center : TextAlign.start,
+                      style: minimal
+                          ? text.promptQuestion.copyWith(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: -0.45,
+                              height: 1.25,
+                            )
+                          : text.promptQuestion,
                       maxLines: 3,
                       // Large accessibility sizes would otherwise push the input off
                       // a short screen entirely.
@@ -330,18 +391,34 @@ class _StepBody extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (helper != null && helper.isNotEmpty) ...<Widget>[
+                  if (helper != null && helper!.isNotEmpty) ...<Widget>[
                     const SizedBox(height: Space.x2),
                     EntryReveal(
+                      enabled:
+                          !minimal && !MediaQuery.disableAnimationsOf(context),
                       slideY: 10,
                       delay: const Duration(milliseconds: 40),
                       duration: const Duration(milliseconds: 320),
-                      child: Text(helper, style: text.promptHelper(scheme)),
+                      child: Text(
+                        helper!,
+                        textAlign: minimal ? TextAlign.center : TextAlign.start,
+                        style: text
+                            .promptHelper(scheme)
+                            .copyWith(
+                              fontSize: minimal ? 13 : 15,
+                              letterSpacing:
+                                  minimal &&
+                                      RegExp(r'^[A-Z0-9]+$').hasMatch(helper!)
+                                  ? 1.8
+                                  : 0,
+                            ),
+                      ),
                     ),
                   ],
                   const SizedBox(height: Space.x8),
                 ],
                 EntryReveal(
+                  enabled: !minimal && !MediaQuery.disableAnimationsOf(context),
                   slideY: 10,
                   delay: const Duration(milliseconds: 80),
                   duration: const Duration(milliseconds: 320),
@@ -350,7 +427,7 @@ class _StepBody extends StatelessWidget {
                 // Reserved whether or not an error is showing, so the CTA
                 // below never jumps when validation fails.
                 SizedBox(
-                  height: 20,
+                  height: error == null ? 40 : null,
                   child: error == null
                       ? null
                       : Padding(
@@ -358,7 +435,13 @@ class _StepBody extends StatelessWidget {
                             top: Space.x1,
                             left: 2,
                           ),
-                          child: Text(error, style: text.promptError),
+                          child: Text(
+                            error!,
+                            textAlign: minimal
+                                ? TextAlign.center
+                                : TextAlign.start,
+                            style: text.promptError,
+                          ),
                         ),
                 ),
               ],
@@ -420,7 +503,7 @@ class _Footer extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: fill,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusButton),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusPill),
                   ),
                   child: Text(
                     primaryLabel,

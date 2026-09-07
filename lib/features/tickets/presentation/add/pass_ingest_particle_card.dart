@@ -155,6 +155,9 @@ class _PassIngestParticleCardState extends State<PassIngestParticleCard>
         ? const Color(0xFFF5F5F7)
         : const Color(0xFF171719);
     final Color muted = ink.withValues(alpha: 0.58);
+    final Color veil = isDark
+        ? const Color(0xFF101012)
+        : const Color(0xFFF8F8FA);
 
     final String semanticsLabel = _semanticsLabel(state);
     final Animation<double> fade = CurvedAnimation(
@@ -185,8 +188,23 @@ class _PassIngestParticleCardState extends State<PassIngestParticleCard>
             children: <Widget>[
               ClipRect(
                 child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 2.4, sigmaY: 2.4),
-                  child: const ColoredBox(color: Colors.transparent),
+                  filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                  // Quiet the ticket directly behind the field. Feather the
+                  // veil into the surrounding wallet, with no panel edge.
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: const Alignment(0, -0.04),
+                        radius: 0.85,
+                        colors: <Color>[
+                          veil.withValues(alpha: isDark ? 0.68 : 0.84),
+                          veil.withValues(alpha: isDark ? 0.5 : 0.7),
+                          veil.withValues(alpha: 0),
+                        ],
+                        stops: const <double>[0, 0.48, 1],
+                      ),
+                    ),
+                  ),
                 ),
               ),
               RepaintBoundary(
@@ -393,10 +411,10 @@ class _PassParticlePainter extends CustomPainter {
     final double radius = math.min(size.width * 0.44, size.height * 0.34);
     final Color particleBright = isDark
         ? const Color(0xFFF9FAFF)
-        : const Color(0xFF292D36);
+        : const Color(0xFF202228);
     final Color particleCool = isDark
         ? const Color(0xFFA9C8E8)
-        : const Color(0xFF637A94);
+        : const Color(0xFF686C74);
     final double time = reduceMotion ? 0 : flow.value * _tau;
     final double settle = outcome.value;
     final double motionSettle = _smoothstep(settle);
@@ -408,24 +426,26 @@ class _PassParticlePainter extends CustomPainter {
     final Paint halo = Paint()
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.2);
 
-    // One restrained pool of light ties the sharp grains together. No layer
-    // blur per particle: just a radial wash and a few soft foreground glints.
-    final double atmosphere = (isDark ? 0.055 : 0.022) * (1 - settle);
-    canvas.drawCircle(
-      center,
-      radius * 1.1,
-      Paint()
-        ..shader = ui.Gradient.radial(
-          center,
-          radius * 1.1,
-          <Color>[
-            particleCool.withValues(alpha: atmosphere),
-            particleCool.withValues(alpha: atmosphere * 0.4),
-            particleCool.withValues(alpha: 0),
-          ],
-          <double>[0, 0.48, 1],
-        ),
-    );
+    // Light surfaces use crisp graphite and tonal depth. Reserve luminous
+    // atmosphere for dark surfaces, where it actually adds contrast.
+    if (isDark) {
+      final double atmosphere = 0.055 * (1 - settle);
+      canvas.drawCircle(
+        center,
+        radius * 1.1,
+        Paint()
+          ..shader = ui.Gradient.radial(
+            center,
+            radius * 1.1,
+            <Color>[
+              particleCool.withValues(alpha: atmosphere),
+              particleCool.withValues(alpha: atmosphere * 0.4),
+              particleCool.withValues(alpha: 0),
+            ],
+            <double>[0, 0.48, 1],
+          ),
+      );
+    }
 
     for (int i = 0; i < _seeds.length; i++) {
       final _ParticleSeed seed = _seeds[i];
@@ -468,7 +488,10 @@ class _PassParticlePainter extends CustomPainter {
           : 0.84 + 0.16 * math.sin(time + seed.phase * _tau);
       final double life =
           _smoothstep(cycle / 0.14) * _smoothstep((1 - cycle) / 0.16);
-      double alpha = seed.alpha * (0.38 + depth * 0.62) * edge * shimmer * life;
+      final double bodyOpacity = isDark
+          ? seed.alpha * (0.38 + depth * 0.62)
+          : (0.72 + seed.alpha * 0.28) * (0.56 + depth * 0.44);
+      double alpha = bodyOpacity * edge * shimmer * life;
       if (mode == _ParticleMode.success) {
         alpha *= 1 - _smoothstep((settle - 0.18) / 0.82);
       } else if (mode != _ParticleMode.loading) {
@@ -478,7 +501,7 @@ class _PassParticlePainter extends CustomPainter {
       final Color baseColor = Color.lerp(
         particleBright,
         particleCool,
-        seed.coolness * 0.5,
+        isDark ? seed.coolness * 0.5 : 0.12 + (1 - depth) * 0.55,
       )!;
       final Color color = mode == _ParticleMode.failure
           ? Color.lerp(baseColor, const Color(0xFFCE756C), motionSettle * 0.65)!
@@ -501,9 +524,11 @@ class _PassParticlePainter extends CustomPainter {
           ..strokeWidth = 0.35 + seed.size * 0.3;
         canvas.drawLine(tail, position, trail);
       }
-      final double grainRadius = 0.24 + seed.size * 0.48 + depth * depth * 0.48;
-      if (i % 17 == 0 && depth > 0.55) {
-        halo.color = color.withValues(alpha: alpha * (isDark ? 0.32 : 0.12));
+      final double grainRadius = isDark
+          ? 0.24 + seed.size * 0.48 + depth * depth * 0.48
+          : 0.38 + seed.size * 0.54 + depth * depth * 0.7;
+      if (isDark && i % 17 == 0 && depth > 0.55) {
+        halo.color = color.withValues(alpha: alpha * 0.32);
         canvas.drawCircle(position, grainRadius * 2, halo);
       }
       particle.color = color.withValues(alpha: alpha);

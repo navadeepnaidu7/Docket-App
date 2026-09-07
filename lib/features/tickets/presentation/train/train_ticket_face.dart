@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/pass_code.dart';
+import '../../domain/pnr_format.dart';
 import '../../domain/ticket_models.dart';
 import '../pass_code_block.dart';
 import 'train_pass_theme.dart';
@@ -21,11 +22,8 @@ enum TrainTicketDensity {
 
 /// Train pass face — warm blush card, serif station codes, dynamic status band.
 ///
-/// Laid out by absolute baseline against a fixed 366 x 630 canvas so it matches
-/// the Figma export exactly; [WalletCardCanvas] scales that canvas to whatever
-/// box the device gives it. Positions come from [TrainPassMetrics] — do not
-/// re-measure them from a screenshot, they were taken off the export's path
-/// coordinates.
+/// Laid out against a compact fixed canvas, scaled by [WalletCardCanvas].
+/// Shared baselines and insets keep both data columns aligned.
 class TrainTicketFace extends StatelessWidget {
   const TrainTicketFace({
     super.key,
@@ -68,8 +66,7 @@ class TrainTicketFace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final MockTicket t = ticket;
-    final bool isExpired =
-        !useBrandColors && t.status == TicketStatus.expired;
+    final bool isExpired = !useBrandColors && t.status == TicketStatus.expired;
     final TrainPassColors c = TrainPassColors.of(isExpired: isExpired);
     final PassCode? code = t.passCode;
 
@@ -100,11 +97,7 @@ class TrainTicketFace extends StatelessWidget {
               right: 0,
               top: TrainPassMetrics.bandTop,
               height: TrainPassMetrics.bandHeight,
-              child: TrainStatusBand(
-                pass: t,
-                colors: c,
-                clock: clock,
-              ),
+              child: TrainStatusBand(pass: t, colors: c, clock: clock),
             ),
 
             // ── Station header ──
@@ -261,7 +254,9 @@ class TrainTicketFace extends StatelessWidget {
             _Baselined(
               baseline: TrainPassMetrics.passengerValueBaseline,
               left: TrainPassMetrics.inset,
-              right: TrainPassMetrics.width - TrainPassMetrics.passengerRight,
+              right: showCode && code != null
+                  ? TrainPassMetrics.width - TrainPassMetrics.passengerRight
+                  : TrainPassMetrics.inset,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
@@ -309,9 +304,8 @@ class TrainTicketFace extends StatelessWidget {
 
             // ── Code ──
             //
-            // Omitted outright when the ticket has none. The square used to be
-            // decorative art that always drew; a code-shaped mark that encodes
-            // nothing is worse than a gap, because it only fails at the gate.
+            // A labelled scan affordance, not a miniature QR. Actual payload
+            // rendering is deferred until the user opens the code sheet.
             if (showCode && code != null)
               Positioned(
                 left: TrainPassMetrics.qrLeft,
@@ -331,8 +325,9 @@ class TrainTicketFace extends StatelessWidget {
               child: IgnorePointer(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius:
-                        BorderRadius.circular(TrainPassMetrics.cornerR),
+                    borderRadius: BorderRadius.circular(
+                      TrainPassMetrics.cornerR,
+                    ),
                     border: Border.all(color: c.border),
                   ),
                 ),
@@ -353,19 +348,18 @@ class TrainTicketFace extends StatelessWidget {
   List<Widget> _grid(MockTicket t, TrainPassColors c) {
     final List<(String, String, String, String)> rows =
         <(String, String, String, String)>[
-      ('Date', _shortDate(t.date), 'Duration', t.duration),
-      (
-        'Departure (${_code(t.fromCode)})',
-        t.departTime,
-        'Arrival (${_code(t.toCode)})',
-        t.arriveTime,
-      ),
-      ('Coach /Seat', _coachSeat(t), 'Class Type', t.ticketClass),
-    ];
+          ('Date', _shortDate(t.date), 'Duration', t.duration),
+          (
+            'Departure (${_code(t.fromCode)})',
+            t.departTime,
+            'Arrival (${_code(t.toCode)})',
+            t.arriveTime,
+          ),
+          ('Coach / Seat', _coachSeat(t), 'Class', t.ticketClass),
+        ];
 
-    const double colOneWidth = TrainPassMetrics.gridColumnTwoX -
-        TrainPassMetrics.inset -
-        10; // 158
+    const double colOneWidth =
+        TrainPassMetrics.gridColumnTwoX - TrainPassMetrics.inset - 10; // 158
     const double colTwoWidth =
         TrainPassMetrics.contentRight - TrainPassMetrics.gridColumnTwoX; // 150
 
@@ -459,12 +453,8 @@ String _coachSeat(MockTicket t) {
   return coaches.isEmpty ? seats : '$coaches / $seats';
 }
 
-/// Indian Railways PNRs are 10 digits and are printed 3-7.
 String _formatPnr(String raw) {
-  final String v = raw.trim();
-  if (v.length == 10 && !v.contains('-')) {
-    return '${v.substring(0, 3)}-${v.substring(3)}';
-  }
+  final String v = PnrFormat.display(raw);
   return v.isEmpty ? _absent : v;
 }
 
@@ -514,8 +504,9 @@ class _Baselined extends StatelessWidget {
     // which is how the destination station name ended up floating mid-card
     // instead of aligning under its code. The SizedBox restores a tight width
     // so the child fills the column and can align inside it.
-    final Widget sized =
-        width == null ? child : SizedBox(width: width, child: child);
+    final Widget sized = width == null
+        ? child
+        : SizedBox(width: width, child: child);
 
     return Positioned(
       left: left,

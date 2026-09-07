@@ -1,25 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../domain/pass_code.dart';
-import 'pass_code_view.dart';
 
-/// The small code square printed on a pass face.
-///
-/// Draws the pass's **real** code, scaled into the square the train design
-/// export drew. It used to paint a fixed 7x7 grid that encoded nothing, on the
-/// theory that a glance card only needs to look like a ticket. That is exactly
-/// the trap: a user cannot tell decorative code art from the real thing, and
-/// finds out at a turnstile. A pass with no code omits this widget entirely —
-/// see `docs/features/ticket-code-extraction.md`.
-///
-/// [onTap] opens the full-screen view, where the code is big enough to scan
-/// from; at this size it is identification, not a scanning target.
-///
-/// Used by the train face. Every dimension is a ratio of [size], so it stays
-/// proportional at whatever scale its canvas gives it. Kept as a shared widget
-/// rather than folded back into the train file because the code square and the
-/// dashed rule are pass chrome, not train chrome — the bus face happens not to
-/// use them, since its brand header carries the identity instead.
+/// Lightweight code-availability indicator, deliberately not a scannable QR.
+/// No payload encoding or image decoding happens on the animated pass face.
+/// [onTap] opens the real code at scanning size in details. Callers omit this
+/// widget when there is no code.
 class PassCodeBlock extends StatelessWidget {
   const PassCodeBlock({
     super.key,
@@ -32,7 +18,7 @@ class PassCodeBlock extends StatelessWidget {
   /// Side of the square. The export drew it at 69.
   final double size;
 
-  /// The code to draw. Callers omit the whole widget when the pass has none.
+  /// The available code. Its payload is never rendered here.
   final PassCode code;
 
   final Color borderColor;
@@ -59,17 +45,53 @@ class PassCodeBlock extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.all(inset),
           child: Center(
-            child: PassCodeView(code: code, width: size - inset * 2),
+            // Never decode images or encode a dense payload on a moving card.
+            // The labelled scan icon is an affordance, not a fake QR symbol.
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  Icons.document_scanner_outlined,
+                  size: size * 0.38,
+                  color: const Color(0xFF6B5A5E),
+                ),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    onTap == null ? 'Code' : 'View code',
+                    maxLines: 1,
+                    softWrap: false,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      height: 1.2,
+                      color: Color(0xFF6B5A5E),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
 
-    if (onTap == null) return block;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: block,
+    return Semantics(
+      label: onTap == null
+          ? 'Ticket code available in details'
+          : 'View ticket code',
+      button: onTap != null,
+      child: onTap == null
+          ? block
+          : TextButton(
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                fixedSize: Size.square(size),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: onTap,
+              child: block,
+            ),
     );
   }
 }

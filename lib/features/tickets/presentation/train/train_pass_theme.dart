@@ -129,31 +129,30 @@ abstract final class TrainPassMetrics {
   static const double contentRight = width - inset; // 342
 
   // ── Station header ──
-  static const double codeBaseline = 88;
-  static const double codeSize = 57;
+  static const double codeBaseline = 68;
+  static const double codeSize = 48;
   static const double codeMaxWidth = 112.5;
-  static const double connectorY = 75.5;
+  static const double connectorY = 55.5;
 
-  /// Clear space held between a station code and the first dash of the
-  /// connector. The export leaves 31.5 on the left and 30.3 on the right.
-  static const double codeConnectorGap = 31;
-  static const double stationNameBaseline = 118;
+  /// Clear space between a station code and the route connector.
+  static const double codeConnectorGap = 16;
+  static const double stationNameBaseline = 91;
 
-  static const double headerRuleY = 144.5;
+  static const double headerRuleY = 111;
 
   // ── Train identity ──
-  static const double trainNameBaseline = 181;
-  static const double trainNumberBaseline = 202;
+  static const double trainNameBaseline = 139;
+  static const double trainNumberBaseline = 159;
   static const double chipLeft = 295;
-  static const double chipTop = 171;
+  static const double chipTop = 132;
   static const double chipWidth = 47;
   static const double chipHeight = 29;
 
   // ── Data grid ──
   static const double gridColumnTwoX = 192;
-  static const double gridFirstLabelBaseline = 245;
-  static const double gridLabelToValue = 22;
-  static const double gridRowPitch = 54;
+  static const double gridFirstLabelBaseline = 191;
+  static const double gridLabelToValue = 21;
+  static const double gridRowPitch = 49;
 
   static double gridLabelBaseline(int row) =>
       gridFirstLabelBaseline + row * gridRowPitch;
@@ -161,29 +160,25 @@ abstract final class TrainPassMetrics {
       gridLabelBaseline(row) + gridLabelToValue;
 
   // ── Passenger block ──
-  static const double tearRuleY = 407.25;
-  static const double passengerLabelBaseline = 443;
-  static const double passengerValueBaseline = 465;
-  static const double pnrLabelBaseline = 493;
-  static const double pnrValueBaseline = 515;
+  static const double tearRuleY = 329;
+  static const double passengerLabelBaseline = 355;
+  static const double passengerValueBaseline = 377;
+  static const double pnrLabelBaseline = 400;
+  static const double pnrValueBaseline = 422;
 
   /// Right edge of the passenger column, leaving a gutter before the QR.
   static const double passengerRight = width - 104; // 262
 
   // ── QR ──
-  static const double qrLeft = 272.5;
-  static const double qrTop = 441.5;
-  static const double qrSize = 69;
+  static const double qrLeft = 274;
+  static const double qrTop = 353;
+  static const double qrSize = 68;
 
   // ── Status band ──
   //
-  // The export gave the band 90dp for a single 15dp line, which made the card
-  // taller than every other pass for no content — see
-  // [WalletCardMetrics.trainCanvas]. 58dp still centres the line with 21dp of
-  // clear space above it (the content block ends at [pnrValueBaseline]) and
-  // leaves the band reading as its own zone, which is all it was doing with 90.
-  static const double bandTop = 536;
-  static const double bandHeight = height - bandTop; // 58
+  // A compact strip below the passenger/PNR block.
+  static const double bandTop = 442;
+  static const double bandHeight = height - bandTop; // 50
 
   /// Size of the ghosted wordmark behind the band messages, and how far its
   /// baseline is pushed past the card's bottom edge so the clip cuts it.
@@ -205,79 +200,79 @@ abstract final class TrainPassType {
   TrainPassType._();
 
   static TextStyle stationCode(Color color) => GoogleFonts.instrumentSerif(
-        color: color,
-        fontSize: TrainPassMetrics.codeSize,
-        fontWeight: FontWeight.w400,
-        height: 1.0,
-      );
+    color: color,
+    fontSize: TrainPassMetrics.codeSize,
+    fontWeight: FontWeight.w400,
+    height: 1.0,
+  );
 
   static TextStyle stationName(Color color) => GoogleFonts.geist(
-        color: color,
-        fontSize: 10.75,
-        fontWeight: FontWeight.w500,
-        letterSpacing: 0.5,
-        height: 1.0,
-      );
+    color: color,
+    fontSize: 10.75,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.5,
+    height: 1.0,
+  );
 
   static TextStyle trainName(Color color) => GoogleFonts.geist(
-        color: color,
-        fontSize: 15.5,
-        fontWeight: FontWeight.w600,
-        letterSpacing: -0.1,
-        height: 1.0,
-      );
+    color: color,
+    fontSize: 15.5,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.1,
+    height: 1.0,
+  );
 
   static TextStyle trainNumber(Color color) => GoogleFonts.geist(
-        color: color,
-        fontSize: 11.7,
-        fontWeight: FontWeight.w500,
-        height: 1.0,
-      );
+    color: color,
+    fontSize: 11.7,
+    fontWeight: FontWeight.w500,
+    height: 1.0,
+  );
 
   static TextStyle chip(Color color) => GoogleFonts.geist(
-        color: color,
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.2,
-        height: 1.0,
-      );
+    color: color,
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.2,
+    height: 1.0,
+  );
 
   static TextStyle label(Color color) => GoogleFonts.geist(
-        color: color,
-        fontSize: 11,
-        fontWeight: FontWeight.w500,
-        height: 1.0,
-      );
+    color: color,
+    fontSize: 11,
+    fontWeight: FontWeight.w500,
+    height: 1.0,
+  );
 
   static TextStyle value(Color color) => GoogleFonts.geist(
-        color: color,
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
-        letterSpacing: -0.1,
-        height: 1.0,
-      );
+    color: color,
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.1,
+    height: 1.0,
+  );
 
   static TextStyle secondary(Color color) => GoogleFonts.geist(
-        color: color,
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-        height: 1.0,
-      );
+    color: color,
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    height: 1.0,
+  );
 
   static TextStyle bandMessage(Color color) => GoogleFonts.geist(
-        color: color,
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
-        letterSpacing: -0.1,
-        height: 1.0,
-      );
+    color: color,
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.1,
+    height: 1.0,
+  );
 
   static TextStyle bandGhost(Color color) => GoogleFonts.instrumentSerif(
-        color: color,
-        fontSize: TrainPassMetrics.bandGhostSize,
-        fontWeight: FontWeight.w400,
-        height: 1.0,
-      );
+    color: color,
+    fontSize: TrainPassMetrics.bandGhostSize,
+    fontWeight: FontWeight.w400,
+    height: 1.0,
+  );
 
   /// Kicks off the network fetch for every weight this face uses, so `main()`'s
   /// `GoogleFonts.pendingFonts()` wait covers them.

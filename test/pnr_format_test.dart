@@ -4,6 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('PnrFormat', () {
+    test('displays plain and previously grouped PNRs as five plus five', () {
+      for (final raw in ['1234567890', '123-4567890', '12345 67890']) {
+        expect(PnrFormat.display(raw), '12345 67890');
+      }
+      expect(PnrFormat.display(''), '');
+      expect(PnrFormat.display('unknown'), 'unknown');
+    });
     test('accepts 10 digits', () {
       expect(PnrFormat.isValid('1234567890'), isTrue);
     });

@@ -82,8 +82,7 @@ List<PromptStep> buildPassportFlow() {
     PromptStep(
       id: PassportField.passportNumber,
       kind: PromptStepKind.text,
-      question: (_) => "What's the passport number?",
-      helper: (_) => 'Top-right of the photo page. Letters and digits only.',
+      question: (_) => 'Enter passport number',
       confirmQuestion: (_) => 'Is this the passport number?',
       placeholder: 'Z3456789',
       label: 'Number',
@@ -100,31 +99,32 @@ List<PromptStep> buildPassportFlow() {
     PromptStep(
       id: PassportField.dateOfBirth,
       kind: PromptStepKind.date,
-      question: (_) => 'When were you born?',
+      question: (_) => 'Enter date of birth',
+      helper: (_) => 'DDMMYYYY',
       confirmQuestion: (_) => 'Is this your date of birth?',
       label: 'Date of birth',
       style: PromptInputStyle.mono,
-      validate: (String v, _) =>
-          DocumentValidators.validateDateOfBirth(v, required: true),
+      validate: (String v, _) => RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(v)
+          ? DocumentValidators.validateDateOfBirth(v, required: true)
+          : 'Enter all 8 digits: DDMMYYYY',
     ),
 
     PromptStep(
       id: PassportField.expiryDate,
       kind: PromptStepKind.date,
-      question: (_) => 'When does it expire?',
-      helper: (PromptFlowState s) =>
-          s.flag(PassportFlag.isEPassport) && !s.flag(PassportFlag.chipSkipped)
-          ? 'These three together are what unlock the chip.'
-          : null,
+      question: (_) => 'Enter passport expiry date',
+      helper: (_) => 'DDMMYYYY',
       confirmQuestion: (_) => 'Is this the expiry date?',
       label: 'Expires',
       style: PromptInputStyle.mono,
       validate: (String v, PromptFlowState s) =>
-          DocumentValidators.validateExpiryDate(
-            v,
-            dob: s.value(PassportField.dateOfBirth),
-            required: true,
-          ),
+          !RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(v)
+          ? 'Enter all 8 digits: DDMMYYYY'
+          : DocumentValidators.validateExpiryDate(
+              v,
+              dob: s.value(PassportField.dateOfBirth),
+              required: true,
+            ),
     ),
 
     // ── Chip ─────────────────────────────────────────────────────────────────
@@ -133,9 +133,9 @@ List<PromptStep> buildPassportFlow() {
     PromptStep(
       id: PassportField.nfcRead,
       kind: PromptStepKind.action,
-      question: (_) => 'Hold your phone against the passport',
+      question: (_) => 'All set',
       helper: (_) =>
-          'Rest the top of your phone on the cover and keep it still.',
+          'Now place your phone under the passport to read the chip.',
       visibleWhen: (PromptFlowState s) =>
           s.flag(PassportFlag.isEPassport) && !s.flag(PassportFlag.chipSkipped),
       label: 'Chip',

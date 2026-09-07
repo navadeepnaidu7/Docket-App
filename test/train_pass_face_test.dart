@@ -3,6 +3,9 @@ import 'package:docket/features/tickets/presentation/train/train_pass_theme.dart
 import 'package:docket/features/tickets/presentation/train/train_ticket_face.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:docket/features/tickets/domain/pass_code.dart';
+import 'package:docket/features/tickets/presentation/pass_code_block.dart';
+import 'package:docket/features/tickets/presentation/pass_code_view.dart';
 
 TrainPass _pass({
   String fromCode = 'HYB',
@@ -61,14 +64,48 @@ Future<void> _pumpFace(WidgetTester tester, TrainPass pass) async {
 }
 
 void main() {
+  testWidgets('PNR uses equal groups and absent codes draw no indicator', (
+    tester,
+  ) async {
+    await _pumpFace(tester, _pass());
+    expect(find.text('12345 67890'), findsOneWidget);
+    expect(find.byType(PassCodeBlock), findsNothing);
+    expect(TrainPassMetrics.height, lessThan(500));
+  });
+
+  testWidgets(
+    'code indicator never builds a miniature renderer and opens on tap',
+    (tester) async {
+      var opened = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PassCodeBlock(
+              size: 68,
+              code: PassCode.parse(payload: List.filled(2000, 'A').join())!,
+              borderColor: Colors.grey,
+              onTap: () => opened = true,
+            ),
+          ),
+        ),
+      );
+      expect(find.byType(PassCodeView), findsNothing);
+      expect(find.byIcon(Icons.document_scanner_outlined), findsOneWidget);
+      await tester.tap(find.text('View code'));
+      expect(opened, isTrue);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   group('station header alignment', () {
     // RenderBaseline lays its child out loose and pins it flush left, so a
     // `width` + `textAlign: right` combination silently does nothing and the
     // destination column renders from the wrong edge. Nothing throws and no
     // overflow is reported — only a screenshot catches it, which is exactly
     // why it is pinned here.
-    testWidgets('origin and destination hang off opposite content edges',
-        (WidgetTester tester) async {
+    testWidgets('origin and destination hang off opposite content edges', (
+      WidgetTester tester,
+    ) async {
       await _pumpFace(tester, _pass());
 
       final Rect card = tester.getRect(find.byType(TrainTicketFace));
@@ -87,8 +124,9 @@ void main() {
       expect(card.right - toName.right, moreOrLessEquals(inset, epsilon: 1));
     });
 
-    testWidgets('a long destination name still ends at the content edge',
-        (WidgetTester tester) async {
+    testWidgets('a long destination name still ends at the content edge', (
+      WidgetTester tester,
+    ) async {
       await _pumpFace(tester, _pass(toName: 'Chennai Central'));
 
       final Rect card = tester.getRect(find.byType(TrainTicketFace));
@@ -113,8 +151,9 @@ void main() {
       await _pumpFace(tester, _pass());
 
       final Rect card = tester.getRect(find.byType(TrainTicketFace));
-      final Rect rule =
-          tester.getRect(find.byKey(TrainTicketFace.connectorKey));
+      final Rect rule = tester.getRect(
+        find.byKey(TrainTicketFace.connectorKey),
+      );
 
       expect(
         rule.left - card.left,
@@ -130,16 +169,16 @@ void main() {
       );
     });
 
-    testWidgets('each code carries a mask wider than its own lettering',
-        (WidgetTester tester) async {
+    testWidgets('each code carries a mask wider than its own lettering', (
+      WidgetTester tester,
+    ) async {
       await _pumpFace(tester, _pass());
 
       final Rect fromCode = tester.getRect(find.text('HYB'));
       final Rect fromMask = tester.getRect(
-        find.ancestor(
-          of: find.text('HYB'),
-          matching: find.byType(ColoredBox),
-        ).first,
+        find
+            .ancestor(of: find.text('HYB'), matching: find.byType(ColoredBox))
+            .first,
       );
 
       // The swatch overhangs the glyphs by the connector gap on the inner
@@ -150,10 +189,7 @@ void main() {
       );
       // ...and covers the rule's row, or it would not mask anything.
       final Rect card = tester.getRect(find.byType(TrainTicketFace));
-      expect(
-        fromMask.top,
-        lessThan(card.top + TrainPassMetrics.connectorY),
-      );
+      expect(fromMask.top, lessThan(card.top + TrainPassMetrics.connectorY));
     });
   });
 
@@ -187,24 +223,30 @@ void _backendPayloadTests() {
 
     test('delayMinutes survives a stringly-typed backend', () {
       expect(
-        TrainPass.fromJson(<String, dynamic>{'delayMinutes': '45'}).delayMinutes,
+        TrainPass.fromJson(<String, dynamic>{
+          'delayMinutes': '45',
+        }).delayMinutes,
         45,
       );
       expect(
-        TrainPass.fromJson(<String, dynamic>{'delayMinutes': 45.0}).delayMinutes,
+        TrainPass.fromJson(<String, dynamic>{
+          'delayMinutes': 45.0,
+        }).delayMinutes,
         45,
       );
       // Garbage is unknown, not zero.
       expect(
-        TrainPass.fromJson(<String, dynamic>{'delayMinutes': 'soon'})
-            .delayMinutes,
+        TrainPass.fromJson(<String, dynamic>{
+          'delayMinutes': 'soon',
+        }).delayMinutes,
         isNull,
       );
       expect(TrainPass.fromJson(<String, dynamic>{}).delayMinutes, isNull);
     });
 
-    testWidgets('a near-empty payload renders without overflow',
-        (WidgetTester tester) async {
+    testWidgets('a near-empty payload renders without overflow', (
+      WidgetTester tester,
+    ) async {
       // Everything optional omitted: no codes, no names, no passengers, no
       // halts, no dates. fromJson has to fill the gaps and the face has to
       // draw something honest rather than blanks or a red box.
@@ -217,8 +259,9 @@ void _backendPayloadTests() {
       expect(find.text('—'), findsWidgets);
     });
 
-    testWidgets('overlong strings ellipsize instead of overflowing',
-        (WidgetTester tester) async {
+    testWidgets('overlong strings ellipsize instead of overflowing', (
+      WidgetTester tester,
+    ) async {
       final TrainPass wordy = TrainPass.fromJson(<String, dynamic>{
         'id': 'x',
         'trainName': 'Chhatrapati Shivaji Maharaj Terminus Rajdhani Superfast',

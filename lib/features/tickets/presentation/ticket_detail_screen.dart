@@ -4,6 +4,7 @@ import '../../../core/haptics/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/wallet/wallet_card_metrics.dart';
 import '../domain/pass_catalog.dart';
+import '../domain/pnr_format.dart';
 import '../domain/ticket_models.dart';
 import 'pass_code_view.dart';
 import 'pass_remove_flow.dart';
@@ -62,7 +63,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   code: t.passCode,
                   width: 188,
                   shadowColor: _kMint,
-                  emptyLabel: 'This ticket has no scannable code. '
+                  emptyLabel:
+                      'This ticket has no scannable code. '
                       'Show the PNR below at the counter.',
                 ),
                 const SizedBox(height: 16),
@@ -87,10 +89,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     final bool isDark = theme.brightness == Brightness.dark;
     final MockTicket t = widget.ticket;
 
-    final Color cardSurface =
-        isDark ? AppTheme.elevated(Brightness.dark) : Colors.white;
-    final Color border =
-        scheme.onSurface.withValues(alpha: isDark ? 0.08 : 0.06);
+    final Color cardSurface = isDark
+        ? AppTheme.elevated(Brightness.dark)
+        : Colors.white;
+    final Color border = scheme.onSurface.withValues(
+      alpha: isDark ? 0.08 : 0.06,
+    );
     final Color ink = scheme.onSurface;
     final Color muted = AppTokens.secondaryLabel(scheme);
 
@@ -158,30 +162,26 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     duration: const Duration(milliseconds: 340),
                     switchInCurve: Curves.easeOutCubic,
                     switchOutCurve: Curves.easeInCubic,
-                    layoutBuilder:
-                        (Widget? current, List<Widget> previous) {
+                    layoutBuilder: (Widget? current, List<Widget> previous) {
                       return Stack(
                         alignment: Alignment.topCenter,
-                        children: <Widget>[
-                          ...previous,
-                          ?current,
-                        ],
+                        children: <Widget>[...previous, ?current],
                       );
                     },
                     transitionBuilder:
                         (Widget child, Animation<double> animation) {
-                      final Animation<Offset> slide = Tween<Offset>(
-                        begin: const Offset(0, 0.035),
-                        end: Offset.zero,
-                      ).animate(animation);
-                      return FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: slide,
-                          child: child,
-                        ),
-                      );
-                    },
+                          final Animation<Offset> slide = Tween<Offset>(
+                            begin: const Offset(0, 0.035),
+                            end: Offset.zero,
+                          ).animate(animation);
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: slide,
+                              child: child,
+                            ),
+                          );
+                        },
                     child: _tab == 0
                         ? _DetailsTab(
                             key: const ValueKey<String>('details'),
@@ -240,8 +240,9 @@ class _SegmentedTabs extends StatelessWidget {
     final Color track = isDark
         ? Colors.white.withValues(alpha: 0.08)
         : const Color(0xFFEEF1EE);
-    final Color selected =
-        isDark ? AppTheme.elevated(Brightness.dark) : Colors.white;
+    final Color selected = isDark
+        ? AppTheme.elevated(Brightness.dark)
+        : Colors.white;
     final Color ink = Theme.of(context).colorScheme.onSurface;
 
     return Container(
@@ -469,13 +470,7 @@ class _DetailsTab extends StatelessWidget {
   }
 
   String _formatPnr(String pnr) {
-    if (pnr.length <= 4) return pnr;
-    final StringBuffer b = StringBuffer();
-    for (int i = 0; i < pnr.length; i++) {
-      if (i > 0 && i % 4 == 0) b.write(' ');
-      b.write(pnr[i]);
-    }
-    return b.toString();
+    return PnrFormat.display(pnr);
   }
 }
 
@@ -511,10 +506,10 @@ class _LiveStatusTab extends StatelessWidget {
     final String etaLeft = completed
         ? 'Journey complete'
         : remainingStops == 0
-            ? 'All stops completed'
-            : remainingStops <= 1
-                ? 'Final stop ahead'
-                : '${remainingStops - 1} halt${remainingStops - 1 == 1 ? '' : 's'} remaining';
+        ? 'All stops completed'
+        : remainingStops <= 1
+        ? 'Final stop ahead'
+        : '${remainingStops - 1} halt${remainingStops - 1 == 1 ? '' : 's'} remaining';
 
     return Column(
       key: key,
@@ -528,14 +523,8 @@ class _LiveStatusTab extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: isDark
-                  ? <Color>[
-                      const Color(0xFF1A1F1B),
-                      const Color(0xFF0F1410),
-                    ]
-                  : <Color>[
-                      const Color(0xFF152018),
-                      const Color(0xFF0C120E),
-                    ],
+                  ? <Color>[const Color(0xFF1A1F1B), const Color(0xFF0F1410)]
+                  : <Color>[const Color(0xFF152018), const Color(0xFF0C120E)],
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: <BoxShadow>[
@@ -560,10 +549,7 @@ class _LiveStatusTab extends StatelessWidget {
                       color: _kMint.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text(
-                      t.trainNumber,
-                      style: PassType.pill(_kMint),
-                    ),
+                    child: Text(t.trainNumber, style: PassType.pill(_kMint)),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -730,8 +716,9 @@ class _DarkEndpoint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment:
-          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: <Widget>[
         Text(
           time,
@@ -767,11 +754,7 @@ class _MiniTrackPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     canvas.drawLine(Offset(0, cy), Offset(size.width, cy), base);
-    canvas.drawLine(
-      Offset(0, cy),
-      Offset(size.width * progress, cy),
-      done,
-    );
+    canvas.drawLine(Offset(0, cy), Offset(size.width * progress, cy), done);
     canvas.drawCircle(const Offset(0, 0) + Offset(0, cy), 3, done);
     canvas.drawCircle(
       Offset(size.width * progress, cy),
@@ -953,10 +936,8 @@ class _JourneyTimelineState extends State<_JourneyTimeline>
     if (n == 0) return const SizedBox.shrink();
 
     final int current = _currentIndex;
-    final int rideStops =
-        current < n - 1 ? n - current - 1 : 0;
-    final bool showRide =
-        !widget.completed && rideStops > 1 && current < n - 1;
+    final int rideStops = current < n - 1 ? n - current - 1 : 0;
+    final bool showRide = !widget.completed && rideStops > 1 && current < n - 1;
 
     // "Reached" drives the spine fill: the bar is solid up to where the train
     // actually is and faint beyond it, so progress is legible without reading
@@ -977,7 +958,8 @@ class _JourneyTimelineState extends State<_JourneyTimeline>
                 index: i,
                 total: n,
                 isCurrent: i == current && !widget.completed,
-                isPast: list[i].state == HaltState.departed &&
+                isPast:
+                    list[i].state == HaltState.departed &&
                     !(i == current && !widget.completed),
                 reached: reached(i),
                 // The segment below this node belongs to the next halt: it only
@@ -1067,8 +1049,9 @@ class _HaltRow extends StatelessWidget {
     ].where((String s) => s.isNotEmpty).join(' · ');
 
     // Passed stops recede so the eye lands on where the train is now.
-    final Color nameColor =
-        isPast && !isCurrent ? ink.withValues(alpha: 0.5) : ink;
+    final Color nameColor = isPast && !isCurrent
+        ? ink.withValues(alpha: 0.5)
+        : ink;
 
     final bool revised = halt.actual != null && halt.actual != halt.time;
 
@@ -1216,12 +1199,11 @@ class _TimePill extends StatelessWidget {
       ),
       child: Text(
         time,
-        style: PassType.pill(
-          struckThrough ? ink.withValues(alpha: 0.55) : ink,
-        ).copyWith(
-          decoration: struckThrough ? TextDecoration.lineThrough : null,
-          decorationColor: ink.withValues(alpha: 0.55),
-        ),
+        style: PassType.pill(struckThrough ? ink.withValues(alpha: 0.55) : ink)
+            .copyWith(
+              decoration: struckThrough ? TextDecoration.lineThrough : null,
+              decorationColor: ink.withValues(alpha: 0.55),
+            ),
       ),
     );
   }
@@ -1236,9 +1218,8 @@ Color _toneColor(
     HaltStatusTone.neutral => muted,
     HaltStatusTone.live => _kMint,
     HaltStatusTone.positive => isDark ? _kMint : const Color(0xFF1B7F4B),
-    HaltStatusTone.warning => isDark
-        ? const Color(0xFFE9A23B)
-        : const Color(0xFF9A5B00),
+    HaltStatusTone.warning =>
+      isDark ? const Color(0xFFE9A23B) : const Color(0xFF9A5B00),
   };
 }
 
@@ -1257,16 +1238,14 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color fg = _toneColor(status.tone, isDark: isDark, muted: muted);
     final Color bg = switch (status.tone) {
-      HaltStatusTone.neutral => isDark
-          ? Colors.white.withValues(alpha: 0.07)
-          : const Color(0xFFF0F0F2),
-      HaltStatusTone.live ||
-      HaltStatusTone.positive => isDark
-          ? _kMint.withValues(alpha: 0.16)
-          : const Color(0xFFDDF3E5),
-      HaltStatusTone.warning => isDark
-          ? const Color(0xFFE9A23B).withValues(alpha: 0.16)
-          : const Color(0xFFFBEBD2),
+      HaltStatusTone.neutral =>
+        isDark ? Colors.white.withValues(alpha: 0.07) : const Color(0xFFF0F0F2),
+      HaltStatusTone.live || HaltStatusTone.positive =>
+        isDark ? _kMint.withValues(alpha: 0.16) : const Color(0xFFDDF3E5),
+      HaltStatusTone.warning =>
+        isDark
+            ? const Color(0xFFE9A23B).withValues(alpha: 0.16)
+            : const Color(0xFFFBEBD2),
     };
 
     return Container(
@@ -1327,12 +1306,9 @@ class _RideChip extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 5),
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
               decoration: BoxDecoration(
-                color: isDark
-                    ? _kMint.withValues(alpha: 0.12)
-                    : _kMintSoft,
+                color: isDark ? _kMint.withValues(alpha: 0.12) : _kMintSoft,
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Row(
@@ -1342,9 +1318,7 @@ class _RideChip extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     'Ride $stops stops',
-                    style: PassType.pill(
-                      isDark ? Colors.white : _kCharcoal,
-                    ),
+                    style: PassType.pill(isDark ? Colors.white : _kCharcoal),
                   ),
                 ],
               ),
@@ -1425,8 +1399,8 @@ class _SpinePainter extends CustomPainter {
     final Color ringColor = isCurrent
         ? _kMint
         : nodeFilled
-            ? ink
-            : ink.withValues(alpha: 0.45);
+        ? ink
+        : ink.withValues(alpha: 0.45);
 
     canvas.drawCircle(
       Offset(cx, cy),
@@ -1479,10 +1453,7 @@ class _SurfaceCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: border, width: 0.5),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: child,
-      ),
+      child: ClipRRect(borderRadius: BorderRadius.circular(18), child: child),
     );
   }
 }
@@ -1575,9 +1546,7 @@ class _InfoRow extends StatelessWidget {
             children: <Widget>[
               Icon(icon, size: 18, color: muted),
               const SizedBox(width: 12),
-              Expanded(
-                child: Text(label, style: PassType.label(muted)),
-              ),
+              Expanded(child: Text(label, style: PassType.label(muted))),
               Flexible(
                 child: Text(
                   value,

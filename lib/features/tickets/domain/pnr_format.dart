@@ -9,4 +9,12 @@ abstract final class PnrFormat {
   }
 
   static bool isValid(String raw) => _digits.hasMatch(normalize(raw));
+
+  /// Display valid PNRs in two equal groups without changing stored values.
+  static String display(String raw) {
+    final String value = normalize(raw);
+    return _digits.hasMatch(value)
+        ? '${value.substring(0, 5)} ${value.substring(5)}'
+        : raw.trim();
+  }
 }
