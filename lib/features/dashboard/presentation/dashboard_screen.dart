@@ -38,6 +38,7 @@ import 'widgets/add_menu.dart';
 import 'widgets/dashboard_header.dart';
 import 'widgets/easter_egg_constants.dart';
 import 'widgets/easter_egg_drawer.dart';
+import 'widgets/travel_weather_glance.dart';
 import 'widgets/easter_egg_sheet_motion.dart';
 import 'widgets/ids_tab.dart';
 import 'widgets/manage_cards_view.dart';
@@ -66,6 +67,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   late final ValueNotifier<double> _docPage;
   late final WalletBackdropTilt _backdropTilt;
   late final AnimationController _easterEggCtrl;
+  SkyPreviewMode _skyPreviewMode = SkyPreviewMode.automatic;
   final ValueNotifier<double> _easterEggOffset = ValueNotifier(0.0);
   final ValueNotifier<bool> _showHomeMenu = ValueNotifier(false);
   final ValueNotifier<DashboardViewMode> _viewMode = ValueNotifier(
@@ -136,6 +138,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     // rather than in main(), which is already on a font-loading budget.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       PassportCoverArt.warmUp();
+      TravelWeatherGlance.warmUp();
     });
     _showHomeMenu.addListener(_onMenuToggle);
     _docPage = ValueNotifier(0.0);
@@ -505,6 +508,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         onDragUpdate: _handleDragUpdate,
                         onDragEnd: _handleDragEnd,
                         onDragCancel: _handleDragCancel,
+                        initialPreviewMode: _skyPreviewMode,
+                        onPreviewModeChanged: (mode) => _skyPreviewMode = mode,
                         passports: passports,
                         idDocs: idDocs,
                       ),

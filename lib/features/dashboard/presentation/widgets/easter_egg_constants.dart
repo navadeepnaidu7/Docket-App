@@ -1,4 +1,4 @@
-const double kEasterEggPanelHeight = 292;
+const double kEasterEggPanelHeight = 204.4;
 const double kEasterEggSnapThreshold = 0.34;
 const double kEasterEggVelocityOpen = 360;
 const double kEasterEggVelocityClose = -240;

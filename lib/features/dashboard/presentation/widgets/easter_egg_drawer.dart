@@ -1,12 +1,24 @@
 import 'dart:async';
-import 'package:flutter/cupertino.dart';
+
 import 'package:flutter/material.dart';
+
 import '../../../ids/domain/id_document.dart';
 import '../../../passport/domain/passport_profile.dart';
 import 'easter_egg_constants.dart';
 import 'travel_weather_glance.dart';
 
-/// A quiet sky behind the wallet, revealed continuously by the user's pull.
+enum SkyPreviewMode {
+  automatic('Auto'),
+  sunlight('Sunlight'),
+  drizzle('Light rain'),
+  sunset('Sunset'),
+  night('Night');
+
+  const SkyPreviewMode(this.label);
+  final String label;
+}
+
+/// A brief, quiet glance behind the home surface.
 class EasterEggDrawer extends StatefulWidget {
   const EasterEggDrawer({
     super.key,
@@ -17,7 +29,11 @@ class EasterEggDrawer extends StatefulWidget {
     required this.passports,
     required this.idDocs,
     this.now,
+    this.weather,
+    this.initialPreviewMode = SkyPreviewMode.automatic,
+    this.onPreviewModeChanged,
   });
+
   final ValueNotifier<double> dragOffsetNotifier;
   final GestureDragUpdateCallback onDragUpdate;
   final GestureDragEndCallback onDragEnd;
@@ -25,6 +41,9 @@ class EasterEggDrawer extends StatefulWidget {
   final List<PassportProfile> passports;
   final List<IdDocument> idDocs;
   final DateTime? now;
+  final SkyWeather? weather;
+  final SkyPreviewMode initialPreviewMode;
+  final ValueChanged<SkyPreviewMode>? onPreviewModeChanged;
 
   @override
   State<EasterEggDrawer> createState() => _EasterEggDrawerState();
@@ -32,6 +51,7 @@ class EasterEggDrawer extends StatefulWidget {
 
 class _EasterEggDrawerState extends State<EasterEggDrawer> {
   Timer? _clock;
+  late SkyPreviewMode _previewMode = widget.initialPreviewMode;
 
   @override
   void initState() {
@@ -55,12 +75,25 @@ class _EasterEggDrawerState extends State<EasterEggDrawer> {
         : now.hour < 17
         ? 'Good afternoon'
         : 'Good evening';
-    final name = widget.passports.isEmpty
-        ? ''
-        : widget.passports.first.name.trim().split(RegExp(r'\s+')).first;
     final count = widget.passports.length + widget.idDocs.length;
     final reduced = MediaQuery.disableAnimationsOf(context);
-    final date = MaterialLocalizations.of(context).formatMediumDate(now);
+    // A stable daily variation. This is atmosphere, not reported conditions.
+    final autoWeather =
+        widget.weather ??
+        (now.day % 3 == 0 ? SkyWeather.drizzle : SkyWeather.sunlight);
+    final weather = switch (_previewMode) {
+      SkyPreviewMode.automatic => autoWeather,
+      SkyPreviewMode.drizzle => SkyWeather.drizzle,
+      _ => SkyWeather.sunlight,
+    };
+    final skyHour = switch (_previewMode) {
+      SkyPreviewMode.automatic => now.hour,
+      SkyPreviewMode.sunset => 18,
+      SkyPreviewMode.night => 23,
+      _ => 10,
+    };
+    final font = Theme.of(context).textTheme.bodyMedium?.fontFamily;
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onVerticalDragUpdate: widget.onDragUpdate,
@@ -71,119 +104,178 @@ class _EasterEggDrawerState extends State<EasterEggDrawer> {
         builder: (context, offset, _) {
           final progress = (offset / kEasterEggPanelHeight).clamp(0.0, 1.0);
           final reveal = Curves.easeOutCubic.transform(
-            ((progress - 0.12) / 0.7).clamp(0.0, 1.0),
+            ((progress - 0.15) / 0.72).clamp(0.0, 1.0),
           );
           return Stack(
             fit: StackFit.expand,
             children: [
-              RepaintBoundary(
-                child: TravelWeatherGlance(hour: now.hour, progress: progress),
+              // Only shade the exposed pixels, including a small overpull margin.
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: (offset + 32).clamp(
+                  kEasterEggPanelHeight + 32,
+                  kEasterEggPanelHeight + 150,
+                ),
+                child: RepaintBoundary(
+                  child: TravelWeatherGlance(
+                    hour: skyHour,
+                    progress: progress,
+                    weather: weather,
+                  ),
+                ),
               ),
               Positioned(
-                left: 28,
-                right: 28,
-                top: MediaQuery.paddingOf(context).top + 26,
-                bottom: 176,
+                left: 24,
+                right: 24,
+                top: MediaQuery.paddingOf(context).top + 44,
+                height:
+                    (kEasterEggPanelHeight -
+                            MediaQuery.paddingOf(context).top -
+                            68)
+                        .clamp(48.0, kEasterEggPanelHeight),
                 child: ExcludeSemantics(
                   excluding: progress < 0.8,
                   child: Opacity(
                     opacity: reveal,
                     child: Transform.translate(
-                      offset: Offset(0, reduced ? 0 : 10 * (1 - reveal)),
-                      child: DefaultTextStyle(
-                        style: TextStyle(
-                          fontFamily: Theme.of(
-                            context,
-                          ).textTheme.bodyMedium?.fontFamily,
-                          color: Colors.white,
-                          shadows: const [
-                            Shadow(color: Color(0x330B2140), blurRadius: 12),
-                          ],
-                        ),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) => SingleChildScrollView(
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: constraints.maxHeight,
-                              ),
-                              child: IntrinsicHeight(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      date.toUpperCase(),
-                                      style: const TextStyle(
-                                        color: Color(0xDDE8F2FF),
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        letterSpacing: 1.7,
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    Text(
-                                      name.isEmpty
-                                          ? '$greeting.'
-                                          : '$greeting, $name.',
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.w400,
-                                        letterSpacing: -0.9,
-                                        height: 1.15,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text.rich(
+                      offset: Offset(0, reduced ? 0 : 5 * (1 - reveal)),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) => SingleChildScrollView(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: constraints.maxHeight,
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  greeting,
+                                  style: TextStyle(
+                                    fontFamily: font,
+                                    fontSize: 21,
+                                    decoration: TextDecoration.none,
+                                    height: 1.2,
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: -0.45,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 7),
+                                Text.rich(
+                                  TextSpan(
+                                    children: [
                                       TextSpan(
-                                        children: [
-                                          TextSpan(
-                                            text: count == 0
-                                                ? 'A little space for '
-                                                : 'You have ',
-                                          ),
-                                          TextSpan(
-                                            text: count == 0
-                                                ? 'what’s next.'
-                                                : '$count ${count == 1 ? 'document' : 'documents'}',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          if (count > 0)
-                                            const TextSpan(text: ' at hand.'),
-                                        ],
+                                        text: count == 0
+                                            ? 'No documents yet'
+                                            : '$count ${count == 1 ? 'document' : 'documents'}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
-                                      style: const TextStyle(
-                                        color: Color(0xD9E5EEFB),
-                                        fontSize: 15,
-                                        height: 1.4,
+                                      if (count > 0)
+                                        const TextSpan(text: ' in your wallet'),
+                                    ],
+                                  ),
+                                  style: TextStyle(
+                                    fontFamily: font,
+                                    fontSize: 14,
+                                    decoration: TextDecoration.none,
+                                    height: 1.35,
+                                    fontWeight: FontWeight.w400,
+                                    letterSpacing: -0.1,
+                                    color: const Color(0xE0FFFFFF),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: MediaQuery.paddingOf(context).top,
+                right: 16,
+                child: IgnorePointer(
+                  ignoring: progress < 0.8,
+                  child: ExcludeSemantics(
+                    excluding: progress < 0.8,
+                    child: Opacity(
+                      opacity: reveal,
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: PopupMenuButton<SkyPreviewMode>(
+                          tooltip: 'Change sky scene',
+                          initialValue: _previewMode,
+                          position: PopupMenuPosition.under,
+                          color: const Color(0xFF22364B),
+                          elevation: 8,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          onSelected: (mode) {
+                            setState(() => _previewMode = mode);
+                            widget.onPreviewModeChanged?.call(mode);
+                          },
+                          itemBuilder: (context) => [
+                            for (final mode in SkyPreviewMode.values)
+                              PopupMenuItem(
+                                value: mode,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        mode.label,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                        ),
                                       ),
                                     ),
-                                    const SizedBox(height: 18),
-                                    const Row(
-                                      children: [
-                                        Icon(
-                                          CupertinoIcons.lock_shield,
-                                          color: Color(0xBFE0EDFF),
-                                          size: 12,
-                                        ),
-                                        SizedBox(width: 6),
-                                        Flexible(
-                                          child: Text(
-                                            'Your day, a little lighter.',
-                                            style: TextStyle(
-                                              color: Color(0xBFE0EDFF),
-                                              fontSize: 11,
-                                              letterSpacing: 0.1,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                    if (mode == _previewMode)
+                                      const Icon(
+                                        Icons.check_rounded,
+                                        size: 18,
+                                        color: Colors.white,
+                                      ),
                                   ],
                                 ),
+                              ),
+                          ],
+                          child: Semantics(
+                            label: 'Sky scene: ${_previewMode.label}',
+                            button: true,
+                            child: Container(
+                              constraints: const BoxConstraints(
+                                minHeight: 44,
+                                minWidth: 44,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Scene',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xE6FFFFFF),
+                                    ),
+                                  ),
+                                  SizedBox(width: 3),
+                                  Icon(
+                                    Icons.expand_more_rounded,
+                                    size: 15,
+                                    color: Color(0xE6FFFFFF),
+                                  ),
+                                ],
                               ),
                             ),
                           ),

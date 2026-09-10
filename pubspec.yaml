@@ -99,6 +99,8 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  shaders:
+    - assets/shaders/docket_sky.frag
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
@@ -109,7 +111,6 @@ flutter:
   # never silently start shipping. Every entry below is reachable from
   # lib/core/assets/app_assets.dart or a literal path in lib/features/tickets/.
   assets:
-    - assets/weather/docket_sky.png
     - assets/branding/docket_logo.svg
     - assets/branding/docket_logo_circle.svg
     - assets/branding/docket_logo_square.svg
