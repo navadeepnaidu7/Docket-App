@@ -54,6 +54,7 @@ class EasterEggSheetMotion {
     final double threshold = kEasterEggPanelHeight * kEasterEggSnapThreshold;
     if (velocityY > kEasterEggVelocityOpen) return true;
     if (velocityY < kEasterEggVelocityClose) return false;
-    return offsetY > threshold;
+    // A short projection makes a deliberate gentle flick count, too.
+    return offsetY + velocityY * 0.16 > threshold;
   }
 }

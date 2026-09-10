@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/haptics/haptic_service.dart';
@@ -156,13 +157,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         );
     _tabCtrl = TabController(length: 2, vsync: this);
     _tabCtrl.addListener(_onTabChanged);
-    _easterEggCtrl = AnimationController(
+    _easterEggCtrl = AnimationController.unbounded(
       vsync: this,
       duration: kEasterEggSnapDuration,
     );
     _easterEggCtrl.addListener(() {
       if (!_isDragging) {
-        _easterEggOffset.value = _easterEggCtrl.value * kEasterEggPanelHeight;
+        _easterEggOffset.value = (_easterEggCtrl.value * kEasterEggPanelHeight)
+            .clamp(0.0, double.infinity);
         _dragOffset = _easterEggOffset.value;
       }
     });
@@ -192,6 +194,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   void _handleDragUpdate(DragUpdateDetails details) {
+    if (!_isDragging) {
+      _easterEggCtrl.stop();
+      // Invert the rubber band when grabbing a settling overshoot.
+      final over = _easterEggOffset.value - kEasterEggPanelHeight;
+      _dragOffset = over > 0
+          ? kEasterEggPanelHeight +
+                over *
+                    kEasterEggPanelHeight /
+                    (kEasterEggDrawerOvershootFactor *
+                        (kEasterEggPanelHeight - over))
+          : _easterEggOffset.value;
+    }
     _isDragging = true;
     final double delta = details.primaryDelta ?? 0;
     // Keep the sheet under the finger 1:1. Only the part beyond the resting
@@ -223,13 +237,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       velocityY: velocityY,
     );
 
-    final double startProgress = (currentOffset / panelHeight).clamp(0.0, 1.0);
+    final double startProgress = currentOffset / panelHeight;
     _easterEggCtrl.stop();
     _easterEggCtrl.value = startProgress;
-    _easterEggCtrl.animateTo(
-      open ? 1.0 : 0.0,
-      curve: open ? Curves.easeOutQuint : Curves.easeOutCubic,
-    );
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _easterEggCtrl.value = open ? 1 : 0;
+    } else {
+      _easterEggCtrl.animateWith(
+        SpringSimulation(
+          const SpringDescription(mass: 1, stiffness: 310, damping: 34),
+          startProgress,
+          open ? 1 : 0,
+          velocityY.clamp(-2400.0, 2400.0) / panelHeight,
+        ),
+      );
+    }
 
     if (open && startProgress < 0.9) {
       HapticService.select();
@@ -237,6 +259,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       HapticService.tap();
     }
   }
+
+  void _handleDragCancel() => _handleDragEnd(DragEndDetails());
 
   void _openPassportEntry(bool isEPassport) {
     // The kind is passed to the screen rather than set as a side effect on a
@@ -477,17 +501,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       right: 0,
                       height: kEasterEggPanelHeight + 150.0,
                       child: EasterEggDrawer(
-                        controller: _easterEggCtrl,
                         dragOffsetNotifier: _easterEggOffset,
                         onDragUpdate: _handleDragUpdate,
                         onDragEnd: _handleDragEnd,
+                        onDragCancel: _handleDragCancel,
                         passports: passports,
                         idDocs: idDocs,
-                        onAddPassport: () => showPassportKindMenu(
-                          context: context,
-                          onSelect: _openPassportEntry,
-                        ),
-                        onAddId: _openIdEntry,
                       ),
                     ),
                   // 2. Main Sliding Sheet (translated down, rounded at top)
@@ -593,6 +612,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                           onVerticalDragUpdate:
                                               _handleDragUpdate,
                                           onVerticalDragEnd: _handleDragEnd,
+                                          onVerticalDragCancel:
+                                              _handleDragCancel,
                                           child: Padding(
                                             padding: const EdgeInsets.fromLTRB(
                                               20,

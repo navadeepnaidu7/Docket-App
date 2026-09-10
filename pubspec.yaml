@@ -109,6 +109,7 @@ flutter:
   # never silently start shipping. Every entry below is reachable from
   # lib/core/assets/app_assets.dart or a literal path in lib/features/tickets/.
   assets:
+    - assets/weather/docket_sky.png
     - assets/branding/docket_logo.svg
     - assets/branding/docket_logo_circle.svg
     - assets/branding/docket_logo_square.svg
