@@ -26,6 +26,7 @@ import '../application/auth_session_provider.dart';
 import '../application/card_shine_border_provider.dart';
 import '../application/profile_avatar_shape_provider.dart';
 import '../application/nav_labels_provider.dart';
+import '../application/search_button_provider.dart';
 import '../application/pass_deck_provider.dart';
 import '../application/wallet_filter_provider.dart';
 import 'manage_account_screen.dart';
@@ -226,6 +227,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         onChanged: (_) {
                           HapticService.select();
                           ref.read(showNavLabelsProvider.notifier).toggle();
+                        },
+                      ),
+                      const _SettingsDivider(),
+                      _SettingsToggleRow(
+                        icon: Icons.search_rounded,
+                        iconColor: const Color(0xFF0FA968),
+                        title: 'Search button',
+                        subtitle:
+                            'Search your wallet from the Home header',
+                        value: ref.watch(searchButtonEnabledProvider),
+                        onChanged: (_) {
+                          HapticService.select();
+                          ref
+                              .read(searchButtonEnabledProvider.notifier)
+                              .toggle();
                         },
                       ),
                     ],

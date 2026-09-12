@@ -28,6 +28,7 @@ import '../../../core/wallet/wallet_filter.dart';
 import '../../../core/wallet/wallet_items.dart';
 import '../../../core/dev/dev_flags_provider.dart';
 import '../application/auth_session_provider.dart';
+import '../application/search_button_provider.dart';
 import '../application/wallet_filter_provider.dart';
 import '../application/trash_provider.dart';
 import '../application/wallet_order_provider.dart';
@@ -46,6 +47,7 @@ import 'widgets/manage_cards_view.dart';
 import 'widgets/membership_mesh.dart';
 import 'widgets/pill_tab_bar.dart';
 import 'settings_route.dart';
+import 'wallet_search_screen.dart';
 import 'widgets/trash_view.dart';
 import 'widgets/view_picker.dart';
 import 'widgets/wallet_backdrop.dart';
@@ -319,6 +321,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     openSettingsRoute(context);
   }
 
+  void _openWalletSearch() {
+    _showHomeMenu.value = false;
+    Navigator.of(context).push(
+      studioPageRoute<void>(
+        builder: (_) => WalletSearchScreen(
+          onRevealDocument: _revealWalletItem,
+          onAdd: _showAddSheet,
+        ),
+      ),
+    );
+  }
+
   /// Pushed on this Navigator, not the root one: the dashboard mutes its own
   /// tickers via [ModalRoute.secondaryAnimation], so a local push pauses the
   /// backdrop and card animations while the archive covers them.
@@ -441,6 +455,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
 
     final bool filterEnabled = ref.watch(walletFilterEnabledProvider);
+    // Watched here, not in the nested builders below: ref.watch is only valid
+    // during this ConsumerState's own build.
+    final bool searchButtonEnabled = ref.watch(searchButtonEnabledProvider);
     WalletFilterCategory filterCategory = ref.watch(
       walletFilterCategoryProvider,
     );
@@ -662,6 +679,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                                           },
                                                           onAvatarTap:
                                                               _openSettings,
+                                                          onSearchTap:
+                                                              searchButtonEnabled
+                                                              ? _openWalletSearch
+                                                              : null,
                                                           headerTitleLink:
                                                               _headerTitleLink,
                                                           showHistoryButton:

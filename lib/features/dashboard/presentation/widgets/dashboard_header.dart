@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/assets/app_assets.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/bounce_tap.dart';
 import '../../application/profile_avatar_shape_provider.dart';
 import '../dashboard_screen.dart' show DashboardViewMode;
@@ -86,6 +87,7 @@ class DashboardHeader extends StatelessWidget {
     required this.headerTitleLink,
     this.showHistoryButton = false,
     this.onHistoryTap,
+    this.onSearchTap,
   });
 
   /// Stable identity string for a user-unique mesh (email, name, or fallback).
@@ -100,16 +102,13 @@ class DashboardHeader extends StatelessWidget {
   /// Passes-tab Archive control, shown left of the profile mesh.
   final bool showHistoryButton;
   final VoidCallback? onHistoryTap;
+  final VoidCallback? onSearchTap;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color ink = isDark
-        ? const Color(0xFFE8EEFF)
-        : const Color(0xFF0D1B2A);
-    final Color muted = isDark
-        ? Colors.white.withValues(alpha: 0.38)
-        : const Color(0xFF6B7280);
+    final scheme = Theme.of(context).colorScheme;
+    final Color ink = scheme.onSurface;
+    final Color muted = AppTokens.secondaryLabel(scheme);
 
     final String titleText;
     switch (currentMode) {
@@ -127,39 +126,51 @@ class DashboardHeader extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        BounceTap(
-          onTap: isMenuOpen ? null : onHomeTap,
-          child: CompositedTransformTarget(
-            link: headerTitleLink,
-            child: IgnorePointer(
-              ignoring: isMenuOpen,
-              child: Opacity(
-                opacity: isMenuOpen ? 0.0 : 1.0,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      titleText,
-                      style: dashboardNavTitleStyle(ink, selected: true),
-                    ),
-                    const SizedBox(width: 8),
-                    AnimatedRotation(
-                      turns: isMenuOpen ? 0.5 : 0.0,
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeInOutCubic,
-                      child: Icon(
-                        CupertinoIcons.chevron_down,
-                        size: 20,
-                        color: muted,
+        Expanded(
+          child: BounceTap(
+            onTap: isMenuOpen ? null : onHomeTap,
+            child: CompositedTransformTarget(
+              link: headerTitleLink,
+              child: IgnorePointer(
+                ignoring: isMenuOpen,
+                child: Opacity(
+                  opacity: isMenuOpen ? 0.0 : 1.0,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          titleText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: dashboardNavTitleStyle(ink, selected: true),
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      AnimatedRotation(
+                        turns: isMenuOpen ? 0.5 : 0.0,
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOutCubic,
+                        child: Icon(
+                          CupertinoIcons.chevron_down,
+                          size: 20,
+                          color: muted,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
-        const Spacer(),
+        if (onSearchTap != null)
+          IconButton(
+            tooltip: 'Search and browse wallet',
+            onPressed: onSearchTap,
+            icon: const Icon(Icons.search_rounded),
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          ),
         AnimatedSize(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
@@ -174,10 +185,14 @@ class DashboardHeader extends StatelessWidget {
                 HistoryHeaderButton(onTap: onHistoryTap!),
                 const SizedBox(width: 10),
               ],
-              ProfileMeshButton(
-                meshSeed: meshSeed,
-                washes: washes,
-                onTap: onAvatarTap,
+              Semantics(
+                button: true,
+                label: 'Open settings',
+                child: ProfileMeshButton(
+                  meshSeed: meshSeed,
+                  washes: washes,
+                  onTap: onAvatarTap,
+                ),
               ),
             ],
           ),
@@ -324,48 +339,51 @@ class _ProfileMeshButtonState extends ConsumerState<ProfileMeshButton> {
       onTapCancel: () => setState(() => _pressed = false),
       onTapUp: (_) => setState(() => _pressed = false),
       onTap: widget.onTap,
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOutCubic,
-        scale: _pressed ? 0.96 : 1.0,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
+      child: Padding(
+        padding: EdgeInsets.all((48 - size) / 2),
+        child: AnimatedScale(
+          duration: const Duration(milliseconds: 120),
           curve: Curves.easeOutCubic,
-          width: size,
-          height: size,
-          decoration: shadowDecoration,
-          child: ClipRRect(
-            borderRadius: clipRadius,
-            clipBehavior: Clip.antiAlias,
-            child: Stack(
-              fit: StackFit.expand,
-              children: <Widget>[
-                CustomPaint(
-                  painter: AvatarMeshPainter(colors: colors, phase: phase),
-                ),
-                // Outer defined stroke + inner highlight (double rim).
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
-                    borderRadius: isCircle ? null : clipRadius,
-                    border: Border.all(color: strokeOuter, width: 1.5),
+          scale: _pressed ? 0.96 : 1.0,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            width: size,
+            height: size,
+            decoration: shadowDecoration,
+            child: ClipRRect(
+              borderRadius: clipRadius,
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  CustomPaint(
+                    painter: AvatarMeshPainter(colors: colors, phase: phase),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(1.5),
-                  child: DecoratedBox(
+                  // Outer defined stroke + inner highlight (double rim).
+                  DecoratedBox(
                     decoration: BoxDecoration(
                       shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
-                      borderRadius: isCircle
-                          ? null
-                          : BorderRadius.circular(
-                              (radius - 1.5).clamp(0.0, radius),
-                            ),
-                      border: Border.all(color: strokeInner, width: 0.8),
+                      borderRadius: isCircle ? null : clipRadius,
+                      border: Border.all(color: strokeOuter, width: 1.5),
                     ),
                   ),
-                ),
-              ],
+                  Padding(
+                    padding: const EdgeInsets.all(1.5),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
+                        borderRadius: isCircle
+                            ? null
+                            : BorderRadius.circular(
+                                (radius - 1.5).clamp(0.0, radius),
+                              ),
+                        border: Border.all(color: strokeInner, width: 0.8),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
