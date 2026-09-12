@@ -11,7 +11,147 @@ import 'package:docket/features/dashboard/presentation/widgets/travel_weather_gl
 import 'package:docket/features/passport/domain/passport_profile.dart';
 
 void main() {
-  for (final scene in ['sunlight', 'drizzle', 'sunset', 'night']) {
+  testWidgets(
+    'lightning is occasional, localized, and disabled with reduced motion',
+    (tester) async {
+      await tester.runAsync(() async {
+        final program = (await TravelWeatherGlance.warmUp())!;
+        final shader = program.fragmentShader();
+        Future<ui.Image> frame(double time, bool motion) async {
+          final values = [
+            390.0,
+            kEasterEggPanelHeight,
+            time,
+            0.0,
+            0.0,
+            0.82,
+            1.0,
+            kEasterEggPanelHeight,
+            1.0,
+            1.0,
+            motion ? 1.0 : 0.0,
+          ];
+          for (var i = 0; i < values.length; i++) {
+            shader.setFloat(i, values[i]);
+          }
+          final recorder = ui.PictureRecorder();
+          Canvas(recorder).drawRect(
+            const Rect.fromLTWH(0, 0, 390, kEasterEggPanelHeight),
+            Paint()..shader = shader,
+          );
+          final picture = recorder.endRecording();
+          final image = await picture.toImage(
+            390,
+            kEasterEggPanelHeight.ceil(),
+          );
+          picture.dispose();
+          return image;
+        }
+
+        var maximumLitPixels = 0;
+        for (var step = 0; step <= 30; step++) {
+          final time = step * 0.2;
+          final animated = await frame(time, true);
+          final reduced = await frame(time, false);
+          final a = (await animated.toByteData())!.buffer.asUint8List();
+          final b = (await reduced.toByteData())!.buffer.asUint8List();
+          var lit = 0;
+          for (var pixel = 0; pixel < a.length; pixel += 4) {
+            if (a[pixel + 2] - b[pixel + 2] > 10) lit++;
+          }
+          if (step < 15) {
+            expect(lit, 0, reason: 'The storm should have quiet intervals.');
+          }
+          if (lit > maximumLitPixels) {
+            maximumLitPixels = lit;
+            if (const bool.fromEnvironment('DOCKET_SKY_PREVIEW')) {
+              final png = await animated.toByteData(
+                format: ui.ImageByteFormat.png,
+              );
+              await Directory('build/sky_preview').create(recursive: true);
+              await File(
+                'build/sky_preview/lightning.png',
+              ).writeAsBytes(png!.buffer.asUint8List());
+            }
+          }
+          animated.dispose();
+          reduced.dispose();
+        }
+        expect(maximumLitPixels, greaterThan(100));
+        expect(maximumLitPixels, lessThan(390 * kEasterEggPanelHeight * 0.65));
+        shader.dispose();
+      });
+    },
+  );
+
+  testWidgets('weather transitions can be redirected without a visual jump', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, kEasterEggPanelHeight);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.runAsync(() async {
+      await TravelWeatherGlance.warmUp();
+    });
+    var weather = SkyWeather.sunlight;
+    late StateSetter change;
+    final key = GlobalKey();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            change = setState;
+            return RepaintBoundary(
+              key: key,
+              child: TravelWeatherGlance(hour: 10, weather: weather),
+            );
+          },
+        ),
+      ),
+    );
+    await tester.runAsync(() async {
+      await TravelWeatherGlance.warmUp();
+    });
+    await tester.pump();
+    Future<List<int>> pixels() async {
+      late List<int> result;
+      await tester.runAsync(() async {
+        final boundary =
+            key.currentContext!.findRenderObject() as RenderRepaintBoundary;
+        final image = await boundary.toImage();
+        result = (await image.toByteData())!.buffer.asUint8List().toList();
+        image.dispose();
+      });
+      return result;
+    }
+
+    await tester.pump(const Duration(seconds: 2));
+    final before = await pixels();
+    change(() => weather = SkyWeather.heavyRain);
+    await tester.pump();
+    expect(await pixels(), equals(before));
+    await tester.pump(const Duration(milliseconds: 400));
+    final midway = await pixels();
+    expect(midway, isNot(equals(before)));
+    change(() => weather = SkyWeather.clear);
+    await tester.pump();
+    expect(await pixels(), equals(midway));
+    await tester.pump(const Duration(milliseconds: 800));
+    expect(await pixels(), isNot(equals(midway)));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  for (final scene in [
+    'sunlight',
+    'clear',
+    'cloudy',
+    'drizzle',
+    'heavyRain',
+    'thunderstorm',
+    'sunset',
+    'night',
+  ]) {
     testWidgets('$scene renders, animates, and respects reduced motion', (
       tester,
     ) async {
@@ -39,9 +179,11 @@ void main() {
                         : scene == 'sunset'
                         ? 18
                         : 10,
-                    weather: scene == 'drizzle'
-                        ? SkyWeather.drizzle
-                        : SkyWeather.sunlight,
+                    weather:
+                        SkyWeather.values
+                            .where((value) => value.name == scene)
+                            .firstOrNull ??
+                        SkyWeather.sunlight,
                   ),
                 ),
               );
@@ -92,11 +234,13 @@ void main() {
           }
         }
       }
-      expect(
-        totalChange / (70 * 230 * 3),
-        greaterThan(1.0),
-        reason: 'Cloud movement should be perceptible within two seconds.',
-      );
+      if (scene != 'clear') {
+        expect(
+          totalChange / (70 * 230 * 3),
+          greaterThan(1.0),
+          reason: 'Cloud movement should be perceptible within two seconds.',
+        );
+      }
       update(() => reduced = true);
       await tester.pump();
       final still = await pixels();
@@ -144,7 +288,11 @@ void main() {
     await tester.pumpAndSettle();
     for (final mode in [
       SkyPreviewMode.sunlight,
+      SkyPreviewMode.clear,
+      SkyPreviewMode.cloudy,
       SkyPreviewMode.drizzle,
+      SkyPreviewMode.heavyRain,
+      SkyPreviewMode.thunderstorm,
       SkyPreviewMode.sunset,
       SkyPreviewMode.night,
       SkyPreviewMode.automatic,
@@ -162,12 +310,15 @@ void main() {
         SkyPreviewMode.night => 23,
         _ => 10,
       });
-      expect(
-        sky.weather,
-        mode == SkyPreviewMode.automatic || mode == SkyPreviewMode.drizzle
-            ? SkyWeather.drizzle
-            : SkyWeather.sunlight,
-      );
+      expect(sky.weather, switch (mode) {
+        SkyPreviewMode.automatic ||
+        SkyPreviewMode.drizzle => SkyWeather.drizzle,
+        SkyPreviewMode.clear => SkyWeather.clear,
+        SkyPreviewMode.cloudy => SkyWeather.cloudy,
+        SkyPreviewMode.heavyRain => SkyWeather.heavyRain,
+        SkyPreviewMode.thunderstorm => SkyWeather.thunderstorm,
+        _ => SkyWeather.sunlight,
+      });
       // Testing a night sky should not change the real local-time greeting.
       expect(find.text('Good evening'), findsOneWidget);
       expect(tester.takeException(), isNull);

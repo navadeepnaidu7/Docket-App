@@ -10,7 +10,11 @@ import 'travel_weather_glance.dart';
 enum SkyPreviewMode {
   automatic('Auto'),
   sunlight('Sunlight'),
-  drizzle('Light rain'),
+  clear('Clear sky'),
+  cloudy('Cloudy'),
+  drizzle('Drizzle'),
+  heavyRain('Heavy rain'),
+  thunderstorm('Thunderstorm'),
   sunset('Sunset'),
   night('Night');
 
@@ -84,6 +88,10 @@ class _EasterEggDrawerState extends State<EasterEggDrawer> {
     final weather = switch (_previewMode) {
       SkyPreviewMode.automatic => autoWeather,
       SkyPreviewMode.drizzle => SkyWeather.drizzle,
+      SkyPreviewMode.clear => SkyWeather.clear,
+      SkyPreviewMode.cloudy => SkyWeather.cloudy,
+      SkyPreviewMode.heavyRain => SkyWeather.heavyRain,
+      SkyPreviewMode.thunderstorm => SkyWeather.thunderstorm,
       _ => SkyWeather.sunlight,
     };
     final skyHour = switch (_previewMode) {

@@ -5,7 +5,19 @@ import 'package:flutter/material.dart';
 import 'easter_egg_constants.dart';
 
 /// Ambient scenes, deliberately independent of any unconnected weather API.
-enum SkyWeather { sunlight, drizzle }
+enum SkyWeather {
+  sunlight(clouds: 0.55),
+  clear(clouds: 0),
+  cloudy(clouds: 0.91),
+  drizzle(clouds: 0.85, rain: 0.28),
+  heavyRain(clouds: 0.98, rain: 0.92),
+  thunderstorm(clouds: 1, rain: 0.82, storm: 1);
+
+  const SkyWeather({required this.clouds, this.rain = 0, this.storm = 0});
+  final double clouds;
+  final double rain;
+  final double storm;
+}
 
 class TravelWeatherGlance extends StatefulWidget {
   const TravelWeatherGlance({
@@ -60,7 +72,9 @@ class _TravelWeatherGlanceState extends State<TravelWeatherGlance>
   List<double> get _target => [
     widget.hour < 6 || widget.hour >= 21 ? 1 : 0,
     widget.hour >= 17 && widget.hour < 21 ? 1 : 0,
-    widget.weather == SkyWeather.drizzle ? 1 : 0,
+    widget.weather.rain,
+    widget.weather.clouds,
+    widget.weather.storm,
   ];
 
   @override
@@ -70,7 +84,10 @@ class _TravelWeatherGlanceState extends State<TravelWeatherGlance>
       return;
     }
     final t = Curves.easeInOut.transform(_sceneBlend.value);
-    _from = List.generate(3, (i) => ui.lerpDouble(_from[i], _to[i], t)!);
+    _from = List.generate(
+      _to.length,
+      (i) => ui.lerpDouble(_from[i], _to[i], t)!,
+    );
     _to = _target;
     if (MediaQuery.disableAnimationsOf(context)) {
       _sceneBlend.value = 1;
@@ -124,6 +141,7 @@ class _TravelWeatherGlanceState extends State<TravelWeatherGlance>
           to: _to,
           hour: widget.hour,
           weather: widget.weather,
+          reducedMotion: MediaQuery.disableAnimationsOf(context),
           progress: MediaQuery.disableAnimationsOf(context)
               ? 1
               : widget.progress,
@@ -143,6 +161,7 @@ class _SkyPainter extends CustomPainter {
     required this.to,
     required this.hour,
     required this.weather,
+    required this.reducedMotion,
     required this.progress,
   }) : super(repaint: Listenable.merge([clock, sceneBlend]));
 
@@ -153,6 +172,7 @@ class _SkyPainter extends CustomPainter {
   final List<double> to;
   final int hour;
   final SkyWeather weather;
+  final bool reducedMotion;
   final double progress;
 
   @override
@@ -184,7 +204,10 @@ class _SkyPainter extends CustomPainter {
       ..setFloat(4, ui.lerpDouble(from[1], to[1], blend)!)
       ..setFloat(5, ui.lerpDouble(from[2], to[2], blend)!)
       ..setFloat(6, progress)
-      ..setFloat(7, kEasterEggPanelHeight);
+      ..setFloat(7, kEasterEggPanelHeight)
+      ..setFloat(8, ui.lerpDouble(from[3], to[3], blend)!)
+      ..setFloat(9, ui.lerpDouble(from[4], to[4], blend)!)
+      ..setFloat(10, reducedMotion ? 0 : 1);
     canvas.drawRect(Offset.zero & size, Paint()..shader = effect);
   }
 
@@ -195,5 +218,6 @@ class _SkyPainter extends CustomPainter {
       old.to != to ||
       old.hour != hour ||
       old.weather != weather ||
+      old.reducedMotion != reducedMotion ||
       old.progress != progress;
 }
