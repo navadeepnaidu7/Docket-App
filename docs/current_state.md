@@ -134,7 +134,7 @@ Landed in `a3fe742` + `a66c039`. Universal release APK measured at **59.0 MB**, 
 | **Extract upload** | Wired: train PNR (`POST /tickets`) + photo/PDF (`POST /tickets/extract`), bus photo/PDF, movie photo/PDF. Submit is refused while mock fixtures are active. Full Google Sign-In is still missing. |
 | **Push** | No FCM dependency and no `POST /v1/devices` registration, although the server's Phase D outbox is ready. |
 | **iOS NFC** | Not implemented; `MainActivity.kt` is Android-only. |
-| **Search** | `README.md` lists search among wallet features; there is no search UI in the codebase. |
+| **Search** | Implemented: the header search opens a compact wallet list with All / Documents / Passes / Archive filters. Matches holder names, document numbers, routes, movie titles, passengers, and booking references in memory. See `docs/features/alpha-usability-polish.md`. |
 | **Pass share on iOS** | Implemented and analyzed, but the photo-library permission prompt and save are unverified — no iOS toolchain in this repo's flow. The Android 26-28 `WRITE_EXTERNAL_STORAGE` path is likewise unexercised; the emulators in use are newer, where MediaStore needs no permission. |
 | **Release signing** | `buildTypes.release` still uses the debug signing config (`TODO` in `build.gradle.kts`). |
 

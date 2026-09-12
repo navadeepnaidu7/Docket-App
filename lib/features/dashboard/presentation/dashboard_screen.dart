@@ -725,6 +725,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                                           _showDeleteDialog,
                                                       onDeleteId:
                                                           _showDeleteIdDialog,
+                                                      onAdd: _showAddSheet,
                                                       pageNotifier: _docPage,
                                                       revealItemId:
                                                           _revealItemId,

@@ -3,17 +3,21 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/dev/dev_config.dart';
 import '../../../core/dev/dev_flags_provider.dart';
+import '../../../core/haptics/haptic_service.dart';
 import '../../../core/wallet/wallet_layout.dart';
 import '../../../shared/widgets/bounce_tap.dart';
 import '../../../shared/widgets/rolling_card_page.dart';
 import '../../../shared/widgets/stacked_card_deck.dart';
 import '../../dashboard/application/pass_deck_provider.dart';
 import '../application/pass_ingest_controller.dart';
+import '../application/pass_ingest_service.dart';
 import '../application/pass_list_provider.dart';
 import '../domain/pass_catalog.dart';
+import 'add/add_pass_flow.dart';
+import 'add/pass_ingest_outcome.dart';
 import 'add/pass_ingest_particle_card.dart';
+import 'open_pass.dart';
 import 'pass_remove_flow.dart';
 import 'wallet_bus_card.dart';
 import 'wallet_movie_card.dart';
@@ -81,6 +85,8 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
       PassIngestUiState next,
     ) {
       if (next is PassIngestRunning) _focusedIngestId = null;
+      if (next is PassIngestSucceeded) HapticService.success();
+      if (next is PassIngestFailed) HapticService.error();
       if (next is PassIngestSucceeded &&
           next.item.status == TicketStatus.active) {
         _focusPass(next.item.id);
@@ -96,8 +102,7 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
       activePassesProvider,
     );
 
-    final bool showMockBadge =
-        DevConfig.showDevMenu && ref.watch(devFlagsProvider).isMockPassesActive;
+    final bool showMockBadge = ref.watch(devFlagsProvider).isMockPassesActive;
     final bool deckMode = ref.watch(passDeckModeProvider);
     final double fabClearance = WalletLayout.fabClearance(context);
     return Column(
@@ -106,7 +111,10 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
         if (showMockBadge)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 20, 0),
-            child: Align(alignment: Alignment.centerRight, child: _MockBadge()),
+            child: Text(
+              'Sample passes · For exploring Docket',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ),
         Expanded(
           child: Stack(
@@ -121,12 +129,14 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
                   ),
                 ),
                 error: (Object err, StackTrace st) => _ErrorState(
-                  message: err.toString(),
+                  message: 'Check your connection and try again.',
                   onRetry: () => ref.read(passListProvider.notifier).refresh(),
                 ),
                 data: (List<WalletPassItem> filtered) {
                   if (filtered.isEmpty) {
-                    return const _EmptyState();
+                    return _EmptyState(
+                      onAdd: () => showAddPassFlow(context, ref),
+                    );
                   }
 
                   if (deckMode) {
@@ -194,13 +204,50 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
               ),
               if (!ingestState.isIdle)
                 Positioned.fill(
-                  child: PassIngestParticleCard(
-                    state: ingestState,
-                    isActive: widget.isActive,
-                    onFinished: () => ref
-                        .read(passIngestControllerProvider.notifier)
-                        .dismiss(),
-                  ),
+                  child: ingestState is PassIngestRunning
+                      ? Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            PassIngestParticleCard(
+                              state: ingestState,
+                              isActive: widget.isActive,
+                              onFinished: () {},
+                            ),
+                            Positioned(
+                              left: 24,
+                              right: 24,
+                              bottom: fabClearance,
+                              child: Text(
+                                switch (ingestState.phase) {
+                                  PassIngestPhase.readingSource =>
+                                    'Reading your ticket…',
+                                  PassIngestPhase.submitting =>
+                                    'Preparing your pass…',
+                                  PassIngestPhase.syncingWallet =>
+                                    'Adding it to your wallet…',
+                                },
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                            ),
+                          ],
+                        )
+                      : PassIngestOutcome(
+                          state: ingestState,
+                          onRetry: () => ref
+                              .read(passIngestControllerProvider.notifier)
+                              .retry(),
+                          onReplace: () => replacePassInput(context, ref),
+                          onDismiss: () => ref
+                              .read(passIngestControllerProvider.notifier)
+                              .dismiss(),
+                          onView: (item) {
+                            ref
+                                .read(passIngestControllerProvider.notifier)
+                                .dismiss();
+                            openPass(context, item);
+                          },
+                        ),
                 ),
             ],
           ),
@@ -379,35 +426,11 @@ class _DotIndicator extends StatelessWidget {
   }
 }
 
-class _MockBadge extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFAF52DE).withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFFAF52DE).withValues(alpha: 0.35),
-        ),
-      ),
-      child: const Text(
-        'MOCK',
-        style: TextStyle(
-          color: Color(0xFFAF52DE),
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.6,
-        ),
-      ),
-    );
-  }
-}
-
 // ── Empty / error ─────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({required this.onAdd});
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -415,7 +438,7 @@ class _EmptyState extends StatelessWidget {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(32, 0, 32, fabClearance),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -423,7 +446,7 @@ class _EmptyState extends StatelessWidget {
             const EmptyPassesPreview(),
             const SizedBox(height: 28),
             Text(
-              'No Passes Yet',
+              'No upcoming passes',
               style: TextStyle(
                 color: isDark ? Colors.white : const Color(0xFF1C1C1E),
                 fontSize: 21,
@@ -433,7 +456,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Tap + to import a boarding pass, transit ticket, or movie pass.',
+              'Add a train, bus, or movie ticket. Past tickets live in Archive.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: isDark
@@ -442,6 +465,8 @@ class _EmptyState extends StatelessWidget {
                 fontSize: 15,
               ),
             ),
+            const SizedBox(height: 20),
+            FilledButton(onPressed: onAdd, child: const Text('Add a pass')),
           ],
         ),
       ),
@@ -555,7 +580,10 @@ class _GhostPassCard extends StatelessWidget {
         child: Transform.scale(
           scale: scale,
           child: ClipPath(
-            clipper: const _TicketNotchClipper(notchRadius: 7, notchYFraction: 0.65),
+            clipper: const _TicketNotchClipper(
+              notchRadius: 7,
+              notchYFraction: 0.65,
+            ),
             child: Container(
               width: 146,
               height: 122,
@@ -638,9 +666,12 @@ class _GhostPassCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 5),
                           child: Icon(
                             switch (passType) {
-                              _GhostPassType.transit => Icons.arrow_forward_rounded,
-                              _GhostPassType.event => Icons.local_activity_rounded,
-                              _GhostPassType.boarding => Icons.flight_takeoff_rounded,
+                              _GhostPassType.transit =>
+                                Icons.arrow_forward_rounded,
+                              _GhostPassType.event =>
+                                Icons.local_activity_rounded,
+                              _GhostPassType.boarding =>
+                                Icons.flight_takeoff_rounded,
                             },
                             size: 11,
                             color: color.withValues(alpha: 0.38 * alpha),
@@ -698,7 +729,9 @@ class _GhostPassCard extends StatelessWidget {
                           Container(
                             width: (i % 3 == 0 || i % 5 == 0) ? 2.5 : 1.2,
                             decoration: BoxDecoration(
-                              color: color.withValues(alpha: (0.18 + (i % 3) * 0.08) * alpha),
+                              color: color.withValues(
+                                alpha: (0.18 + (i % 3) * 0.08) * alpha,
+                              ),
                               borderRadius: BorderRadius.circular(1),
                             ),
                           ),
@@ -769,7 +802,10 @@ class _TicketNotchClipper extends CustomClipper<Path> {
       clockwise: false,
     );
     path.lineTo(size.width, size.height - r);
-    path.arcToPoint(Offset(size.width - r, size.height), radius: Radius.circular(r));
+    path.arcToPoint(
+      Offset(size.width - r, size.height),
+      radius: Radius.circular(r),
+    );
 
     // Bottom edge
     path.lineTo(r, size.height);

@@ -162,4 +162,33 @@ void main() {
     );
     expect(container.read(passIngestControllerProvider), isA<PassIngestIdle>());
   });
+
+  testWidgets(
+    'editing a failed PNR preserves it until a valid replacement starts',
+    (tester) async {
+      final api = _FakeApi(TrainPassItem(mockTrainPasses.first))
+        ..failCreate = true;
+      final container = _container(api);
+      addTearDown(container.dispose);
+      final controller = container.read(passIngestControllerProvider.notifier);
+      controller.startPnr('1234567890');
+      await tester.pump();
+      final original = container.read(passIngestControllerProvider);
+      expect(original, isA<PassIngestFailed>());
+      expect(controller.startPnr('123', replaceFailed: true), isFalse);
+      expect(container.read(passIngestControllerProvider), same(original));
+      expect(controller.startPnr('0987654321'), isFalse);
+      api.failCreate = false;
+      expect(controller.startPnr('0987654321', replaceFailed: true), isTrue);
+      final running =
+          container.read(passIngestControllerProvider) as PassIngestRunning;
+      expect((running.request as PnrPassIngestRequest).pnr, '0987654321');
+      expect(controller.startPnr('1234567890', replaceFailed: true), isFalse);
+      await tester.pump(const Duration(milliseconds: 710));
+      expect(
+        container.read(passIngestControllerProvider),
+        isA<PassIngestSucceeded>(),
+      );
+    },
+  );
 }

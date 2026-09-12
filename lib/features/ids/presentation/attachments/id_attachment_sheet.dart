@@ -27,7 +27,7 @@ import 'id_attachment_tray.dart';
 Future<void> showIdAttachmentSheet(
   BuildContext context, {
   required IdDocument document,
-  required VoidCallback onRemove,
+  VoidCallback? onRemove,
 }) {
   return Navigator.of(context, rootNavigator: true).push(
     PageRouteBuilder<void>(
@@ -37,18 +37,17 @@ Future<void> showIdAttachmentSheet(
       barrierColor: const Color(0x8A000000),
       transitionDuration: const Duration(milliseconds: 320),
       reverseTransitionDuration: const Duration(milliseconds: 220),
-      pageBuilder: (BuildContext ctx, _, _) => _IdAttachmentSheet(
-        documentId: document.id,
-        onRemove: onRemove,
-      ),
-      transitionsBuilder: (
-        BuildContext ctx,
-        Animation<double> animation,
-        Animation<double> secondary,
-        Widget child,
-      ) {
-        return _SheetTransition(animation: animation, child: child);
-      },
+      pageBuilder: (BuildContext ctx, _, _) =>
+          _IdAttachmentSheet(documentId: document.id, onRemove: onRemove),
+      transitionsBuilder:
+          (
+            BuildContext ctx,
+            Animation<double> animation,
+            Animation<double> secondary,
+            Widget child,
+          ) {
+            return _SheetTransition(animation: animation, child: child);
+          },
     ),
   );
 }
@@ -75,10 +74,7 @@ class _SheetTransition extends StatelessWidget {
 
 /// Carries the route animation down to the two halves of the sheet.
 class _SheetTransitionScope extends InheritedWidget {
-  const _SheetTransitionScope({
-    required this.animation,
-    required super.child,
-  });
+  const _SheetTransitionScope({required this.animation, required super.child});
 
   final Animation<double> animation;
 
@@ -97,7 +93,7 @@ class _IdAttachmentSheet extends ConsumerStatefulWidget {
   const _IdAttachmentSheet({required this.documentId, required this.onRemove});
 
   final String documentId;
-  final VoidCallback onRemove;
+  final VoidCallback? onRemove;
 
   @override
   ConsumerState<_IdAttachmentSheet> createState() => _IdAttachmentSheetState();
@@ -122,7 +118,14 @@ class _IdAttachmentSheetState extends ConsumerState<_IdAttachmentSheet> {
     try {
       final FilePickerResult? picked = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: const <String>['jpg', 'jpeg', 'png', 'heic', 'webp', 'pdf'],
+        allowedExtensions: const <String>[
+          'jpg',
+          'jpeg',
+          'png',
+          'heic',
+          'webp',
+          'pdf',
+        ],
         withData: false,
       );
 
@@ -264,17 +267,18 @@ class _IdAttachmentSheetState extends ConsumerState<_IdAttachmentSheet> {
     final IdDocument document = documents[index];
     final List<IdAttachment> attachments = document.attachments;
 
-    final bool canAddMore = rejectionFor(
-          existing: attachments,
-          incoming: IdAttachmentKind.image,
-          sizeBytes: 0,
-        ) ==
-        null ||
+    final bool canAddMore =
         rejectionFor(
-          existing: attachments,
-          incoming: IdAttachmentKind.pdf,
-          sizeBytes: 0,
-        ) ==
+              existing: attachments,
+              incoming: IdAttachmentKind.image,
+              sizeBytes: 0,
+            ) ==
+            null ||
+        rejectionFor(
+              existing: attachments,
+              incoming: IdAttachmentKind.pdf,
+              sizeBytes: 0,
+            ) ==
             null;
 
     final Animation<double>? animation = _SheetTransitionScope.maybeOf(context);
@@ -294,13 +298,24 @@ class _IdAttachmentSheetState extends ConsumerState<_IdAttachmentSheet> {
       canAddMore: canAddMore,
     );
 
-    final Widget actionSheet = _RemoveActionSheet(
-      document: document,
-      onRemove: () {
-        Navigator.of(context).pop();
-        widget.onRemove();
-      },
-    );
+    final Widget actionSheet = widget.onRemove == null
+        ? CupertinoActionSheet(
+            title: const Text('Attachments'),
+            message: const Text(
+              'Keep photos and a PDF with this ID. Tap a copy to open it.',
+            ),
+            cancelButton: CupertinoActionSheetAction(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Done'),
+            ),
+          )
+        : _RemoveActionSheet(
+            document: document,
+            onRemove: () {
+              Navigator.of(context).pop();
+              widget.onRemove!();
+            },
+          );
 
     return Material(
       type: MaterialType.transparency,
@@ -315,10 +330,7 @@ class _IdAttachmentSheetState extends ConsumerState<_IdAttachmentSheet> {
                 // tray floating in the empty upper half; nudging it down closes
                 // the gap to the action sheet and keeps the whole composition
                 // in the lower two thirds, nearer the thumb.
-                child: Align(
-                  alignment: const Alignment(0, 0.45),
-                  child: tray,
-                ),
+                child: Align(alignment: const Alignment(0, 0.45), child: tray),
               ),
             ),
             const SizedBox(height: 24),
@@ -377,9 +389,7 @@ class _SheetSlide extends StatelessWidget {
       position: Tween<Offset>(
         begin: const Offset(0, 1),
         end: Offset.zero,
-      ).animate(
-        CurvedAnimation(parent: source, curve: Curves.easeOutCubic),
-      ),
+      ).animate(CurvedAnimation(parent: source, curve: Curves.easeOutCubic)),
       child: child,
     );
   }
@@ -394,10 +404,12 @@ class _RemoveActionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String label =
-        document.holderName.isEmpty ? 'this card' : "${document.holderName}'s";
-    final String type =
-        document.type == IdDocumentType.pan ? 'PAN Card' : 'Aadhaar Card';
+    final String label = document.holderName.isEmpty
+        ? 'this card'
+        : "${document.holderName}'s";
+    final String type = document.type == IdDocumentType.pan
+        ? 'PAN Card'
+        : 'Aadhaar Card';
 
     return CupertinoActionSheet(
       title: const Text('Remove ID Card?'),

@@ -28,6 +28,7 @@ class IdsTab extends ConsumerStatefulWidget {
     required this.pageNotifier,
     this.revealItemId,
     this.backdropTilt,
+    this.onAdd,
   });
 
   /// Visible wallet items (may be filtered).
@@ -37,6 +38,7 @@ class IdsTab extends ConsumerStatefulWidget {
   final List<Object> allItems;
   final void Function(PassportProfile) onDeletePassport;
   final void Function(IdDocument) onDeleteId;
+  final VoidCallback? onAdd;
   final ValueNotifier<double> pageNotifier;
 
   /// Id of a card the wallet should page to, set when a Manage row is tapped.
@@ -146,10 +148,12 @@ class _IdsTabState extends ConsumerState<IdsTab> {
     final items = widget.items;
     final bool shineEnabled = ref.watch(cardShineBorderProvider);
     final bool filterEnabled = ref.watch(walletFilterEnabledProvider);
-    final WalletFilterCategory filterCategory =
-        ref.watch(walletFilterCategoryProvider);
-    final List<WalletFilterCategory> filterOptions =
-        walletFilterOptionsFor(widget.allItems);
+    final WalletFilterCategory filterCategory = ref.watch(
+      walletFilterCategoryProvider,
+    );
+    final List<WalletFilterCategory> filterOptions = walletFilterOptionsFor(
+      widget.allItems,
+    );
     final bool isWalletLoading = ref.watch(walletLoadingProvider);
     if (isWalletLoading) {
       return Center(
@@ -162,7 +166,7 @@ class _IdsTabState extends ConsumerState<IdsTab> {
 
     if (widget.allItems.isEmpty) {
       return Center(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(32, 0, 32, fabClearance),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -170,7 +174,8 @@ class _IdsTabState extends ConsumerState<IdsTab> {
               const EmptyDocsPreview(),
               const SizedBox(height: 28),
               Text(
-                'No Documents Yet',
+                'Your documents, close at hand',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? Colors.white
@@ -182,7 +187,7 @@ class _IdsTabState extends ConsumerState<IdsTab> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Tap + to add a passport or ID card.',
+                'Keep your passport or ID ready whenever you need it.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Theme.of(context).brightness == Brightness.dark
@@ -191,17 +196,24 @@ class _IdsTabState extends ConsumerState<IdsTab> {
                   fontSize: 15,
                 ),
               ),
+              if (widget.onAdd != null) ...[
+                const SizedBox(height: 20),
+                FilledButton(
+                  onPressed: widget.onAdd,
+                  child: const Text('Add a document'),
+                ),
+              ],
             ],
           ),
         ),
       );
     }
 
-    final WalletFilterCategory activeFilter = filterOptions.contains(filterCategory)
+    final WalletFilterCategory activeFilter =
+        filterOptions.contains(filterCategory)
         ? filterCategory
         : WalletFilterCategory.all;
-    final bool showFilterButton =
-        filterEnabled && filterOptions.length > 1;
+    final bool showFilterButton = filterEnabled && filterOptions.length > 1;
 
     return Stack(
       children: [
@@ -216,58 +228,57 @@ class _IdsTabState extends ConsumerState<IdsTab> {
             : Stack(
                 children: [
                   PageView.builder(
-                      controller: _pageCtrl,
-                      scrollDirection: Axis.vertical,
-                      physics: const BouncingScrollPhysics(
-                        parent: AlwaysScrollableScrollPhysics(),
-                      ),
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        final Widget card = switch (item) {
-                          PassportProfile profile => WalletPassportCard(
-                              key: ValueKey<String>('passport-${profile.id}'),
-                              profile: profile,
-                              backdropTilt: widget.backdropTilt,
-                              onLongPress: () =>
-                                  widget.onDeletePassport(profile),
-                            ),
-                          IdDocument document => WalletIdCard(
-                              key: ValueKey<String>(
-                                'id-${document.id}-${document.type.name}',
-                              ),
-                              document: document,
-                              backdropTilt: widget.backdropTilt,
-                              onLongPress: () => widget.onDeleteId(document),
-                            ),
-                          _ => const SizedBox.shrink(),
-                        };
-
-                        return RollingCardPage(
-                          controller: _pageCtrl,
-                          index: index,
-                          padding:
-                              EdgeInsets.fromLTRB(20, 8, 28, fabClearance),
-                          child: item is IdDocument
-                              ? AnimatedBuilder(
-                                  animation: _pageCtrl,
-                                  builder: (context, _) {
-                                    final double page = _pageCtrl.page ?? 0;
-                                    final int activeIndex = page
-                                        .round()
-                                        .clamp(0, items.length - 1);
-                                    return WalletCardShineBorder(
-                                      enabled: shineEnabled,
-                                      isActive: activeIndex == index,
-                                      borderRadius: 24,
-                                      child: card,
-                                    );
-                                  },
-                                )
-                              : card,
-                        );
-                      },
+                    controller: _pageCtrl,
+                    scrollDirection: Axis.vertical,
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
                     ),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      final Widget card = switch (item) {
+                        PassportProfile profile => WalletPassportCard(
+                          key: ValueKey<String>('passport-${profile.id}'),
+                          profile: profile,
+                          backdropTilt: widget.backdropTilt,
+                          onLongPress: () => widget.onDeletePassport(profile),
+                        ),
+                        IdDocument document => WalletIdCard(
+                          key: ValueKey<String>(
+                            'id-${document.id}-${document.type.name}',
+                          ),
+                          document: document,
+                          backdropTilt: widget.backdropTilt,
+                          onLongPress: () => widget.onDeleteId(document),
+                        ),
+                        _ => const SizedBox.shrink(),
+                      };
+
+                      return RollingCardPage(
+                        controller: _pageCtrl,
+                        index: index,
+                        padding: EdgeInsets.fromLTRB(20, 8, 28, fabClearance),
+                        child: item is IdDocument
+                            ? AnimatedBuilder(
+                                animation: _pageCtrl,
+                                builder: (context, _) {
+                                  final double page = _pageCtrl.page ?? 0;
+                                  final int activeIndex = page.round().clamp(
+                                    0,
+                                    items.length - 1,
+                                  );
+                                  return WalletCardShineBorder(
+                                    enabled: shineEnabled,
+                                    isActive: activeIndex == index,
+                                    borderRadius: 24,
+                                    child: card,
+                                  );
+                                },
+                              )
+                            : card,
+                      );
+                    },
+                  ),
                   if (items.length > 1)
                     Positioned(
                       right: 12,
@@ -316,10 +327,10 @@ class _FilteredEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color ink =
-        isDark ? Colors.white : const Color(0xFF1C1C1E);
-    final Color muted =
-        isDark ? const Color(0xFF8E8E93) : const Color(0xFF64748B);
+    final Color ink = isDark ? Colors.white : const Color(0xFF1C1C1E);
+    final Color muted = isDark
+        ? const Color(0xFF8E8E93)
+        : const Color(0xFF64748B);
 
     return Center(
       child: Padding(
@@ -327,11 +338,7 @@ class _FilteredEmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.filter_list_off_rounded,
-              size: 40,
-              color: muted,
-            ),
+            Icon(Icons.filter_list_off_rounded, size: 40, color: muted),
             const SizedBox(height: 16),
             Text(
               message,

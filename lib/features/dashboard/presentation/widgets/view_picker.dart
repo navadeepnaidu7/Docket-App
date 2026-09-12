@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../../../core/haptics/haptic_service.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../dashboard_screen.dart';
 import 'dashboard_header.dart' show dashboardNavTitleStyle;
 
@@ -52,12 +53,10 @@ class _ViewPickerExpandedState extends State<ViewPickerExpanded>
       curve: Curves.easeOut,
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.88, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOutCubic,
-      ),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.88,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     if (widget.visible) {
       _shouldRender = true;
@@ -98,9 +97,8 @@ class _ViewPickerExpandedState extends State<ViewPickerExpanded>
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final Color frostedFill = isDark
-        ? const Color(0xFF111827).withValues(alpha: 0.78)
-        : const Color(0xFFFBF8F2).withValues(alpha: 0.90);
+    final scheme = Theme.of(context).colorScheme;
+    final Color frostedFill = AppTokens.sheetBackground(scheme);
 
     final Color selectionFill = isDark
         ? Colors.white.withValues(alpha: 0.09)
@@ -110,9 +108,7 @@ class _ViewPickerExpandedState extends State<ViewPickerExpanded>
         ? Colors.white.withValues(alpha: 0.10)
         : Colors.black.withValues(alpha: 0.06);
 
-    final Color ink = isDark
-        ? const Color(0xFFE8EEFF)
-        : const Color(0xFF0D1B2A);
+    final Color ink = scheme.onSurface;
 
     const modes = <DashboardViewMode>[
       DashboardViewMode.manage,
@@ -187,7 +183,9 @@ class _ViewPickerExpandedState extends State<ViewPickerExpanded>
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: _menuPadding),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: _menuPadding,
+                        ),
                         child: Column(
                           children: modes.map((mode) {
                             final bool isActive = widget.currentMode == mode;
@@ -213,11 +211,15 @@ class _ViewPickerExpandedState extends State<ViewPickerExpanded>
                               child: SizedBox(
                                 height: _rowHeight,
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                  ),
                                   child: Align(
                                     alignment: Alignment.centerLeft,
                                     child: AnimatedDefaultTextStyle(
-                                      duration: const Duration(milliseconds: 200),
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
                                       curve: Curves.easeOutCubic,
                                       style: dashboardNavTitleStyle(
                                         ink,

@@ -250,7 +250,7 @@ class AppTheme {
           fontWeight: FontWeight.w500,
         ),
         hintStyle: TextStyle(
-          color: isDark ? const Color(0xFF636366) : const Color(0xFF9AA3B0),
+          color: ink.withValues(alpha: isDark ? 0.68 : 0.60),
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusInput),
@@ -277,16 +277,30 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: isDark ? _darkBg : Colors.white,
+          minimumSize: const Size(48, 48),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusButton),
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+          textStyle: text.labelLarge,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: ink,
+          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          side: BorderSide(color: outline),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radiusButton),
+          ),
+          textStyle: text.labelLarge,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: isDark ? _darkInk : primary,
+          minimumSize: const Size(48, 48),
         ),
       ),
       appBarTheme: AppBarTheme(

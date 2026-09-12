@@ -79,9 +79,12 @@ class PassIngestController extends Notifier<PassIngestUiState> {
   @override
   PassIngestUiState build() => const PassIngestIdle();
 
-  bool startPnr(String raw) {
+  bool startPnr(String raw, {bool replaceFailed = false}) {
     final String pnr = PnrFormat.normalize(raw);
-    if (!PnrFormat.isValid(pnr) || !state.isIdle) return false;
+    if (!PnrFormat.isValid(pnr) ||
+        (!state.isIdle && !(replaceFailed && state is PassIngestFailed))) {
+      return false;
+    }
     _start(PnrPassIngestRequest(pnr));
     return true;
   }

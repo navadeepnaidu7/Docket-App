@@ -22,6 +22,9 @@ Details: [`docs/current_state.md`](docs/current_state.md)
 
 ### Wallet experience
 - Interactive card-based dashboard with reorder, filters, archive, and trash flows.
+- Searchable wallet list for documents, active passes, and archived tickets.
+- Visible ID attachment actions and an upcoming-ticket shortcut.
+- Persistent pass import recovery with retry, replacement input, and direct access to the saved pass.
 - Light and dark themes with a custom transition system.
 - Haptics and sound hooks integrated into key interactions.
 

@@ -12,7 +12,13 @@ import '../../application/pass_ingest_controller.dart';
 import '../../domain/pnr_format.dart';
 
 class PnrEntryScreen extends ConsumerStatefulWidget {
-  const PnrEntryScreen({super.key});
+  const PnrEntryScreen({
+    super.key,
+    this.initialPnr = '',
+    this.replaceFailed = false,
+  });
+  final String initialPnr;
+  final bool replaceFailed;
 
   @override
   ConsumerState<PnrEntryScreen> createState() => _PnrEntryScreenState();
@@ -47,6 +53,7 @@ class _PnrEntryScreenState extends ConsumerState<PnrEntryScreen> {
         ),
       ],
     );
+    if (widget.initialPnr.isNotEmpty) _flow.setValue(_field, widget.initialPnr);
   }
 
   @override
@@ -64,7 +71,10 @@ class _PnrEntryScreenState extends ConsumerState<PnrEntryScreen> {
     }
     final bool started = ref
         .read(passIngestControllerProvider.notifier)
-        .startPnr(_flow.state.value(_field));
+        .startPnr(
+          _flow.state.value(_field),
+          replaceFailed: widget.replaceFailed,
+        );
     if (started) {
       Navigator.of(context).pop(true);
       return;

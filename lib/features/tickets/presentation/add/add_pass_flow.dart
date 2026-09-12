@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show ScaffoldMessenger, SnackBar;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -23,6 +24,42 @@ import 'pnr_entry_screen.dart';
 /// navigator that outlives it.
 Future<void> showAddPassFlow(BuildContext context, WidgetRef ref) {
   return showMorphSheet(context: context, root: passesRootStep(context, ref));
+}
+
+/// Cancelling the replacement picker keeps the failed request available.
+Future<void> replacePassInput(BuildContext context, WidgetRef ref) async {
+  final state = ref.read(passIngestControllerProvider);
+  if (state is! PassIngestFailed) return;
+  if (state.request case FilePassIngestRequest(:final category)) {
+    try {
+      final picked = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: PassUpload.fileExtensions,
+        withData: false,
+      );
+      if (!context.mounted) return;
+      final files = picked?.files ?? const <PlatformFile>[];
+      if (files.isEmpty || files.first.path == null) return;
+      final controller = ref.read(passIngestControllerProvider.notifier);
+      if (!identical(ref.read(passIngestControllerProvider), state)) return;
+      controller.dismiss();
+      controller.startFile(path: files.first.path!, category: category);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Couldn’t open that file. Please try again.'),
+          ),
+        );
+      }
+    }
+  } else if (state.request case PnrPassIngestRequest(:final pnr)) {
+    await Navigator.of(context).push(
+      studioPageRoute<void>(
+        builder: (_) => PnrEntryScreen(initialPnr: pnr, replaceFailed: true),
+      ),
+    );
+  }
 }
 
 /// The Passes category grid.
@@ -139,15 +176,26 @@ Future<void> _handleSource(
   PassInputCategory category,
   PassInputSource source,
 ) async {
-  switch (source) {
-    case PassInputSource.pnr:
-      await Navigator.of(
-        context,
-      ).push(studioPageRoute<void>(builder: (_) => const PnrEntryScreen()));
-    case PassInputSource.photo:
-      await _pickPhoto(context, ref, category);
-    case PassInputSource.pdf:
-      await _pickFile(context, ref, category, pdfOnly: true);
+  try {
+    switch (source) {
+      case PassInputSource.pnr:
+        await Navigator.of(
+          context,
+        ).push(studioPageRoute<void>(builder: (_) => const PnrEntryScreen()));
+      case PassInputSource.photo:
+        await _pickPhoto(context, ref, category);
+      case PassInputSource.pdf:
+        await _pickFile(context, ref, category, pdfOnly: true);
+    }
+  } catch (_) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Couldn’t open the camera or file picker. Please try again.',
+        ),
+      ),
+    );
   }
 }
 
