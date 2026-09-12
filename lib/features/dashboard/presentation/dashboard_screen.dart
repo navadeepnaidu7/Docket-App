@@ -5,6 +5,7 @@ import 'package:flutter/physics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/haptics/haptic_service.dart';
+import '../../../core/motion/smooth_curves.dart';
 import '../../../core/motion/studio_page_route.dart';
 
 import '../../ids/application/id_list_provider.dart';
@@ -578,8 +579,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                 builder: (context, mode, _) {
                                   return AnimatedSwitcher(
                                     duration: const Duration(milliseconds: 350),
-                                    switchInCurve: Curves.easeOutCubic,
-                                    switchOutCurve: Curves.easeInCubic,
+                                    switchInCurve: strongEaseOut,
+                                    switchOutCurve: strongEaseOut,
                                     child: mode == DashboardViewMode.home
                                         ? RepaintBoundary(
                                             key: const ValueKey(
@@ -748,10 +749,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                                 duration: const Duration(
                                                   milliseconds: 350,
                                                 ),
-                                                switchInCurve:
-                                                    Curves.easeOutCubic,
-                                                switchOutCurve:
-                                                    Curves.easeInCubic,
+                                                switchInCurve: strongEaseOut,
+                                                switchOutCurve: strongEaseOut,
                                                 transitionBuilder:
                                                     (child, animation) {
                                                       return FadeTransition(

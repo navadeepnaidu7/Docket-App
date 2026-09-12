@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/haptics/haptic_service.dart';
+import '../../../core/motion/smooth_curves.dart';
 import '../../ids/domain/id_document.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../tickets/domain/movie_pass_models.dart';
@@ -48,8 +49,8 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
+                switchInCurve: strongEaseOut,
+                switchOutCurve: strongEaseOut,
                 child: _selectedTab == 0
                     ? _buildWrappedHighlightsTab(data, surface, ink, muted, border, isDark)
                     : _buildCalendarTab(data, surface, ink, muted, border, isDark),

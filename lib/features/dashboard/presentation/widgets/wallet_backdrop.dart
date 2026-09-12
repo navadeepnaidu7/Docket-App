@@ -22,11 +22,69 @@ class WalletBackdrop extends StatefulWidget {
   State<WalletBackdrop> createState() => _WalletBackdropState();
 }
 
+/// Reports a slow [AnimationController] at a fixed low rate instead of every
+/// frame.
+///
+/// The backdrop's two ambient drifts run over 14s and 30s. At a 390px width the
+/// nearer orb covers about 20px per second, so a 60fps tick advances it a third
+/// of a pixel — across a blur hundreds of pixels wide. Every one of those
+/// ticks rebuilt the backdrop (re-running [WalletPalette.blended] and
+/// allocating a focus signature) and repainted a full-screen canvas of six
+/// overlapping viewport-scale translucent orbs plus a radial vignette, 60 or
+/// 120 times a second, for motion nobody can see at that resolution.
+///
+/// Quantising to [_hz] steps per second leaves at most ~1.6px of travel between
+/// steps at the fastest point of the sweep, which that blur cannot show, and
+/// cuts the full-screen rebuild-and-repaint rate by 3x on a 60Hz panel and 6x
+/// on a 120Hz one.
+///
+/// Only the *ambient* clocks are quantised. The page position, the card tilt
+/// and the tab tint stay on the raw signal, because those follow a finger and
+/// have to land on the frame the finger is on.
+class _QuantizedClock extends ChangeNotifier {
+  _QuantizedClock(this._source, Duration period)
+    : _steps = math.max(1, (period.inMilliseconds * _hz) ~/ 1000) {
+    _value = _quantize(_source.value);
+    _source.addListener(_onSourceTick);
+  }
+
+  static const int _hz = 20;
+
+  final Animation<double> _source;
+  final int _steps;
+  late double _value;
+
+  /// The source value, floored to the nearest step.
+  double get value => _value;
+
+  double _quantize(double raw) => (raw * _steps).floor() / _steps;
+
+  void _onSourceTick() {
+    final double next = _quantize(_source.value);
+    if (next == _value) return;
+    _value = next;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _source.removeListener(_onSourceTick);
+    super.dispose();
+  }
+}
+
 class _WalletBackdropState extends State<WalletBackdrop>
     with TickerProviderStateMixin {
   late AnimationController _ambientCtrl;
   late AnimationController _deepCtrl;
   late AnimationController _colorCtrl;
+  late _QuantizedClock _ambientClock;
+  late _QuantizedClock _deepClock;
+
+  /// True once the deferred start has fired, so a later reduced-motion toggle
+  /// knows whether the drift is meant to be running.
+  bool _driftWanted = false;
+  bool _reducedMotion = false;
 
   @override
   void initState() {
@@ -44,16 +102,43 @@ class _WalletBackdropState extends State<WalletBackdrop>
       duration: const Duration(milliseconds: 600),
       value: widget.tabIndex.toDouble().clamp(0.0, 1.0),
     );
+    _ambientClock = _QuantizedClock(_ambientCtrl, _ambientCtrl.duration!);
+    _deepClock = _QuantizedClock(_deepCtrl, _deepCtrl.duration!);
     // Defer looping ambient motion so the first frames stay free for layout.
     // Controllers respect TickerMode — dashboard mutes them while Settings is open.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       Future<void>.delayed(const Duration(milliseconds: 480), () {
         if (!mounted) return;
-        if (!_ambientCtrl.isAnimating) _ambientCtrl.repeat();
-        if (!_deepCtrl.isAnimating) _deepCtrl.repeat();
+        _driftWanted = true;
+        _startDrift();
       });
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reduced motion freezes the wash rather than slowing it. Both clocks stay
+    // at 0, which is the composition the first frame already paints — the
+    // tickers only start 480ms in — so the still image is not a new look.
+    final bool reduced = MediaQuery.disableAnimationsOf(context);
+    if (reduced == _reducedMotion) return;
+    _reducedMotion = reduced;
+    if (reduced) {
+      _ambientCtrl.stop();
+      _deepCtrl.stop();
+      _ambientCtrl.value = 0;
+      _deepCtrl.value = 0;
+    } else {
+      _startDrift();
+    }
+  }
+
+  void _startDrift() {
+    if (!_driftWanted || _reducedMotion) return;
+    if (!_ambientCtrl.isAnimating) _ambientCtrl.repeat();
+    if (!_deepCtrl.isAnimating) _deepCtrl.repeat();
   }
 
   @override
@@ -68,6 +153,8 @@ class _WalletBackdropState extends State<WalletBackdrop>
 
   @override
   void dispose() {
+    _ambientClock.dispose();
+    _deepClock.dispose();
     _ambientCtrl.dispose();
     _deepCtrl.dispose();
     _colorCtrl.dispose();
@@ -77,8 +164,9 @@ class _WalletBackdropState extends State<WalletBackdrop>
   @override
   Widget build(BuildContext context) {
     final listenables = <Listenable>[
-      _ambientCtrl,
-      _deepCtrl,
+      // The quantised clocks, not the controllers they wrap.
+      _ambientClock,
+      _deepClock,
       _colorCtrl,
       widget.pageNotifier,
     ];
@@ -107,8 +195,8 @@ class _WalletBackdropState extends State<WalletBackdrop>
               return CustomPaint(
                 painter: AppleCardGradientPainter(
                   isDark: isDark,
-                  ambientProgress: _ambientCtrl.value,
-                  deepProgress: _deepCtrl.value,
+                  ambientProgress: _ambientClock.value,
+                  deepProgress: _deepClock.value,
                   ticketsMix: ticketsMix,
                   palette: palette,
                   items: widget.items,

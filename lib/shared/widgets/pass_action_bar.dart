@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/motion/smooth_curves.dart';
 import 'bounce_tap.dart';
 
 /// What a [PassActionBar] button is currently doing.
@@ -183,8 +184,8 @@ class _ActionButton extends StatelessWidget {
           ),
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
+            switchInCurve: strongEaseOut,
+            switchOutCurve: strongEaseOut,
             transitionBuilder: (Widget child, Animation<double> anim) {
               // Rise into place while fading, so the word reads as replaced
               // rather than cross-dissolved.

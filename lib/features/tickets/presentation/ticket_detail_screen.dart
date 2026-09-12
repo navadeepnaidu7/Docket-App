@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/haptics/haptic_service.dart';
+import '../../../core/motion/smooth_curves.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/wallet/wallet_card_metrics.dart';
 import '../domain/pass_catalog.dart';
@@ -160,8 +161,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   const SizedBox(height: 16),
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 340),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
+                    switchInCurve: strongEaseOut,
+                    switchOutCurve: strongEaseOut,
                     layoutBuilder: (Widget? current, List<Widget> previous) {
                       return Stack(
                         alignment: Alignment.topCenter,

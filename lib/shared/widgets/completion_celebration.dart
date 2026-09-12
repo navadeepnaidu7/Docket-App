@@ -161,7 +161,12 @@ class _CompletionCelebrationState extends State<CompletionCelebration>
               child: _isCompleted
                   ? ScaleTransition(
                       key: const ValueKey<bool>(true),
-                      scale: CurvedAnimation(parent: _successController, curve: bouncyCurve),
+                      scale: Tween<double>(begin: 0.94, end: 1.0).animate(
+                        CurvedAnimation(
+                          parent: _successController,
+                          curve: bouncyCurve,
+                        ),
+                      ),
                       child: const Icon(
                         Icons.check_circle_rounded,
                         color: Color(0xFF30D158),

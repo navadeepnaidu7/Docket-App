@@ -290,6 +290,11 @@ class _PassDeckView extends StatelessWidget {
 ///
 /// The roll carousel runs it vertically down the right edge; the deck runs it
 /// horizontally under the cards.
+///
+/// No implicit animation, for the same reason as [DotIndicator]: [page] is fed
+/// from a live scroll position every frame, so a 200ms implicit tween only
+/// retargets and lags. Size and opacity derive from [page]; the pill moves
+/// under a paint-only [Transform].
 class _DotIndicator extends StatelessWidget {
   const _DotIndicator({
     required this.count,
@@ -321,9 +326,7 @@ class _DotIndicator extends StatelessWidget {
           final double distance = (page - i).abs().clamp(0.0, 1.0);
           final double size = lerpDouble(10, 6, distance)!;
           final double opacity = lerpDouble(1.0, 0.25, distance)!;
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
+          return Container(
             width: size,
             height: size,
             margin: _isVertical
@@ -355,17 +358,18 @@ class _DotIndicator extends StatelessWidget {
               ),
             ),
           ),
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            top: _isVertical ? offset : 0,
-            left: _isVertical ? 0 : offset,
-            child: Container(
-              width: _isVertical ? _thickness : pill,
-              height: _isVertical ? pill : _thickness,
-              decoration: BoxDecoration(
-                color: ink.withValues(alpha: 0.60),
-                borderRadius: BorderRadius.circular(_thickness / 2),
+          Positioned(
+            top: 0,
+            left: 0,
+            child: Transform.translate(
+              offset: _isVertical ? Offset(0, offset) : Offset(offset, 0),
+              child: Container(
+                width: _isVertical ? _thickness : pill,
+                height: _isVertical ? pill : _thickness,
+                decoration: BoxDecoration(
+                  color: ink.withValues(alpha: 0.60),
+                  borderRadius: BorderRadius.circular(_thickness / 2),
+                ),
               ),
             ),
           ),

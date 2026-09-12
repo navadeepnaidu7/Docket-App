@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/haptics/haptic_service.dart';
-import '../../core/motion/entry_reveal.dart';
+import '../../core/motion/smooth_curves.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/prompt_typography.dart';
@@ -130,13 +130,11 @@ class _PromptFlowScreenState extends State<PromptFlowScreen> {
               if (!widget.minimal) _Progress(value: c.progress, scheme: scheme),
               Expanded(
                 child: AnimatedSwitcher(
-                  duration: Duration(
-                    milliseconds: MediaQuery.disableAnimationsOf(context)
-                        ? 120
-                        : 400,
-                  ),
-                  switchInCurve: easeOutQuint,
-                  switchOutCurve: Curves.easeInCubic,
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? reducedSwitchDuration
+                      : stepSwitchDuration,
+                  switchInCurve: strongEaseOut,
+                  switchOutCurve: strongEaseOut,
                   transitionBuilder: (Widget child, Animation<double> anim) {
                     final bool reduced = MediaQuery.disableAnimationsOf(
                       context,
@@ -296,8 +294,8 @@ class _Progress extends StatelessWidget {
                 child: const SizedBox.expand(),
               ),
               AnimatedFractionallySizedBox(
-                duration: const Duration(milliseconds: 320),
-                curve: easeOutQuint,
+                duration: stepSwitchDuration,
+                curve: strongEaseOut,
                 widthFactor: value.clamp(0.0, 1.0),
                 alignment: Alignment.centerLeft,
                 child: ColoredBox(color: scheme.primary),
@@ -365,65 +363,50 @@ class _StepBody extends StatelessWidget {
                   : CrossAxisAlignment.start,
               children: <Widget>[
                 if (showChrome) ...<Widget>[
-                  EntryReveal(
-                    enabled:
-                        !minimal && !MediaQuery.disableAnimationsOf(context),
-                    slideY: 12,
-                    duration: const Duration(milliseconds: 320),
-                    child: Text(
-                      question,
-                      textAlign: minimal ? TextAlign.center : TextAlign.start,
-                      style: minimal
-                          ? text.promptQuestion.copyWith(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: -0.45,
-                              height: 1.25,
-                            )
-                          : text.promptQuestion,
-                      maxLines: 3,
-                      // Large accessibility sizes would otherwise push the input off
-                      // a short screen entirely.
-                      textScaler: TextScaler.linear(
-                        MediaQuery.textScalerOf(
-                          context,
-                        ).scale(1.0).clamp(1.0, 1.3),
-                      ),
+                  Text(
+                    question,
+                    textAlign: minimal ? TextAlign.center : TextAlign.start,
+                    style: minimal
+                        ? text.promptQuestion.copyWith(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: -0.45,
+                            height: 1.25,
+                          )
+                        : text.promptQuestion,
+                    maxLines: 3,
+                    // Large accessibility sizes would otherwise push the input
+                    // off a short screen entirely.
+                    textScaler: TextScaler.linear(
+                      MediaQuery.textScalerOf(
+                        context,
+                      ).scale(1.0).clamp(1.0, 1.3),
                     ),
                   ),
                   if (helper != null && helper!.isNotEmpty) ...<Widget>[
                     const SizedBox(height: Space.x2),
-                    EntryReveal(
-                      enabled:
-                          !minimal && !MediaQuery.disableAnimationsOf(context),
-                      slideY: 10,
-                      delay: const Duration(milliseconds: 40),
-                      duration: const Duration(milliseconds: 320),
-                      child: Text(
-                        helper!,
-                        textAlign: minimal ? TextAlign.center : TextAlign.start,
-                        style: text
-                            .promptHelper(scheme)
-                            .copyWith(
-                              fontSize: minimal ? 13 : 15,
-                              letterSpacing:
-                                  minimal &&
-                                      RegExp(r'^[A-Z0-9]+$').hasMatch(helper!)
-                                  ? 1.8
-                                  : 0,
-                            ),
-                      ),
+                    Text(
+                      helper!,
+                      textAlign: minimal ? TextAlign.center : TextAlign.start,
+                      style: text
+                          .promptHelper(scheme)
+                          .copyWith(
+                            fontSize: minimal ? 13 : 15,
+                            letterSpacing:
+                                minimal &&
+                                    RegExp(r'^[A-Z0-9]+$').hasMatch(helper!)
+                                ? 1.8
+                                : 0,
+                          ),
                     ),
                   ],
                   const SizedBox(height: Space.x8),
                 ],
-                EntryReveal(
-                  enabled: !minimal && !MediaQuery.disableAnimationsOf(context),
-                  slideY: 10,
-                  delay: const Duration(milliseconds: 80),
-                  duration: const Duration(milliseconds: 320),
-                  child: child,
-                ),
+                // No per-element reveal. The step switcher above already fades
+                // and slides this whole body in; staggering the question,
+                // helper and input on top of that kept the input still
+                // arriving ~400ms after the tap that asked for it.
+                child,
                 // Reserved whether or not an error is showing, so the CTA
                 // below never jumps when validation fails.
                 SizedBox(

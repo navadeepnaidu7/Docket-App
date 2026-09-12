@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/motion/entry_reveal.dart';
+import '../../../core/motion/smooth_curves.dart';
 import '../../../core/theme/app_theme.dart';
 import '../bounce_tap.dart';
 import '../studio_backdrop.dart';
@@ -80,8 +81,8 @@ class DocumentEntryScaffold extends StatelessWidget {
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 280),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
+                    switchInCurve: strongEaseOut,
+                    switchOutCurve: strongEaseOut,
                     child: KeyedSubtree(
                       key: ValueKey<int>(stepIndex),
                       child: EntryReveal(
