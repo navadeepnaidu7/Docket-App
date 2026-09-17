@@ -1,10 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/assets/app_assets.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
@@ -47,12 +45,15 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
     final List<IdDocument> idDocs = ref.watch(idListProvider);
 
     // Match Settings dark chrome (neutral graphite, not blue-tinted navy).
-    final Color bg =
-        isDark ? const Color(0xFF0A0A0D) : theme.scaffoldBackgroundColor;
-    final Color ink =
-        isDark ? const Color(0xFFF2F2F7) : const Color(0xFF1C1C1E);
-    final Color muted =
-        isDark ? const Color(0xFF8E8E93) : const Color(0xFFA1A1A6);
+    final Color bg = isDark
+        ? const Color(0xFF0A0A0D)
+        : theme.scaffoldBackgroundColor;
+    final Color ink = isDark
+        ? const Color(0xFFF2F2F7)
+        : const Color(0xFF1C1C1E);
+    final Color muted = isDark
+        ? const Color(0xFF8E8E93)
+        : const Color(0xFFA1A1A6);
 
     final List<_StoryPage> stories = _buildStories(data, isDark);
 
@@ -62,15 +63,37 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
         child: Column(
           children: <Widget>[
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 16, 4),
+              padding: const EdgeInsets.fromLTRB(8, 4, 20, 8),
               child: Row(
                 children: <Widget>[
                   IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      size: 20,
+                    ),
                     onPressed: () {
                       HapticService.select();
                       Navigator.of(context).pop();
                     },
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Your Docket',
+                    style: GoogleFonts.inter(
+                      color: ink,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.25,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${_pageIndex + 1} of ${stories.length}',
+                    style: GoogleFonts.inter(
+                      color: muted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -88,7 +111,7 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -106,7 +129,6 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
                         page: stories[index],
                         ink: ink,
                         muted: muted,
-                        isDark: isDark,
                         active: index == _pageIndex,
                       );
                     },
@@ -114,14 +136,20 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
             Padding(
-              padding: const EdgeInsets.only(bottom: 20),
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 18),
               child: _PageDots(
                 count: stories.length,
                 index: _pageIndex,
                 ink: ink,
                 muted: muted,
+                onTap: (int index) {
+                  _pageController.animateToPage(
+                    index,
+                    duration: const Duration(milliseconds: 420),
+                    curve: Curves.easeOutCubic,
+                  );
+                },
               ),
             ),
           ],
@@ -146,106 +174,66 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
 
     return <_StoryPage>[
       _StoryPage(
-        lines: <_StoryLine>[
-          _StoryLine(
-            spans: <_StorySpan>[
-              const _StorySpan.muted("You've taken "),
-              _StorySpan.emphasis(_countPhrase(trains, 'trip', 'trips')),
-              _StorySpan.rollingIcon(
-                icon: CupertinoIcons.train_style_one,
-                color: const Color(0xFFE07A2F),
-              ),
-              _StorySpan.muted(' in $yearsPhrase, and '),
-              const _StorySpan.muted('caught '),
-              _StorySpan.emphasis(_countPhrase(movies, 'movie', 'movies')),
-              _StorySpan.rollingIcon(
-                icon: Icons.local_movies_rounded,
-                color: const Color(0xFF9E121E),
-              ),
-              const _StorySpan.muted(' with '),
-              _StorySpan.inlineAsset(
-                assetPath: AppAssets.docketLogo,
-                semanticLabel: 'docket',
-              ),
-              const _StorySpan.muted('. That stacks up to about '),
-              _StorySpan.emphasis(
-                _countPhrase(lifeDays, 'full day', 'full days'),
-              ),
-              const _StorySpan.muted(' of your life, kept in one place.'),
-            ],
-          ),
+        eyebrow: 'YOUR JOURNEY',
+        icon: CupertinoIcons.train_style_one,
+        accent: const Color(0xFFE07A2F),
+        spans: <_StorySpan>[
+          const _StorySpan.muted("You've taken\n"),
+          _StorySpan.emphasis(_countPhrase(trains, 'trip', 'trips')),
+          const _StorySpan.muted(', caught '),
+          _StorySpan.emphasis(_countPhrase(movies, 'movie', 'movies')),
+          const _StorySpan.muted(', and saved every moment in '),
+          _StorySpan.emphasis('one place.'),
         ],
+        caption:
+            'Across $yearsPhrase · About ${_countPhrase(lifeDays, 'full day', 'full days')} of experiences',
       ),
       _StoryPage(
-        lines: <_StoryLine>[
-          _StoryLine(
-            spans: <_StorySpan>[
-              const _StorySpan.muted('Your wallet holds '),
-              _StorySpan.emphasis(
-                _countPhrase(credentials, 'credential', 'credentials'),
-              ),
-              _StorySpan.rollingIcon(
-                icon: CupertinoIcons.lock_shield_fill,
-                color: const Color(0xFF2A9D6B),
-              ),
-              const _StorySpan.muted(' — '),
-              _StorySpan.emphasis(
-                _countPhrase(passports, 'passport', 'passports'),
-              ),
-              const _StorySpan.muted(' and '),
-              _StorySpan.emphasis(_countPhrase(ids, 'ID', 'IDs')),
-              const _StorySpan.muted(
-                ' — encrypted on-device, never uploaded for storage.',
-              ),
-            ],
+        eyebrow: 'PRIVATE BY DESIGN',
+        icon: CupertinoIcons.lock_shield_fill,
+        accent: const Color(0xFF2A9D6B),
+        spans: <_StorySpan>[
+          const _StorySpan.muted('Your wallet keeps\n'),
+          _StorySpan.emphasis(
+            _countPhrase(credentials, 'credential', 'credentials'),
           ),
+          const _StorySpan.muted('\nclose and '),
+          const _StorySpan.emphasis('completely yours.'),
         ],
+        caption:
+            '${_countPhrase(passports, 'passport', 'passports')} · ${_countPhrase(ids, 'ID', 'IDs')} · Encrypted on this device',
       ),
       _StoryPage(
-        lines: <_StoryLine>[
-          _StoryLine(
-            spans: <_StorySpan>[
-              _StorySpan.emphasis(data.topCategoryName),
-              _StorySpan.rollingIcon(
-                icon: data.topCategoryIcon,
-                color: data.topCategoryColor,
-              ),
-              const _StorySpan.muted(' leads your archive with '),
-              _StorySpan.emphasis(
-                _countPhrase(
-                  data.categoryCounts[data.topCategoryName] ?? 0,
-                  'item',
-                  'items',
-                ),
-              ),
-              const _StorySpan.muted('. Across '),
-              _StorySpan.emphasis(
-                _countPhrase(activityDays, 'active day', 'active days'),
-              ),
-              const _StorySpan.muted(', your busiest stretch was '),
-              _StorySpan.emphasis(data.peakMonthName),
-              const _StorySpan.muted('.'),
-            ],
+        eyebrow: 'YOUR PATTERN',
+        icon: data.topCategoryIcon,
+        accent: data.topCategoryColor,
+        spans: <_StorySpan>[
+          _StorySpan.emphasis(data.topCategoryName),
+          const _StorySpan.muted('\nleads your archive with '),
+          _StorySpan.emphasis(
+            _countPhrase(
+              data.categoryCounts[data.topCategoryName] ?? 0,
+              'item',
+              'items',
+            ),
           ),
+          const _StorySpan.muted('. Your busiest stretch was '),
+          _StorySpan.emphasis(data.peakMonthName),
+          const _StorySpan.muted('.'),
         ],
+        caption:
+            '${_countPhrase(activityDays, 'active day', 'active days')} recorded across your archive',
       ),
       _StoryPage(
-        lines: <_StoryLine>[
-          _StoryLine(
-            spans: <_StorySpan>[
-              const _StorySpan.muted("You're a "),
-              _StorySpan.emphasis(data.milestoneTitle),
-              _StorySpan.rollingIcon(
-                icon: CupertinoIcons.sparkles,
-                color: isDark
-                    ? const Color(0xFFFFD60A)
-                    : const Color(0xFFB8860B),
-              ),
-              const _StorySpan.muted(' — '),
-              _StorySpan.muted(_polishSubtitle(data.milestoneSubtitle)),
-            ],
-          ),
+        eyebrow: 'YOUR MILESTONE',
+        icon: CupertinoIcons.sparkles,
+        accent: isDark ? const Color(0xFFFFD60A) : const Color(0xFFB8860B),
+        spans: <_StorySpan>[
+          const _StorySpan.muted("You're a\n"),
+          _StorySpan.emphasis(data.milestoneTitle),
+          const _StorySpan.muted('.'),
         ],
+        caption: _polishSubtitle(data.milestoneSubtitle),
       ),
     ];
   }
@@ -285,53 +273,33 @@ class _UserCardDetailScreenState extends ConsumerState<UserCardDetailScreen> {
 // ── Story model ──────────────────────────────────────────────────────────────
 
 class _StoryPage {
-  const _StoryPage({required this.lines});
-  final List<_StoryLine> lines;
-}
-
-class _StoryLine {
-  const _StoryLine({required this.spans});
+  const _StoryPage({
+    required this.eyebrow,
+    required this.icon,
+    required this.accent,
+    required this.spans,
+    required this.caption,
+  });
+  final String eyebrow;
+  final IconData icon;
+  final Color accent;
   final List<_StorySpan> spans;
+  final String caption;
 }
 
-enum _SpanKind { muted, emphasis, icon, asset }
+enum _SpanKind { muted, emphasis }
 
 class _StorySpan {
-  const _StorySpan._({
-    required this.kind,
-    this.text,
-    this.icon,
-    this.color,
-    this.assetPath,
-    this.semanticLabel,
-  });
+  const _StorySpan._({required this.kind, this.text});
 
   const _StorySpan.muted(String text)
-      : this._(kind: _SpanKind.muted, text: text);
+    : this._(kind: _SpanKind.muted, text: text);
 
   const _StorySpan.emphasis(String text)
-      : this._(kind: _SpanKind.emphasis, text: text);
-
-  const _StorySpan.rollingIcon({
-    required IconData icon,
-    required Color color,
-  }) : this._(kind: _SpanKind.icon, icon: icon, color: color);
-
-  const _StorySpan.inlineAsset({
-    required String assetPath,
-    required String semanticLabel,
-  }) : this._(
-          kind: _SpanKind.asset,
-          assetPath: assetPath,
-          semanticLabel: semanticLabel,
-        );
+    : this._(kind: _SpanKind.emphasis, text: text);
 
   final _SpanKind kind;
   final String? text;
-  final IconData? icon;
-  final Color? color;
-  final String? assetPath;
-  final String? semanticLabel;
 }
 
 // ── Typography layout ────────────────────────────────────────────────────────
@@ -342,39 +310,98 @@ class _StoryTypography extends StatelessWidget {
     required this.page,
     required this.ink,
     required this.muted,
-    required this.isDark,
     required this.active,
   });
 
   final _StoryPage page;
   final Color ink;
   final Color muted;
-  final bool isDark;
   final bool active;
 
   @override
   Widget build(BuildContext context) {
+    final bool compact = MediaQuery.sizeOf(context).height < 760;
     final TextStyle base = GoogleFonts.inter(
-      fontSize: 32,
-      height: 1.24,
-      letterSpacing: -0.9,
+      fontSize: compact ? 31 : 36,
+      height: 1.08,
+      letterSpacing: -1.25,
       fontWeight: FontWeight.w500,
     );
 
     return SizedBox.expand(
-      child: Center(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: 0, end: active ? 1 : 0),
+        duration: const Duration(milliseconds: 460),
+        curve: Curves.easeOutCubic,
+        builder: (BuildContext context, double value, Widget? child) {
+          return Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, 14 * (1 - value)),
+              child: child,
+            ),
+          );
+        },
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(8, 24, 8, 24),
-          child: Text.rich(
-            TextSpan(
-              children: <InlineSpan>[
-                for (final _StoryLine line in page.lines)
-                  for (final _StorySpan span in line.spans)
-                    _buildSpan(span, base),
-              ],
-            ),
-            textAlign: TextAlign.left,
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: page.accent.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Icon(page.icon, size: 18, color: page.accent),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    page.eyebrow,
+                    style: GoogleFonts.inter(
+                      color: page.accent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.15,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: compact ? 16 : 22),
+              Text.rich(
+                TextSpan(
+                  children: <InlineSpan>[
+                    for (final _StorySpan span in page.spans)
+                      _buildSpan(span, base),
+                  ],
+                ),
+                textAlign: TextAlign.left,
+              ),
+              SizedBox(height: compact ? 14 : 20),
+              Container(
+                width: 28,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: page.accent,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                page.caption,
+                style: GoogleFonts.inter(
+                  color: muted,
+                  fontSize: 14,
+                  height: 1.4,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -0.15,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -386,10 +413,7 @@ class _StoryTypography extends StatelessWidget {
       case _SpanKind.muted:
         return TextSpan(
           text: span.text,
-          style: base.copyWith(
-            color: muted,
-            fontWeight: FontWeight.w500,
-          ),
+          style: base.copyWith(color: muted, fontWeight: FontWeight.w500),
         );
       case _SpanKind.emphasis:
         return WidgetSpan(
@@ -403,32 +427,6 @@ class _StoryTypography extends StatelessWidget {
               letterSpacing: -0.9,
             ),
             play: active,
-          ),
-        );
-      case _SpanKind.icon:
-        return WidgetSpan(
-          alignment: PlaceholderAlignment.middle,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 5),
-            child: _RollingIconChip(
-              icon: span.icon!,
-              color: span.color!,
-              isDark: isDark,
-              play: active,
-            ),
-          ),
-        );
-      case _SpanKind.asset:
-        return WidgetSpan(
-          alignment: PlaceholderAlignment.middle,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: _RollingAssetChip(
-              assetPath: span.assetPath!,
-              label: span.semanticLabel ?? '',
-              isDark: isDark,
-              play: active,
-            ),
           ),
         );
     }
@@ -554,222 +552,6 @@ class _RollingTextState extends State<_RollingText>
   }
 }
 
-class _RollingIconChip extends StatefulWidget {
-  const _RollingIconChip({
-    required this.icon,
-    required this.color,
-    required this.isDark,
-    required this.play,
-  });
-
-  final IconData icon;
-  final Color color;
-  final bool isDark;
-  final bool play;
-
-  @override
-  State<_RollingIconChip> createState() => _RollingIconChipState();
-}
-
-class _RollingIconChipState extends State<_RollingIconChip>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _t;
-  IconData _shown = Icons.circle;
-  IconData _incoming = Icons.circle;
-  Color _shownColor = Colors.grey;
-  Color _incomingColor = Colors.grey;
-
-  @override
-  void initState() {
-    super.initState();
-    _shown = widget.icon;
-    _incoming = widget.icon;
-    _shownColor = widget.color;
-    _incomingColor = widget.color;
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 480),
-    );
-    _t = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOutCubic);
-    if (widget.play) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _ctrl.forward(from: 0);
-      });
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _RollingIconChip oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.icon != widget.icon || oldWidget.color != widget.color) {
-      _shown = oldWidget.icon;
-      _shownColor = oldWidget.color;
-      _incoming = widget.icon;
-      _incomingColor = widget.color;
-      _ctrl.forward(from: 0).whenComplete(() {
-        if (!mounted) return;
-        setState(() {
-          _shown = _incoming;
-          _shownColor = _incomingColor;
-        });
-      });
-    } else if (!oldWidget.play && widget.play) {
-      _ctrl.forward(from: 0);
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const double size = 30;
-    return AnimatedBuilder(
-      animation: _t,
-      builder: (BuildContext context, Widget? child) {
-        final double p = _t.value;
-        final double outY = -size * p;
-        final double inY = size * (1 - p);
-
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: widget.color.withValues(alpha: widget.isDark ? 0.22 : 0.14),
-            borderRadius: BorderRadius.circular(9),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Stack(
-            alignment: Alignment.center,
-            children: <Widget>[
-              if (p < 1)
-                Transform.translate(
-                  offset: Offset(0, outY),
-                  child: Opacity(
-                    opacity: (1 - p).clamp(0.0, 1.0),
-                    child: Icon(_shown, size: 17, color: _shownColor),
-                  ),
-                ),
-              Transform.translate(
-                offset: Offset(0, p == 0 ? 0 : inY),
-                child: Opacity(
-                  opacity: p == 0 ? 1 : p.clamp(0.0, 1.0),
-                  child: Icon(
-                    p == 0 ? _shown : _incoming,
-                    size: 17,
-                    color: p == 0 ? _shownColor : _incomingColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _RollingAssetChip extends StatefulWidget {
-  const _RollingAssetChip({
-    required this.assetPath,
-    required this.label,
-    required this.isDark,
-    required this.play,
-  });
-
-  final String assetPath;
-  final String label;
-  final bool isDark;
-  final bool play;
-
-  @override
-  State<_RollingAssetChip> createState() => _RollingAssetChipState();
-}
-
-class _RollingAssetChipState extends State<_RollingAssetChip>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _t;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 520),
-    );
-    _t = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOutCubic);
-    if (widget.play) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _ctrl.forward(from: 0);
-      });
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _RollingAssetChip oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!oldWidget.play && widget.play) {
-      _ctrl.forward(from: 0);
-    } else if (oldWidget.assetPath != widget.assetPath) {
-      _ctrl.forward(from: 0);
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const double size = 28;
-    return AnimatedBuilder(
-      animation: _t,
-      builder: (BuildContext context, Widget? child) {
-        final double p = _t.value;
-        // Subtle vertical roll + scale on entry.
-        final double y = size * (1 - p) * 0.55;
-        final double scale = 0.86 + (0.14 * p);
-        final double opacity = p == 0 ? 1.0 : p.clamp(0.0, 1.0);
-
-        return Transform.translate(
-          offset: Offset(0, p == 0 ? 0 : y),
-          child: Transform.scale(
-            scale: p == 0 ? 1 : scale,
-            child: Opacity(
-              opacity: opacity,
-              child: Semantics(
-                label: widget.label,
-                child: Container(
-                  width: size,
-                  height: size,
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: widget.isDark
-                        ? const Color(0xFF2C2C2E)
-                        : const Color(0xFFF2F2F7),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: SvgPicture.asset(
-                    widget.assetPath,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
 // ── Page dots ────────────────────────────────────────────────────────────────
 
 class _PageDots extends StatelessWidget {
@@ -778,28 +560,43 @@ class _PageDots extends StatelessWidget {
     required this.index,
     required this.ink,
     required this.muted,
+    required this.onTap,
   });
 
   final int count;
   final int index;
   final Color ink;
   final Color muted;
+  final ValueChanged<int> onTap;
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: List<Widget>.generate(count, (int i) {
         final bool on = i == index;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: on ? 8 : 6,
-          height: on ? 8 : 6,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: on ? ink.withValues(alpha: 0.85) : muted.withValues(alpha: 0.45),
+        return Expanded(
+          child: Semantics(
+            button: true,
+            selected: on,
+            label: 'Story ${i + 1} of $count',
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => onTap(i),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 3),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(99),
+                    color: on
+                        ? ink.withValues(alpha: 0.88)
+                        : muted.withValues(alpha: 0.28),
+                  ),
+                ),
+              ),
+            ),
           ),
         );
       }),
