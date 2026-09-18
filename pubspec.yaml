@@ -77,6 +77,9 @@ dependencies:
   # can talk to docket_server without a heavier client stack.
   http: ^1.2.2
   http_parser: ^4.1.2
+  # Google Sign-In → idToken → POST /v1/auth/google. v7 is the current API
+  # (initialize + authenticate); 6.x tutorials do not apply.
+  google_sign_in: ^7.2.0
   # Pass export. share_plus hands the rendered PNG plus its summary text to the
   # OS share sheet and ships its own FileProvider, so no <provider> is declared
   # by hand. gal writes the same bytes to the photo library.

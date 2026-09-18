@@ -48,3 +48,18 @@ class MockPassRepository implements PassRepository {
     _items.removeWhere((WalletPassItem p) => p.id == id);
   }
 }
+
+/// Signed-out remote wallet: nothing to show, no network.
+class EmptyPassRepository implements PassRepository {
+  const EmptyPassRepository();
+
+  @override
+  Future<List<WalletPassItem>> fetchPasses({TicketStatus? status}) async =>
+      const <WalletPassItem>[];
+
+  @override
+  Future<WalletPassItem?> fetchPassById(String id) async => null;
+
+  @override
+  Future<void> deletePass(String id) async {}
+}

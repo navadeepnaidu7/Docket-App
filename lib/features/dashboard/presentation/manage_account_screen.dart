@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -102,6 +103,7 @@ class ManageAccountScreen extends ConsumerWidget {
                       children: <Widget>[
                         _AccountAvatar(
                           photoBase64: session.photoBase64,
+                          photoUrl: session.avatarUrl,
                           meshSeed: email.isNotEmpty
                               ? email
                               : name.toLowerCase(),
@@ -237,12 +239,14 @@ String? _orNull(String raw) {
 class _AccountAvatar extends StatelessWidget {
   const _AccountAvatar({
     required this.photoBase64,
+    this.photoUrl,
     required this.meshSeed,
     required this.washes,
     required this.shape,
   });
 
   final String? photoBase64;
+  final String? photoUrl;
   final String meshSeed;
   final List<Color> washes;
   final ProfileAvatarShape shape;
@@ -261,25 +265,37 @@ class _AccountAvatar extends StatelessWidget {
         : const Color(0xFFC7C7CC);
 
     final String photo = (photoBase64 ?? '').trim();
+    final String url = (photoUrl ?? '').trim();
     final List<Color> colors = avatarMeshColors(
       seed: meshSeed,
       washes: washes,
     );
     final double phase = meshPhaseForSeed(meshSeed);
+    final Widget mesh = CustomPaint(
+      painter: AvatarMeshPainter(colors: colors, phase: phase),
+    );
 
-    final Widget face = photo.isNotEmpty
-        ? SafeBase64Image(
-            base64: photo,
-            width: _size,
-            height: _size,
-            fit: BoxFit.cover,
-            placeholder: CustomPaint(
-              painter: AvatarMeshPainter(colors: colors, phase: phase),
-            ),
-          )
-        : CustomPaint(
-            painter: AvatarMeshPainter(colors: colors, phase: phase),
-          );
+    final Widget face;
+    if (photo.isNotEmpty) {
+      face = SafeBase64Image(
+        base64: photo,
+        width: _size,
+        height: _size,
+        fit: BoxFit.cover,
+        placeholder: mesh,
+      );
+    } else if (url.isNotEmpty) {
+      face = CachedNetworkImage(
+        imageUrl: url,
+        width: _size,
+        height: _size,
+        fit: BoxFit.cover,
+        placeholder: (BuildContext context, String url) => mesh,
+        errorWidget: (BuildContext context, String url, Object error) => mesh,
+      );
+    } else {
+      face = mesh;
+    }
 
     return Container(
       width: _size,

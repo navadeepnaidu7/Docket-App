@@ -6,30 +6,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/dev/dev_flags.dart';
 import '../../../core/dev/dev_flags_provider.dart';
-import '../data/api_session_store.dart';
 import '../data/docket_api_client.dart';
 import '../domain/pass_catalog.dart';
 import '../domain/pass_ingest.dart';
 import '../domain/pnr_format.dart';
+import 'api_providers.dart';
 import 'pass_list_provider.dart';
 import 'ticket_code_scanner.dart';
 
-final apiSessionStoreProvider = Provider<ApiSessionStore>((Ref ref) {
-  return ApiSessionStore();
-});
-
-final docketApiProvider = Provider<DocketApi?>((Ref ref) {
-  final DevFlags flags = ref.watch(devFlagsProvider);
-  final String base = flags.apiBaseUrl.trim();
-  if (base.isEmpty) return null;
-  return DocketApiClient(
-    baseUrl: base,
-    session: ref.watch(apiSessionStoreProvider),
-    devIdToken: flags.devAuthIdToken.trim().isNotEmpty
-        ? flags.devAuthIdToken.trim()
-        : '',
-  );
-});
+export 'api_providers.dart';
 
 final ticketCodeScannerProvider = Provider<TicketCodeScanner>((Ref ref) {
   return TicketCodeScanner();

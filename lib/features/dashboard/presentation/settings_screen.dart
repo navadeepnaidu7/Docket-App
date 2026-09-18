@@ -23,6 +23,7 @@ import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../tickets/application/pass_list_provider.dart';
 import '../application/auth_session_provider.dart';
+import '../application/google_auth_gateway.dart';
 import '../application/card_shine_border_provider.dart';
 import '../application/profile_avatar_shape_provider.dart';
 import '../application/nav_labels_provider.dart';
@@ -463,38 +464,50 @@ Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
     ),
   );
   if (confirmed != true) return;
-  await setMockSignedIn(ref, false);
+  await ref.read(authControllerProvider.notifier).signOut();
 }
 
 Future<void> _handleGoogleSignInTap(BuildContext context, WidgetRef ref) async {
   HapticService.confirm();
-  if (!DevConfig.allowRuntimeOverrides) {
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        final ThemeData theme = Theme.of(dialogContext);
-        return AlertDialog(
-          title: const Text('Google sign-in coming soon'),
-          content: const Text(
-            'Account sign-in is not available yet. This will connect to your '
-            'Google account in a future update.',
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(
-                'Got it',
-                style: TextStyle(color: theme.colorScheme.primary),
-              ),
-            ),
-          ],
-        );
-      },
+  try {
+    await ref.read(authControllerProvider.notifier).signInWithGoogle();
+  } on GoogleAuthFailure catch (e) {
+    if (!context.mounted) return;
+    await _showAuthMessage(context, title: 'Could not sign in', message: e.message);
+  } catch (_) {
+    if (!context.mounted) return;
+    await _showAuthMessage(
+      context,
+      title: 'Could not sign in',
+      message: 'Try again in a moment.',
     );
-    return;
   }
-  // Placeholder mock: flips signed-in UI (same as Developer → Mock signed in).
-  await setMockSignedIn(ref, true);
+}
+
+Future<void> _showAuthMessage(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (BuildContext dialogContext) {
+      final ThemeData theme = Theme.of(dialogContext);
+      return AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(
+              'Got it',
+              style: TextStyle(color: theme.colorScheme.primary),
+            ),
+          ),
+        ],
+      );
+    },
+  );
 }
 
 // ── Apple Card–inspired wallet membership surface ────────────────────────────
@@ -686,7 +699,9 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
-                    'July 2026',
+                    signedIn && session.joinedLabel.isNotEmpty
+                        ? session.joinedLabel
+                        : 'Docket',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
@@ -715,16 +730,18 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
                             ),
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Text(
-                          '#4377',
-                          style: GoogleFonts.robotoMono(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: inkMuted,
-                            letterSpacing: 0.5,
+                        if (session.membershipNumber.isNotEmpty) ...<Widget>[
+                          const SizedBox(width: 16),
+                          Text(
+                            session.membershipNumber,
+                            style: GoogleFonts.robotoMono(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: inkMuted,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     )
                   else
@@ -736,21 +753,13 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
                             alignment: Alignment.centerLeft,
                             // Own detector so this does not open card detail.
                             child: _GoogleSignInOnCardButton(
+                              busy: ref.watch(
+                                authControllerProvider.select(
+                                  (AuthControllerState s) => s.busy,
+                                ),
+                              ),
                               onTap: () =>
                                   _handleGoogleSignInTap(context, ref),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Text(
-                            '#4377',
-                            style: GoogleFonts.robotoMono(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: inkMuted,
-                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
@@ -786,21 +795,31 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
 
 /// Official Google button sized for the membership card face.
 class _GoogleSignInOnCardButton extends StatelessWidget {
-  const _GoogleSignInOnCardButton({required this.onTap});
+  const _GoogleSignInOnCardButton({required this.onTap, this.busy = false});
 
   final VoidCallback onTap;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
     return _AnimatedPressScale(
-      onTap: onTap,
+      onTap: busy ? () {} : onTap,
       child: SizedBox(
         height: 40,
-        child: SvgPicture.asset(
-          AppAssets.googleSignInButton,
-          fit: BoxFit.contain,
-          alignment: Alignment.centerLeft,
-        ),
+        child: busy
+            ? const Align(
+                alignment: Alignment.centerLeft,
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.4),
+                ),
+              )
+            : SvgPicture.asset(
+                AppAssets.googleSignInButton,
+                fit: BoxFit.contain,
+                alignment: Alignment.centerLeft,
+              ),
       ),
     );
   }

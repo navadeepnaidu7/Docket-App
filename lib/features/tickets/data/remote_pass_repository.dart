@@ -39,4 +39,6 @@ abstract final class PassApiPaths {
   static const String tickets = '/tickets';
   static const String authGoogle = '/v1/auth/google';
   static const String authRefresh = '/v1/auth/refresh';
+  static const String authLogout = '/v1/auth/logout';
+  static const String me = '/v1/me';
 }

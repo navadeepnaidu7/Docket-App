@@ -223,15 +223,71 @@ class DocketApiClient implements DocketApi {
     final ApiTokens? stored = await session.read();
     if (stored != null && stored.accessToken.isNotEmpty) return stored;
     if (devIdToken.trim().isEmpty) {
-      throw const PassIngestException(
+      throw PassIngestException(
         PassIngestCode.needsAuth,
-        'Sign in first. In debug, set a dev auth token under Settings → Developer.',
+        kDebugMode
+            ? 'Sign in first. In debug, set a dev auth token under Settings → Developer.'
+            : 'Sign in with Google first.',
       );
     }
     return _exchange(devIdToken.trim());
   }
 
+  /// Exchange a Google ID token for a Docket session.
+  Future<ApiUser> loginWithGoogle(String idToken) async {
+    final _AuthPayload payload = await _postGoogle(idToken);
+    await session.write(payload.tokens, user: payload.user);
+    return payload.user;
+  }
+
+  Future<ApiUser> fetchMe() async {
+    final http.Response res = await _authed(
+      (Map<String, String> headers) => _withTimeout(
+        () => _http.get(_uri(PassApiPaths.me), headers: headers),
+      ),
+    );
+    _throwIfFailed(res, fallback: 'Could not load your account.');
+    final ApiUser user = _userFrom(res.body);
+    final ApiTokens? tokens = await session.read();
+    if (tokens != null) {
+      await session.write(tokens, user: user);
+    }
+    return user;
+  }
+
+  Future<void> logout({bool all = false}) async {
+    final StoredApiSession? stored = await session.readSession();
+    if (stored != null && !stored.tokens.isEmpty) {
+      try {
+        await _authed(
+          (Map<String, String> headers) => _withTimeout(
+            () => _http.post(
+              _uri(PassApiPaths.authLogout),
+              headers: <String, String>{
+                ...headers,
+                'Content-Type': 'application/json',
+              },
+              body: jsonEncode(<String, Object>{
+                'refreshToken': stored.tokens.refreshToken,
+                'all': all,
+              }),
+            ),
+          ),
+        );
+      } catch (_) {
+        // Local sign-out still has to happen if the server is unreachable.
+      }
+    }
+    await session.clear();
+  }
+
   Future<ApiTokens> _exchange(String idToken) async {
+    final _AuthPayload payload = await _postGoogle(idToken);
+    await session.write(payload.tokens, user: payload.user);
+    return payload.tokens;
+  }
+
+  Future<_AuthPayload> _postGoogle(String idToken) async {
     final http.Response res = await _withTimeout(
       () => _http.post(
         _uri(PassApiPaths.authGoogle),
@@ -248,13 +304,11 @@ class DocketApiClient implements DocketApi {
     if (res.statusCode == 401 || res.statusCode == 403) {
       throw const PassIngestException(
         PassIngestCode.needsAuth,
-        'The server rejected the auth token.',
+        'The server rejected the Google sign-in.',
       );
     }
     _throwIfFailed(res, fallback: 'Could not sign in to the server.');
-    final ApiTokens tokens = _tokensFrom(res.body);
-    await session.write(tokens);
-    return tokens;
+    return _authPayloadFrom(res.body);
   }
 
   Future<ApiTokens> _refresh(ApiTokens current) async {
@@ -288,7 +342,9 @@ class DocketApiClient implements DocketApi {
     return tokens;
   }
 
-  ApiTokens _tokensFrom(String body) {
+  ApiTokens _tokensFrom(String body) => _authPayloadFrom(body).tokens;
+
+  _AuthPayload _authPayloadFrom(String body) {
     final Object? decoded = jsonDecode(body);
     if (decoded is! Map) {
       throw const PassIngestException(
@@ -296,15 +352,47 @@ class DocketApiClient implements DocketApi {
         'The server sent an unexpected auth response.',
       );
     }
-    final ApiTokens tokens =
-        ApiTokens.fromJson(Map<String, dynamic>.from(decoded));
+    final Map<String, dynamic> map = Map<String, dynamic>.from(decoded);
+    final ApiTokens tokens = ApiTokens.fromJson(map);
     if (tokens.isEmpty) {
       throw const PassIngestException(
         PassIngestCode.failed,
         'The server sent an empty session.',
       );
     }
-    return tokens;
+    final Object? userRaw = map['user'];
+    if (userRaw is! Map) {
+      throw const PassIngestException(
+        PassIngestCode.failed,
+        'The server sent an auth response without a user.',
+      );
+    }
+    final ApiUser user = ApiUser.fromJson(Map<String, dynamic>.from(userRaw));
+    if (user.isEmpty) {
+      throw const PassIngestException(
+        PassIngestCode.failed,
+        'The server sent an empty user.',
+      );
+    }
+    return _AuthPayload(tokens: tokens, user: user);
+  }
+
+  ApiUser _userFrom(String body) {
+    final Object? decoded = jsonDecode(body);
+    if (decoded is! Map) {
+      throw const PassIngestException(
+        PassIngestCode.failed,
+        'The server sent an unexpected account response.',
+      );
+    }
+    final ApiUser user = ApiUser.fromJson(Map<String, dynamic>.from(decoded));
+    if (user.isEmpty) {
+      throw const PassIngestException(
+        PassIngestCode.failed,
+        'The server sent an empty account.',
+      );
+    }
+    return user;
   }
 
   String _ticketIdFrom(String body) {
@@ -328,9 +416,11 @@ class DocketApiClient implements DocketApi {
   void _throwIfFailed(http.Response res, {required String fallback}) {
     if (res.statusCode >= 200 && res.statusCode < 300) return;
     if (res.statusCode == 401) {
-      throw const PassIngestException(
+      throw PassIngestException(
         PassIngestCode.needsAuth,
-        'Sign in first. In debug, set a dev auth token under Settings → Developer.',
+        kDebugMode
+            ? 'Sign in first. In debug, set a dev auth token under Settings → Developer.'
+            : 'Sign in with Google first.',
       );
     }
     if (res.statusCode == 413) {
@@ -387,4 +477,11 @@ class DocketApiClient implements DocketApi {
     } catch (_) {}
     return fallback;
   }
+}
+
+class _AuthPayload {
+  const _AuthPayload({required this.tokens, required this.user});
+
+  final ApiTokens tokens;
+  final ApiUser user;
 }

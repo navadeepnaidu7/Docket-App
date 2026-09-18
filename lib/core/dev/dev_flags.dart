@@ -40,13 +40,13 @@ class DevFlags {
         devAuthIdToken: DevConfig.defaultDevAuthIdToken,
       );
 
-  /// Release / locked: always compile-time consumer defaults.
+  /// Release / locked: real backend, no fixture wallet, no mock account.
   factory DevFlags.lockedConsumer() => DevFlags(
-        useMockPasses: DevConfig.defaultUseMockPasses,
+        useMockPasses: false,
         apiBaseUrl: DevConfig.defaultApiBaseUrl,
         cardFluidScheme: CardFluidScheme.auto,
         mockSignedIn: false,
-        devAuthIdToken: DevConfig.defaultDevAuthIdToken,
+        devAuthIdToken: '',
       );
 
   final bool useMockPasses;

@@ -1,5 +1,6 @@
 import 'package:docket/core/dev/dev_flags.dart';
 import 'package:docket/core/dev/dev_flags_provider.dart';
+import 'package:docket/features/dashboard/application/auth_session_provider.dart';
 import 'package:docket/features/tickets/application/pass_ingest_service.dart';
 import 'package:docket/features/tickets/application/ticket_code_scanner.dart';
 import 'package:docket/features/tickets/data/docket_api_client.dart';
@@ -78,6 +79,9 @@ ProviderContainer _container(_FakeApi api) {
         ),
       ),
       docketApiProvider.overrideWithValue(api),
+      authSessionProvider.overrideWithValue(
+        const AuthSession(isSignedIn: true, displayName: 'Test'),
+      ),
     ],
   );
 }

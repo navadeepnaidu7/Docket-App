@@ -17,8 +17,27 @@ abstract final class DevConfig {
   );
 
   /// Backend origin for [RemotePassRepository], no trailing slash.
+  ///
+  /// Defaults to the Railway staging API so a signed-in release build has
+  /// somewhere to talk without a Developer override. Debug still mocks the
+  /// Passes tab until that toggle is flipped.
   static const String defaultApiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
+    defaultValue: 'https://api-production-5f3a7.up.railway.app',
+  );
+
+  /// Web OAuth client ID. This is the ID token `aud` the server verifies
+  /// against `GOOGLE_CLIENT_IDS`, and the `serverClientId` Google Sign-In
+  /// needs on Android. Not a secret — it ships in the app.
+  static const String googleServerClientId = String.fromEnvironment(
+    'GOOGLE_SERVER_CLIENT_ID',
+    defaultValue: '',
+  );
+
+  /// iOS OAuth client ID, passed to Google Sign-In as `clientId`.
+  /// Empty is fine on Android.
+  static const String googleIosClientId = String.fromEnvironment(
+    'GOOGLE_IOS_CLIENT_ID',
     defaultValue: '',
   );
 

@@ -1,14 +1,17 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../domain/onboarding_content.dart';
 import '../../../../core/assets/app_assets.dart';
 import '../../../../core/haptics/haptic_service.dart';
 import '../../../../core/motion/smooth_curves.dart';
+import '../../../dashboard/application/auth_session_provider.dart';
+import '../../../dashboard/application/google_auth_gateway.dart';
 import 'widgets/accordion_step.dart';
 
-class MultiStepForm extends StatefulWidget {
+class MultiStepForm extends ConsumerStatefulWidget {
   const MultiStepForm({
     super.key,
     required this.steps,
@@ -21,10 +24,10 @@ class MultiStepForm extends StatefulWidget {
   final VoidCallback onFinished;
 
   @override
-  State<MultiStepForm> createState() => _MultiStepFormState();
+  ConsumerState<MultiStepForm> createState() => _MultiStepFormState();
 }
 
-class _MultiStepFormState extends State<MultiStepForm> {
+class _MultiStepFormState extends ConsumerState<MultiStepForm> {
   int _currentStep = 0;
   int? _expandedStep = 0;
   bool _isAdvancing = false;
@@ -127,23 +130,59 @@ class _MultiStepFormState extends State<MultiStepForm> {
     });
   }
 
-  void _handleAuthFinished({required bool isGoogle}) {
+  Future<void> _handleAuthFinished({required bool isGoogle}) async {
     if (_isAdvancing) return;
-    _isAdvancing = true;
 
-    if (isGoogle) {
-      setState(() => _isGoogleLoggingIn = true);
-      // Simulate loading for 800ms
-      Future<void>.delayed(const Duration(milliseconds: 800), () {
-        if (mounted) {
-          widget.onFinished();
-          _isAdvancing = false;
-        }
-      });
-    } else {
+    if (!isGoogle) {
       widget.onFinished();
-      _isAdvancing = false;
+      return;
     }
+
+    setState(() {
+      _isAdvancing = true;
+      _isGoogleLoggingIn = true;
+    });
+    try {
+      final bool signedIn =
+          await ref.read(authControllerProvider.notifier).signInWithGoogle();
+      if (!mounted) return;
+      if (signedIn) widget.onFinished();
+    } on GoogleAuthFailure catch (e) {
+      if (mounted) await _showAuthError(e.message);
+    } catch (_) {
+      if (mounted) {
+        await _showAuthError('Could not sign in. Try again.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAdvancing = false;
+          _isGoogleLoggingIn = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _showAuthError(String message) {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        final ThemeData theme = Theme.of(dialogContext);
+        return AlertDialog(
+          title: const Text('Could not sign in'),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(
+                'Got it',
+                style: TextStyle(color: theme.colorScheme.primary),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
