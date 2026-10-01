@@ -6,12 +6,12 @@ import 'package:flutter/material.dart' show ScaffoldMessenger, SnackBar;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../../core/assets/app_assets.dart';
 import '../../../../core/motion/studio_page_route.dart';
 import '../../../../shared/widgets/morph_sheet.dart';
 import '../../../../shared/widgets/squircle_tile.dart';
 import '../../application/pass_ingest_controller.dart';
 import '../../domain/pass_ingest.dart';
+import 'pass_add_art.dart';
 import 'pnr_entry_screen.dart';
 
 /// Opens the Passes-tab add flow: category → method → PNR screen or picker.
@@ -76,7 +76,8 @@ MorphStep passesRootStep(BuildContext context, WidgetRef ref) {
         tiles: <Widget>[
           SquircleTile(
             label: 'Trains',
-            iconAsset: AppAssets.passIconTrain,
+            art: const PassAddArt(PassAddIcon.train),
+            artIsTile: true,
             onTap: () => controller.push(
               _methodStep(context, ref, PassInputCategory.train),
             ),
@@ -86,7 +87,8 @@ MorphStep passesRootStep(BuildContext context, WidgetRef ref) {
           // category the server actually classifies.
           SquircleTile(
             label: 'Bus',
-            iconAsset: AppAssets.passIconBus,
+            art: const PassAddArt(PassAddIcon.bus),
+            artIsTile: true,
             onTap: () => controller.push(
               _methodStep(context, ref, PassInputCategory.bus),
             ),
@@ -96,24 +98,28 @@ MorphStep passesRootStep(BuildContext context, WidgetRef ref) {
           // but a tap would post an unclassifiable upload.
           const SquircleTile(
             label: 'Flights',
-            iconAsset: AppAssets.passIconPlane,
+            art: PassAddArt(PassAddIcon.flight),
+            artIsTile: true,
             soon: true,
           ),
           SquircleTile(
             label: 'Movies',
-            iconAsset: AppAssets.passIconTicket,
+            art: const PassAddArt(PassAddIcon.movie),
+            artIsTile: true,
             onTap: () => controller.push(
               _methodStep(context, ref, PassInputCategory.movie),
             ),
           ),
           const SquircleTile(
             label: 'Events',
-            iconAsset: AppAssets.passIconEvents,
+            art: PassAddArt(PassAddIcon.event),
+            artIsTile: true,
             soon: true,
           ),
           const SquircleTile(
             label: 'More',
-            iconAsset: AppAssets.passIconMore,
+            art: PassAddArt(PassAddIcon.more),
+            artIsTile: true,
             soon: true,
           ),
         ],
@@ -151,17 +157,20 @@ MorphStep _methodStep(
           if (train)
             SquircleTile(
               label: 'Enter PNR',
-              iconAsset: AppAssets.passIconPnr,
+              art: const PassAddArt(PassAddIcon.pnr),
+              artIsTile: true,
               onTap: () => choose(PassInputSource.pnr),
             ),
           SquircleTile(
             label: 'Photo',
-            iconAsset: AppAssets.passIconCamera,
+            art: const PassAddArt(PassAddIcon.photo),
+            artIsTile: true,
             onTap: () => choose(PassInputSource.photo),
           ),
           SquircleTile(
             label: 'PDF',
-            iconAsset: AppAssets.passIconFile,
+            art: const PassAddArt(PassAddIcon.pdf),
+            artIsTile: true,
             onTap: () => choose(PassInputSource.pdf),
           ),
         ],

@@ -4,8 +4,20 @@ import 'package:docket/shared/widgets/morph_sheet.dart';
 import 'package:docket/features/passport/presentation/widgets/passport_cover_art.dart';
 import 'package:docket/features/tickets/presentation/add/add_pass_flow.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+Future<void> _loadPassArtwork(WidgetTester tester) async {
+  await tester.runAsync(() async {
+    final icons = FontLoader('packages/cupertino_icons/CupertinoIcons')
+      ..addFont(
+        rootBundle.load('packages/cupertino_icons/assets/CupertinoIcons.ttf'),
+      );
+    await icons.load();
+  });
+  await tester.pumpAndSettle();
+}
 
 /// Visual regression for the add menu. Rendered at a phone size, since the
 /// layout is width-driven.
@@ -96,6 +108,7 @@ void main() {
     );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
+    await _loadPassArtwork(tester);
 
     await expectLater(
       find.byType(MaterialApp),
@@ -104,6 +117,7 @@ void main() {
 
     await tester.tap(find.text('Trains'));
     await tester.pumpAndSettle();
+    await _loadPassArtwork(tester);
     await expectLater(
       find.byType(MaterialApp),
       matchesGoldenFile('goldens/add_menu_train_method.png'),

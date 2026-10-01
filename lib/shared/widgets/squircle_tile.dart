@@ -8,8 +8,7 @@ import 'bounce_tap.dart';
 /// A rounded-square tile with the label sitting *below* the tile, not inside it.
 ///
 /// Used by the add menu. Either [icon] or [art] supplies the tile's contents —
-/// [art] exists so the passport option can show real cover artwork where every
-/// other tile shows a line glyph.
+/// [art] supplies passport cover artwork or the Passes app icons.
 class SquircleTile extends StatelessWidget {
   const SquircleTile({
     super.key,
@@ -17,6 +16,7 @@ class SquircleTile extends StatelessWidget {
     this.icon,
     this.iconAsset,
     this.art,
+    this.artIsTile = false,
     this.sublabel,
     this.onTap,
     this.soon = false,
@@ -32,13 +32,14 @@ class SquircleTile extends StatelessWidget {
 
   /// Path to a stroked SVG glyph, tinted to the theme's ink.
   ///
-  /// Preferred over [icon] for the pass grid: Material's outlined set sits at a
-  /// different weight to the line icons the design calls for, and mixing the
-  /// two in one grid is visible.
+  /// For compact line-glyph artwork. Larger illustrations use [art].
   final String? iconAsset;
 
   /// Custom tile contents, centred. Takes precedence over [icon].
   final Widget? art;
+
+  /// The artwork supplies its own tile background and corner shape.
+  final bool artIsTile;
 
   /// Optional second line under [label] — the Documents grid uses it.
   final String? sublabel;
@@ -88,29 +89,31 @@ class SquircleTile extends StatelessWidget {
     final Widget tile = AspectRatio(
       aspectRatio: aspectRatio,
       child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: fill,
-          ),
-          borderRadius: BorderRadius.circular(radius),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.07)
-                : Colors.white.withValues(alpha: 0.70),
-            width: 0.5,
-          ),
-          boxShadow: isDark
-              ? null
-              : <BoxShadow>[
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-        ),
+        decoration: artIsTile
+            ? const BoxDecoration()
+            : BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: fill,
+                ),
+                borderRadius: BorderRadius.circular(radius),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.07)
+                      : Colors.white.withValues(alpha: 0.70),
+                  width: 0.5,
+                ),
+                boxShadow: isDark
+                    ? null
+                    : <BoxShadow>[
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+              ),
         child: Stack(
           children: <Widget>[
             Center(child: _glyph(scheme)),
@@ -279,8 +282,7 @@ class SquircleTileGrid extends StatelessWidget {
       );
     }
 
-    final double cappedWidth =
-        columns * maxTileWidth + (columns - 1) * spacing;
+    final double cappedWidth = columns * maxTileWidth + (columns - 1) * spacing;
 
     return Center(
       child: ConstrainedBox(
