@@ -53,6 +53,8 @@ class IdsTab extends ConsumerStatefulWidget {
 
 class _IdsTabState extends ConsumerState<IdsTab> {
   late final PageController _pageCtrl;
+  final ValueNotifier<int> _activePage = ValueNotifier<int>(0);
+  final ValueNotifier<bool> _scrolling = ValueNotifier<bool>(false);
   List<String> _lastVisibleIds = const [];
   @override
   void initState() {
@@ -76,6 +78,31 @@ class _IdsTabState extends ConsumerState<IdsTab> {
 
     final List<String> nextIds = _idsFor(widget.items);
     if (!_listEquals(_lastVisibleIds, nextIds)) {
+      final int previousIndex =
+          (_pageCtrl.hasClients
+                  ? (_pageCtrl.page ?? 0).round()
+                  : _activePage.value)
+              .clamp(
+                0,
+                _lastVisibleIds.isEmpty ? 0 : _lastVisibleIds.length - 1,
+              );
+      final String? focusedId = _lastVisibleIds.isEmpty
+          ? null
+          : _lastVisibleIds[previousIndex];
+      // A filter intentionally starts a new slice. Ordinary additions,
+      // removals and reorderings should retain the document under the user.
+      final bool filterChanged = _listEquals(
+        _idsFor(oldWidget.allItems),
+        _idsFor(widget.allItems),
+      );
+      final int retainedIndex = focusedId == null
+          ? -1
+          : nextIds.indexOf(focusedId);
+      final int target = filterChanged || nextIds.isEmpty
+          ? 0
+          : retainedIndex >= 0
+          ? retainedIndex
+          : previousIndex.clamp(0, nextIds.length - 1);
       _lastVisibleIds = nextIds;
       // A pending reveal outranks the reset. Revealing clears the wallet
       // filter, which changes the visible ids in the same frame — so without
@@ -85,9 +112,10 @@ class _IdsTabState extends ConsumerState<IdsTab> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         if (_pageCtrl.hasClients) {
-          _pageCtrl.jumpToPage(0);
+          _pageCtrl.jumpToPage(target);
         }
-        widget.pageNotifier.value = 0;
+        _activePage.value = target;
+        widget.pageNotifier.value = target.toDouble();
       });
     }
   }
@@ -114,6 +142,7 @@ class _IdsTabState extends ConsumerState<IdsTab> {
       if (index < 0 || !_pageCtrl.hasClients) return;
 
       _pageCtrl.jumpToPage(index);
+      _activePage.value = index;
       widget.pageNotifier.value = index.toDouble();
       _lastVisibleIds = _idsFor(widget.items);
     });
@@ -124,6 +153,8 @@ class _IdsTabState extends ConsumerState<IdsTab> {
     widget.revealItemId?.removeListener(_scheduleRevealJump);
     _pageCtrl.removeListener(_onScroll);
     _pageCtrl.dispose();
+    _activePage.dispose();
+    _scrolling.dispose();
     super.dispose();
   }
 
@@ -146,6 +177,10 @@ class _IdsTabState extends ConsumerState<IdsTab> {
   Widget build(BuildContext context) {
     final double fabClearance = WalletLayout.fabClearance(context);
     final items = widget.items;
+    final Map<String, int> itemIndices = {
+      for (int index = 0; index < items.length; index++)
+        walletItemId(items[index]): index,
+    };
     final bool shineEnabled = ref.watch(cardShineBorderProvider);
     final bool filterEnabled = ref.watch(walletFilterEnabledProvider);
     final WalletFilterCategory filterCategory = ref.watch(
@@ -227,57 +262,73 @@ class _IdsTabState extends ConsumerState<IdsTab> {
               )
             : Stack(
                 children: [
-                  PageView.builder(
-                    controller: _pageCtrl,
-                    scrollDirection: Axis.vertical,
-                    physics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics(),
-                    ),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final item = items[index];
-                      final Widget card = switch (item) {
-                        PassportProfile profile => WalletPassportCard(
-                          key: ValueKey<String>('passport-${profile.id}'),
-                          profile: profile,
-                          backdropTilt: widget.backdropTilt,
-                          onLongPress: () => widget.onDeletePassport(profile),
-                        ),
-                        IdDocument document => WalletIdCard(
-                          key: ValueKey<String>(
-                            'id-${document.id}-${document.type.name}',
-                          ),
-                          document: document,
-                          backdropTilt: widget.backdropTilt,
-                          onLongPress: () => widget.onDeleteId(document),
-                        ),
-                        _ => const SizedBox.shrink(),
-                      };
-
-                      return RollingCardPage(
-                        controller: _pageCtrl,
-                        index: index,
-                        padding: EdgeInsets.fromLTRB(20, 8, 28, fabClearance),
-                        child: item is IdDocument
-                            ? AnimatedBuilder(
-                                animation: _pageCtrl,
-                                builder: (context, _) {
-                                  final double page = _pageCtrl.page ?? 0;
-                                  final int activeIndex = page.round().clamp(
-                                    0,
-                                    items.length - 1,
-                                  );
-                                  return WalletCardShineBorder(
-                                    enabled: shineEnabled,
-                                    isActive: activeIndex == index,
-                                    borderRadius: 24,
-                                    child: card,
-                                  );
-                                },
-                              )
-                            : card,
-                      );
+                  NotificationListener<ScrollNotification>(
+                    onNotification: (notification) {
+                      if (notification.depth != 0) return false;
+                      if (notification is ScrollStartNotification) {
+                        _scrolling.value = true;
+                      } else if (notification is ScrollEndNotification) {
+                        _scrolling.value = false;
+                      }
+                      return false;
                     },
+                    child: PageView.builder(
+                      controller: _pageCtrl,
+                      onPageChanged: (index) => _activePage.value = index,
+                      findChildIndexCallback: (key) => key is ValueKey<String>
+                          ? itemIndices[key.value]
+                          : null,
+                      scrollDirection: Axis.vertical,
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        final Widget card = switch (item) {
+                          PassportProfile profile => WalletPassportCard(
+                            key: ValueKey<String>('passport-${profile.id}'),
+                            profile: profile,
+                            backdropTilt: widget.backdropTilt,
+                            onLongPress: () => widget.onDeletePassport(profile),
+                          ),
+                          IdDocument document => WalletIdCard(
+                            key: ValueKey<String>(
+                              'id-${document.id}-${document.type.name}',
+                            ),
+                            document: document,
+                            backdropTilt: widget.backdropTilt,
+                            onLongPress: () => widget.onDeleteId(document),
+                          ),
+                          _ => const SizedBox.shrink(),
+                        };
+
+                        return RollingCardPage(
+                          key: ValueKey<String>(walletItemId(item)),
+                          controller: _pageCtrl,
+                          index: index,
+                          padding: EdgeInsets.fromLTRB(20, 8, 28, fabClearance),
+                          child: item is IdDocument
+                              ? AnimatedBuilder(
+                                  animation: Listenable.merge([
+                                    _activePage,
+                                    _scrolling,
+                                  ]),
+                                  builder: (context, _) {
+                                    return WalletCardShineBorder(
+                                      enabled: shineEnabled,
+                                      isActive:
+                                          !_scrolling.value &&
+                                          _activePage.value == index,
+                                      borderRadius: 24,
+                                      child: card,
+                                    );
+                                  },
+                                )
+                              : card,
+                        );
+                      },
+                    ),
                   ),
                   if (items.length > 1)
                     Positioned(

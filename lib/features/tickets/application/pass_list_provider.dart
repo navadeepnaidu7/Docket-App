@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/dev/dev_flags.dart';
 import '../../../core/dev/dev_flags_provider.dart';
 import '../../dashboard/application/auth_session_provider.dart';
 import '../data/docket_api_client.dart';
@@ -18,16 +17,23 @@ import 'api_providers.dart';
 /// passRepositoryProvider.overrideWithValue(MockPassRepository(...))
 /// ```
 final passRepositoryProvider = Provider<PassRepository>((Ref ref) {
-  final DevFlags flags = ref.watch(devFlagsProvider);
-  if (flags.isMockPassesActive) {
+  final bool mock = ref.watch(
+    devFlagsProvider.select((flags) => flags.isMockPassesActive),
+  );
+  if (mock) {
     return MockPassRepository();
   }
   final DocketApi? api = ref.watch(docketApiProvider);
   if (api == null) {
     return MockPassRepository();
   }
-  final AuthSession session = ref.watch(authSessionProvider);
-  if (!session.isSignedIn && flags.devAuthIdToken.trim().isEmpty) {
+  final (bool signedIn, String? _) = ref.watch(
+    authSessionProvider.select((session) => (session.isSignedIn, session.id)),
+  );
+  final bool hasDevToken = ref.watch(
+    devFlagsProvider.select((flags) => flags.devAuthIdToken.trim().isNotEmpty),
+  );
+  if (!signedIn && !hasDevToken) {
     return const EmptyPassRepository();
   }
   return RemotePassRepository(api);
@@ -38,16 +44,16 @@ final passRepositoryProvider = Provider<PassRepository>((Ref ref) {
 /// Rebuilds when the repository instance changes (mock ↔ remote).
 final passListProvider =
     AsyncNotifierProvider<PassListNotifier, List<WalletPassItem>>(
-  PassListNotifier.new,
-);
+      PassListNotifier.new,
+    );
 
 class PassListNotifier extends AsyncNotifier<List<WalletPassItem>> {
   Future<void> _mutate = Future<void>.value();
 
   @override
   Future<List<WalletPassItem>> build() {
-    // Depend on flags so toggle invalidates and reloads.
-    ref.watch(devFlagsProvider);
+    // The repository watches only data-source settings; visual changes should
+    // keep the loaded wallet and its scroll position intact.
     ref.watch(passRepositoryProvider);
     return _load();
   }
@@ -102,7 +108,9 @@ class PassListNotifier extends AsyncNotifier<List<WalletPassItem>> {
 final activePassesProvider = Provider<AsyncValue<List<WalletPassItem>>>((
   Ref ref,
 ) {
-  return ref.watch(passListProvider).whenData(
+  return ref
+      .watch(passListProvider)
+      .whenData(
         (List<WalletPassItem> items) => items
             .where((WalletPassItem p) => p.status == TicketStatus.active)
             .toList(growable: false),

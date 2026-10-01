@@ -26,6 +26,30 @@ Future<void> _mount(WidgetTester tester, String payload) {
 }
 
 void main() {
+  testWidgets('large decode completes without overwriting a newer payload', (
+    WidgetTester tester,
+  ) async {
+    // Trailing whitespace preserves the PNG while exercising the isolate path.
+    final large = _validPng + List.filled(70 * 1024, ' ').join();
+    await _mount(tester, large);
+    expect(find.byType(Image), findsNothing);
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    });
+    await tester.pump();
+    expect(find.byType(Image), findsOneWidget);
+
+    await _mount(tester, '$large ');
+    await _mount(tester, '');
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    });
+    await tester.pump();
+    expect(find.byType(Image), findsNothing);
+    expect(find.byIcon(Icons.person_rounded), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('renders the image when the payload decodes', (
     WidgetTester tester,
   ) async {

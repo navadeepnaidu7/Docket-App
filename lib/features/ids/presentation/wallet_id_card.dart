@@ -60,17 +60,21 @@ class _WalletIdCardState extends State<WalletIdCard>
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    _flipAnim =
-        CurvedAnimation(parent: _flipCtrl, curve: Curves.easeInOutCubic);
+    _flipAnim = CurvedAnimation(
+      parent: _flipCtrl,
+      curve: Curves.easeInOutCubic,
+    );
     _rebuildFaces();
   }
 
   @override
   void didUpdateWidget(covariant WalletIdCard oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.document != widget.document) {
+      _rebuildFaces();
+    }
     if (oldWidget.document.id != widget.document.id ||
         oldWidget.document.type != widget.document.type) {
-      _rebuildFaces();
       if (_showBack) {
         _flipCtrl.reset();
         _showBack = false;
@@ -181,8 +185,9 @@ class _WalletIdCardState extends State<WalletIdCard>
                                         Color(0x14FFFFFF),
                                         Colors.transparent,
                                       ],
-                                      transform:
-                                          IdCardSlideGradient(_tiltY.value * 800),
+                                      transform: IdCardSlideGradient(
+                                        _tiltY.value * 800,
+                                      ),
                                     ),
                                   ),
                                 ),

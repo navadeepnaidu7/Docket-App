@@ -105,10 +105,7 @@ void main() {
     testWidgets('renders one row per document, typed by its title', (
       WidgetTester tester,
     ) async {
-      await _pumpManage(
-        tester,
-        items: <Object>[_passport(), _id()],
-      );
+      await _pumpManage(tester, items: <Object>[_passport(), _id()]);
 
       expect(find.byType(WalletRowTile), findsNWidgets(2));
       // The document type is the title. No possessive, and no chip beside it
@@ -279,6 +276,98 @@ void main() {
   });
 
   group('Reveal handoff', () {
+    testWidgets('editing the focused ID updates its face without remounting', (
+      WidgetTester tester,
+    ) async {
+      final items = <Object>[_passport(id: 'p1'), _id(id: 'i1')];
+      final reveal = ValueNotifier<String?>('i1');
+      final page = ValueNotifier<double>(0);
+      addTearDown(reveal.dispose);
+      addTearDown(page.dispose);
+      await _pumpIdsTab(tester, items: items, reveal: reveal, page: page);
+      final before = tester.state(find.byKey(const ValueKey('id-i1-pan')));
+      await _pumpIdsTab(
+        tester,
+        items: <Object>[
+          items[0],
+          _id(id: 'i1', holder: 'New Holder'),
+        ],
+        reveal: reveal,
+        page: page,
+      );
+      expect(page.value, 1);
+      expect(
+        tester.state(find.byKey(const ValueKey('id-i1-pan'))),
+        same(before),
+      );
+      expect(find.textContaining('NEW HOLDER'), findsOneWidget);
+    });
+
+    testWidgets('inserting before the focused card retains that document', (
+      WidgetTester tester,
+    ) async {
+      final items = <Object>[_passport(id: 'p1'), _id(id: 'i1'), _id(id: 'i2')];
+      final reveal = ValueNotifier<String?>('i2');
+      final page = ValueNotifier<double>(0);
+      addTearDown(reveal.dispose);
+      addTearDown(page.dispose);
+      await _pumpIdsTab(tester, items: items, reveal: reveal, page: page);
+      expect(page.value, 2);
+
+      await _pumpIdsTab(
+        tester,
+        items: <Object>[
+          _passport(id: 'new'),
+          ...items,
+        ],
+        reveal: reveal,
+        page: page,
+      );
+      expect(page.value, 3, reason: 'i2 remains focused after insertion');
+    });
+
+    testWidgets('removing the focused last card chooses the nearest survivor', (
+      WidgetTester tester,
+    ) async {
+      final items = <Object>[_passport(id: 'p1'), _id(id: 'i1'), _id(id: 'i2')];
+      final reveal = ValueNotifier<String?>('i2');
+      final page = ValueNotifier<double>(0);
+      addTearDown(reveal.dispose);
+      addTearDown(page.dispose);
+      await _pumpIdsTab(tester, items: items, reveal: reveal, page: page);
+      await _pumpIdsTab(
+        tester,
+        items: items.take(2).toList(),
+        reveal: reveal,
+        page: page,
+      );
+      expect(page.value, 1);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('reordering retains focus and displays the updated document', (
+      WidgetTester tester,
+    ) async {
+      final items = <Object>[_passport(id: 'p1'), _id(id: 'i1'), _id(id: 'i2')];
+      final reveal = ValueNotifier<String?>('i2');
+      final page = ValueNotifier<double>(0);
+      addTearDown(reveal.dispose);
+      addTearDown(page.dispose);
+      await _pumpIdsTab(tester, items: items, reveal: reveal, page: page);
+      await _pumpIdsTab(
+        tester,
+        items: <Object>[
+          items[0],
+          _id(id: 'i2', holder: 'New Holder'),
+          items[1],
+        ],
+        reveal: reveal,
+        page: page,
+      );
+      expect(page.value, 1);
+      expect(find.textContaining('NEW HOLDER'), findsOneWidget);
+    });
+
     testWidgets('IdsTab pages to the requested card and clears the request', (
       WidgetTester tester,
     ) async {
@@ -342,8 +431,9 @@ void main() {
     test('each row carries its own card palette, not one shared accent', () {
       final WalletPalette pass = WalletRowMeta.of(_passport()).palette;
       final WalletPalette pan = WalletRowMeta.of(_id()).palette;
-      final WalletPalette aadhaar =
-          WalletRowMeta.of(_id(type: IdDocumentType.aadhaar)).palette;
+      final WalletPalette aadhaar = WalletRowMeta.of(
+        _id(type: IdDocumentType.aadhaar),
+      ).palette;
 
       expect(pass.primary, isNot(pan.primary));
       expect(pan.primary, isNot(aadhaar.primary));

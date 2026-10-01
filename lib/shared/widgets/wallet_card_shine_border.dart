@@ -28,8 +28,10 @@ class _WalletCardShineBorderState extends State<WalletCardShineBorder>
     with TickerProviderStateMixin {
   Timer? _idleTimer;
   late final AnimationController _fadeCtrl;
-  late final Animation<double> _fadeAnim;
+  late final CurvedAnimation _fadeAnim;
   late final AnimationController _sweepCtrl;
+  late final Listenable _paintTicks;
+  bool _reducedMotion = false;
   static const Duration _sweepPeriod = Duration(milliseconds: 4800);
 
   @override
@@ -39,14 +41,24 @@ class _WalletCardShineBorderState extends State<WalletCardShineBorder>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
-    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOutCubic);
+    _fadeAnim = CurvedAnimation(
+      parent: _fadeCtrl,
+      curve: Curves.easeInOutCubic,
+    );
     // Drive the sweep via the animation system (respects TickerMode) instead of
     // a raw Ticker + setState every frame, which starved input after Settings.
-    _sweepCtrl = AnimationController(
-      vsync: this,
-      duration: _sweepPeriod,
-    );
+    _sweepCtrl = AnimationController(vsync: this, duration: _sweepPeriod);
+    _paintTicks = Listenable.merge([_fadeAnim, _sweepCtrl]);
     _fadeCtrl.addStatusListener(_onFadeStatus);
+    _scheduleIfNeeded();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final bool reduced = MediaQuery.disableAnimationsOf(context);
+    if (reduced == _reducedMotion) return;
+    _reducedMotion = reduced;
     _scheduleIfNeeded();
   }
 
@@ -63,6 +75,7 @@ class _WalletCardShineBorderState extends State<WalletCardShineBorder>
   void dispose() {
     _idleTimer?.cancel();
     _fadeCtrl.removeStatusListener(_onFadeStatus);
+    _fadeAnim.dispose();
     _fadeCtrl.dispose();
     _sweepCtrl.dispose();
     super.dispose();
@@ -74,7 +87,10 @@ class _WalletCardShineBorderState extends State<WalletCardShineBorder>
       if (_sweepCtrl.isAnimating) _sweepCtrl.stop();
     } else if (status == AnimationStatus.completed ||
         status == AnimationStatus.forward) {
-      if (widget.enabled && widget.isActive && !_sweepCtrl.isAnimating) {
+      if (widget.enabled &&
+          widget.isActive &&
+          !_reducedMotion &&
+          !_sweepCtrl.isAnimating) {
         _sweepCtrl.repeat();
       }
     }
@@ -86,10 +102,12 @@ class _WalletCardShineBorderState extends State<WalletCardShineBorder>
     if (_sweepCtrl.isAnimating) _sweepCtrl.stop();
     _sweepCtrl.value = 0;
 
-    if (!widget.enabled || !widget.isActive) return;
+    if (!widget.enabled || !widget.isActive || _reducedMotion) return;
 
     _idleTimer = Timer(widget.idleDelay, () {
-      if (!mounted || !widget.enabled || !widget.isActive) return;
+      if (!mounted || !widget.enabled || !widget.isActive || _reducedMotion) {
+        return;
+      }
       _sweepCtrl.repeat();
       _fadeCtrl.forward();
     });
@@ -97,23 +115,17 @@ class _WalletCardShineBorderState extends State<WalletCardShineBorder>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: Listenable.merge(<Listenable>[_fadeAnim, _sweepCtrl]),
-      builder: (context, child) {
-        final double opacity = _fadeAnim.value;
-        if (opacity <= 0.001) return child!;
-
-        return CustomPaint(
-          foregroundPainter: _AppleShineBorderPainter(
-            progress: _sweepCtrl.value,
-            opacity: opacity,
-            borderRadius: widget.borderRadius,
-            isDark: Theme.of(context).brightness == Brightness.dark,
-          ),
-          child: child,
-        );
-      },
-      child: widget.child,
+    return RepaintBoundary(
+      child: CustomPaint(
+        foregroundPainter: _AppleShineBorderPainter(
+          progress: _sweepCtrl,
+          opacity: _fadeAnim,
+          repaint: _paintTicks,
+          borderRadius: widget.borderRadius,
+          isDark: Theme.of(context).brightness == Brightness.dark,
+        ),
+        child: RepaintBoundary(child: widget.child),
+      ),
     );
   }
 }
@@ -124,15 +136,17 @@ class _AppleShineBorderPainter extends CustomPainter {
     required this.opacity,
     required this.borderRadius,
     required this.isDark,
-  });
+    required Listenable repaint,
+  }) : super(repaint: repaint);
 
-  final double progress;
-  final double opacity;
+  final Animation<double> progress;
+  final Animation<double> opacity;
   final double borderRadius;
   final bool isDark;
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (opacity.value <= 0.001 || size.isEmpty) return;
     // Slight outset so the ring sits on the card edge, not hidden underneath.
     final RRect rrect = RRect.fromRectAndRadius(
       Rect.fromLTWH(0.5, 0.5, size.width - 1.0, size.height - 1.0),
@@ -144,8 +158,8 @@ class _AppleShineBorderPainter extends CustomPainter {
       width: size.width * 1.35,
       height: size.height * 1.35,
     );
-    final double angle = progress * math.pi * 2;
-    final double v = opacity.clamp(0.0, 1.0);
+    final double angle = progress.value * math.pi * 2;
+    final double v = opacity.value.clamp(0.0, 1.0);
 
     Shader buildShader(double layerIntensity) {
       final double a = layerIntensity * v;
@@ -171,18 +185,7 @@ class _AppleShineBorderPainter extends CustomPainter {
           baseTint.withValues(alpha: 0.13 * a),
           baseTint.withValues(alpha: 0.143 * a),
         ],
-        stops: const [
-          0.0,
-          0.14,
-          0.30,
-          0.42,
-          0.50,
-          0.58,
-          0.70,
-          0.86,
-          0.96,
-          1.0,
-        ],
+        stops: const [0.0, 0.14, 0.30, 0.42, 0.50, 0.58, 0.70, 0.86, 0.96, 1.0],
         transform: GradientRotation(angle),
       ).createShader(shaderRect);
     }

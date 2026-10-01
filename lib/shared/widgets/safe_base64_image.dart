@@ -1,7 +1,16 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+Uint8List? _decodeImagePayload(String payload) {
+  try {
+    final Uint8List decoded = base64Decode(payload.trim());
+    return decoded.isEmpty ? null : decoded;
+  } on FormatException {
+    return null;
+  }
+}
 
 /// Renders a base64-encoded image without letting a bad payload take the
 /// screen down.
@@ -16,6 +25,8 @@ import 'package:flutter/material.dart';
 /// Decoding also belongs out of `build`: `build` runs on every scroll frame and
 /// re-decoding a DG2 portrait each time is real work. Here it happens once per
 /// payload, in [initState] and again only when [base64] actually changes.
+/// Large payloads decode in a background isolate on native platforms so mounting
+/// a scanned card does not block the scroll or route animation.
 ///
 /// [placeholder] is shown when the payload is empty or will not decode, so a
 /// document with no usable photo looks deliberately empty rather than broken.
@@ -41,6 +52,7 @@ class SafeBase64Image extends StatefulWidget {
 
 class _SafeBase64ImageState extends State<SafeBase64Image> {
   Uint8List? _bytes;
+  int _decodeGeneration = 0;
 
   @override
   void initState() {
@@ -55,20 +67,23 @@ class _SafeBase64ImageState extends State<SafeBase64Image> {
   }
 
   void _decode() {
-    final String payload = widget.base64.trim();
-    if (payload.isEmpty) {
-      _bytes = null;
+    final int generation = ++_decodeGeneration;
+    final String payload = widget.base64;
+    _bytes = null;
+    // Avoid isolate setup for small portraits. A 64 KiB base64 string represents
+    // about 48 KiB of compressed image data.
+    if (payload.length <= 64 * 1024) {
+      _bytes = _decodeImagePayload(payload);
       return;
     }
-    try {
-      final Uint8List decoded = base64Decode(payload);
-      // A zero-length decode is valid base64 but not an image.
-      _bytes = decoded.isEmpty ? null : decoded;
-    } on FormatException {
-      // Malformed payload. Nothing is logged: this field holds somebody's
-      // identity photo and the payload itself must never reach a log.
-      _bytes = null;
-    }
+    compute(
+      _decodeImagePayload,
+      payload,
+      debugLabel: 'wallet-portrait-decode',
+    ).then((Uint8List? bytes) {
+      if (!mounted || generation != _decodeGeneration) return;
+      setState(() => _bytes = bytes);
+    });
   }
 
   @override
