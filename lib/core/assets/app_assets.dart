@@ -12,15 +12,19 @@ abstract final class AppAssets {
 
   /// Docket app icon SVG (circle monogram).
   static const String docketLogo = 'assets/branding/docket_logo.svg';
-  static const String docketLogoCircle = 'assets/branding/docket_logo_circle.svg';
-  static const String docketLogoSquare = 'assets/branding/docket_logo_square.svg';
-  static const String docketLogoSquircle = 'assets/branding/docket_logo_squircle.svg';
+  static const String docketLogoCircle =
+      'assets/branding/docket_logo_circle.svg';
+  static const String docketLogoSquare =
+      'assets/branding/docket_logo_square.svg';
+  static const String docketLogoSquircle =
+      'assets/branding/docket_logo_squircle.svg';
 
   /// BookMyShow mark (movie pass chrome).
   static const String bookMyShowLogo = 'assets/passes/bookmyshow.svg';
 
   /// BookMyShow official logo vector (for footer).
-  static const String bookMyShowLogoVector = 'assets/passes/bookmyshow-logo-vector.svg';
+  static const String bookMyShowLogoVector =
+      'assets/passes/bookmyshow-logo-vector.svg';
 
   /// Zomato / District mark (movie pass chrome).
   static const String zomatoLogo = 'assets/passes/zomato.svg';
@@ -33,6 +37,9 @@ abstract final class AppAssets {
   /// Downscaled from the 1855px source to 1000px: it renders about 250dp wide,
   /// so 1000px still covers a 3x screen while cutting the bundle cost.
   static const String redBusCoach = 'assets/passes/redbus_coach.png';
+
+  /// Unbranded ivory-and-teal coach for all other bus providers (transparent PNG).
+  static const String busCoach = 'assets/passes/bus_coach.png';
 
   /// Clock-history icon for past / expired passes.
   static const String passesHistory = 'assets/passes/history_clock.svg';
@@ -61,8 +68,7 @@ abstract final class AppAssets {
   /// Google Sign-In button assets (dark, rounded). Names follow Google branding.
   static const String googleSignInAndroid =
       'assets/auth/google/android_dark_rd_SI.svg';
-  static const String googleSignInIos =
-      'assets/auth/google/ios_dark_rd_SI.svg';
+  static const String googleSignInIos = 'assets/auth/google/ios_dark_rd_SI.svg';
   static const String googleSignInIosUnavailable =
       'assets/auth/google/ios_dark_rd_na.svg';
 
@@ -126,6 +132,8 @@ abstract final class AppAssets {
 
   static const String navAltIdsFilled = 'assets/navbar/alt/ids_filled.svg';
   static const String navAltIdsUnfilled = 'assets/navbar/alt/ids_unfilled.svg';
-  static const String navAltPassesFilled = 'assets/navbar/alt/passes_filled.svg';
-  static const String navAltPassesUnfilled = 'assets/navbar/alt/passes_unfilled.svg';
+  static const String navAltPassesFilled =
+      'assets/navbar/alt/passes_filled.svg';
+  static const String navAltPassesUnfilled =
+      'assets/navbar/alt/passes_unfilled.svg';
 }

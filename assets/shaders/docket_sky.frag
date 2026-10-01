@@ -12,6 +12,9 @@ uniform float uPanelHeight;
 uniform float uClouds;
 uniform float uStorm;
 uniform float uMotion;
+uniform float uFog;
+uniform float uSnow;
+uniform float uSafeTop;
 out vec4 fragColor;
 
 float hash(vec2 p) {
@@ -36,7 +39,7 @@ float noise(vec2 p) {
 float cloudNoise(vec2 p) {
   float value = 0.0;
   float weight = 0.55;
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 4; i++) {
     value += weight * noise(p);
     p = mat2(1.6, 1.2, -1.2, 1.6) * p + 7.3;
     weight *= 0.48;
@@ -55,8 +58,8 @@ void main() {
   // Coordinates remain fixed as the home surface uncovers the sky.
   uv.y = FlutterFragCoord().y / uPanelHeight;
   vec2 aspect = vec2(uSize.x / uPanelHeight, 1.0);
-  vec2 light = vec2(0.84 + sin(uTime * 0.19) * 0.012,
-                    0.10 + sin(uTime * 0.13) * 0.008);
+  // Place the entire celestial disc below the status icons/notch.
+  vec2 light = vec2(0.82, max(0.30, (uSafeTop + 38.0) / uPanelHeight));
   vec2 toLight = (uv - light) * aspect;
   float distanceToLight = length(toLight);
   float overcast = smoothstep(0.58, 0.98, uClouds);
@@ -72,12 +75,36 @@ void main() {
 
   // Broad forward scattering and a small luminous core; no hard sun icon.
   vec3 sunlight = mix(vec3(1.0, 0.88, 0.64), vec3(1.0, 0.63, 0.37), uDusk);
-  sunlight = mix(sunlight, vec3(0.64, 0.77, 1.0), uNight);
   float atmosphere = 0.80 + 0.20 * noise(vec2(uTime * 0.26, 3.7));
   float glow = exp(-distanceToLight * 3.3) * 0.47 * atmosphere;
   glow += exp(-distanceToLight * distanceToLight * 500.0) * 0.52;
-  float sunVisibility = (1.0 - overcast) * (1.0 - uNight * 0.65);
+  float sunVisibility = (1.0 - overcast) * (1.0 - uNight);
   color += sunlight * glow * sunVisibility;
+
+  // A shaded lunar sphere, with fixed surface detail and a quiet halo.
+  // It is an illustrative gibbous moon, not an astronomical phase reading.
+  float moonRadius = 0.052;
+  float moonEdge = 1.0 - smoothstep(moonRadius - 0.003, moonRadius, distanceToLight);
+  color += vec3(0.37, 0.48, 0.68) * exp(-distanceToLight * 17.0)
+      * 0.07 * uNight * (1.0 - overcast);
+  if (uNight > 0.001 && distanceToLight < moonRadius) {
+    vec2 m = toLight / moonRadius;
+    vec3 normal = vec3(m, sqrt(max(0.0, 1.0 - dot(m, m))));
+    float illumination = max(0.0, dot(normal, normalize(vec3(-0.65, -0.40, 0.66))));
+    float maria = smoothstep(0.32, 0.70, noise(m * 3.8 + 8.2));
+    float craters = (1.0 - smoothstep(0.12, 0.25, length(m - vec2(-0.25, 0.2))))
+        + (1.0 - smoothstep(0.08, 0.18, length(m - vec2(0.35, -0.15))))
+        + (1.0 - smoothstep(0.04, 0.11, length(m - vec2(0.18, 0.52))));
+    float texture = 0.88 - maria * 0.17 - craters * 0.13 + noise(m * 21.0) * 0.06;
+    vec3 moon = vec3(0.72, 0.76, 0.80) * texture * (0.12 + illumination * 0.93);
+    color = mix(color, moon, moonEdge * uNight);
+  }
+  vec2 starGrid = uv * vec2(145.0, 95.0);
+  vec2 starCell = floor(starGrid);
+  float starSeed = hash(starCell + 71.0);
+  float star = (1.0 - smoothstep(0.02, 0.13, length(fract(starGrid) - 0.5)))
+      * step(0.986, starSeed);
+  color += vec3(0.58, 0.67, 0.78) * star * uNight * (1.0 - overcast) * 0.55;
 
   // Two independent scales of drifting density, lit from the upper right.
   vec2 farP = uv * vec2(2.0, 1.4) + vec2(8.1 - uTime * 0.018, 3.2);
@@ -87,13 +114,16 @@ void main() {
   vec2 p = uv * vec2(3.0, 2.2) + vec2(-uTime * 0.048, uTime * 0.007);
   float billow = noise(uv * 2.0 + vec2(uTime * 0.026, -uTime * 0.018));
   p += vec2(billow * (0.20 + uStorm * 0.18), billow * 0.12);
-  p.y += (1.0 - uPull) * 0.07;
   float density = cloudNoise(p + vec2(2.7, 1.4));
   float towardLight = cloudNoise(p + vec2(2.76, 1.31));
   float bank = 0.13 * sin(uv.x * 4.0 + 0.9) + uv.y * 0.11;
-  float threshold = mix(0.67, 0.30, uClouds);
-  float coverage = smoothstep(threshold, threshold + 0.25, density + bank)
-      * smoothstep(0.0, 0.28, uClouds);
+  // Sparse wisps, broken cumulus and a continuous overcast bank have distinct
+  // shapes; the scalar blends continuously when real conditions change.
+  float threshold = mix(0.70, 0.25, uClouds);
+  float edgeSoftness = mix(0.075, 0.22, overcast);
+  float coverage = smoothstep(threshold, threshold + edgeSoftness, density + bank)
+      * smoothstep(0.0, 0.20, uClouds);
+  coverage = mix(coverage, max(coverage, 0.80 + density * 0.12), overcast * 0.80);
   // Leave a calm pocket behind the text, while clouds occupy the upper sky.
   coverage *= 1.0 - smoothstep(0.25, 0.85, uv.y) * (1.0 - uv.x) * mix(0.90, 0.38, overcast);
   float lighting = clamp(0.62 + (density - towardLight) * 4.0, 0.0, 1.0);
@@ -149,6 +179,27 @@ void main() {
   color += vec3(0.69, 0.79, 0.87) * rain;
   float mist = noise(uv * vec2(3.0, 1.6) + vec2(-uTime * 0.04, 7.0));
   color = mix(color, vec3(0.46, 0.55, 0.62), mist * smoothstep(0.4, 1.2, uv.y) * uRain * 0.17);
+
+  // Soft, staggered snowflakes. Independent lanes avoid obvious horizontal
+  // bands; fixed coordinates keep the field anchored during overpull.
+  float snow = 0.0;
+  for (int layer = 0; layer < 3; layer++) {
+    float depth = float(layer);
+    vec2 q = uv * vec2(25.0 - depth * 5.0, 7.0 - depth);
+    q.x += sin(uTime * 0.25 + depth) * 0.3;
+    float lane = floor(q.x);
+    q.y -= uTime * (0.26 + depth * 0.12);
+    q.y += hash(vec2(lane, depth + 51.0)) * 8.0;
+    vec2 cell = floor(q);
+    vec2 flake = fract(q) - vec2(0.3 + hash(cell) * 0.4, 0.5);
+    vec2 flakePixels = flake * vec2(uSize.x / (25.0 - depth * 5.0), uPanelHeight / (7.0 - depth));
+    float radius = length(flakePixels);
+    snow += (1.0 - smoothstep(0.45, 1.2 + depth * 0.35, radius))
+      * step(0.40, hash(cell + 23.0)) * (0.20 + depth * 0.08);
+  }
+  color += vec3(0.80, 0.87, 0.94) * snow * uSnow;
+  float fogDensity = (0.38 + mist * 0.22 + smoothstep(0.0, 1.2, uv.y) * 0.16) * uFog;
+  color = mix(color, mix(vec3(0.44, 0.53, 0.61), vec3(0.13, 0.19, 0.28), uNight), fogDensity);
 
   // A single localized lightning event every ~12 seconds, with a soft cloud
   // bloom and short branching discharge. Reduced motion removes the event.

@@ -10,6 +10,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/assets/app_assets.dart';
 import '../../../core/dev/dev_config.dart';
+import '../../../core/dev/sky_preview.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/dev/dev_flags.dart';
 import '../../../core/dev/dev_flags_provider.dart';
 import '../../../core/dev/dummy_wallet_seed.dart';
@@ -970,6 +972,33 @@ class _DeveloperSection extends ConsumerWidget {
       borderColor: borderColor,
       isDark: isDark,
       children: <Widget>[
+        if (kDebugMode) ...[
+          _SettingsLinkRow(
+            icon: Icons.cloud_outlined,
+            iconColor: const Color(0xFF2F6FED),
+            title: 'Weather scene preview',
+            subtitle: ref.watch(skyPreviewProvider).label,
+            onTap: () async {
+              final mode = await showDialog<SkyPreviewMode>(
+                context: context,
+                builder: (context) => SimpleDialog(
+                  title: const Text('Weather scene preview'),
+                  children: [
+                    for (final mode in SkyPreviewMode.values)
+                      SimpleDialogOption(
+                        onPressed: () => Navigator.pop(context, mode),
+                        child: Text(mode.label),
+                      ),
+                  ],
+                ),
+              );
+              if (mode != null) {
+                ref.read(skyPreviewProvider.notifier).state = mode;
+              }
+            },
+          ),
+          const _SettingsDivider(),
+        ],
         _SettingsToggleRow(
           icon: Icons.science_rounded,
           iconColor: const Color(0xFFAF52DE),

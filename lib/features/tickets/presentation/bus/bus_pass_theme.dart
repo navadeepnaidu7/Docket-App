@@ -27,10 +27,9 @@ abstract final class BusPassMetrics {
 
   /// Height of the brand header panel.
   ///
-  /// A little under half the card: enough for the wordmark and the city route
-  /// line to sit at opposite ends with the coach between them, while leaving
-  /// the body room for four rows of booking detail without crowding.
-  static const double headerHeight = 286;
+  /// Separate bands for the provider, coach and route. The body keeps three
+  /// rows of journey information without an advisory footer.
+  static const double headerHeight = 314;
 
   /// How far the coach photograph bleeds past the card's right edge, so the
   /// vehicle reads as continuing rather than being cropped to fit.
@@ -39,23 +38,9 @@ abstract final class BusPassMetrics {
   /// Width of the coach image. Wider than the space it occupies because of
   /// [coachOverflow].
   ///
-  /// Retuned for the close-up photograph, which is 1.31:1 where the previous
-  /// full-side shot was 2.19:1. Holding the old 252 width would have made the
-  /// vehicle 192dp tall instead of 115 and pushed it into the wordmark.
-  static const double coachWidth = 218;
-
-  /// How far the coach sits above the header's bottom edge.
-  ///
-  /// The coach and the route line are stacked, not side by side: at this card
-  /// width there is no arrangement where a legible close-up sits beside a
-  /// single-line "Bengaluru to Mysuru" without one running into the other.
-  /// This lands the vehicle between the wordmark and the route, overlapping
-  /// neither — the wordmark is short and stays left of the coach's edge.
-  static const double coachBottom = 96;
-
-  /// Left edge the coach occupies once [coachOverflow] is accounted for.
-  /// Header type has to stay clear of this, or it renders under the vehicle.
-  static const double coachLeft = width + coachOverflow - coachWidth;
+  /// The artwork scales down within its own band for two-line provider names
+  /// or routes, keeping it clear of both text blocks.
+  static const double coachWidth = 244;
 
   /// Route rail between the FROM and TO dots on the body.
   static const double stopDotSize = 10;
@@ -77,39 +62,39 @@ abstract final class BusPassType {
 
   /// Brand wordmark, light run.
   static TextStyle wordmarkLead(Color color) => GoogleFonts.inter(
-        color: color,
-        fontSize: 38,
-        fontWeight: FontWeight.w400,
-        letterSpacing: -1.2,
-        height: 1.0,
-      );
+    color: color,
+    fontSize: 38,
+    fontWeight: FontWeight.w400,
+    letterSpacing: -1.2,
+    height: 1.0,
+  );
 
   /// Brand wordmark, bold run.
   static TextStyle wordmarkTail(Color color) => GoogleFonts.inter(
-        color: color,
-        fontSize: 38,
-        fontWeight: FontWeight.w700,
-        letterSpacing: -1.2,
-        height: 1.0,
-      );
+    color: color,
+    fontSize: 38,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -1.2,
+    height: 1.0,
+  );
 
   /// Operator name when the brand ships no wordmark.
   static TextStyle operatorName(Color color) => GoogleFonts.inter(
-        color: color,
-        fontSize: 24,
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.6,
-        height: 1.1,
-      );
+    color: color,
+    fontSize: 24,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.6,
+    height: 1.1,
+  );
 
   /// The city pair on the header — "Bengaluru to Mysuru".
   static TextStyle headerRoute(Color color) => GoogleFonts.inter(
-        color: color,
-        fontSize: 24,
-        fontWeight: FontWeight.w500,
-        letterSpacing: -0.5,
-        height: 1.15,
-      );
+    color: color,
+    fontSize: 24,
+    fontWeight: FontWeight.w500,
+    letterSpacing: -0.5,
+    height: 1.15,
+  );
 
   /// Every field label on the card.
   ///
@@ -117,46 +102,38 @@ abstract final class BusPassType {
   /// small caps this started as: the other passes set "Date" and "Passenger"
   /// this way, and an all-caps ramp made the bus card the odd one out.
   static TextStyle label(Color color) => GoogleFonts.inter(
-        color: color,
-        fontSize: 11,
-        fontWeight: FontWeight.w500,
-        letterSpacing: 0.1,
-        height: 1.0,
-      );
+    color: color,
+    fontSize: 11,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.1,
+    height: 1.0,
+  );
 
   /// A stop name, and the headline value in the detail grid.
   static TextStyle stopName(Color color) => GoogleFonts.inter(
-        color: color,
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
-        letterSpacing: -0.2,
-        height: 1.2,
-      );
+    color: color,
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.2,
+    height: 1.2,
+  );
 
   /// The city under a stop name, and other secondary lines.
   static TextStyle secondary(Color color) => GoogleFonts.inter(
-        color: color,
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-        height: 1.2,
-      );
+    color: color,
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    height: 1.2,
+  );
 
   /// Grid values — date, departure, seat, fare.
   static TextStyle value(Color color) => GoogleFonts.inter(
-        color: color,
-        fontSize: 17,
-        fontWeight: FontWeight.w600,
-        letterSpacing: -0.4,
-        height: 1.0,
-      );
-
-  /// The closing advisory line.
-  static TextStyle note(Color color) => GoogleFonts.inter(
-        color: color,
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-        height: 1.35,
-      );
+    color: color,
+    fontSize: 17,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.4,
+    height: 1.0,
+  );
 
   /// Kicks off the network fetch for the weights this face uses so `main()`'s
   /// `GoogleFonts.pendingFonts()` wait covers them. Return values are

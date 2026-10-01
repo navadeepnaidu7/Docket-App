@@ -52,8 +52,7 @@ class BusBrandStyle {
   final String wordmarkLead;
   final String wordmarkTail;
 
-  /// Vehicle photograph bled off the header's right edge. Null renders the
-  /// header as type only, which is what an unbranded operator gets.
+  /// Vehicle artwork bled off the header's right edge.
   final String? coachAsset;
 
   final double coachOpacity;
@@ -88,6 +87,7 @@ class BusBrandStyle {
     ink: Color(0xFF1A1A1A),
     muted: Color(0xFF6E6A66),
     rule: Color(0xFFD8D1CA),
+    coachAsset: AppAssets.busCoach,
   );
 
   /// A spent ticket: same layout, colour drained out, so it can never be

@@ -8,6 +8,11 @@
          This previously reached release only because ML Kit / Play Services plugin manifests
          merged it in, which is too fragile to rely on for a core feature. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Foreground approximate location is sufficient for weather. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Single foreground fixes do not use the plugin's tracking service. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"
+                     tools:node="remove" />
     <!-- Saving an exported pass image to the photo library. API 29+ goes through
          MediaStore and needs no permission at all; minSdk is 26, so the 26-28
          window is the only reason this is declared, hence maxSdkVersion. -->

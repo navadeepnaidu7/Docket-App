@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../domain/bus_pass_models.dart';
 import '../../domain/pass_activity_date.dart';
-import '../../domain/pass_status.dart';
 import 'bus_brand_style.dart';
 import 'bus_pass_theme.dart';
 
@@ -17,8 +16,8 @@ import 'bus_pass_theme.dart';
 /// operator does not touch this file. An operator with no style of its own
 /// gets a neutral slate header rather than someone else's branding.
 ///
-/// No icons. Every mark on the card is either type or a plain geometric rule,
-/// which is what keeps it reading as a printed ticket rather than as app UI.
+/// Coach artwork identifies the pass type; the remaining marks are type and
+/// plain rules, keeping the face focused on the journey.
 class BusTicketFace extends StatelessWidget {
   const BusTicketFace({
     super.key,
@@ -33,8 +32,10 @@ class BusTicketFace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final BusBrandStyle brand =
-        BusBrandStyle.forPass(pass, useBrandColors: useBrandColors);
+    final BusBrandStyle brand = BusBrandStyle.forPass(
+      pass,
+      useBrandColors: useBrandColors,
+    );
 
     return Container(
       width: BusPassMetrics.width,
@@ -61,7 +62,9 @@ class BusTicketFace extends StatelessWidget {
                 height: BusPassMetrics.headerHeight,
                 child: _Header(pass: pass, brand: brand),
               ),
-              Expanded(child: _Body(pass: pass, brand: brand)),
+              Expanded(
+                child: _Body(pass: pass, brand: brand),
+              ),
             ],
           ),
         ),
@@ -88,50 +91,51 @@ class _Header extends StatelessWidget {
           colors: brand.headerGradient,
         ),
       ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: <Widget>[
-          if (brand.coachAsset != null)
-            Positioned(
-              right: -BusPassMetrics.coachOverflow,
-              bottom: BusPassMetrics.coachBottom,
-              width: BusPassMetrics.coachWidth,
-              child: Opacity(
-                opacity: brand.coachOpacity,
-                child: Image.asset(
-                  brand.coachAsset!,
-                  fit: BoxFit.contain,
-                  // The coach is decorative; the route it illustrates is
-                  // already stated in type directly beneath it.
-                  excludeFromSemantics: true,
-                  filterQuality: FilterQuality.medium,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: BusPassMetrics.inset,
+          vertical: 26,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _Wordmark(pass: pass, brand: brand),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Transform.translate(
+                    offset: const Offset(
+                      BusPassMetrics.inset + BusPassMetrics.coachOverflow,
+                      0,
+                    ),
+                    child: brand.coachAsset == null
+                        ? const SizedBox.shrink()
+                        : Opacity(
+                            opacity: brand.coachOpacity,
+                            child: Image.asset(
+                              brand.coachAsset!,
+                              width: BusPassMetrics.coachWidth,
+                              height: double.infinity,
+                              fit: BoxFit.contain,
+                              alignment: Alignment.centerRight,
+                              excludeFromSemantics: true,
+                              filterQuality: FilterQuality.high,
+                            ),
+                          ),
+                  ),
                 ),
               ),
             ),
-          Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                BusPassMetrics.inset,
-                34,
-                BusPassMetrics.inset,
-                26,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  _Wordmark(pass: pass, brand: brand),
-                  const Spacer(),
-                  Text(
-                    _routeLine(pass),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: BusPassType.headerRoute(brand.headerInk),
-                  ),
-                ],
-              ),
+            Text(
+              _routeLine(pass),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: BusPassType.headerRoute(brand.headerInk),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -187,17 +191,12 @@ class _Body extends StatelessWidget {
     final String platform = pass.platform.trim();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        BusPassMetrics.inset,
-        22,
-        BusPassMetrics.inset,
-        20,
-      ),
+      padding: const EdgeInsets.all(BusPassMetrics.inset),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           _StopRow(pass: pass, brand: brand),
-          _Rule(brand: brand, top: 13, bottom: 13),
+          _Rule(brand: brand, top: 18, bottom: 18),
           _TripleField(
             brand: brand,
             fields: <(String, String)>[
@@ -206,15 +205,8 @@ class _Body extends StatelessWidget {
               ('Seat', _seatLabel(pass)),
             ],
           ),
-          _Rule(brand: brand, top: 13, bottom: 13),
+          _Rule(brand: brand, top: 18, bottom: 18),
           _BoardingRow(pass: pass, brand: brand, platform: platform),
-          _Rule(brand: brand, top: 13, bottom: 11),
-          Text(
-            _advisory(pass),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: BusPassType.note(brand.muted),
-          ),
         ],
       ),
     );
@@ -290,8 +282,7 @@ class _Stop extends StatelessWidget {
   Widget build(BuildContext context) {
     // A stop with no comma yields the same string for both lines; printing it
     // twice looks like a bug, so the city line drops out.
-    final bool showCity =
-        city.trim().isNotEmpty && city.trim() != name.trim();
+    final bool showCity = city.trim().isNotEmpty && city.trim() != name.trim();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,7 +314,7 @@ class _Stop extends StatelessWidget {
   }
 }
 
-/// Three label/value fields split by hairlines.
+/// Date and departure get more room than the compact seat value.
 class _TripleField extends StatelessWidget {
   const _TripleField({required this.brand, required this.fields});
 
@@ -337,7 +328,7 @@ class _TripleField extends StatelessWidget {
       if (i > 0) {
         children.add(
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             child: SizedBox(width: 1, child: ColoredBox(color: brand.rule)),
           ),
         );
@@ -345,6 +336,7 @@ class _TripleField extends StatelessWidget {
       final (String label, String value) = fields[i];
       children.add(
         Expanded(
+          flex: i == 2 ? 1 : 2,
           child: _Field(label: label, value: value, brand: brand),
         ),
       );
@@ -359,11 +351,7 @@ class _TripleField extends StatelessWidget {
 }
 
 class _Field extends StatelessWidget {
-  const _Field({
-    required this.label,
-    required this.value,
-    required this.brand,
-  });
+  const _Field({required this.label, required this.value, required this.brand});
 
   final String label;
   final String value;
@@ -509,16 +497,6 @@ String _seatLabel(BusPass pass) {
   return fromPassengers.join(', ');
 }
 
-/// The closing line. A spent ticket gets a statement of fact instead of an
-/// instruction to be somewhere.
-String _advisory(BusPass pass) {
-  if (pass.status == TicketStatus.expired) {
-    return 'This journey is complete. Kept for your records.';
-  }
-  return 'Please be at the boarding point at least 30 minutes '
-      'before departure.';
-}
-
 /// Calendar days the arrival lands past the departure, for callers that show
 /// an overnight marker.
 ///
@@ -526,14 +504,18 @@ String _advisory(BusPass pass) {
 /// when neither parses — an unmarked arrival beats a wrong one.
 int busArrivalDayOffset(BusPass pass) {
   final DateTime? depart =
-      PassActivityDate.parse(pass.departAt) ?? PassActivityDate.parse(pass.date);
-  final DateTime? arrive = PassActivityDate.parse(pass.arriveAt) ??
+      PassActivityDate.parse(pass.departAt) ??
+      PassActivityDate.parse(pass.date);
+  final DateTime? arrive =
+      PassActivityDate.parse(pass.arriveAt) ??
       PassActivityDate.parse(pass.arrivalDate);
   if (depart == null || arrive == null) return 0;
 
-  final int days = DateTime(arrive.year, arrive.month, arrive.day)
-      .difference(DateTime(depart.year, depart.month, depart.day))
-      .inDays;
+  final int days = DateTime(
+    arrive.year,
+    arrive.month,
+    arrive.day,
+  ).difference(DateTime(depart.year, depart.month, depart.day)).inDays;
   return days > 0 ? days : 0;
 }
 

@@ -1,60 +1,56 @@
-import 'dart:ui' show lerpDouble;
-
-import 'package:flutter/material.dart';
-
 import 'easter_egg_constants.dart';
 
-class EasterEggSheetMotion {
-  const EasterEggSheetMotion({
-    required this.progress,
-    required this.sheetOffsetY,
-    required this.drawerTop,
-    required this.topRadius,
-    required this.sheetScale,
-    required this.shadowOpacity,
-    required this.pullPillOpacity,
-    required this.pillBarOffsetY,
-    required this.pillBarOpacity,
-  });
+abstract final class EasterEggSheetMotion {
+  /// Resistance starts at the finger's speed, then increases continuously.
+  static double rubberBandOffset(
+    double rawOffset, {
+    double panelHeight = kEasterEggPanelHeight,
+  }) {
+    if (rawOffset <= 0) return 0;
+    if (rawOffset <= panelHeight) return rawOffset;
+    final range = panelHeight * kEasterEggDrawerOvershootFactor;
+    final over = rawOffset - panelHeight;
+    return panelHeight + over * range / (range + over);
+  }
 
-  final double progress;
-  final double sheetOffsetY;
-  final double drawerTop;
-  final double topRadius;
-  final double sheetScale;
-  final double shadowOpacity;
-  final double pullPillOpacity;
-  final double pillBarOffsetY;
-  final double pillBarOpacity;
-
-  static EasterEggSheetMotion lerpFromOffset(double offsetY) {
-    final double panelHeight = kEasterEggPanelHeight;
-    final double t = (offsetY / panelHeight).clamp(0.0, 1.0);
-    final double eased = Curves.easeOutCubic.transform(t);
-
-    return EasterEggSheetMotion(
-      progress: t,
-      sheetOffsetY: offsetY,
-      // The drawer is anchored to the window. The main surface reveals it by
-      // moving down, so the two surfaces never drift apart during a drag.
-      drawerTop: 0,
-      topRadius: lerpDouble(0, 28, eased)!,
-      sheetScale: lerpDouble(1.0, 0.992, eased)!,
-      shadowOpacity: lerpDouble(0, 0.20, eased)!,
-      pullPillOpacity: lerpDouble(0, 0.42, eased)!,
-      pillBarOffsetY: lerpDouble(0, 8, eased)!,
-      pillBarOpacity: lerpDouble(1, 0.88, eased)!,
-    );
+  static double rawOffsetForVisible(
+    double offset, {
+    double panelHeight = kEasterEggPanelHeight,
+  }) {
+    if (offset <= panelHeight) return offset.clamp(0.0, panelHeight);
+    final range = panelHeight * kEasterEggDrawerOvershootFactor;
+    final over = (offset - panelHeight).clamp(0.0, range - 0.01);
+    return panelHeight + over * range / (range - over);
   }
 
   static bool shouldSnapOpen({
     required double offsetY,
     required double velocityY,
+    double panelHeight = kEasterEggPanelHeight,
+    bool wasOpen = false,
   }) {
-    final double threshold = kEasterEggPanelHeight * kEasterEggSnapThreshold;
+    // A quick accidental tug must never throw the entire screen open.
+    if (!wasOpen && offsetY < kEasterEggMinimumOpenPull) return false;
+    final double threshold =
+        panelHeight * (wasOpen ? 0.42 : kEasterEggSnapThreshold);
     if (velocityY > kEasterEggVelocityOpen) return true;
     if (velocityY < kEasterEggVelocityClose) return false;
     // A short projection makes a deliberate gentle flick count, too.
-    return offsetY + velocityY * 0.16 > threshold;
+    return offsetY + velocityY.clamp(-650.0, 650.0) * 0.10 > threshold;
+  }
+
+  /// The spring inherits the velocity of the visible sheet, which is lower
+  /// than finger velocity while the rubber band is resisting overpull.
+  static double releaseVelocity({
+    required double rawOffset,
+    required double velocityY,
+    double panelHeight = kEasterEggPanelHeight,
+  }) {
+    if (rawOffset <= 0 && velocityY < 0) return 0;
+    final over = (rawOffset - panelHeight).clamp(0.0, double.infinity);
+    if (over == 0) return velocityY;
+    final range = panelHeight * kEasterEggDrawerOvershootFactor;
+    final resistance = 1 + over / range;
+    return velocityY / (resistance * resistance);
   }
 }

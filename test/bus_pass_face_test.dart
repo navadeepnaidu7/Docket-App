@@ -1,3 +1,4 @@
+import 'package:docket/core/assets/app_assets.dart';
 import 'package:docket/core/wallet/wallet_card_metrics.dart';
 import 'package:docket/features/tickets/data/mock_pass_fixtures.dart';
 import 'package:docket/features/tickets/data/mock_pass_repository.dart';
@@ -78,8 +79,9 @@ Future<void> _pumpFace(WidgetTester tester, BusPass pass) async {
 
 void main() {
   group('layout', () {
-    testWidgets('lays out inside its canvas without overflowing',
-        (WidgetTester tester) async {
+    testWidgets('lays out inside its canvas without overflowing', (
+      WidgetTester tester,
+    ) async {
       await _pumpFace(tester, _pass());
       expect(tester.takeException(), isNull);
 
@@ -90,8 +92,9 @@ void main() {
 
     // The body is the half that can run out of room: five stacked rows, two of
     // which carry free text from an operator.
-    testWidgets('survives long stops, a long operator and no fare',
-        (WidgetTester tester) async {
+    testWidgets('survives long stops, a long operator and no fare', (
+      WidgetTester tester,
+    ) async {
       await _pumpFace(
         tester,
         _pass(
@@ -109,19 +112,21 @@ void main() {
   });
 
   group('brand', () {
-    test('resolves redBus from an explicit brand and from the operator name',
-        () {
-      expect(_pass().resolvedBrand, BusPassBrand.redBus);
-      expect(
-        _pass(brand: null, operator: 'redBus').resolvedBrand,
-        BusPassBrand.redBus,
-      );
-      // Operators write it every which way; an exact match would miss these.
-      expect(
-        _pass(brand: null, operator: 'Red Bus').resolvedBrand,
-        BusPassBrand.redBus,
-      );
-    });
+    test(
+      'resolves redBus from an explicit brand and from the operator name',
+      () {
+        expect(_pass().resolvedBrand, BusPassBrand.redBus);
+        expect(
+          _pass(brand: null, operator: 'redBus').resolvedBrand,
+          BusPassBrand.redBus,
+        );
+        // Operators write it every which way; an exact match would miss these.
+        expect(
+          _pass(brand: null, operator: 'Red Bus').resolvedBrand,
+          BusPassBrand.redBus,
+        );
+      },
+    );
 
     test('an unknown operator falls to universal, not to redBus chrome', () {
       final BusPass p = _pass(brand: null, operator: 'KSRTC Airavat');
@@ -129,14 +134,15 @@ void main() {
 
       final BusBrandStyle style = BusBrandStyle.forPass(p);
       expect(style.headerGradient, isNot(BusBrandStyle.redBus.headerGradient));
-      expect(style.coachAsset, isNull);
+      expect(style.coachAsset, AppAssets.busCoach);
     });
 
     // A spent ticket keeps the operator's wordmark and coach so it is still
     // recognisably theirs, but loses the colour.
     test('expired drains the colour and keeps the wordmark', () {
-      final BusBrandStyle style =
-          BusBrandStyle.forPass(_pass(status: TicketStatus.expired));
+      final BusBrandStyle style = BusBrandStyle.forPass(
+        _pass(status: TicketStatus.expired),
+      );
 
       expect(style.headerGradient, isNot(BusBrandStyle.redBus.headerGradient));
       expect(style.wordmarkLead, BusBrandStyle.redBus.wordmarkLead);
@@ -154,8 +160,9 @@ void main() {
   });
 
   group('stops', () {
-    testWidgets('sets the station large and the city under it',
-        (WidgetTester tester) async {
+    testWidgets('sets the station large and the city under it', (
+      WidgetTester tester,
+    ) async {
       await _pumpFace(tester, _pass());
 
       expect(find.text('Kempegowda Bus Station'), findsWidgets);
@@ -165,12 +172,10 @@ void main() {
 
     // "Mangaluru" has no comma, so station and city resolve to the same
     // string. Printing it on both lines looks like a bug.
-    testWidgets('does not print the city twice when the stop has no comma',
-        (WidgetTester tester) async {
-      await _pumpFace(
-        tester,
-        _pass(drop: 'Mangaluru', toCity: 'Mangaluru'),
-      );
+    testWidgets('does not print the city twice when the stop has no comma', (
+      WidgetTester tester,
+    ) async {
+      await _pumpFace(tester, _pass(drop: 'Mangaluru', toCity: 'Mangaluru'));
       expect(find.text('Mangaluru'), findsOneWidget);
     });
 
@@ -182,8 +187,9 @@ void main() {
   });
 
   group('body fields', () {
-    testWidgets('shows date, departure, seat, platform and fare',
-        (WidgetTester tester) async {
+    testWidgets('shows date, departure, seat, platform and fare', (
+      WidgetTester tester,
+    ) async {
       await _pumpFace(tester, _pass());
 
       expect(find.text('20 Aug 2026'), findsOneWidget);
@@ -193,14 +199,15 @@ void main() {
       expect(find.text('₹650'), findsOneWidget);
     });
 
-    // An expired pass must not tell you to be somewhere 30 minutes early.
-    testWidgets('the advisory changes once the journey is done',
-        (WidgetTester tester) async {
+    testWidgets('keeps the face free of advisory footer text', (
+      WidgetTester tester,
+    ) async {
       await _pumpFace(tester, _pass());
-      expect(find.textContaining('30 minutes'), findsOneWidget);
+      expect(find.textContaining('30 minutes'), findsNothing);
 
       await _pumpFace(tester, _pass(status: TicketStatus.expired));
       expect(find.textContaining('30 minutes'), findsNothing);
+      expect(find.textContaining('Kept for your records'), findsNothing);
     });
   });
 
@@ -280,9 +287,9 @@ void main() {
 
   group('wallet wiring', () {
     test('the mock repository serves bus passes', () async {
-      final List<WalletPassItem> items =
-          await MockPassRepository(artificialDelay: Duration.zero)
-              .fetchPasses();
+      final List<WalletPassItem> items = await MockPassRepository(
+        artificialDelay: Duration.zero,
+      ).fetchPasses();
 
       expect(items.whereType<BusPassItem>(), isNotEmpty);
       expect(mockBusPasses, isNotEmpty);

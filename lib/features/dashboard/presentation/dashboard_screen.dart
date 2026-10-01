@@ -39,7 +39,7 @@ import '../../passport/presentation/widgets/passport_cover_art.dart';
 import 'widgets/add_menu.dart';
 import 'widgets/dashboard_header.dart';
 import 'widgets/easter_egg_constants.dart';
-import 'widgets/easter_egg_drawer.dart';
+import '../../weather/presentation/local_weather_drawer.dart';
 import 'widgets/travel_weather_glance.dart';
 import 'widgets/easter_egg_sheet_motion.dart';
 import 'widgets/ids_tab.dart';
@@ -51,6 +51,7 @@ import 'wallet_search_screen.dart';
 import 'widgets/trash_view.dart';
 import 'widgets/view_picker.dart';
 import 'widgets/wallet_backdrop.dart';
+import 'widgets/weather_reveal_surface.dart';
 
 enum DashboardViewMode { home, manage, trash }
 
@@ -70,7 +71,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   late final ValueNotifier<double> _docPage;
   late final WalletBackdropTilt _backdropTilt;
   late final AnimationController _easterEggCtrl;
-  SkyPreviewMode _skyPreviewMode = SkyPreviewMode.automatic;
   final ValueNotifier<double> _easterEggOffset = ValueNotifier(0.0);
   final ValueNotifier<bool> _showHomeMenu = ValueNotifier(false);
   final ValueNotifier<DashboardViewMode> _viewMode = ValueNotifier(
@@ -84,8 +84,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   /// [IdsTab] clears this once the jump lands.
   final ValueNotifier<String?> _revealItemId = ValueNotifier<String?>(null);
 
+  double get _weatherPanelHeight =>
+      weatherPanelHeight(MediaQuery.textScalerOf(context).scale(14) / 14);
+
   double _dragOffset = 0.0;
   bool _isDragging = false;
+  bool _weatherWasOpen = false;
 
   final LayerLink _headerTitleLink = LayerLink();
   DashboardViewMode _openedMode = DashboardViewMode.home;
@@ -169,7 +173,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
     _easterEggCtrl.addListener(() {
       if (!_isDragging) {
-        _easterEggOffset.value = (_easterEggCtrl.value * kEasterEggPanelHeight)
+        _easterEggOffset.value = (_easterEggCtrl.value * _weatherPanelHeight)
             .clamp(0.0, double.infinity);
         _dragOffset = _easterEggOffset.value;
       }
@@ -199,48 +203,46 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     super.dispose();
   }
 
-  void _handleDragUpdate(DragUpdateDetails details) {
+  void _handleDragStart(DragStartDetails details) {
     if (!_isDragging) {
+      _weatherWasOpen = _easterEggOffset.value >= _weatherPanelHeight * 0.75;
       _easterEggCtrl.stop();
-      // Invert the rubber band when grabbing a settling overshoot.
-      final over = _easterEggOffset.value - kEasterEggPanelHeight;
-      _dragOffset = over > 0
-          ? kEasterEggPanelHeight +
-                over *
-                    kEasterEggPanelHeight /
-                    (kEasterEggDrawerOvershootFactor *
-                        (kEasterEggPanelHeight - over))
-          : _easterEggOffset.value;
+      _dragOffset = EasterEggSheetMotion.rawOffsetForVisible(
+        _easterEggOffset.value,
+        panelHeight: _weatherPanelHeight,
+      );
     }
     _isDragging = true;
+  }
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    if (!_isDragging) _handleDragStart(DragStartDetails());
     final double delta = details.primaryDelta ?? 0;
     // Keep the sheet under the finger 1:1. Only the part beyond the resting
     // position is rubber-banded, which makes reversals feel immediate.
     _dragOffset += delta;
     if (_dragOffset < 0) _dragOffset = 0;
 
-    final double panelHeight = kEasterEggPanelHeight;
-    double effective = _dragOffset;
-    if (_dragOffset > panelHeight) {
-      final double overshoot = _dragOffset - panelHeight;
-      effective =
-          panelHeight +
-          ((overshoot * kEasterEggDrawerOvershootFactor * panelHeight) /
-              (panelHeight + kEasterEggDrawerOvershootFactor * overshoot));
-    } else if (_dragOffset < 0) {
-      effective = 0;
-    }
-    _easterEggOffset.value = effective;
+    _easterEggOffset.value = EasterEggSheetMotion.rubberBandOffset(
+      _dragOffset,
+      panelHeight: _weatherPanelHeight,
+    );
   }
 
   void _handleDragEnd(DragEndDetails details) {
     _isDragging = false;
-    final double panelHeight = kEasterEggPanelHeight;
+    final double panelHeight = _weatherPanelHeight;
     final double currentOffset = _easterEggOffset.value;
-    final double velocityY = details.velocity.pixelsPerSecond.dy;
+    final double velocityY = EasterEggSheetMotion.releaseVelocity(
+      rawOffset: _dragOffset,
+      velocityY: details.velocity.pixelsPerSecond.dy,
+      panelHeight: panelHeight,
+    );
     final bool open = EasterEggSheetMotion.shouldSnapOpen(
       offsetY: currentOffset,
       velocityY: velocityY,
+      panelHeight: _weatherPanelHeight,
+      wasOpen: _weatherWasOpen,
     );
 
     final double startProgress = currentOffset / panelHeight;
@@ -251,10 +253,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     } else {
       _easterEggCtrl.animateWith(
         SpringSimulation(
-          const SpringDescription(mass: 1, stiffness: 310, damping: 34),
+          const SpringDescription(mass: 1, stiffness: 150, damping: 25),
           startProgress,
           open ? 1 : 0,
-          velocityY.clamp(-2400.0, 2400.0) / panelHeight,
+          // A rejected short tug returns directly; its flick must not create
+          // a second, larger reveal before the spring closes.
+          !open && !_weatherWasOpen && currentOffset < kEasterEggMinimumOpenPull
+              ? velocityY.clamp(-1200.0, 0.0) / panelHeight
+              : velocityY.clamp(-1600.0, 1600.0) / panelHeight,
         ),
       );
     }
@@ -501,433 +507,266 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     Widget scaffold = Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       extendBody: true,
-      body: Stack(
-        children: <Widget>[
-          ValueListenableBuilder<double>(
-            valueListenable: _easterEggOffset,
-            builder: (context, offsetY, _) {
-              final EasterEggSheetMotion motion =
-                  EasterEggSheetMotion.lerpFromOffset(offsetY);
-              final bool showEasterEgg =
-                  offsetY > 0.5 || _easterEggCtrl.isAnimating;
-
-              return Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  // 1. Easter Egg Drawer — only mount when pulled open.
-                  if (showEasterEgg)
-                    Positioned(
-                      top: motion.drawerTop,
-                      left: 0,
-                      right: 0,
-                      height: kEasterEggPanelHeight + 150.0,
-                      child: EasterEggDrawer(
-                        dragOffsetNotifier: _easterEggOffset,
-                        onDragUpdate: _handleDragUpdate,
-                        onDragEnd: _handleDragEnd,
-                        onDragCancel: _handleDragCancel,
-                        initialPreviewMode: _skyPreviewMode,
-                        onPreviewModeChanged: (mode) => _skyPreviewMode = mode,
-                        passports: passports,
-                        idDocs: idDocs,
-                      ),
-                    ),
-                  // 2. Main Sliding Sheet (translated down, rounded at top)
-                  Positioned.fill(
-                    child: Transform.translate(
-                      offset: Offset(0, motion.sheetOffsetY),
-                      child: Transform.scale(
-                        scale: motion.sheetScale,
-                        alignment: Alignment.topCenter,
-                        child: Container(
-                          clipBehavior: Clip.antiAlias,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).scaffoldBackgroundColor,
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(motion.topRadius),
+      body: WeatherRevealSurface(
+        offset: _easterEggOffset,
+        panelHeight: _weatherPanelHeight,
+        drawer: LocalWeatherDrawer(
+          offset: _easterEggOffset,
+          panelHeight: _weatherPanelHeight,
+          onDragStart: _handleDragStart,
+          onDragUpdate: _handleDragUpdate,
+          onDragEnd: _handleDragEnd,
+          onDragCancel: _handleDragCancel,
+          passports: passports,
+          idDocs: idDocs,
+        ),
+        child: Stack(
+          children: [
+            // Background: gradient orbs on Home, flat surface elsewhere
+            ValueListenableBuilder<DashboardViewMode>(
+              valueListenable: _viewMode,
+              builder: (context, mode, _) {
+                return AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 350),
+                  switchInCurve: strongEaseOut,
+                  switchOutCurve: strongEaseOut,
+                  child: mode == DashboardViewMode.home
+                      ? RepaintBoundary(
+                          key: const ValueKey('gradient_backdrop'),
+                          child: ValueListenableBuilder<double>(
+                            valueListenable: _easterEggOffset,
+                            child: WalletBackdrop(
+                              tabIndex: _tabCtrl.index,
+                              items: displayItems,
+                              pageNotifier: _docPage,
+                              tiltNotifier: _backdropTilt,
                             ),
-                            boxShadow: motion.shadowOpacity > 0
-                                ? [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: motion.shadowOpacity,
-                                      ),
-                                      blurRadius: 16,
-                                      offset: const Offset(0, -6),
-                                    ),
-                                  ]
-                                : null,
+                            builder: (context, distance, backdrop) => TickerMode(
+                              // Pause ambient paint without freezing card scrolling,
+                              // button feedback or navigation controllers.
+                              enabled: distance <= 0.5,
+                              child: backdrop!,
+                            ),
                           ),
-                          child: Stack(
-                            children: [
-                              Positioned(
-                                top: 8,
-                                left: 0,
-                                right: 0,
-                                child: IgnorePointer(
-                                  child: Opacity(
-                                    opacity: motion.pullPillOpacity,
-                                    child: Center(
-                                      child: Container(
-                                        width: 36,
-                                        height: 4,
-                                        decoration: BoxDecoration(
-                                          color:
-                                              Theme.of(context).brightness ==
-                                                  Brightness.dark
-                                              ? Colors.white.withValues(
-                                                  alpha: 0.28,
-                                                )
-                                              : Colors.black.withValues(
-                                                  alpha: 0.16,
-                                                ),
-                                          borderRadius: BorderRadius.circular(
-                                            99,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              // Background: gradient orbs on Home, flat surface elsewhere
-                              ValueListenableBuilder<DashboardViewMode>(
+                        )
+                      : ColoredBox(
+                          key: ValueKey('flat_backdrop_${mode.name}'),
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                        ),
+                );
+              },
+            ),
+            // Content Column
+            SafeArea(
+              child: FadeTransition(
+                opacity: _entryFade,
+                child: SlideTransition(
+                  position: _entrySlide,
+                  child: Column(
+                    children: [
+                      // Header with Drag Interceptor
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onVerticalDragStart: _handleDragStart,
+                        onVerticalDragUpdate: _handleDragUpdate,
+                        onVerticalDragEnd: _handleDragEnd,
+                        onVerticalDragCancel: _handleDragCancel,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                          child: ValueListenableBuilder<bool>(
+                            valueListenable: _showHomeMenu,
+                            builder: (context, isMenuOpen, _) {
+                              return ValueListenableBuilder<DashboardViewMode>(
                                 valueListenable: _viewMode,
-                                builder: (context, mode, _) {
-                                  return AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 350),
-                                    switchInCurve: strongEaseOut,
-                                    switchOutCurve: strongEaseOut,
-                                    child: mode == DashboardViewMode.home
-                                        ? RepaintBoundary(
-                                            key: const ValueKey(
-                                              'gradient_backdrop',
-                                            ),
-                                            child: WalletBackdrop(
-                                              tabIndex: _tabCtrl.index,
-                                              items: displayItems,
-                                              pageNotifier: _docPage,
-                                              tiltNotifier: _backdropTilt,
-                                            ),
-                                          )
-                                        : ColoredBox(
-                                            key: ValueKey(
-                                              'flat_backdrop_${mode.name}',
-                                            ),
-                                            color: Theme.of(
-                                              context,
-                                            ).scaffoldBackgroundColor,
-                                          ),
-                                  );
-                                },
-                              ),
-                              // Content Column
-                              SafeArea(
-                                child: FadeTransition(
-                                  opacity: _entryFade,
-                                  child: SlideTransition(
-                                    position: _entrySlide,
-                                    child: Column(
-                                      children: [
-                                        // Header with Drag Interceptor
-                                        GestureDetector(
-                                          behavior: HitTestBehavior.opaque,
-                                          onVerticalDragUpdate:
-                                              _handleDragUpdate,
-                                          onVerticalDragEnd: _handleDragEnd,
-                                          onVerticalDragCancel:
-                                              _handleDragCancel,
-                                          child: Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                              20,
-                                              20,
-                                              20,
-                                              0,
-                                            ),
-                                            child: ValueListenableBuilder<bool>(
-                                              valueListenable: _showHomeMenu,
-                                              builder: (context, isMenuOpen, _) {
-                                                return ValueListenableBuilder<
-                                                  DashboardViewMode
-                                                >(
-                                                  valueListenable: _viewMode,
-                                                  builder:
-                                                      (
-                                                        context,
-                                                        currentMode,
-                                                        _,
-                                                      ) {
-                                                        final bool onPasses =
-                                                            _tabCtrl.index == 1;
-                                                        final bool showHistory =
-                                                            currentMode ==
-                                                                DashboardViewMode
-                                                                    .home &&
-                                                            onPasses;
-                                                        return DashboardHeader(
-                                                          meshSeed: meshSeed,
-                                                          washes: meshWashes,
-                                                          isMenuOpen:
-                                                              isMenuOpen,
-                                                          currentMode:
-                                                              currentMode,
-                                                          onHomeTap: () {
-                                                            _showHomeMenu
-                                                                    .value =
-                                                                !_showHomeMenu
-                                                                    .value;
-                                                          },
-                                                          onAvatarTap:
-                                                              _openSettings,
-                                                          onSearchTap:
-                                                              searchButtonEnabled
-                                                              ? _openWalletSearch
-                                                              : null,
-                                                          headerTitleLink:
-                                                              _headerTitleLink,
-                                                          showHistoryButton:
-                                                              showHistory,
-                                                          onHistoryTap:
-                                                              showHistory
-                                                              ? () =>
-                                                                    _openArchive(
-                                                                      meshSeed,
-                                                                      meshWashes,
-                                                                    )
-                                                              : null,
-                                                        );
-                                                      },
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        // Tab content
-                                        ValueListenableBuilder<
-                                          DashboardViewMode
-                                        >(
-                                          valueListenable: _viewMode,
-                                          builder: (context, mode, _) {
-                                            Widget viewChild;
-                                            switch (mode) {
-                                              case DashboardViewMode.home:
-                                                viewChild = KeyedSubtree(
-                                                  key: const ValueKey(
-                                                    'home_view',
-                                                  ),
-                                                  child: _HomeTabTransition(
-                                                    controller: _tabCtrl,
-                                                    ids: IdsTab(
-                                                      items: displayItems,
-                                                      allItems: items,
-                                                      onDeletePassport:
-                                                          _showDeleteDialog,
-                                                      onDeleteId:
-                                                          _showDeleteIdDialog,
-                                                      onAdd: _showAddSheet,
-                                                      pageNotifier: _docPage,
-                                                      revealItemId:
-                                                          _revealItemId,
-                                                      backdropTilt:
-                                                          _backdropTilt,
-                                                    ),
-                                                    passes: _passesTabMounted
-                                                        ? TicketsTab(
-                                                            isActive:
-                                                                _tabCtrl
-                                                                    .index ==
-                                                                1,
-                                                          )
-                                                        : const SizedBox.expand(),
-                                                  ),
-                                                );
-                                                break;
-                                              case DashboardViewMode.manage:
-                                                viewChild = ManageCardsView(
-                                                  key: const ValueKey(
-                                                    'manage_view',
-                                                  ),
-                                                  items: items,
-                                                  onRevealItem:
-                                                      _revealWalletItem,
-                                                  onRemoveItem:
-                                                      _removeWalletItem,
-                                                  onOpenTrash: () {
-                                                    _viewMode.value =
-                                                        DashboardViewMode.trash;
-                                                  },
-                                                );
-                                                break;
-                                              case DashboardViewMode.trash:
-                                                viewChild = const TrashView(
-                                                  key: ValueKey('trash_view'),
-                                                );
-                                                break;
-                                            }
-
-                                            return Expanded(
-                                              child: AnimatedSwitcher(
-                                                duration: const Duration(
-                                                  milliseconds: 350,
-                                                ),
-                                                switchInCurve: strongEaseOut,
-                                                switchOutCurve: strongEaseOut,
-                                                transitionBuilder:
-                                                    (child, animation) {
-                                                      return FadeTransition(
-                                                        opacity: animation,
-                                                        child: SlideTransition(
-                                                          position:
-                                                              Tween<Offset>(
-                                                                begin:
-                                                                    const Offset(
-                                                                      0,
-                                                                      0.04,
-                                                                    ),
-                                                                end:
-                                                                    Offset.zero,
-                                                              ).animate(
-                                                                animation,
-                                                              ),
-                                                          child: child,
-                                                        ),
-                                                      );
-                                                    },
-                                                child: viewChild,
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              // Tap Barrier to dismiss menu
-                              ValueListenableBuilder<bool>(
-                                valueListenable: _showHomeMenu,
-                                builder: (context, show, child) {
-                                  if (!show) return const SizedBox.shrink();
-                                  return Positioned.fill(
-                                    child: GestureDetector(
-                                      behavior: HitTestBehavior.opaque,
-                                      onTap: () => _showHomeMenu.value = false,
-                                      child: Container(
-                                        color: Colors.transparent,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              // Custom expanded view picker
-                              ValueListenableBuilder<bool>(
-                                valueListenable: _showHomeMenu,
-                                builder: (context, show, child) {
-                                  return ValueListenableBuilder<
-                                    DashboardViewMode
-                                  >(
-                                    valueListenable: _viewMode,
-                                    builder: (context, currentMode, _) {
-                                      return ViewPickerExpanded(
-                                        link: _headerTitleLink,
-                                        visible: show,
-                                        currentMode: currentMode,
-                                        openedMode: _openedMode,
-                                        onSelectMode: (mode) {
-                                          _viewMode.value = mode;
-                                          Future.delayed(
-                                            const Duration(milliseconds: 280),
-                                            () {
-                                              if (mounted) {
-                                                _showHomeMenu.value = false;
-                                              }
-                                            },
-                                          );
-                                        },
-                                        onClose: () {
-                                          _showHomeMenu.value = false;
-                                        },
-                                      );
+                                builder: (context, currentMode, _) {
+                                  final bool onPasses = _tabCtrl.index == 1;
+                                  final bool showHistory =
+                                      currentMode == DashboardViewMode.home &&
+                                      onPasses;
+                                  return DashboardHeader(
+                                    meshSeed: meshSeed,
+                                    washes: meshWashes,
+                                    isMenuOpen: isMenuOpen,
+                                    currentMode: currentMode,
+                                    onHomeTap: () {
+                                      _showHomeMenu.value =
+                                          !_showHomeMenu.value;
                                     },
+                                    onAvatarTap: _openSettings,
+                                    onSearchTap: searchButtonEnabled
+                                        ? _openWalletSearch
+                                        : null,
+                                    headerTitleLink: _headerTitleLink,
+                                    showHistoryButton: showHistory,
+                                    onHistoryTap: showHistory
+                                        ? () =>
+                                              _openArchive(meshSeed, meshWashes)
+                                        : null,
                                   );
                                 },
-                              ),
-                            ],
+                              );
+                            },
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
+                      const SizedBox(height: 12),
+                      // Tab content
+                      ValueListenableBuilder<DashboardViewMode>(
+                        valueListenable: _viewMode,
+                        builder: (context, mode, _) {
+                          Widget viewChild;
+                          switch (mode) {
+                            case DashboardViewMode.home:
+                              viewChild = KeyedSubtree(
+                                key: const ValueKey('home_view'),
+                                child: _HomeTabTransition(
+                                  controller: _tabCtrl,
+                                  ids: IdsTab(
+                                    items: displayItems,
+                                    allItems: items,
+                                    onDeletePassport: _showDeleteDialog,
+                                    onDeleteId: _showDeleteIdDialog,
+                                    onAdd: _showAddSheet,
+                                    pageNotifier: _docPage,
+                                    revealItemId: _revealItemId,
+                                    backdropTilt: _backdropTilt,
+                                  ),
+                                  passes: _passesTabMounted
+                                      ? TicketsTab(
+                                          isActive: _tabCtrl.index == 1,
+                                        )
+                                      : const SizedBox.expand(),
+                                ),
+                              );
+                              break;
+                            case DashboardViewMode.manage:
+                              viewChild = ManageCardsView(
+                                key: const ValueKey('manage_view'),
+                                items: items,
+                                onRevealItem: _revealWalletItem,
+                                onRemoveItem: _removeWalletItem,
+                                onOpenTrash: () {
+                                  _viewMode.value = DashboardViewMode.trash;
+                                },
+                              );
+                              break;
+                            case DashboardViewMode.trash:
+                              viewChild = const TrashView(
+                                key: ValueKey('trash_view'),
+                              );
+                              break;
+                          }
 
-          // ── Bottom island bar ────────────────────────────────────────
-          ValueListenableBuilder<double>(
-            valueListenable: _easterEggOffset,
-            builder: (context, offsetY, pillChild) {
-              final EasterEggSheetMotion motion =
-                  EasterEggSheetMotion.lerpFromOffset(offsetY);
-              return ValueListenableBuilder<DashboardViewMode>(
-                valueListenable: _viewMode,
-                builder: (context, mode, child) {
-                  final bool isHome = mode == DashboardViewMode.home;
-                  // Slide by a fraction of the island's own height, not a
-                  // fixed pixel count. This used to be `bottom: -100`, but the
-                  // child is `safe-area bottom + 16 + 82` tall (PillTabBar is
-                  // 82), so -100 only cleared it on a device with no bottom
-                  // inset. Everywhere else the tab bar stayed poking above the
-                  // edge in Manage and Trash — and stayed tappable there.
-                  // Offset(0, 1) is exactly one child-height, whatever it is.
-                  return Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: AnimatedSlide(
-                      duration: const Duration(milliseconds: 320),
-                      curve: Curves.easeInOutCubic,
-                      offset: isHome ? Offset.zero : const Offset(0, 1),
-                      child: IgnorePointer(
-                        ignoring: !isHome,
-                        child: Transform.translate(
-                          offset: Offset(0, motion.pillBarOffsetY),
-                          child: Opacity(
-                            opacity: motion.pillBarOpacity,
-                            child: child,
-                          ),
-                        ),
+                          return Expanded(
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 350),
+                              switchInCurve: strongEaseOut,
+                              switchOutCurve: strongEaseOut,
+                              transitionBuilder: (child, animation) {
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: const Offset(0, 0.04),
+                                      end: Offset.zero,
+                                    ).animate(animation),
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: viewChild,
+                            ),
+                          );
+                        },
                       ),
-                    ),
-                  );
-                },
-                child: pillChild,
-              );
-            },
-            child: Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).padding.bottom + 16,
-                left: 20,
-                right: 20,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  PillTabBar(controller: _tabCtrl),
-                  const SizedBox(width: 10),
-                  AddFab(
-                    onTap: _showAddSheet,
-                    enabled: _tabCtrl.index == 0 || passIngest.isIdle,
-                    semanticLabel: _tabCtrl.index == 1
-                        ? 'Add pass'
-                        : 'Add document',
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+            // Tap Barrier to dismiss menu
+            ValueListenableBuilder<bool>(
+              valueListenable: _showHomeMenu,
+              builder: (context, show, child) {
+                if (!show) return const SizedBox.shrink();
+                return Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _showHomeMenu.value = false,
+                    child: Container(color: Colors.transparent),
+                  ),
+                );
+              },
+            ),
+            // Custom expanded view picker
+            ValueListenableBuilder<bool>(
+              valueListenable: _showHomeMenu,
+              builder: (context, show, child) {
+                return ValueListenableBuilder<DashboardViewMode>(
+                  valueListenable: _viewMode,
+                  builder: (context, currentMode, _) {
+                    return ViewPickerExpanded(
+                      link: _headerTitleLink,
+                      visible: show,
+                      currentMode: currentMode,
+                      openedMode: _openedMode,
+                      onSelectMode: (mode) {
+                        _viewMode.value = mode;
+                        Future.delayed(const Duration(milliseconds: 280), () {
+                          if (mounted) {
+                            _showHomeMenu.value = false;
+                          }
+                        });
+                      },
+                      onClose: () {
+                        _showHomeMenu.value = false;
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+
+            ValueListenableBuilder<DashboardViewMode>(
+              valueListenable: _viewMode,
+              builder: (context, mode, child) {
+                final isHome = mode == DashboardViewMode.home;
+                return Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: AnimatedSlide(
+                    duration: const Duration(milliseconds: 320),
+                    curve: Curves.easeInOutCubic,
+                    offset: isHome ? Offset.zero : const Offset(0, 1),
+                    child: IgnorePointer(ignoring: !isHome, child: child),
+                  ),
+                );
+              },
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.paddingOf(context).bottom + 16,
+                  left: 20,
+                  right: 20,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    PillTabBar(controller: _tabCtrl),
+                    const SizedBox(width: 10),
+                    AddFab(
+                      onTap: _showAddSheet,
+                      enabled: _tabCtrl.index == 0 || passIngest.isIdle,
+                      semanticLabel: _tabCtrl.index == 1
+                          ? 'Add pass'
+                          : 'Add document',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
 

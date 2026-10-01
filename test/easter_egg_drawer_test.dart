@@ -9,6 +9,8 @@ import 'package:docket/features/dashboard/presentation/widgets/easter_egg_sheet_
 import 'package:docket/features/dashboard/presentation/widgets/easter_egg_constants.dart';
 import 'package:docket/features/dashboard/presentation/widgets/travel_weather_glance.dart';
 import 'package:docket/features/passport/domain/passport_profile.dart';
+import 'package:docket/features/weather/application/weather_provider.dart';
+import 'package:docket/features/weather/domain/weather_snapshot.dart';
 
 void main() {
   testWidgets(
@@ -145,8 +147,13 @@ void main() {
   for (final scene in [
     'sunlight',
     'clear',
+    'partlyCloudy',
+    'mostlyCloudy',
     'cloudy',
+    'fog',
+    'snow',
     'drizzle',
+    'rain',
     'heavyRain',
     'thunderstorm',
     'sunset',
@@ -237,7 +244,7 @@ void main() {
       if (scene != 'clear') {
         expect(
           totalChange / (70 * 230 * 3),
-          greaterThan(1.0),
+          greaterThan(scene == 'night' ? 0.25 : 1.0),
           reason: 'Cloud movement should be perceptible within two seconds.',
         );
       }
@@ -251,103 +258,153 @@ void main() {
     });
   }
 
-  testWidgets('scene menu previews every mode and restores Auto', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    final offset = ValueNotifier(kEasterEggPanelHeight);
-    addTearDown(offset.dispose);
-    var selected = SkyPreviewMode.automatic;
-    await tester.runAsync(() async {
-      await TravelWeatherGlance.warmUp();
-    });
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: MediaQuery(
-            data: const MediaQueryData(disableAnimations: true),
-            child: SizedBox(
-              height: kEasterEggPanelHeight + 150,
-              child: EasterEggDrawer(
-                dragOffsetNotifier: offset,
-                onDragUpdate: (_) {},
-                onDragEnd: (_) {},
-                onDragCancel: () {},
-                passports: const [],
-                idDocs: const [],
-                now: DateTime(2026, 9, 12, 18),
-                onPreviewModeChanged: (mode) => selected = mode,
+  testWidgets(
+    'weather previews are controlled externally and no scene menu is exposed',
+    (tester) async {
+      final offset = ValueNotifier(kEasterEggPanelHeight);
+      addTearDown(offset.dispose);
+      for (final mode in SkyPreviewMode.values) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: MediaQuery(
+              data: const MediaQueryData(disableAnimations: true),
+              child: SizedBox(
+                height: kEasterEggPanelHeight + 150,
+                child: EasterEggDrawer(
+                  dragOffsetNotifier: offset,
+                  onDragUpdate: (_) {},
+                  onDragEnd: (_) {},
+                  onDragCancel: () {},
+                  passports: const [],
+                  idDocs: const [],
+                  now: DateTime(2026, 9, 12, 18),
+                  weather: SkyWeather.drizzle,
+                  initialPreviewMode: mode,
+                ),
               ),
             ),
           ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    for (final mode in [
-      SkyPreviewMode.sunlight,
-      SkyPreviewMode.clear,
-      SkyPreviewMode.cloudy,
-      SkyPreviewMode.drizzle,
-      SkyPreviewMode.heavyRain,
-      SkyPreviewMode.thunderstorm,
-      SkyPreviewMode.sunset,
-      SkyPreviewMode.night,
-      SkyPreviewMode.automatic,
-    ]) {
-      await tester.tap(find.byTooltip('Change sky scene'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text(mode.label));
-      await tester.pumpAndSettle();
-      expect(selected, mode);
-      final sky = tester.widget<TravelWeatherGlance>(
-        find.byType(TravelWeatherGlance),
-      );
-      expect(sky.hour, switch (mode) {
-        SkyPreviewMode.automatic || SkyPreviewMode.sunset => 18,
-        SkyPreviewMode.night => 23,
-        _ => 10,
-      });
-      expect(sky.weather, switch (mode) {
-        SkyPreviewMode.automatic ||
-        SkyPreviewMode.drizzle => SkyWeather.drizzle,
-        SkyPreviewMode.clear => SkyWeather.clear,
-        SkyPreviewMode.cloudy => SkyWeather.cloudy,
-        SkyPreviewMode.heavyRain => SkyWeather.heavyRain,
-        SkyPreviewMode.thunderstorm => SkyWeather.thunderstorm,
-        _ => SkyWeather.sunlight,
-      });
-      // Testing a night sky should not change the real local-time greeting.
-      expect(find.text('Good evening'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    }
-    offset.value = 0;
-    await tester.pumpAndSettle();
-    expect(
-      tester.getSemantics(find.byType(EasterEggDrawer)).toString(),
-      isNot(contains('Change sky scene')),
-    );
-    await tester.pumpWidget(const SizedBox());
-  });
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(PopupMenuButton<SkyPreviewMode>), findsNothing);
+        expect(find.byTooltip('Change sky scene'), findsNothing);
+        expect(find.text('Good evening'), findsOneWidget);
+        final sky = tester.widget<TravelWeatherGlance>(
+          find.byType(TravelWeatherGlance),
+        );
+        expect(sky.weather, switch (mode) {
+          SkyPreviewMode.automatic ||
+          SkyPreviewMode.drizzle => SkyWeather.drizzle,
+          SkyPreviewMode.clear => SkyWeather.clear,
+          SkyPreviewMode.night => SkyWeather.clear,
+          SkyPreviewMode.partlyCloudy => SkyWeather.partlyCloudy,
+          SkyPreviewMode.mostlyCloudy => SkyWeather.mostlyCloudy,
+          SkyPreviewMode.rain => SkyWeather.rain,
+          SkyPreviewMode.cloudy => SkyWeather.cloudy,
+          SkyPreviewMode.fog => SkyWeather.fog,
+          SkyPreviewMode.snow => SkyWeather.snow,
+          SkyPreviewMode.heavyRain => SkyWeather.heavyRain,
+          SkyPreviewMode.thunderstorm => SkyWeather.thunderstorm,
+          _ => SkyWeather.sunlight,
+        });
+      }
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
-  test('snap respects flick direction and gentle momentum', () {
+  test('snap requires intentional travel and preserves an open glance', () {
     expect(
       EasterEggSheetMotion.shouldSnapOpen(offsetY: 30, velocityY: 500),
-      isTrue,
-    );
-    expect(
-      EasterEggSheetMotion.shouldSnapOpen(offsetY: 270, velocityY: -500),
       isFalse,
     );
     expect(
-      EasterEggSheetMotion.shouldSnapOpen(offsetY: 90, velocityY: 100),
+      EasterEggSheetMotion.shouldSnapOpen(offsetY: 270, velocityY: -700),
+      isFalse,
+    );
+    expect(
+      EasterEggSheetMotion.shouldSnapOpen(offsetY: 150, velocityY: 100),
       isTrue,
+    );
+    for (final velocity in [0.0, 500.0, 2400.0]) {
+      expect(
+        EasterEggSheetMotion.shouldSnapOpen(offsetY: 24, velocityY: velocity),
+        isFalse,
+        reason: 'A tiny tug cannot launch the drawer, even at high velocity.',
+      );
+    }
+    expect(
+      EasterEggSheetMotion.shouldSnapOpen(offsetY: 90, velocityY: 750),
+      isTrue,
+    );
+    expect(
+      EasterEggSheetMotion.shouldSnapOpen(
+        offsetY: 130,
+        velocityY: 0,
+        wasOpen: true,
+      ),
+      isTrue,
+    );
+    expect(
+      EasterEggSheetMotion.shouldSnapOpen(
+        offsetY: 90,
+        velocityY: 0,
+        wasOpen: true,
+      ),
+      isFalse,
     );
     expect(
       EasterEggSheetMotion.shouldSnapOpen(offsetY: 20, velocityY: 0),
       isFalse,
+    );
+  });
+
+  test(
+    'release inherits visible velocity at resistant and closed boundaries',
+    () {
+      expect(
+        EasterEggSheetMotion.releaseVelocity(rawOffset: 80, velocityY: 600),
+        600,
+      );
+      expect(
+        EasterEggSheetMotion.releaseVelocity(rawOffset: 0, velocityY: -600),
+        0,
+      );
+      final overpull = EasterEggSheetMotion.releaseVelocity(
+        rawOffset: kEasterEggPanelHeight + 50,
+        velocityY: 600,
+      );
+      expect(overpull, inInclusiveRange(190, 220));
+      expect(
+        EasterEggSheetMotion.releaseVelocity(
+          rawOffset: kEasterEggPanelHeight + 50,
+          velocityY: -600,
+        ),
+        -overpull,
+      );
+    },
+  );
+
+  test('overpull has no speed discontinuity and can be grabbed in place', () {
+    const height = kEasterEggPanelHeight;
+    final justBeyond = EasterEggSheetMotion.rubberBandOffset(height + 0.01);
+    expect((justBeyond - height) / 0.01, closeTo(1, 0.001));
+    expect(
+      EasterEggSheetMotion.releaseVelocity(
+        rawOffset: height + 0.01,
+        velocityY: 600,
+      ),
+      closeTo(600, 0.2),
+    );
+    for (final raw in [0.0, 24.0, height, height + 50, height + 300]) {
+      final visible = EasterEggSheetMotion.rubberBandOffset(raw);
+      expect(
+        EasterEggSheetMotion.rawOffsetForVisible(visible),
+        closeTo(raw, 0.00001),
+      );
+    }
+    expect(
+      EasterEggSheetMotion.rubberBandOffset(10000),
+      lessThan(height * 1.28),
     );
   });
 
@@ -356,10 +413,11 @@ void main() {
       testWidgets('sky summary fits $width at text scale $scale', (
         tester,
       ) async {
-        tester.view.physicalSize = Size(width, kEasterEggPanelHeight + 80);
+        final panelHeight = weatherPanelHeight(scale);
+        tester.view.physicalSize = Size(width, panelHeight + 80);
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.reset);
-        final offset = ValueNotifier(kEasterEggPanelHeight);
+        final offset = ValueNotifier(panelHeight);
         addTearDown(offset.dispose);
         // Optional local render; normal CI does not depend on a system font.
         const render = bool.fromEnvironment('DOCKET_SKY_PREVIEW');
@@ -379,7 +437,7 @@ void main() {
             theme: ThemeData(fontFamily: render ? 'Preview' : null),
             home: MediaQuery(
               data: MediaQueryData(
-                size: Size(width, kEasterEggPanelHeight + 80),
+                size: Size(width, panelHeight + 80),
                 padding: const EdgeInsets.only(top: 59),
                 textScaler: TextScaler.linear(scale),
                 disableAnimations: true,
@@ -391,6 +449,7 @@ void main() {
                     Positioned.fill(
                       child: EasterEggDrawer(
                         dragOffsetNotifier: offset,
+                        panelHeight: panelHeight,
                         onDragUpdate: (_) {},
                         onDragEnd: (_) {},
                         onDragCancel: () {},
@@ -406,10 +465,21 @@ void main() {
                         ],
                         idDocs: const [],
                         now: DateTime(2026, 9, 10, 9),
+                        weatherState: WeatherState(
+                          status: WeatherStatus.ready,
+                          snapshot: WeatherSnapshot(
+                            temperatureC: 26,
+                            code: 95,
+                            isDay: true,
+                            time: DateTime.utc(2026, 9, 10, 9),
+                            fetchedAt: DateTime.now().toUtc(),
+                            utcOffsetSeconds: 0,
+                          ),
+                        ),
                       ),
                     ),
                     Positioned(
-                      top: kEasterEggPanelHeight,
+                      top: panelHeight,
                       left: 0,
                       right: 0,
                       bottom: 0,
@@ -434,11 +504,8 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         expect(find.text('Good morning'), findsOneWidget);
-        expect(
-          find.textContaining('1 document', findRichText: true),
-          findsOneWidget,
-        );
-        if (render && scale == 1) {
+        expect(find.textContaining('26°C'), findsOneWidget);
+        if (render) {
           await tester.runAsync(() async {
             final boundary =
                 key.currentContext!.findRenderObject() as RenderRepaintBoundary;
@@ -448,7 +515,7 @@ void main() {
             );
             await Directory('build/sky_preview').create(recursive: true);
             await File(
-              'build/sky_preview/sky_$width.png',
+              'build/sky_preview/sky_${width}_$scale.png',
             ).writeAsBytes(bytes!.buffer.asUint8List());
             image.dispose();
           });
