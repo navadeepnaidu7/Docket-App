@@ -10,12 +10,12 @@ enum SkyWeather {
   clear(clouds: 0),
   partlyCloudy(clouds: 0.48),
   mostlyCloudy(clouds: 0.76),
-  cloudy(clouds: 0.98),
+  cloudy(clouds: 0.91),
   fog(clouds: 0.94, fogAmount: 1),
   snow(clouds: 0.88, snowAmount: 1),
-  drizzle(clouds: 0.85, rainAmount: 0.28),
-  rain(clouds: 0.94, rainAmount: 0.56),
-  heavyRain(clouds: 0.98, rainAmount: 0.92),
+  drizzle(clouds: 0.72, rainAmount: 0.28),
+  rain(clouds: 0.84, rainAmount: 0.56),
+  heavyRain(clouds: 0.94, rainAmount: 0.92),
   thunderstorm(clouds: 1, rainAmount: 0.82, storm: 1);
 
   const SkyWeather({

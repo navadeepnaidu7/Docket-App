@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/dev/sky_preview.dart';
 import '../../../weather/application/weather_provider.dart';
 import '../../../weather/domain/weather_snapshot.dart';
@@ -142,7 +141,7 @@ class _EasterEggDrawerState extends State<EasterEggDrawer> {
                 top: 0,
                 left: 0,
                 right: 0,
-                height: (offset + 24).clamp(24, widget.panelHeight * 2 + 32),
+                height: (offset + 48).clamp(48, widget.panelHeight * 2 + 48),
                 child: RepaintBoundary(
                   child: TravelWeatherGlance(
                     hour: skyHour,
@@ -218,48 +217,18 @@ class _EasterEggDrawerState extends State<EasterEggDrawer> {
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            '${state.label}${state.stale ? ' · Updated earlier' : ''}',
-                                            style: TextStyle(
-                                              fontFamily: font,
-                                              fontSize: 12,
-                                              decoration: TextDecoration.none,
-                                              color: const Color(0xE0FFFFFF),
-                                            ),
-                                          ),
+                                    if (state.stale) ...[
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Updated earlier',
+                                        style: TextStyle(
+                                          fontFamily: font,
+                                          fontSize: 12,
+                                          decoration: TextDecoration.none,
+                                          color: const Color(0xE0FFFFFF),
                                         ),
-                                        Material(
-                                          color: Colors.transparent,
-                                          child: TextButton(
-                                            style: TextButton.styleFrom(
-                                              foregroundColor: const Color(
-                                                0xE0FFFFFF,
-                                              ),
-                                              minimumSize: const Size(44, 44),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                  ),
-                                            ),
-                                            onPressed: () => launchUrl(
-                                              Uri.parse(
-                                                'https://open-meteo.com/',
-                                              ),
-                                              mode: LaunchMode
-                                                  .externalApplication,
-                                            ),
-                                            child: const Text(
-                                              'Open-Meteo',
-                                              style: TextStyle(fontSize: 11),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ] else if (widget.onWeatherAction !=
                                       null) ...[
                                     const SizedBox(height: 4),

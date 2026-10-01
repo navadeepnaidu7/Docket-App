@@ -33,7 +33,7 @@ use here is depictive, as part of a rendering of a passport cover.
 
 ## Pass category icons — ISC
 
-The line glyphs in the add menu's pass grid (`assets/passes/icons/`) are from
+The legacy pass line glyphs (`assets/passes/icons/`) are from
 [Lucide](https://lucide.dev), **modified**: `stroke-width` is reduced from
 Lucide's default `2` to `1.5`. At the ~95pt tile these render into, the stock
 weight read as chunky rather than as the thin line set the design calls for.
@@ -62,3 +62,16 @@ inside the app, not only in this file.
 - `assets/passes/bookmyshow*.svg`, `assets/passes/district-logo.svg`,
   `assets/passes/zomato.svg` — third-party brand marks, used nominatively to
   identify the source of a pass.
+- Passes add-menu symbols use the MIT-licensed `cupertino_icons` package;
+  the bus silhouette is original Docket vector artwork. The former generated
+  artwork in `assets/passes/add/` is retained as a design archive and does not
+  ship in the app.
+
+
+## Weather data - CC BY 4.0
+
+Weather data by [Open-Meteo](https://open-meteo.com/), under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+Docket rounds temperatures and maps weather codes to original illustrations.
+Credits, provider and licence links appear in Settings > About > Weather credits,
+and the data attribution is also registered with Flutter's LicenseRegistry.

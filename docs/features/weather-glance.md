@@ -86,3 +86,36 @@ The final package was built from `D:\dev\projects\docket_weather_app_release`,
 based on committed responsiveness revision `6b5240d`, with the weather files
 overlaid. An in-progress add-menu artwork change in the main workspace references
 images that do not yet exist and blocked its rebuild; that work was preserved.
+
+
+## Softer sky refinement
+
+Restore the previous five-octave soft cloud style and remove the forced opaque
+bank. Mostly cloudy and overcast retain different coverage without cut-out
+edges. Drizzle uses short, fine, sparse drops; rain varies drop length, depth,
+lane phase and speed; storm gusts and localized branching lightning add depth.
+Unused rain/snow fields skip their per-pixel loops. Existing moon, safe-area sun
+position, interruptible transitions and reduced-motion behavior stay covered.
+
+Remove the provider button and local-location caption from the reveal. Keep
+an "Updated earlier" notice for cached conditions. Settings > About > Weather
+credits provides attribution, provider and licence links; the same weather
+credit is registered in the app's licence registry.
+
+The wallet surface corner radius now scales with screen width from 32 to 48
+logical pixels (about 41 at 390px), instead of 24. This is a visual adaptive
+radius, not a reading of the phone's physical display radius. The sky extends
+48px below the reveal to cover the larger corner cutouts without a border.
+
+Verification: 31 weather/provider/motion/Settings checks pass, including
+rendered sky previews, interrupted transitions, localized lightning and
+reduced motion. Layouts cover 320/390px and 1x/2x text. The initial full suite
+reported 623 passes and four failures during concurrent add-menu work; a
+recheck clears Passes menu and pass removal, leaving the two existing
+Documents-menu golden mismatches. Device frame timing has not been measured.
+
+
+The final stale-data/accessibility layout checks also pass (four cases), and
+an arm64 profile APK builds successfully with the new sky, credits and pass
+menu artwork. Hardware smoothness still needs validation on Moto Edge 30 and
+Nothing Phone 3a.

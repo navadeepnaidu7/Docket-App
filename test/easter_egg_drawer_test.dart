@@ -244,7 +244,8 @@ void main() {
       if (scene != 'clear') {
         expect(
           totalChange / (70 * 230 * 3),
-          greaterThan(scene == 'night' ? 0.25 : 1.0),
+          // Soft night wisps are deliberately quieter than daylight clouds.
+          greaterThan(scene == 'night' ? 0.15 : 1.0),
           reason: 'Cloud movement should be perceptible within two seconds.',
         );
       }
@@ -467,6 +468,7 @@ void main() {
                         now: DateTime(2026, 9, 10, 9),
                         weatherState: WeatherState(
                           status: WeatherStatus.ready,
+                          stale: scale == 2,
                           snapshot: WeatherSnapshot(
                             temperatureC: 26,
                             code: 95,
@@ -487,7 +489,7 @@ void main() {
                         decoration: const BoxDecoration(
                           color: Color(0xFFDDD8CE),
                           borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(28),
+                            top: Radius.circular(40),
                           ),
                         ),
                       ),
@@ -505,6 +507,12 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(find.text('Good morning'), findsOneWidget);
         expect(find.textContaining('26°C'), findsOneWidget);
+        expect(find.text('Near you'), findsNothing);
+        expect(find.text('Open-Meteo'), findsNothing);
+        expect(
+          find.text('Updated earlier'),
+          scale == 2 ? findsOneWidget : findsNothing,
+        );
         if (render) {
           await tester.runAsync(() async {
             final boundary =

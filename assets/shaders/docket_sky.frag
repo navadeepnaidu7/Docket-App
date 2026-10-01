@@ -39,7 +39,7 @@ float noise(vec2 p) {
 float cloudNoise(vec2 p) {
   float value = 0.0;
   float weight = 0.55;
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 5; i++) {
     value += weight * noise(p);
     p = mat2(1.6, 1.2, -1.2, 1.6) * p + 7.3;
     weight *= 0.48;
@@ -117,13 +117,11 @@ void main() {
   float density = cloudNoise(p + vec2(2.7, 1.4));
   float towardLight = cloudNoise(p + vec2(2.76, 1.31));
   float bank = 0.13 * sin(uv.x * 4.0 + 0.9) + uv.y * 0.11;
-  // Sparse wisps, broken cumulus and a continuous overcast bank have distinct
-  // shapes; the scalar blends continuously when real conditions change.
-  float threshold = mix(0.70, 0.25, uClouds);
-  float edgeSoftness = mix(0.075, 0.22, overcast);
-  float coverage = smoothstep(threshold, threshold + edgeSoftness, density + bank)
-      * smoothstep(0.0, 0.20, uClouds);
-  coverage = mix(coverage, max(coverage, 0.80 + density * 0.12), overcast * 0.80);
+  // The original soft cloud edges: coverage adds broken banks, without a
+  // forced opaque blanket or cut-out cumulus silhouettes.
+  float threshold = mix(0.67, 0.30, uClouds);
+  float coverage = smoothstep(threshold, threshold + 0.25, density + bank)
+      * smoothstep(0.0, 0.28, uClouds);
   // Leave a calm pocket behind the text, while clouds occupy the upper sky.
   coverage *= 1.0 - smoothstep(0.25, 0.85, uv.y) * (1.0 - uv.x) * mix(0.90, 0.38, overcast);
   float lighting = clamp(0.62 + (density - towardLight) * 4.0, 0.0, 1.0);
@@ -154,27 +152,34 @@ void main() {
   color += sunlight * (bloom * 0.14 + sheen * 0.11) * exposure;
   color += vec3(0.95, 0.64, 0.37) * ghost * 0.026 * exposure;
 
-  // Three continuous rain fields; intensity fades layers in without resetting
-  // their trajectories when a user interrupts a weather transition.
+  // Sparse pin-fine drizzle becomes longer, wind-slanted rain. Independent
+  // depths, phases, lengths and lane speeds avoid a uniform curtain of lines.
   float rain = 0.0;
-  for (int layer = 0; layer < 3; layer++) {
-    float depth = float(layer);
-    float gust = sin(uTime * 0.37) * uRain * 1.7;
-    vec2 q = vec2(uv.x * (110.0 - depth * 25.0) + uv.y * (3.0 + uRain * 7.0 + gust),
-                  uv.y * (6.0 - depth * 1.4) - uTime * (2.7 + depth * 2.1));
-    // Stagger each lane's phase and speed so drops never form horizontal rows.
-    float lane = floor(q.x);
-    float laneSeed = hash(vec2(lane, 37.0 + depth * 19.0));
-    q.y += laneSeed * 8.0 - uTime * laneSeed * 0.6;
-    vec2 cell = floor(q);
-    vec2 f = fract(q);
-    float seed = hash(vec2(cell.x, floor(cell.y * 0.25)));
-    float pixelWidth = (110.0 - depth * 25.0) / uSize.x;
-    float line = 1.0 - smoothstep(0.018, 0.065 + pixelWidth * 0.5 + depth * 0.018, abs(f.x - 0.5));
-    float tail = smoothstep(0.0, 0.75, f.y) * (1.0 - smoothstep(0.82, 1.0, f.y));
-    float amount = smoothstep(0.99 - uRain * 0.70, 1.0 - uRain * 0.25, seed);
-    float layerOpacity = smoothstep(depth * 0.26, 0.25 + depth * 0.26, uRain);
-    rain += line * tail * amount * layerOpacity * (0.17 + depth * 0.055);
+  if (uRain > 0.001) {
+    for (int layer = 0; layer < 3; layer++) {
+      float depth = float(layer);
+      float lanes = 82.0 - depth * 22.0;
+      float rows = mix(18.0, 5.5, uRain) - depth * 0.65;
+      float gust = sin(uTime * 0.31 + depth) * uStorm * 2.0;
+      vec2 q = vec2(uv.x * lanes + uv.y * (1.2 + uRain * 6.0 + gust),
+                    uv.y * rows - uTime * mix(2.8, 6.5, uRain) * (1.0 + depth * 0.22));
+      float laneSeed = hash(vec2(floor(q.x), 37.0 + depth * 19.0));
+      q.y += laneSeed * 11.0 - uTime * laneSeed * 0.9;
+      vec2 cell = floor(q);
+      vec2 f = fract(q);
+      float seed = hash(cell + vec2(depth * 71.0, 9.0));
+      float center = 0.2 + hash(cell + 53.0) * 0.6;
+      float pixelWidth = lanes / uSize.x;
+      float width = pixelWidth * mix(0.40, 0.68, uRain) * (1.0 + depth * 0.12);
+      float line = 1.0 - smoothstep(width * 0.18, width, abs(f.x - center));
+      float dropLength = mix(0.12, 0.64, uRain) * mix(0.65, 1.3, seed);
+      float head = 0.86;
+      float tail = smoothstep(head - dropLength, head, f.y)
+          * (1.0 - smoothstep(head, head + 0.045, f.y));
+      float amount = smoothstep(mix(0.92, 0.40, uRain), 1.0, seed);
+      float layerOpacity = smoothstep(depth * 0.27, 0.22 + depth * 0.27, uRain);
+      rain += line * tail * amount * layerOpacity * (0.16 + depth * 0.055);
+    }
   }
   color += vec3(0.69, 0.79, 0.87) * rain;
   float mist = noise(uv * vec2(3.0, 1.6) + vec2(-uTime * 0.04, 7.0));
@@ -183,19 +188,21 @@ void main() {
   // Soft, staggered snowflakes. Independent lanes avoid obvious horizontal
   // bands; fixed coordinates keep the field anchored during overpull.
   float snow = 0.0;
-  for (int layer = 0; layer < 3; layer++) {
-    float depth = float(layer);
-    vec2 q = uv * vec2(25.0 - depth * 5.0, 7.0 - depth);
-    q.x += sin(uTime * 0.25 + depth) * 0.3;
-    float lane = floor(q.x);
-    q.y -= uTime * (0.26 + depth * 0.12);
-    q.y += hash(vec2(lane, depth + 51.0)) * 8.0;
-    vec2 cell = floor(q);
-    vec2 flake = fract(q) - vec2(0.3 + hash(cell) * 0.4, 0.5);
-    vec2 flakePixels = flake * vec2(uSize.x / (25.0 - depth * 5.0), uPanelHeight / (7.0 - depth));
-    float radius = length(flakePixels);
-    snow += (1.0 - smoothstep(0.45, 1.2 + depth * 0.35, radius))
-      * step(0.40, hash(cell + 23.0)) * (0.20 + depth * 0.08);
+  if (uSnow > 0.001) {
+    for (int layer = 0; layer < 3; layer++) {
+      float depth = float(layer);
+      vec2 q = uv * vec2(25.0 - depth * 5.0, 7.0 - depth);
+      q.x += sin(uTime * 0.25 + depth) * 0.3;
+      float lane = floor(q.x);
+      q.y -= uTime * (0.26 + depth * 0.12);
+      q.y += hash(vec2(lane, depth + 51.0)) * 8.0;
+      vec2 cell = floor(q);
+      vec2 flake = fract(q) - vec2(0.3 + hash(cell) * 0.4, 0.5);
+      vec2 flakePixels = flake * vec2(uSize.x / (25.0 - depth * 5.0), uPanelHeight / (7.0 - depth));
+      float radius = length(flakePixels);
+      snow += (1.0 - smoothstep(0.45, 1.2 + depth * 0.35, radius))
+        * step(0.40, hash(cell + 23.0)) * (0.20 + depth * 0.08);
+    }
   }
   color += vec3(0.80, 0.87, 0.94) * snow * uSnow;
   float fogDensity = (0.38 + mist * 0.22 + smoothstep(0.0, 1.2, uv.y) * 0.16) * uFog;
@@ -210,7 +217,7 @@ void main() {
       * (1.0 - smoothstep(strikeAt + 0.18, strikeAt + 0.80, phase)) * uStorm * uMotion;
   if (flash > 0.001) {
     vec2 origin = vec2(0.60 + hash(vec2(cycle, 8.0)) * 0.22, 0.06);
-    float cloudLight = exp(-length((uv - origin) * vec2(2.0, 1.5)) * 4.0);
+    float cloudLight = exp(-length((uv - origin) * vec2(2.3, 1.8)) * 4.0);
     color += vec3(0.39, 0.46, 0.65) * cloudLight * flash * (0.40 + coverage * 0.30);
     float boltDistance = 10.0;
     vec2 a = origin;
@@ -225,7 +232,9 @@ void main() {
       }
       a = b;
     }
-    float bolt = exp(-boltDistance * 750.0) * 0.7 + exp(-boltDistance * 95.0) * 0.14;
+    float discharge = 1.0 - smoothstep(0.30, 0.50, uv.y);
+    float bolt = (exp(-boltDistance * 900.0) * 0.58
+        + exp(-boltDistance * 150.0) * 0.16) * discharge;
     color += vec3(0.66, 0.76, 1.0) * bolt * flash;
   }
 

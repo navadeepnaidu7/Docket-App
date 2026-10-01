@@ -33,7 +33,13 @@ class WeatherRevealSurface extends StatelessWidget {
               child: ClipRRect(
                 // One full-width clip: no scale, stroke or shadow around corners.
                 borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(24 * progress),
+                  top: Radius.circular(
+                    (MediaQuery.sizeOf(context).width * 0.105).clamp(
+                          32.0,
+                          48.0,
+                        ) *
+                        progress,
+                  ),
                 ),
                 child: ColoredBox(
                   color: Theme.of(context).scaffoldBackgroundColor,

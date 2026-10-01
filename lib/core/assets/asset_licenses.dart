@@ -14,6 +14,14 @@ import 'package:flutter/foundation.dart';
 void registerAssetLicenses() {
   LicenseRegistry.addLicense(() async* {
     yield const LicenseEntryWithLineBreaks(
+      <String>['Weather data (Open-Meteo)'],
+      'Weather data by Open-Meteo (https://open-meteo.com/).\n'
+      'Creative Commons Attribution 4.0 International (CC BY 4.0).\n'
+      'https://creativecommons.org/licenses/by/4.0/\n\n'
+      'Docket rounds temperatures and illustrates weather conditions. '
+      'Weather illustrations are original Docket artwork.',
+    );
+    yield const LicenseEntryWithLineBreaks(
       <String>['Pass category icons (assets/passes/icons)'],
       'Line icons from Lucide (https://lucide.dev), bundled unmodified.\n'
       '\n'

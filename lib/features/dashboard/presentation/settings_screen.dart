@@ -372,6 +372,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         subtitle: kDeveloperEmail,
                         onTap: () => _mailToDeveloper(context),
                       ),
+                      const _SettingsDivider(),
+                      _SettingsLinkRow(
+                        icon: Icons.cloud_outlined,
+                        iconColor: const Color(0xFF8E8E93),
+                        title: 'Weather credits',
+                        subtitle: 'Open-Meteo \u00b7 CC BY 4.0',
+                        onTap: () => _showWeatherCredits(context),
+                      ),
                     ],
                   ),
                   if (DevConfig.showDevMenu) ...[
@@ -393,6 +401,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 }
+
+Future<void> _showWeatherCredits(BuildContext context) =>
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (sheetContext) => CupertinoActionSheet(
+        title: const Text('Weather credits'),
+        message: const Text(
+          'Weather data by Open-Meteo, shared under CC BY 4.0. '
+          'Docket rounds temperatures and illustrates weather conditions.',
+        ),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.of(sheetContext).pop();
+              _openDeveloperLink(context, 'https://open-meteo.com/');
+            },
+            child: const Text('Open-Meteo'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.of(sheetContext).pop();
+              _openDeveloperLink(
+                context,
+                'https://creativecommons.org/licenses/by/4.0/',
+              );
+            },
+            child: const Text('CC BY 4.0 licence'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(sheetContext).pop(),
+          child: const Text('Done'),
+        ),
+      ),
+    );
 
 Future<void> _mailToDeveloper(BuildContext context) async {
   HapticService.tap();
