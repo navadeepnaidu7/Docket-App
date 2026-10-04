@@ -48,12 +48,19 @@ void main() {
     final headerStart = tester.getTopLeft(find.byKey(headerKey));
     final navStart = tester.getTopLeft(find.byKey(navKey));
     final size = tester.getSize(find.byKey(walletKey));
+    final restingCorners =
+        tester.widget<ClipRRect>(find.byType(ClipRRect)).borderRadius
+            as BorderRadius;
+    expect(restingCorners.topLeft.x, greaterThan(0));
+    expect(restingCorners.topRight, restingCorners.topLeft);
     for (final distance in [
       24.0,
       80.0,
       kEasterEggPanelHeight,
       kEasterEggPanelHeight + 32,
       80.0,
+      8.0,
+      0.25,
       0.0,
     ]) {
       offset.value = distance;
@@ -67,6 +74,11 @@ void main() {
         navStart + Offset(0, distance),
       );
       expect(tester.getSize(find.byKey(walletKey)), size);
+      expect(
+        tester.widget<ClipRRect>(find.byType(ClipRRect)).borderRadius,
+        restingCorners,
+        reason: 'Closing must retain the rounded shape right through rest.',
+      );
       expect(
         TickerMode.valuesOf(tester.element(find.byKey(headerKey))).enabled,
         isTrue,

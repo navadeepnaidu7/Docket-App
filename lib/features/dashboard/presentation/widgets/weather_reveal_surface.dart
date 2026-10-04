@@ -21,7 +21,6 @@ class WeatherRevealSurface extends StatelessWidget {
     // Isolate the expensive wallet paint; dragging only moves this layer.
     child: RepaintBoundary(child: child),
     builder: (context, distance, wallet) {
-      final progress = (distance / panelHeight).clamp(0.0, 1.0);
       return ClipRect(
         child: Stack(
           fit: StackFit.expand,
@@ -31,14 +30,14 @@ class WeatherRevealSurface extends StatelessWidget {
               key: const ValueKey('weather_wallet_translation'),
               offset: Offset(0, distance),
               child: ClipRRect(
-                // One full-width clip: no scale, stroke or shadow around corners.
+                // Keep the phone-proportioned curve throughout the slide,
+                // including rest. The screen moves; its shape does not morph.
                 borderRadius: BorderRadius.vertical(
                   top: Radius.circular(
                     (MediaQuery.sizeOf(context).width * 0.105).clamp(
-                          32.0,
-                          48.0,
-                        ) *
-                        progress,
+                      32.0,
+                      48.0,
+                    ),
                   ),
                 ),
                 child: ColoredBox(

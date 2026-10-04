@@ -160,3 +160,9 @@ at 95% progress. The refresh transition remains separate from this opening.
 All 30 reveal, transition, sky and layout checks pass after this adjustment;
 static analysis is clean. The 85% preview visibly retains blur and the full
 reveal is sharp. No APK generated.
+
+The wallet's top corner radius is now independent of pull progress. Its
+width-adaptive curve remains constant while opening, overpulling, closing and
+at rest, instead of flattening on the upward slide. Translation and navigation
+layout are unchanged. Seven focused reveal/transition checks pass, including
+the closing endpoint; static analysis is clean. No APK generated.
