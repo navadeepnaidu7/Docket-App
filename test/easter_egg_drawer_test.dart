@@ -8,6 +8,7 @@ import 'package:docket/features/dashboard/presentation/widgets/easter_egg_drawer
 import 'package:docket/features/dashboard/presentation/widgets/easter_egg_sheet_motion.dart';
 import 'package:docket/features/dashboard/presentation/widgets/easter_egg_constants.dart';
 import 'package:docket/features/dashboard/presentation/widgets/travel_weather_glance.dart';
+import 'package:docket/features/dashboard/presentation/widgets/weather_reveal_surface.dart';
 import 'package:docket/features/passport/domain/passport_profile.dart';
 import 'package:docket/features/weather/application/weather_provider.dart';
 import 'package:docket/features/weather/domain/weather_snapshot.dart';
@@ -162,7 +163,9 @@ void main() {
     testWidgets('$scene renders, animates, and respects reduced motion', (
       tester,
     ) async {
-      tester.view.physicalSize = const Size(390, kEasterEggPanelHeight);
+      // Keep illustration motion sampling independent of drawer geometry.
+      const referenceSkyHeight = 252.0;
+      tester.view.physicalSize = const Size(390, referenceSkyHeight);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       await tester.runAsync(() async {
@@ -181,6 +184,7 @@ void main() {
                 child: RepaintBoundary(
                   key: key,
                   child: TravelWeatherGlance(
+                    panelHeight: referenceSkyHeight,
                     hour: scene == 'night'
                         ? 23
                         : scene == 'sunset'
@@ -347,7 +351,7 @@ void main() {
     );
     expect(
       EasterEggSheetMotion.shouldSnapOpen(
-        offsetY: 90,
+        offsetY: kEasterEggPanelHeight * 0.35,
         velocityY: 0,
         wasOpen: true,
       ),
@@ -371,13 +375,13 @@ void main() {
         0,
       );
       final overpull = EasterEggSheetMotion.releaseVelocity(
-        rawOffset: kEasterEggPanelHeight + 50,
+        rawOffset: kEasterEggPanelHeight * 1.20,
         velocityY: 600,
       );
       expect(overpull, inInclusiveRange(190, 220));
       expect(
         EasterEggSheetMotion.releaseVelocity(
-          rawOffset: kEasterEggPanelHeight + 50,
+          rawOffset: kEasterEggPanelHeight * 1.20,
           velocityY: -600,
         ),
         -overpull,
@@ -387,11 +391,12 @@ void main() {
 
   test('overpull has no speed discontinuity and can be grabbed in place', () {
     const height = kEasterEggPanelHeight;
-    final justBeyond = EasterEggSheetMotion.rubberBandOffset(height + 0.01);
-    expect((justBeyond - height) / 0.01, closeTo(1, 0.001));
+    const epsilon = height * 0.00004;
+    final justBeyond = EasterEggSheetMotion.rubberBandOffset(height + epsilon);
+    expect((justBeyond - height) / epsilon, closeTo(1, 0.001));
     expect(
       EasterEggSheetMotion.releaseVelocity(
-        rawOffset: height + 0.01,
+        rawOffset: height + epsilon,
         velocityY: 600,
       ),
       closeTo(600, 0.2),
@@ -441,60 +446,45 @@ void main() {
                 size: Size(width, panelHeight + 80),
                 padding: const EdgeInsets.only(top: 59),
                 textScaler: TextScaler.linear(scale),
-                disableAnimations: true,
+                disableAnimations: !render,
               ),
               child: RepaintBoundary(
                 key: key,
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: EasterEggDrawer(
-                        dragOffsetNotifier: offset,
-                        panelHeight: panelHeight,
-                        onDragUpdate: (_) {},
-                        onDragEnd: (_) {},
-                        onDragCancel: () {},
-                        passports: [
-                          PassportProfile.fromMap({
-                            'id': 'preview',
-                            'name': 'Alex Morgan',
-                            'passportNumber': '',
-                            'nationality': '',
-                            'dateOfBirth': '',
-                            'expiryDate': '',
-                          }),
-                        ],
-                        idDocs: const [],
-                        now: DateTime(2026, 9, 10, 9),
-                        weatherState: WeatherState(
-                          status: WeatherStatus.ready,
-                          stale: scale == 2,
-                          snapshot: WeatherSnapshot(
-                            temperatureC: 26,
-                            code: 95,
-                            isDay: true,
-                            time: DateTime.utc(2026, 9, 10, 9),
-                            fetchedAt: DateTime.now().toUtc(),
-                            utcOffsetSeconds: 0,
-                          ),
-                        ),
+                child: WeatherRevealSurface(
+                  offset: offset,
+                  panelHeight: panelHeight,
+                  drawer: EasterEggDrawer(
+                    dragOffsetNotifier: offset,
+                    panelHeight: panelHeight,
+                    onDragUpdate: (_) {},
+                    onDragEnd: (_) {},
+                    onDragCancel: () {},
+                    passports: [
+                      PassportProfile.fromMap({
+                        'id': 'preview',
+                        'name': 'Alex Morgan',
+                        'passportNumber': '',
+                        'nationality': '',
+                        'dateOfBirth': '',
+                        'expiryDate': '',
+                      }),
+                    ],
+                    idDocs: const [],
+                    now: DateTime(2026, 9, 10, 9),
+                    weatherState: WeatherState(
+                      status: WeatherStatus.ready,
+                      stale: scale == 2,
+                      snapshot: WeatherSnapshot(
+                        temperatureC: 26,
+                        code: 95,
+                        isDay: true,
+                        time: DateTime.utc(2026, 9, 10, 9),
+                        fetchedAt: DateTime.now().toUtc(),
+                        utcOffsetSeconds: 0,
                       ),
                     ),
-                    Positioned(
-                      top: panelHeight,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFDDD8CE),
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(40),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
+                  child: const ColoredBox(color: Color(0xFFDDD8CE)),
                 ),
               ),
             ),
@@ -503,7 +493,8 @@ void main() {
         await tester.runAsync(() async {
           expect(await TravelWeatherGlance.warmUp(), isNotNull);
         });
-        await tester.pumpAndSettle();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 350));
         expect(tester.takeException(), isNull);
         expect(find.text('Good morning'), findsOneWidget);
         expect(find.textContaining('26°C'), findsOneWidget);
@@ -514,19 +505,24 @@ void main() {
           scale == 2 ? findsOneWidget : findsNothing,
         );
         if (render) {
-          await tester.runAsync(() async {
-            final boundary =
-                key.currentContext!.findRenderObject() as RenderRepaintBoundary;
-            final image = await boundary.toImage(pixelRatio: 2);
-            final bytes = await image.toByteData(
-              format: ui.ImageByteFormat.png,
-            );
-            await Directory('build/sky_preview').create(recursive: true);
-            await File(
-              'build/sky_preview/sky_${width}_$scale.png',
-            ).writeAsBytes(bytes!.buffer.asUint8List());
-            image.dispose();
-          });
+          for (final fraction in [1.0, 0.55, 0.85]) {
+            offset.value = panelHeight * fraction;
+            await tester.pump();
+            await tester.runAsync(() async {
+              final boundary =
+                  key.currentContext!.findRenderObject()
+                      as RenderRepaintBoundary;
+              final image = await boundary.toImage(pixelRatio: 2);
+              final bytes = await image.toByteData(
+                format: ui.ImageByteFormat.png,
+              );
+              await Directory('build/sky_preview').create(recursive: true);
+              await File(
+                'build/sky_preview/compact_${width}_${scale}_pull_${(fraction * 100).round()}.png',
+              ).writeAsBytes(bytes!.buffer.asUint8List());
+              image.dispose();
+            });
+          }
         }
         await tester.pumpWidget(const SizedBox());
       });

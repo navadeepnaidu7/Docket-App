@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/secure_document_store.dart';
+import '../../../core/storage/document_record_decoder.dart';
 import '../../dashboard/application/wallet_loading_provider.dart';
 import '../domain/attachment_limits.dart';
 import '../domain/id_attachment.dart';
@@ -23,6 +24,8 @@ class IdListController extends StateNotifier<List<IdDocument>> {
 
   static const _storageKey = 'saved_id_documents';
   Future<void> _saveQueue = Future<void>.value();
+  Future<void>? _loadFuture;
+  bool _initialLoadComplete = false;
 
   /// Completes when the initial read has finished, successfully or not.
   ///
@@ -39,17 +42,35 @@ class IdListController extends StateNotifier<List<IdDocument>> {
   /// throws if the owning widget was disposed while the load was pending.
   List<IdDocument> get documents => state;
 
-  Future<void> loadDocuments() async {
+  Future<void> loadDocuments() => _loadFuture ??= _loadDocuments().whenComplete(
+    () => _initialLoadComplete = true,
+  );
+
+  bool _deferDuringLoad(void Function() operation) {
+    if (_loadFuture == null || _initialLoadComplete) return false;
+    _loadFuture!.then((_) {
+      if (mounted) operation();
+    });
+    return true;
+  }
+
+  Future<void> _loadDocuments() async {
     final List<String> saved;
     try {
       saved = await SecureDocumentStore.readList(_storageKey);
     } catch (_) {
       // See PassportListController.loadPassports: fail visible-but-harmless
       // rather than letting an empty list get saved over real documents.
-      ref.read(idLoadingProvider.notifier).state = false;
+      if (mounted) ref.read(idLoadingProvider.notifier).state = false;
       return;
     }
-    state = saved.map(_tryParse).whereType<IdDocument>().toList();
+    if (!mounted) return;
+    final decoded = await decodeStoredRecords(saved, decodeIdRecords);
+    if (!mounted) return;
+    if (decoded.hasInvalidRecords) {
+      SecureDocumentStore.markUnreadable(_storageKey);
+    }
+    state = decoded.records;
     ref.read(idLoadingProvider.notifier).state = false;
   }
 
@@ -61,7 +82,7 @@ class IdListController extends StateNotifier<List<IdDocument>> {
   }
 
   void _queueSave(List<IdDocument> docs) {
-    _saveQueue = _saveQueue.then((_) => _save(docs));
+    _saveQueue = _saveQueue.then((_) => _save(docs)).catchError((_) {});
   }
 
   /// Queues a save and hands back a future that completes when *this* save has
@@ -77,18 +98,21 @@ class IdListController extends StateNotifier<List<IdDocument>> {
   }
 
   void addDocument(IdDocument doc) {
+    if (_deferDuringLoad(() => addDocument(doc))) return;
     final next = [doc, ...state];
     state = next;
     _queueSave(next);
   }
 
   void removeDocument(String id) {
+    if (_deferDuringLoad(() => removeDocument(id))) return;
     final next = state.where((d) => d.id != id).toList();
     state = next;
     _queueSave(next);
   }
 
   void updateDocument(int index, IdDocument doc) {
+    if (_deferDuringLoad(() => updateDocument(index, doc))) return;
     if (index < 0 || index >= state.length) return;
     final next = [...state];
     next[index] = doc;
@@ -119,9 +143,7 @@ class IdListController extends StateNotifier<List<IdDocument>> {
     final Completer<AttachResult> completer = Completer<AttachResult>();
     _attachQueue = _attachQueue.then((_) async {
       try {
-        completer.complete(
-          await _performAttach(docId, file, source: source),
-        );
+        completer.complete(await _performAttach(docId, file, source: source));
       } catch (e, st) {
         completer.completeError(e, st);
       }
@@ -239,13 +261,15 @@ class IdListController extends StateNotifier<List<IdDocument>> {
     if (docIndex == -1) return;
 
     final doc = state[docIndex];
-    final attachmentIndex =
-        doc.attachments.indexWhere((a) => a.id == attachmentId);
+    final attachmentIndex = doc.attachments.indexWhere(
+      (a) => a.id == attachmentId,
+    );
     if (attachmentIndex == -1) return;
 
     final targetAttachment = doc.attachments[attachmentIndex];
-    final updatedAttachments =
-        doc.attachments.where((a) => a.id != attachmentId).toList();
+    final updatedAttachments = doc.attachments
+        .where((a) => a.id != attachmentId)
+        .toList();
     final updatedDoc = doc.copyWith(attachments: updatedAttachments);
 
     // Drop the metadata row and wait for that write to actually land before
@@ -271,14 +295,6 @@ class IdListController extends StateNotifier<List<IdDocument>> {
     } catch (_) {
       // The record no longer references it, so a failed delete only leaves an
       // orphan for sweepAttachmentOrphans to collect.
-    }
-  }
-
-  IdDocument? _tryParse(String source) {
-    try {
-      return IdDocument.fromJson(source);
-    } catch (_) {
-      return null;
     }
   }
 }

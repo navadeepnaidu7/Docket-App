@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
@@ -85,6 +86,7 @@ class _WalletBackdropState extends State<WalletBackdrop>
   /// knows whether the drift is meant to be running.
   bool _driftWanted = false;
   bool _reducedMotion = false;
+  Timer? _driftTimer;
 
   @override
   void initState() {
@@ -108,7 +110,7 @@ class _WalletBackdropState extends State<WalletBackdrop>
     // Controllers respect TickerMode — dashboard mutes them while Settings is open.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Future<void>.delayed(const Duration(milliseconds: 480), () {
+      _driftTimer = Timer(const Duration(milliseconds: 480), () {
         if (!mounted) return;
         _driftWanted = true;
         _startDrift();
@@ -153,6 +155,7 @@ class _WalletBackdropState extends State<WalletBackdrop>
 
   @override
   void dispose() {
+    _driftTimer?.cancel();
     _ambientClock.dispose();
     _deepClock.dispose();
     _ambientCtrl.dispose();
@@ -247,10 +250,12 @@ class AppleCardGradientPainter extends CustomPainter {
     final double w = size.width;
     final double h = size.height;
 
-    final Color baseDocBg =
-        isDark ? const Color(0xFF080E1A) : const Color(0xFFF2F2F7);
-    final Color baseTicketBg =
-        isDark ? const Color(0xFF140D0B) : const Color(0xFFFFF8E8);
+    final Color baseDocBg = isDark
+        ? const Color(0xFF080E1A)
+        : const Color(0xFFF2F2F7);
+    final Color baseTicketBg = isDark
+        ? const Color(0xFF140D0B)
+        : const Color(0xFFFFF8E8);
     final Color neutralBase = Color.lerp(baseDocBg, baseTicketBg, ticketsMix)!;
     final double tintStrength = isDark ? 0.22 : 0.10;
     final Paint basePaint = Paint()
@@ -282,10 +287,12 @@ class AppleCardGradientPainter extends CustomPainter {
     final double breathe = 1 + 0.06 * math.sin(ambientProgress * math.pi * 2);
 
     final HSLColor hslPrimary = HSLColor.fromColor(palette.primary);
-    final Color analogousPlus =
-        hslPrimary.withHue((hslPrimary.hue + 40) % 360).toColor();
-    final Color analogousMinus =
-        hslPrimary.withHue((hslPrimary.hue - 40 + 360) % 360).toColor();
+    final Color analogousPlus = hslPrimary
+        .withHue((hslPrimary.hue + 40) % 360)
+        .toColor();
+    final Color analogousMinus = hslPrimary
+        .withHue((hslPrimary.hue - 40 + 360) % 360)
+        .toColor();
 
     // Deep slow layer — depth without clutter.
     final double deepT = deepProgress * math.pi * 2;
@@ -325,9 +332,7 @@ class AppleCardGradientPainter extends CustomPainter {
     // Focus orb — scroll-weighted primary glow.
     final double focusStrength = _focusIntensity();
     drawOrb(
-      palette.primary.withValues(
-        alpha: (isDark ? 0.14 : 0.20) * focusStrength,
-      ),
+      palette.primary.withValues(alpha: (isDark ? 0.14 : 0.20) * focusStrength),
       w * 0.5 + parallaxX,
       focusY,
       w * 0.48 * (0.92 + focusStrength * 0.12),
@@ -335,9 +340,7 @@ class AppleCardGradientPainter extends CustomPainter {
     );
 
     drawOrb(
-      analogousPlus.withValues(
-        alpha: (isDark ? 0.08 : 0.12) * focusStrength,
-      ),
+      analogousPlus.withValues(alpha: (isDark ? 0.08 : 0.12) * focusStrength),
       w * 0.72 + parallaxX * 0.4,
       focusY + h * 0.05,
       w * 0.38,

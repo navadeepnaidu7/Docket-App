@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-05",
+  "device": "Motorola edge 30",
+  "android": "14 (API 34)",
+  "flutter": "3.44.9",
+  "mode": "profile",
+  "appDataCleared": false,
+  "notes": "One original and three optimized process launches. Device and engine initialization varied. Optimized repeats reused one APK; the final persistence refinements are verified by tests.",
+  "before": {
+    "engineEnterTimestampMicros": 881573559370,
+    "timeToFrameworkInitMicros": 873577,
+    "timeToFirstFrameRasterizedMicros": 2068233,
+    "timeToFirstFrameMicros": 1955607,
+    "timeAfterFrameworkInitMicros": 1082030
+  },
+  "after": [
+    {
+      "engineEnterTimestampMicros": 882402020066,
+      "timeToFrameworkInitMicros": 958336,
+      "timeToFirstFrameRasterizedMicros": 1441622,
+      "timeToFirstFrameMicros": 1288583,
+      "timeAfterFrameworkInitMicros": 330247
+    },
+    {
+      "engineEnterTimestampMicros": 882474751163,
+      "timeToFrameworkInitMicros": 1093221,
+      "timeToFirstFrameRasterizedMicros": 1947996,
+      "timeToFirstFrameMicros": 1801329,
+      "timeAfterFrameworkInitMicros": 708108
+    },
+    {
+      "engineEnterTimestampMicros": 882571707146,
+      "timeToFrameworkInitMicros": 426354,
+      "timeToFirstFrameRasterizedMicros": 693675,
+      "timeToFirstFrameMicros": 652301,
+      "timeAfterFrameworkInitMicros": 225947
+    }
+  ]
+}

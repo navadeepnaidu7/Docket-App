@@ -15,25 +15,31 @@ List<String> activeWalletItemIds({
   required List<PassportProfile> passports,
   required List<IdDocument> idDocs,
 }) {
-  return [
-    ...passports.map((p) => p.id),
-    ...idDocs.map((d) => d.id),
-  ];
+  return [...passports.map((p) => p.id), ...idDocs.map((d) => d.id)];
 }
 
-/// Merges passports and ID documents, then sorts by persisted wallet order.
+/// Merges documents in persisted order in O(items + order) time.
 List<Object> sortWalletItems({
   required List<PassportProfile> passports,
   required List<IdDocument> idDocs,
   required List<String> order,
 }) {
   final items = <Object>[...passports, ...idDocs];
-  items.sort((a, b) {
-    final int idxA = order.indexOf(walletItemId(a));
-    final int idxB = order.indexOf(walletItemId(b));
-    return (idxA == -1 ? 9999 : idxA).compareTo(idxB == -1 ? 9999 : idxB);
-  });
-  return items;
+  final byId = <String, List<Object>>{};
+  for (final item in items) {
+    (byId[walletItemId(item)] ??= <Object>[]).add(item);
+  }
+  final result = <Object>[];
+  for (final id in order) {
+    final matches = byId.remove(id);
+    if (matches != null) result.addAll(matches);
+  }
+  // Unlisted items always come last, in their original order. Avoid a numeric
+  // sentinel (9999) that places them ahead of real entries in a large wallet.
+  for (final item in items) {
+    if (byId.containsKey(walletItemId(item))) result.add(item);
+  }
+  return result;
 }
 
 /// Keeps stored order in sync when items are added or removed.
@@ -41,11 +47,14 @@ List<String> reconcileWalletOrder({
   required List<String> order,
   required List<String> activeIds,
 }) {
-  final reconciled = [...order];
-  reconciled.removeWhere((id) => !activeIds.contains(id));
-  final missing = activeIds.where((id) => !reconciled.contains(id)).toList();
-  if (missing.isNotEmpty) {
-    reconciled.addAll(missing);
+  final active = activeIds.toSet();
+  final seen = <String>{};
+  final reconciled = <String>[];
+  for (final id in order) {
+    if (active.contains(id) && seen.add(id)) reconciled.add(id);
+  }
+  for (final id in activeIds) {
+    if (seen.add(id)) reconciled.add(id);
   }
   return reconciled;
 }

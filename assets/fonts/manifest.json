@@ -1,0 +1,98 @@
+[
+  {
+    "file": "Inter-Regular.ttf",
+    "sha256": "15b294b67f2f8bbc04d990023ef4aec66502b87dc9040d84abe5f896ccb693de",
+    "bytes": 324796,
+    "url": "https://fonts.gstatic.com/s/a/15b294b67f2f8bbc04d990023ef4aec66502b87dc9040d84abe5f896ccb693de.ttf"
+  },
+  {
+    "file": "Inter-Medium.ttf",
+    "sha256": "36a36ff7ac46dc2aeceac3a80a87a67e7b844b8fc936699259aac8fba9bcf734",
+    "bytes": 325280,
+    "url": "https://fonts.gstatic.com/s/a/36a36ff7ac46dc2aeceac3a80a87a67e7b844b8fc936699259aac8fba9bcf734.ttf"
+  },
+  {
+    "file": "Inter-SemiBold.ttf",
+    "sha256": "334bb2c51aeba5f566abac8d03a7e75ab3234d6926b52e92a85dc704129258b5",
+    "bytes": 326024,
+    "url": "https://fonts.gstatic.com/s/a/334bb2c51aeba5f566abac8d03a7e75ab3234d6926b52e92a85dc704129258b5.ttf"
+  },
+  {
+    "file": "Inter-Bold.ttf",
+    "sha256": "76121a34a606cc8a0e1ef5a47d2b9ba9678c41f5c852d63eb28f62069373bfad",
+    "bytes": 326444,
+    "url": "https://fonts.gstatic.com/s/a/76121a34a606cc8a0e1ef5a47d2b9ba9678c41f5c852d63eb28f62069373bfad.ttf"
+  },
+  {
+    "file": "Inter-ExtraBold.ttf",
+    "sha256": "6af943899936fd3fd15a5889db4a384cec311c9bfe33d74bcfd3e0ae56f1b1d1",
+    "bytes": 327300,
+    "url": "https://fonts.gstatic.com/s/a/6af943899936fd3fd15a5889db4a384cec311c9bfe33d74bcfd3e0ae56f1b1d1.ttf"
+  },
+  {
+    "file": "Inter-Black.ttf",
+    "sha256": "d892b18d080d1200aa41ea8851da84dd8c24c33843d491fa034ac57b16f22973",
+    "bytes": 327236,
+    "url": "https://fonts.gstatic.com/s/a/d892b18d080d1200aa41ea8851da84dd8c24c33843d491fa034ac57b16f22973.ttf"
+  },
+  {
+    "file": "RobotoMono-Regular.ttf",
+    "sha256": "c75c21ddc0cad53a5651e0cbb4a0184d71f0b72d05405d2e4121f637479da64e",
+    "bytes": 78924,
+    "url": "https://fonts.gstatic.com/s/a/c75c21ddc0cad53a5651e0cbb4a0184d71f0b72d05405d2e4121f637479da64e.ttf"
+  },
+  {
+    "file": "RobotoMono-Medium.ttf",
+    "sha256": "54baeda3df34bf23cfdbdb1a5f162649b8c1ef120944956e9947df76748a384d",
+    "bytes": 78912,
+    "url": "https://fonts.gstatic.com/s/a/54baeda3df34bf23cfdbdb1a5f162649b8c1ef120944956e9947df76748a384d.ttf"
+  },
+  {
+    "file": "RobotoMono-SemiBold.ttf",
+    "sha256": "6693e9456a6412291b6ef0b72b5db1f562392e7f75a7e1665235c48687925d14",
+    "bytes": 79180,
+    "url": "https://fonts.gstatic.com/s/a/6693e9456a6412291b6ef0b72b5db1f562392e7f75a7e1665235c48687925d14.ttf"
+  },
+  {
+    "file": "RobotoMono-Bold.ttf",
+    "sha256": "45c45339ebd8a59b3fc2b1570f504590bb38c546a73d4fc5a98c3f113a0cedb6",
+    "bytes": 79100,
+    "url": "https://fonts.gstatic.com/s/a/45c45339ebd8a59b3fc2b1570f504590bb38c546a73d4fc5a98c3f113a0cedb6.ttf"
+  },
+  {
+    "file": "NotoSansDevanagari-Bold.ttf",
+    "sha256": "addd6707b4f2767fc6d55b85cf67965038e9338fe02ba4c50d2701d289f35972",
+    "bytes": 220008,
+    "url": "https://fonts.gstatic.com/s/a/addd6707b4f2767fc6d55b85cf67965038e9338fe02ba4c50d2701d289f35972.ttf"
+  },
+  {
+    "file": "Geist-Regular.ttf",
+    "sha256": "e8c77de0dcaef23dc92d0c6f1e32778b0e0f06b91197a503495a9f126c9752a1",
+    "bytes": 66560,
+    "url": "https://fonts.gstatic.com/s/a/e8c77de0dcaef23dc92d0c6f1e32778b0e0f06b91197a503495a9f126c9752a1.ttf"
+  },
+  {
+    "file": "Geist-Medium.ttf",
+    "sha256": "ae7ee8606ec4b58cb0126a2410f15da7eb0a255131917cf679f815b9b4585a06",
+    "bytes": 66576,
+    "url": "https://fonts.gstatic.com/s/a/ae7ee8606ec4b58cb0126a2410f15da7eb0a255131917cf679f815b9b4585a06.ttf"
+  },
+  {
+    "file": "Geist-SemiBold.ttf",
+    "sha256": "b38bd0250f78c22b151234a057c59778beb0dcca4c08396be4c407e29fda3b5e",
+    "bytes": 66596,
+    "url": "https://fonts.gstatic.com/s/a/b38bd0250f78c22b151234a057c59778beb0dcca4c08396be4c407e29fda3b5e.ttf"
+  },
+  {
+    "file": "Geist-Bold.ttf",
+    "sha256": "f1d1176090d3f4b11d6116bb6e3dfac0e80f9d383dac3af5c8fe373de2e3ceff",
+    "bytes": 66564,
+    "url": "https://fonts.gstatic.com/s/a/f1d1176090d3f4b11d6116bb6e3dfac0e80f9d383dac3af5c8fe373de2e3ceff.ttf"
+  },
+  {
+    "file": "InstrumentSerif-Regular.ttf",
+    "sha256": "ee7535ec55e3f48b913d66868731b3b35df0800e16d8f8ea95d3a991b71c74d7",
+    "bytes": 48340,
+    "url": "https://fonts.gstatic.com/s/a/ee7535ec55e3f48b913d66868731b3b35df0800e16d8f8ea95d3a991b71c74d7.ttf"
+  }
+]

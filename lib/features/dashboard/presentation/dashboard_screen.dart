@@ -1,10 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
+import 'dart:async';
 import 'package:flutter/physics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/haptics/haptic_service.dart';
+import '../../../core/storage/secure_document_store.dart';
 import '../../../core/motion/smooth_curves.dart';
 import '../../../core/motion/studio_page_route.dart';
 
@@ -32,6 +33,7 @@ import '../application/search_button_provider.dart';
 import '../application/wallet_filter_provider.dart';
 import '../application/trash_provider.dart';
 import '../application/wallet_order_provider.dart';
+import '../application/wallet_loading_provider.dart';
 
 // Modular widgets imports
 import 'widgets/add_fab.dart';
@@ -96,6 +98,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   /// Passes tab is heavy — prewarm after first paint; kept under [_HomeTabTransition].
   bool _passesTabMounted = false;
+  Timer? _warmUpTimer;
   int _lastTabIndex = 0;
 
   void _onMenuToggle() {
@@ -130,9 +133,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   @override
   void initState() {
     super.initState();
-    // Fire and forget: the sweep waits on both document lists itself and is a
-    // no-op unless it can account for every record, so it must not gate paint.
-    sweepAttachmentOrphans(ref);
     // Clears any decrypted copy left in the cache by an external PDF view that
     // was interrupted before the sheet could close.
     AttachmentOpenService.purge();
@@ -140,13 +140,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     // outlives its share sheet -- the receiver may still be reading it -- so
     // app start is where its lifetime ends.
     PassShareService.purge();
-    // The add menu's passport art is ~100 KB of path data each; parsing on
-    // first build would hitch the sheet open. Deliberately after first frame
-    // rather than in main(), which is already on a font-loading budget.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      PassportCoverArt.warmUp();
-      TravelWeatherGlance.warmUp();
-    });
     _showHomeMenu.addListener(_onMenuToggle);
     _docPage = ValueNotifier(0.0);
     _backdropTilt = WalletBackdropTilt();
@@ -180,15 +173,36 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     });
     _entryCtrl.forward();
 
-    // After home paints, warm Passes when the scheduler is idle so the first
-    // IDs → Passes switch is just an IndexedStack index flip.
+    // Let the opening animation finish before mounting a hidden tab or parsing
+    // optional artwork. Idle scheduler tasks can starve under continuous
+    // animation and spin the widget-test event loop. A cancellable timer also
+    // makes closing the dashboard during startup safe.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      SchedulerBinding.instance.scheduleTask(_prewarmPassesTab, Priority.idle);
+      if (!mounted) return;
+      _warmUpTimer = Timer(_entryCtrl.duration!, () {
+        if (!mounted) return;
+        _prewarmPassesTab();
+        // Active documents get the keystore first. Trash and orphan scanning
+        // are maintenance and must not compete with the initial wallet reads.
+        unawaited(sweepAttachmentOrphans(ref));
+        unawaited(_warmOptionalArtwork());
+      });
     });
+  }
+
+  Future<void> _warmOptionalArtwork() async {
+    try {
+      await PassportCoverArt.warmUp();
+      if (mounted) await TravelWeatherGlance.warmUp();
+    } catch (_) {
+      // A failed prefetch must not turn a successful launch into an async error.
+      // The actual screen can retry loading the asset when it is opened.
+    }
   }
 
   @override
   void dispose() {
+    _warmUpTimer?.cancel();
     _showHomeMenu.removeListener(_onMenuToggle);
     _tabCtrl.removeListener(_onTabChanged);
     _entryCtrl.dispose();
@@ -446,11 +460,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       order: order,
       activeIds: activeIds,
     );
-    if (reconciledOrder.length != order.length ||
-        !_ordersEqual(reconciledOrder, order)) {
+    final canReconcile =
+        !ref.watch(walletLoadingProvider) &&
+        ref.read(walletOrderProvider.notifier).isLoaded &&
+        !SecureDocumentStore.isUnreadable('saved_passports') &&
+        !SecureDocumentStore.isUnreadable('saved_id_documents') &&
+        !SecureDocumentStore.isUnreadable('wallet_items_order');
+    if (canReconcile && !_ordersEqual(reconciledOrder, order)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        ref.read(walletOrderProvider.notifier).saveOrder(reconciledOrder);
+        // Loads can complete between build and this callback. Reconcile the
+        // latest complete lists rather than persisting a stale partial wallet.
+        if (ref.read(walletLoadingProvider)) return;
+        final currentOrder = ref.read(walletOrderProvider);
+        final next = reconcileWalletOrder(
+          order: currentOrder,
+          activeIds: activeWalletItemIds(
+            passports: ref.read(passportListProvider),
+            idDocs: ref.read(idListProvider),
+          ),
+        );
+        if (!_ordersEqual(next, currentOrder)) {
+          ref.read(walletOrderProvider.notifier).saveOrder(next);
+        }
       });
     }
 

@@ -13,8 +13,9 @@ import 'id_list_provider.dart';
 /// instance-level decrypted-bytes LRU cache. Maintaining a single shared instance
 /// ensures that concurrent writes do not interleave and decrypted cache hits
 /// persist properly across operations.
-final attachmentStoreProvider =
-    Provider<AttachmentStore>((ref) => AttachmentStore());
+final attachmentStoreProvider = Provider<AttachmentStore>(
+  (ref) => AttachmentStore(),
+);
 
 /// Deletes attachment files that no record points at any more.
 ///
@@ -55,7 +56,9 @@ Future<void> sweepAttachmentOrphans(WidgetRef ref) async {
   }
 
   if (SecureDocumentStore.isUnreadable('saved_id_documents') ||
-      SecureDocumentStore.isUnreadable('trash_ids')) {
+      SecureDocumentStore.isUnreadable('trash_ids') ||
+      !idController.mounted ||
+      !trashController.mounted) {
     return;
   }
 

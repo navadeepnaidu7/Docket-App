@@ -7,13 +7,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'core/assets/asset_licenses.dart';
 import 'core/theme/app_theme.dart';
-import 'features/dashboard/presentation/settings_screen.dart';
-import 'features/dashboard/presentation/wallet_passport_card.dart';
-import 'features/tickets/presentation/pass_typography.dart';
-import 'features/tickets/presentation/train/train_pass_theme.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Every font used by the app ships as an asset. Launch and later screens
+  // must not depend on a font download or on a previous run's disk cache.
+  GoogleFonts.config.allowRuntimeFetching = false;
 
   // Attribution for bundled CC BY-SA artwork. Registers a collector only; the
   // text is not built until a licence page asks for it.
@@ -38,32 +37,17 @@ void main() async {
     ),
   );
 
-  // Parallel: prefs + one-shot theme build (resolves Inter via google_fonts).
+  // Only routing preferences and system chrome gate the first frame. Themes
+  // are cached lazily by DocketApp; hidden screens load their bundled fonts
+  // when they are first needed.
   final Future<SharedPreferences> prefsFuture = SharedPreferences.getInstance();
-  // Touch cached getters so MaterialApp does not pay GoogleFonts cost mid-build.
-  AppTheme.lightTheme;
-  AppTheme.darkTheme;
-
-  // The train pass face sets its type in Geist and Instrument Serif, and the
-  // passport cover sets Hindi titles in Noto Sans Devanagari — neither family
-  // is on the theme. Requesting them here puts them in the same pendingFonts()
-  // wait below, so those cards do not render in a fallback face and reflow.
-  TrainPassType.warmUp();
-  WalletPassportCard.warmUp();
-  PassType.warmUp();
-  WalletMembershipCard.warmUp();
 
   final SharedPreferences prefs = await prefsFuture;
   await chromeFuture;
 
-  // Finish any in-flight font loads before first frame (capped so offline is fine).
-  try {
-    await GoogleFonts.pendingFonts().timeout(const Duration(milliseconds: 900));
-  } catch (_) {
-    // Continue with pending/fallback faces.
-  }
-
-  final bool hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
+  // A malformed preference must not throw before runApp. Only an explicitly
+  // persisted true skips onboarding; document storage is independent of this.
+  final bool hasSeenOnboarding = prefs.get('has_seen_onboarding') == true;
 
   runApp(ProviderScope(child: DocketApp(hasSeenOnboarding: hasSeenOnboarding)));
 }

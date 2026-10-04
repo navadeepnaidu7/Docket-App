@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Android storage options shared by every Docket secure store.
@@ -30,9 +31,7 @@ const AndroidOptions kDocketAndroidOptions = AndroidOptions(
 class SecureDocumentStore {
   SecureDocumentStore._();
 
-  static const _storage = FlutterSecureStorage(
-    aOptions: kDocketAndroidOptions,
-  );
+  static const _storage = FlutterSecureStorage(aOptions: kDocketAndroidOptions);
 
   /// Keys whose last read threw, so their records are present but unreadable.
   ///
@@ -44,24 +43,47 @@ class SecureDocumentStore {
   /// True when [key] holds records this process could not decrypt.
   static bool isUnreadable(String key) => _unreadable.contains(key);
 
+  /// Also protect a successfully decrypted key whose record shape is invalid.
+  /// A controller may show the valid records but must never overwrite the
+  /// unparsed originals with that partial list.
+  static void markUnreadable(String key) => _unreadable.add(key);
+
   static Future<List<String>> readList(String key) async {
-    final String? encrypted;
     try {
-      encrypted = await _storage.read(key: key);
+      final encrypted = await _storage.read(key: key);
+      final List<String>? decoded;
+      if (encrypted == null) {
+        decoded = null;
+      } else if (encrypted.length >= 64 * 1024) {
+        decoded = await compute(
+          _decodeList,
+          encrypted,
+          debugLabel: 'decode encrypted wallet list',
+        );
+      } else {
+        decoded = _decodeList(encrypted);
+      }
+      _unreadable.remove(key);
+      if (decoded != null) return decoded;
     } catch (_) {
       _unreadable.add(key);
       rethrow;
     }
-    _unreadable.remove(key);
-    if (encrypted != null) return _decodeList(encrypted);
 
-    final prefs = await SharedPreferences.getInstance();
-    final legacy = prefs.getStringList(key) ?? const <String>[];
-    if (legacy.isNotEmpty) {
-      await writeList(key, legacy);
-      await prefs.remove(key);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final legacy = prefs.getStringList(key) ?? const <String>[];
+      if (legacy.isNotEmpty) {
+        await writeList(key, legacy);
+        await prefs.remove(key);
+      }
+      return legacy;
+    } catch (_) {
+      // A failed migration leaves legacy originals on disk. Blocking writes
+      // prevents the next add from hiding them behind a new encrypted list.
+      _unreadable.add(key);
+      rethrow;
     }
-    return legacy;
   }
 
   static Future<void> writeList(String key, List<String> values) async {
@@ -75,12 +97,10 @@ class SecureDocumentStore {
   }
 
   static List<String> _decodeList(String raw) {
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is List) {
-        return decoded.whereType<String>().toList(growable: false);
-      }
-    } catch (_) {}
-    return const <String>[];
+    final decoded = jsonDecode(raw);
+    if (decoded is! List || decoded.any((item) => item is! String)) {
+      throw const FormatException('Stored document list is malformed');
+    }
+    return decoded.cast<String>().toList(growable: false);
   }
 }

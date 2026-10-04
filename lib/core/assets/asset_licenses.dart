@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 /// Registers licence text for bundled third-party *assets*.
 ///
@@ -13,6 +14,17 @@ import 'package:flutter/foundation.dart';
 /// startup.
 void registerAssetLicenses() {
   LicenseRegistry.addLicense(() async* {
+    for (final family in <String>[
+      'Inter',
+      'RobotoMono',
+      'NotoSansDevanagari',
+      'Geist',
+      'InstrumentSerif',
+    ]) {
+      yield LicenseEntryWithLineBreaks(<String>[
+        'Google Fonts ($family)',
+      ], await rootBundle.loadString('assets/fonts/$family-OFL.txt'));
+    }
     yield const LicenseEntryWithLineBreaks(
       <String>['Weather data (Open-Meteo)'],
       'Weather data by Open-Meteo (https://open-meteo.com/).\n'

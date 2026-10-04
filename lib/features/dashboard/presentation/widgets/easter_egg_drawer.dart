@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -11,6 +12,7 @@ import '../../../ids/domain/id_document.dart';
 import '../../../passport/domain/passport_profile.dart';
 import 'easter_egg_constants.dart';
 import 'travel_weather_glance.dart';
+import 'weather_soft_transition.dart';
 
 /// A brief, quiet glance behind the home surface.
 class EasterEggDrawer extends StatefulWidget {
@@ -130,8 +132,8 @@ class _EasterEggDrawerState extends State<EasterEggDrawer> {
         valueListenable: widget.dragOffsetNotifier,
         builder: (context, offset, _) {
           final progress = (offset / widget.panelHeight).clamp(0.0, 1.0);
-          final reveal = Curves.easeOutCubic.transform(
-            ((progress - 0.15) / 0.72).clamp(0.0, 1.0),
+          final reveal = Curves.easeInOutCubic.transform(
+            ((progress - 0.25) / 0.75).clamp(0.0, 1.0),
           );
           return Stack(
             fit: StackFit.expand,
@@ -142,162 +144,192 @@ class _EasterEggDrawerState extends State<EasterEggDrawer> {
                 left: 0,
                 right: 0,
                 height: (offset + 48).clamp(48, widget.panelHeight * 2 + 48),
-                child: RepaintBoundary(
-                  child: TravelWeatherGlance(
-                    hour: skyHour,
-                    panelHeight: widget.panelHeight,
+                child: ClipRect(
+                  child: WeatherRevealBlur(
+                    key: const ValueKey('weather_sky_blur'),
                     progress: progress,
-                    weather: weather,
-                    isDay: _previewMode == SkyPreviewMode.automatic
-                        ? snapshot?.isDay
-                        : null,
+                    child: RepaintBoundary(
+                      child: TravelWeatherGlance(
+                        hour: skyHour,
+                        panelHeight: widget.panelHeight,
+                        progress: progress,
+                        weather: weather,
+                        isDay: _previewMode == SkyPreviewMode.automatic
+                            ? snapshot?.isDay
+                            : null,
+                      ),
+                    ),
                   ),
                 ),
               ),
               Positioned(
                 left: 24,
                 right: 24,
-                top: MediaQuery.paddingOf(context).top + 20,
+                top: MediaQuery.paddingOf(context).top + 14,
                 height:
                     (widget.panelHeight -
                             MediaQuery.paddingOf(context).top -
-                            36)
+                            28)
                         .clamp(48.0, widget.panelHeight),
                 child: IgnorePointer(
-                  ignoring: progress < 0.8,
+                  ignoring: progress < 0.95,
                   child: ExcludeSemantics(
-                    excluding: progress < 0.8,
-                    child: Opacity(
-                      opacity: reveal,
-                      child: Transform.translate(
-                        offset: Offset(0, reduced ? 0 : 5 * (1 - reveal)),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) => SingleChildScrollView(
-                            physics:
-                                MediaQuery.textScalerOf(context).scale(14) > 18
-                                ? null
-                                : const NeverScrollableScrollPhysics(),
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: constraints.maxHeight,
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    greeting,
-                                    style: TextStyle(
-                                      fontFamily: font,
-                                      fontSize: 21,
-                                      decoration: TextDecoration.none,
-                                      height: 1.2,
-                                      fontWeight: FontWeight.w500,
-                                      letterSpacing: -0.45,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  if (snapshot != null) ...[
-                                    const SizedBox(height: 6),
-                                    AnimatedSwitcher(
-                                      duration: Duration(
-                                        milliseconds: reduced ? 0 : 260,
-                                      ),
-                                      child: Text(
-                                        '${snapshot.temperatureC.round()}°C · ${snapshot.description}',
-                                        key: ValueKey(
-                                          '${snapshot.temperatureC.round()}:${snapshot.code}:${state.label}',
-                                        ),
-                                        style: TextStyle(
-                                          fontFamily: font,
-                                          fontSize: 18,
-                                          height: 1.2,
-                                          decoration: TextDecoration.none,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                    if (state.stale) ...[
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Updated earlier',
-                                        style: TextStyle(
-                                          fontFamily: font,
-                                          fontSize: 12,
-                                          decoration: TextDecoration.none,
-                                          color: const Color(0xE0FFFFFF),
-                                        ),
-                                      ),
-                                    ],
-                                  ] else if (widget.onWeatherAction !=
-                                      null) ...[
-                                    const SizedBox(height: 4),
-                                    Material(
-                                      color: Colors.transparent,
-                                      child: TextButton(
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: Colors.white,
-                                          padding: EdgeInsets.zero,
-                                          minimumSize: const Size(44, 44),
-                                          alignment: Alignment.centerLeft,
-                                        ),
-                                        onPressed:
-                                            state.status ==
-                                                WeatherStatus.loading
-                                            ? null
-                                            : widget.onWeatherAction,
-                                        child: Text(
-                                          switch (state.status) {
-                                            WeatherStatus.loading =>
-                                              'Finding local weather…',
-                                            WeatherStatus.deniedForever =>
-                                              'Allow location in Settings',
-                                            WeatherStatus.locationOff =>
-                                              'Turn on location for weather',
-                                            WeatherStatus.unavailable =>
-                                              'Weather unavailable · Retry',
-                                            WeatherStatus.denied =>
-                                              'Use location for weather',
-                                            _ => 'Show local weather',
-                                          },
-                                          style: const TextStyle(
-                                            color: Color(0xE0FFFFFF),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  if (snapshot == null) ...[
-                                    const SizedBox(height: 7),
-                                    Text.rich(
-                                      TextSpan(
-                                        children: [
-                                          TextSpan(
-                                            text: count == 0
-                                                ? 'No documents yet'
-                                                : '$count ${count == 1 ? 'document' : 'documents'}',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                          if (count > 0)
-                                            const TextSpan(
-                                              text: ' in your wallet',
-                                            ),
-                                        ],
-                                      ),
+                    excluding: progress < 0.95,
+                    child: WeatherRevealBlur(
+                      key: const ValueKey('weather_text_blur'),
+                      progress: progress,
+                      maxBlur: 6,
+                      tileMode: ui.TileMode.decal,
+                      child: Opacity(
+                        opacity: reveal,
+                        child: Transform.translate(
+                          offset: Offset(0, reduced ? 0 : 5 * (1 - reveal)),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) => SingleChildScrollView(
+                              physics:
+                                  MediaQuery.textScalerOf(context).scale(14) >
+                                      18
+                                  ? null
+                                  : const NeverScrollableScrollPhysics(),
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minHeight: constraints.maxHeight,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      greeting,
                                       style: TextStyle(
                                         fontFamily: font,
-                                        fontSize: 14,
+                                        fontSize: 21,
                                         decoration: TextDecoration.none,
-                                        height: 1.35,
-                                        fontWeight: FontWeight.w400,
-                                        letterSpacing: -0.1,
-                                        color: const Color(0xE0FFFFFF),
+                                        height: 1.2,
+                                        fontWeight: FontWeight.w500,
+                                        letterSpacing: -0.45,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    WeatherSoftSwap(
+                                      child: Column(
+                                        key: ValueKey(
+                                          snapshot == null
+                                              ? '${state.status}:${widget.onWeatherAction != null}:$count'
+                                              : '${snapshot.temperatureC.round()}:${snapshot.code}:${snapshot.isDay}:${state.stale}',
+                                        ),
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          if (snapshot != null) ...[
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              '${snapshot.temperatureC.round()}°C · ${snapshot.description}',
+                                              style: TextStyle(
+                                                fontFamily: font,
+                                                fontSize: 18,
+                                                height: 1.2,
+                                                decoration: TextDecoration.none,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                            if (state.stale) ...[
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                'Updated earlier',
+                                                style: TextStyle(
+                                                  fontFamily: font,
+                                                  fontSize: 12,
+                                                  decoration:
+                                                      TextDecoration.none,
+                                                  color: const Color(
+                                                    0xE0FFFFFF,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ] else if (widget.onWeatherAction !=
+                                              null) ...[
+                                            const SizedBox(height: 4),
+                                            Material(
+                                              color: Colors.transparent,
+                                              child: TextButton(
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor: Colors.white,
+                                                  padding: EdgeInsets.zero,
+                                                  minimumSize: const Size(
+                                                    44,
+                                                    44,
+                                                  ),
+                                                  alignment:
+                                                      Alignment.centerLeft,
+                                                ),
+                                                onPressed:
+                                                    state.status ==
+                                                        WeatherStatus.loading
+                                                    ? null
+                                                    : widget.onWeatherAction,
+                                                child: Text(
+                                                  switch (state.status) {
+                                                    WeatherStatus.loading =>
+                                                      'Finding local weather…',
+                                                    WeatherStatus
+                                                        .deniedForever =>
+                                                      'Allow location in Settings',
+                                                    WeatherStatus.locationOff =>
+                                                      'Turn on location for weather',
+                                                    WeatherStatus.unavailable =>
+                                                      'Retry local weather',
+                                                    WeatherStatus.denied =>
+                                                      'Use location for weather',
+                                                    _ => 'Show local weather',
+                                                  },
+                                                  style: const TextStyle(
+                                                    color: Color(0xE0FFFFFF),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                          if (snapshot == null &&
+                                              widget.onWeatherAction ==
+                                                  null) ...[
+                                            const SizedBox(height: 7),
+                                            Text.rich(
+                                              TextSpan(
+                                                children: [
+                                                  TextSpan(
+                                                    text: count == 0
+                                                        ? 'No documents yet'
+                                                        : '$count ${count == 1 ? 'document' : 'documents'}',
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                  if (count > 0)
+                                                    const TextSpan(
+                                                      text: ' in your wallet',
+                                                    ),
+                                                ],
+                                              ),
+                                              style: TextStyle(
+                                                fontFamily: font,
+                                                fontSize: 14,
+                                                decoration: TextDecoration.none,
+                                                height: 1.35,
+                                                fontWeight: FontWeight.w400,
+                                                letterSpacing: -0.1,
+                                                color: const Color(0xE0FFFFFF),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
                                     ),
                                   ],
-                                ],
+                                ),
                               ),
                             ),
                           ),

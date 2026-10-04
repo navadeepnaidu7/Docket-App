@@ -119,3 +119,44 @@ The final stale-data/accessibility layout checks also pass (four cases), and
 an arm64 profile APK builds successfully with the new sky, credits and pass
 menu artwork. Hardware smoothness still needs validation on Moto Edge 30 and
 Nothing Phone 3a.
+
+## Compact blur reveal — 5 October 2026
+
+The normal reveal now rests at 176 logical pixels, reduced from 252 (30% less
+space). Large-text expansion remains available, with tighter safe-area spacing.
+The local weather permission/loading view shows the greeting and weather action
+without the unrelated document-count row.
+
+The exposed sky and summary resolve from a gentle blur as the gesture opens.
+The blur follows pull progress in both directions and is fully disabled at rest;
+reduced motion also disables it. The filters only cover weather material and
+text. The wallet is not blurred and still translates with navigation as one
+unchanged, isolated layer. Sky filtering is clipped to the exposed region and
+corner allowance, avoiding a full-screen backdrop blur.
+
+Changed conditions use a brief blur/fade exchange (320ms in, 180ms out). Cached
+conditions remain clear while a request is loading: that status alone does not
+restart the transition. Outgoing content is excluded from accessibility and
+pointer interaction. Existing shader scene blending and provider caching remain
+in place; network delays do not hold the panel open or keep cached data blurred.
+
+Verification covers reversible blur pixel contrast, filtering disabled at rest,
+unchanged cached-refresh content, new-data swaps, outgoing controls, reduced
+motion, accessible layouts, gesture thresholds and the complete sky/provider
+checks. Preview frames use the actual translated wallet surface at 55%, 85% and
+full reveal. Permission/loading controls are checked with the bundled Inter font
+at 320/390px, 1x/2x text, and a 59px status inset. No APK generated; use local
+`flutter run` for device review.
+
+All 36 focused weather, provider, gesture, layout and transition checks pass.
+Static analysis of the changed weather files and tests reports no issues.
+Device frame timing remains to be checked during local testing.
+
+The opening transition now retains a visible haze until the last part of the
+pull, with the summary fading in alongside it. Previously, the blur resolved
+before most of the text cleared the wallet edge. Reversing the gesture restores
+the haze directly; fully open weather is clear and its actions become available
+at 95% progress. The refresh transition remains separate from this opening.
+All 30 reveal, transition, sky and layout checks pass after this adjustment;
+static analysis is clean. The 85% preview visibly retains blur and the full
+reveal is sharp. No APK generated.

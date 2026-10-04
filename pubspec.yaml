@@ -115,6 +115,28 @@ flutter:
   # never silently start shipping. Every entry below is reachable from
   # lib/core/assets/app_assets.dart or a literal path in lib/features/tickets/.
   assets:
+    # Exact google_fonts variants, available offline on the first launch.
+    - assets/fonts/Inter-Regular.ttf
+    - assets/fonts/Inter-Medium.ttf
+    - assets/fonts/Inter-SemiBold.ttf
+    - assets/fonts/Inter-Bold.ttf
+    - assets/fonts/Inter-ExtraBold.ttf
+    - assets/fonts/Inter-Black.ttf
+    - assets/fonts/RobotoMono-Regular.ttf
+    - assets/fonts/RobotoMono-Medium.ttf
+    - assets/fonts/RobotoMono-SemiBold.ttf
+    - assets/fonts/RobotoMono-Bold.ttf
+    - assets/fonts/NotoSansDevanagari-Bold.ttf
+    - assets/fonts/Geist-Regular.ttf
+    - assets/fonts/Geist-Medium.ttf
+    - assets/fonts/Geist-SemiBold.ttf
+    - assets/fonts/Geist-Bold.ttf
+    - assets/fonts/InstrumentSerif-Regular.ttf
+    - assets/fonts/Inter-OFL.txt
+    - assets/fonts/RobotoMono-OFL.txt
+    - assets/fonts/NotoSansDevanagari-OFL.txt
+    - assets/fonts/Geist-OFL.txt
+    - assets/fonts/InstrumentSerif-OFL.txt
     - assets/branding/docket_logo.svg
     - assets/branding/docket_logo_circle.svg
     - assets/branding/docket_logo_square.svg

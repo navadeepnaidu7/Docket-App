@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 Future<void> _loadPassArtwork(WidgetTester tester) async {
   await tester.runAsync(() async {
@@ -36,6 +37,20 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.runAsync(() async {
+      GoogleFonts.config.allowRuntimeFetching = false;
+      AppTheme.lightTheme;
+      AppTheme.darkTheme;
+      await GoogleFonts.pendingFonts();
+      final materialIcons = FontLoader('MaterialIcons')
+        ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+      final cupertinoIcons =
+          FontLoader('packages/cupertino_icons/CupertinoIcons')..addFont(
+            rootBundle.load(
+              'packages/cupertino_icons/assets/CupertinoIcons.ttf',
+            ),
+          );
+      await materialIcons.load();
+      await cupertinoIcons.load();
       await PassportCoverArt.warmUp();
     });
 

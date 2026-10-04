@@ -1,4 +1,5 @@
 import 'package:docket/features/dashboard/presentation/widgets/weather_reveal_surface.dart';
+import 'package:docket/features/dashboard/presentation/widgets/easter_egg_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,7 +20,7 @@ void main() {
       MaterialApp(
         home: WeatherRevealSurface(
           offset: offset,
-          panelHeight: 252,
+          panelHeight: kEasterEggPanelHeight,
           drawer: const ColoredBox(color: Colors.blue),
           child: Builder(
             builder: (context) {
@@ -47,7 +48,14 @@ void main() {
     final headerStart = tester.getTopLeft(find.byKey(headerKey));
     final navStart = tester.getTopLeft(find.byKey(navKey));
     final size = tester.getSize(find.byKey(walletKey));
-    for (final distance in [24.0, 100.0, 252.0, 285.0, 100.0, 0.0]) {
+    for (final distance in [
+      24.0,
+      80.0,
+      kEasterEggPanelHeight,
+      kEasterEggPanelHeight + 32,
+      80.0,
+      0.0,
+    ]) {
       offset.value = distance;
       await tester.pump();
       expect(

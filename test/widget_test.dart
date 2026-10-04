@@ -27,14 +27,9 @@ Future<void> pumpUntilFound(
   );
 }
 
-// NOTE: there is deliberately no test that mounts DashboardScreen.
-// `tester.pumpWidget` never returns for it — the first frame deadlocks, so the
-// test times out without running a single assertion. Reproduce with a two-line
-// test that only pumps `MaterialApp(home: DashboardScreen())`. The prime
-// suspect is the `SchedulerBinding.scheduleTask(_prewarmPassesTab,
-// Priority.idle)` posted from its initState, which has no idle window under
-// AutomatedTestWidgetsFlutterBinding. Until that is fixed the dashboard can
-// only be exercised on a device.
+// Dashboard startup, interrupted loads and tab-switch stress are covered in
+// dashboard_startup_test.dart. Its optional warm-up is cancellable and does
+// not depend on the scheduler reaching an idle window.
 
 void main() {
   testWidgets('Onboarding opens and advances past its first step', (

@@ -54,6 +54,13 @@ inside the app, not only in this file.
 
 ## Other bundled assets
 
+- `assets/fonts/` — Inter, Roboto Mono, Noto Sans Devanagari, Geist, and
+  Instrument Serif, unmodified Google Fonts binaries under the SIL Open Font
+  License 1.1. Each family's copyright and licence ship as `*-OFL.txt` and are
+  registered in the in-app licence page. `manifest.json` records the pinned
+  Google Fonts download URLs, byte lengths and SHA-256 digests. Reproduce with
+  `tool/bundle_fonts.py` using the pinned `google_fonts` package directory.
+
 - `assets/branding/`, `assets/navbar/`, `assets/wallet/passport/emblems/`,
   `assets/wallet/aadhaar/` — Docket's own artwork, rasterized from masters in
   `tool/design_src/`.

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/storage/secure_document_store.dart';
+import '../../../core/storage/document_record_decoder.dart';
 import '../../ids/application/attachment_providers.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
@@ -26,7 +27,7 @@ class TrashState {
 
 class TrashController extends StateNotifier<TrashState> {
   TrashController(this.ref)
-      : super(const TrashState(passports: [], idDocs: []));
+    : super(const TrashState(passports: [], idDocs: []));
 
   final Ref ref;
 
@@ -37,38 +38,44 @@ class TrashController extends StateNotifier<TrashState> {
   /// -- trashed records still own their attachment files, so a sweep that ran
   /// before this settled would delete them and make restore lossy.
   late final Future<void> loaded;
+  Future<void>? _loadFuture;
 
   /// The current trash contents, readable from outside the notifier.
   /// See [IdListController.documents] for why this exists.
   TrashState get contents => state;
 
-  Future<void> loadTrash() async {
-    final pData = await SecureDocumentStore.readList(_passportsKey);
-    final idData = await SecureDocumentStore.readList(_idsKey);
+  Future<void> loadTrash() => _loadFuture ??= _loadTrash();
 
-    state = TrashState(
-      passports: pData.map(_tryPassport).whereType<PassportProfile>().toList(),
-      idDocs: idData.map(_tryId).whereType<IdDocument>().toList(),
+  Future<List<String>> _readForStartup(String key) async {
+    try {
+      return await SecureDocumentStore.readList(key);
+    } catch (_) {
+      return <String>[];
+    }
+  }
+
+  Future<void> _loadTrash() async {
+    final lists = await Future.wait([
+      _readForStartup(_passportsKey),
+      _readForStartup(_idsKey),
+    ]);
+    if (!mounted) return;
+    final passports = await decodeStoredRecords(
+      lists[0],
+      decodePassportRecords,
     );
-  }
-
-  PassportProfile? _tryPassport(String source) {
-    try {
-      return PassportProfile.fromJson(source);
-    } catch (_) {
-      return null;
+    final ids = await decodeStoredRecords(lists[1], decodeIdRecords);
+    if (!mounted) return;
+    if (passports.hasInvalidRecords) {
+      SecureDocumentStore.markUnreadable(_passportsKey);
     }
-  }
-
-  IdDocument? _tryId(String source) {
-    try {
-      return IdDocument.fromJson(source);
-    } catch (_) {
-      return null;
-    }
+    if (ids.hasInvalidRecords) SecureDocumentStore.markUnreadable(_idsKey);
+    state = TrashState(passports: passports.records, idDocs: ids.records);
   }
 
   Future<void> moveToTrash(Object item) async {
+    await loaded;
+    if (!mounted) return;
     if (item is PassportProfile) {
       final updated = [...state.passports, item];
       state = state.copyWith(passports: updated);
@@ -87,6 +94,8 @@ class TrashController extends StateNotifier<TrashState> {
   }
 
   Future<void> restoreItem(Object item, WidgetRef ref) async {
+    await loaded;
+    if (!mounted) return;
     if (item is PassportProfile) {
       // 1. Remove from trash
       final updated = state.passports.where((p) => p.id != item.id).toList();
@@ -115,6 +124,8 @@ class TrashController extends StateNotifier<TrashState> {
   }
 
   Future<void> permanentlyDeleteItem(Object item) async {
+    await loaded;
+    if (!mounted) return;
     if (item is PassportProfile) {
       final updated = state.passports.where((p) => p.id != item.id).toList();
       state = state.copyWith(passports: updated);
@@ -140,8 +151,7 @@ class TrashController extends StateNotifier<TrashState> {
   }
 }
 
-final trashProvider =
-    StateNotifierProvider<TrashController, TrashState>((ref) {
+final trashProvider = StateNotifierProvider<TrashController, TrashState>((ref) {
   final controller = TrashController(ref);
   controller.loaded = controller.loadTrash();
   return controller;
