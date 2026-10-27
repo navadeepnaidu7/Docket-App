@@ -690,13 +690,13 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
         borderRadius: BorderRadius.circular(kSettingsHeroRadius),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
+            color: Colors.black.withValues(alpha: widget.isDark ? 0.12 : 0.055),
             blurRadius: 28,
             offset: const Offset(0, 10),
             spreadRadius: -4,
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: Colors.black.withValues(alpha: widget.isDark ? 0.06 : 0.025),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

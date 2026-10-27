@@ -56,8 +56,38 @@ void main() {
       find.textContaining('Later movie', findRichText: true),
       findsNothing,
     );
-    expect(find.textContaining('Tap to open'), findsOneWidget);
+    expect(
+      find.textContaining('You’re watching', findRichText: true),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('movie copy uses calendar days and keeps the title', (
+    tester,
+  ) async {
+    final now = DateTime.now();
+    final movie = MoviePassItem.fromJson({
+      'id': 'movie',
+      'status': 'active',
+      'movieTitle': 'Dune: Part Two',
+      'showAt': DateTime(
+        now.year,
+        now.month,
+        now.day + 4,
+        18,
+      ).toIso8601String(),
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: UpNextSummary(passes: [movie])),
+      ),
+    );
+    expect(
+      find.textContaining('Dune: Part Two in 4 days.', findRichText: true),
+      findsOneWidget,
+    );
     await tester.pumpWidget(const SizedBox());
   });
 }

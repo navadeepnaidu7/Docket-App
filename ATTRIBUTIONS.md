@@ -54,6 +54,11 @@ inside the app, not only in this file.
 
 ## Other bundled assets
 
+- `assets/emoji/waving_hand.json` — Google’s [Animated Noto Emoji](https://googlefonts.github.io/noto-emoji-files/?view=docs),
+  [waving hand Lottie asset](https://fonts.gstatic.com/s/e/notoemoji/latest/1f44b/lottie.json),
+  unmodified, under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+  Bundled for offline playback; attribution also appears in the in-app licences.
+
 - `assets/fonts/` — Inter, Roboto Mono, Noto Sans Devanagari, Geist, and
   Instrument Serif, unmodified Google Fonts binaries under the SIL Open Font
   License 1.1. Each family's copyright and licence ship as `*-OFL.txt` and are

@@ -86,6 +86,7 @@ dependencies:
   # by hand. gal writes the same bytes to the photo library.
   share_plus: ^12.0.2
   gal: ^2.3.3
+  lottie: ^3.7.0
 
 dev_dependencies:
   flutter_test:
@@ -115,6 +116,7 @@ flutter:
   # never silently start shipping. Every entry below is reachable from
   # lib/core/assets/app_assets.dart or a literal path in lib/features/tickets/.
   assets:
+    - assets/emoji/waving_hand.json
     # Exact google_fonts variants, available offline on the first launch.
     - assets/fonts/Inter-Regular.ttf
     - assets/fonts/Inter-Medium.ttf

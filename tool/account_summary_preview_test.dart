@@ -4,7 +4,8 @@ import 'dart:io';
 
 import 'package:docket/core/theme/app_theme.dart';
 import 'package:docket/features/dashboard/presentation/widgets/account_summary.dart';
-import 'package:docket/features/dashboard/presentation/widgets/membership_ribbon.dart';
+import 'package:docket/features/dashboard/presentation/widgets/account_greeting.dart';
+import 'package:docket/features/dashboard/presentation/widgets/membership_horizon.dart';
 import 'package:docket/features/ids/domain/id_document.dart';
 import 'package:docket/features/passport/domain/passport_profile.dart';
 import 'package:docket/features/tickets/data/mock_pass_fixtures.dart';
@@ -67,26 +68,47 @@ void main() {
           debugShowCheckedModeBanner: false,
           theme: dark ? AppTheme.darkTheme : AppTheme.lightTheme,
           home: Scaffold(
-            body: SafeArea(
-              child: CustomScrollView(
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(24, 30, 24, 0),
-                    sliver: SliverToBoxAdapter(
-                      child: AccountSummary(
-                        key: ValueKey<bool>(dark),
-                        passes: passes,
-                        ids: ids,
-                        passports: passports,
+            body: Stack(
+              children: [
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: 180,
+                  child: MembershipHorizon(key: ValueKey('horizon-$dark')),
+                ),
+                SafeArea(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 36, 24, 116),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const AccountGreeting(displayName: 'Navadeep'),
+                              const SizedBox(height: 18),
+                              AccountSummary(
+                                key: ValueKey<bool>(dark),
+                                passes: passes,
+                                ids: ids,
+                                passports: passports,
+                                showCaption: false,
+                              ),
+                              const SizedBox(height: 28),
+                              UpNextSummary(passes: passes),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: MembershipRibbon(),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -101,8 +123,6 @@ void main() {
           ),
         );
       }
-      await tester.drag(find.byType(MembershipRibbon), const Offset(40, -12));
-      await tester.pump(const Duration(seconds: 1));
       expect(tester.takeException(), isNull);
     }
   });

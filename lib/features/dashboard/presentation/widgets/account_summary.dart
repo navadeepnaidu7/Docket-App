@@ -29,11 +29,13 @@ class AccountSummary extends StatefulWidget {
     required this.passes,
     required this.ids,
     required this.passports,
+    this.showCaption = true,
   });
 
   final List<WalletPassItem> passes;
   final List<IdDocument> ids;
   final List<PassportProfile> passports;
+  final bool showCaption;
 
   @override
   State<AccountSummary> createState() => _AccountSummaryState();
@@ -91,7 +93,7 @@ class _AccountSummaryState extends State<AccountSummary>
     final bool dark = b == Brightness.dark;
     final bool reduced = MediaQuery.disableAnimationsOf(context);
     final Color ink = AppTheme.ink(b);
-    final Color muted = ink.withValues(alpha: dark ? 0.44 : 0.40);
+    final Color muted = ink.withValues(alpha: dark ? 0.44 : 0.56);
     final Color page = AppTheme.background(b);
 
     final _Summary s = _Summary.of(
@@ -111,10 +113,10 @@ class _AccountSummaryState extends State<AccountSummary>
     _start(slots, reduced);
 
     final TextStyle base = AppFonts.ui(
-      fontSize: 26,
+      fontSize: 30,
       fontWeight: FontWeight.w500,
       letterSpacing: -0.7,
-      height: 1.42,
+      height: 1.35,
       color: ink,
     );
 
@@ -178,7 +180,7 @@ class _AccountSummaryState extends State<AccountSummary>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text.rich(TextSpan(children: spans)),
-        if (s.caption != null) ...<Widget>[
+        if (widget.showCaption && s.caption != null) ...<Widget>[
           const SizedBox(height: 22),
           _Reveal(
             animation: _slot(captionSlot, slots),
@@ -288,106 +290,77 @@ class _UpNextSummaryState extends State<UpNextSummary> {
     final b = Theme.of(context).brightness;
     final ink = AppTheme.ink(b);
     final muted = ink.withValues(alpha: b == Brightness.dark ? 0.55 : 0.52);
-    final (String title, SummaryApp app) = switch (item) {
+    final (String prefix, String title, String emoji) = switch (item) {
       TrainPassItem(:final ticket) => (
-        'a train to ${ticket.toName.trim().isNotEmpty ? ticket.toName : ticket.toCode}',
-        SummaryApp.irctc,
+        'You have a ',
+        ticket.toName.trim().isNotEmpty || ticket.toCode.trim().isNotEmpty
+            ? 'trip to ${ticket.toName.trim().isNotEmpty ? ticket.toName : ticket.toCode}'
+            : 'train journey',
+        '🚆',
       ),
-      MoviePassItem(:final pass) => (
-        passTitle(item),
-        switch (pass.brand) {
-          MoviePassBrand.bookMyShow => SummaryApp.bookMyShow,
-          MoviePassBrand.district => SummaryApp.district,
-          _ => SummaryApp.cinema,
-        },
-      ),
+      MoviePassItem() => ('You’re watching ', passTitle(item), '🎬'),
       BusPassItem(:final pass) => (
+        'You have a ',
         pass.resolvedToCity.trim().isEmpty
-            ? 'a bus ride'
-            : 'a bus to ${pass.resolvedToCity}',
-        pass.brand == BusPassBrand.redBus ? SummaryApp.redBus : SummaryApp.bus,
+            ? 'bus journey'
+            : 'trip to ${pass.resolvedToCity}',
+        '🚌',
       ),
     };
-    final day = DateTime(start.year, start.month, start.day);
-    final today = DateTime(now.year, now.month, now.day);
-    final String when = day == today
+    final days = DateTime.utc(
+      start.year,
+      start.month,
+      start.day,
+    ).difference(DateTime.utc(now.year, now.month, now.day)).inDays;
+    final when = days == 0
         ? 'today'
-        : day == DateTime(now.year, now.month, now.day + 1)
+        : days == 1
         ? 'tomorrow'
-        : 'on ${MaterialLocalizations.of(context).formatMediumDate(start)}';
-    final remaining = start.difference(now);
-    final minutes = (remaining.inSeconds / 60).ceil();
-    final String countdown = minutes < 1
-        ? 'Starting now'
-        : minutes < 60
-        ? 'In $minutes ${minutes == 1 ? 'minute' : 'minutes'}'
-        : minutes < 1440
-        ? 'In ${minutes ~/ 60}h${minutes % 60 == 0 ? '' : ' ${minutes % 60}m'}'
-        : 'In ${minutes ~/ 1440} ${(minutes ~/ 1440) == 1 ? 'day' : 'days'}';
-    final time = MaterialLocalizations.of(context)
-        .formatTimeOfDay(
-          TimeOfDay.fromDateTime(start),
-          alwaysUse24HourFormat: MediaQuery.alwaysUse24HourFormatOf(context),
-        )
-        .toLowerCase();
-
+        : 'in $days days';
+    final bridge = item is MoviePassItem ? ' ' : ' coming up ';
     final style = AppFonts.ui(
-      fontSize: 23,
+      fontSize: 20,
       height: 1.45,
-      letterSpacing: -0.5,
+      letterSpacing: -0.35,
       fontWeight: FontWeight.w500,
       color: muted,
     );
-    return Padding(
-      padding: const EdgeInsets.only(top: 32),
-      child: Semantics(
-        button: true,
-        label: 'Next up, $title $when at $time. $countdown. Open pass',
-        excludeSemantics: true,
-        child: BounceTap(
-          scaleFactor: 0.985,
-          duration: MediaQuery.disableAnimationsOf(context)
-              ? Duration.zero
-              : const Duration(milliseconds: 120),
-          onTap: () => _open(item),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Semantics(
+      button: true,
+      label: '$prefix$title$bridge$when. Open pass',
+      excludeSemantics: true,
+      child: BounceTap(
+        scaleFactor: 0.99,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 120),
+        onTap: () => _open(item),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Text.rich(
+            TextSpan(
+              style: style,
               children: [
-                Text.rich(
-                  TextSpan(
-                    style: style,
-                    children: [
-                      const TextSpan(text: 'Next up, '),
-                      WidgetSpan(
-                        alignment: PlaceholderAlignment.middle,
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 7),
-                          child: AppIconTile(
-                            app: app,
-                            size: 27,
-                            ringColor: AppTheme.background(b),
-                          ),
-                        ),
-                      ),
-                      TextSpan(
-                        text: title,
-                        style: TextStyle(color: ink),
-                      ),
-                      TextSpan(text: ' $when at '),
-                      TextSpan(
-                        text: time,
-                        style: TextStyle(color: ink),
-                      ),
-                      const TextSpan(text: '.'),
+                TextSpan(text: prefix),
+                TextSpan(
+                  text: title,
+                  style: TextStyle(color: ink),
+                ),
+                TextSpan(text: bridge),
+                TextSpan(
+                  text: when,
+                  style: TextStyle(color: ink),
+                ),
+                const TextSpan(text: '. '),
+                TextSpan(
+                  text: emoji,
+                  style: const TextStyle(
+                    fontSize: 21,
+                    fontFamilyFallback: [
+                      'Apple Color Emoji',
+                      'Noto Color Emoji',
                     ],
                   ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  '$countdown · Tap to open',
-                  style: AppFonts.ui(fontSize: 14, height: 1.5, color: muted),
                 ),
               ],
             ),
@@ -767,12 +740,12 @@ class AppIconTile extends StatelessWidget {
         ),
         shadows: <BoxShadow>[
           BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? 0.5 : 0.16),
+            color: Colors.black.withValues(alpha: dark ? 0.5 : 0.09),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? 0.4 : 0.12),
+            color: Colors.black.withValues(alpha: dark ? 0.4 : 0.06),
             blurRadius: 1.5,
             offset: const Offset(0, 0.5),
           ),
@@ -939,16 +912,16 @@ class _Summary {
   }) {
     final List<Color> warm = dark
         ? const <Color>[Color(0xFFFF6B85), Color(0xFFFFB45C)]
-        : const <Color>[Color(0xFFFF4F6D), Color(0xFFF08A2A)];
+        : const <Color>[Color(0xFFE84F56), Color(0xFFD98126)];
     final List<Color> cool = dark
         ? const <Color>[Color(0xFF5A9BFF), Color(0xFF6FE0F5)]
-        : const <Color>[Color(0xFF2F7BF6), Color(0xFF22B8D8)];
+        : const <Color>[Color(0xFF2877D8), Color(0xFF1988AD)];
     final List<Color> violet = dark
         ? const <Color>[Color(0xFF9D8BFF), Color(0xFFE0A0FF)]
-        : const <Color>[Color(0xFF6E56F0), Color(0xFFB45CE8)];
+        : const <Color>[Color(0xFF7356CE), Color(0xFF9C55B8)];
     final List<Color> fresh = dark
         ? const <Color>[Color(0xFF3DDC84), Color(0xFFB4F05A)]
-        : const <Color>[Color(0xFF1FA463), Color(0xFF6CC22E)];
+        : const <Color>[Color(0xFF26874F), Color(0xFF5B9636)];
 
     int trains = 0;
     int buses = 0;
