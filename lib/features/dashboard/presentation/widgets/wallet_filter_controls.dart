@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/haptics/haptic_service.dart';
 import '../../../../core/wallet/wallet_filter.dart';
 import '../../application/wallet_filter_provider.dart';
+import '../../../../core/theme/app_theme.dart';
 
 class WalletFilterControls extends ConsumerStatefulWidget {
   const WalletFilterControls({
@@ -107,7 +107,7 @@ class _WalletFilterControlsState extends ConsumerState<WalletFilterControls> {
                           const SizedBox(width: 6),
                           Text(
                             'Filter',
-                            style: GoogleFonts.inter(
+                            style: AppFonts.ui(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                               letterSpacing: -0.1,
@@ -149,7 +149,7 @@ class _WalletFilterControlsState extends ConsumerState<WalletFilterControls> {
                               Expanded(
                                 child: Text(
                                   category.label,
-                                  style: GoogleFonts.inter(
+                                  style: AppFonts.ui(
                                     fontSize: 13,
                                     fontWeight: active == category
                                         ? FontWeight.w700
@@ -231,7 +231,7 @@ class _ActiveFilterChip extends StatelessWidget {
           children: [
             Text(
               label,
-              style: GoogleFonts.inter(
+              style: AppFonts.ui(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: ink.withValues(alpha: 0.9),

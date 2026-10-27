@@ -27,11 +27,7 @@ class RollingCardPage extends StatelessWidget {
             ? (controller.page ?? controller.initialPage.toDouble())
             : controller.initialPage.toDouble();
         final double delta = (page - index).clamp(-1.0, 1.0);
-        return RollPageStack(
-          delta: delta,
-          padding: padding,
-          child: child!,
-        );
+        return RollPageStack(delta: delta, padding: padding, child: child!);
       },
       child: RepaintBoundary(child: child),
     );

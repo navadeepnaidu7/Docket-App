@@ -28,13 +28,14 @@ import '../application/auth_session_provider.dart';
 import '../application/google_auth_gateway.dart';
 import '../application/card_shine_border_provider.dart';
 import '../application/profile_avatar_shape_provider.dart';
-import '../application/nav_labels_provider.dart';
 import '../application/search_button_provider.dart';
 import '../application/pass_deck_provider.dart';
 import '../application/wallet_filter_provider.dart';
 import 'manage_account_screen.dart';
 import 'user_card_detail_screen.dart';
 import 'widgets/membership_mesh.dart';
+import '../../../core/theme/app_theme.dart';
+import '../application/nav_labels_provider.dart';
 
 /// Apple Card–like hero dimensions (scrolls with the settings list).
 const double kSettingsHeroHeight = 226.0;
@@ -106,10 +107,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
     final Color ink = theme.colorScheme.onSurface;
-    final Color scaffoldBg =
-        isDark ? const Color(0xFF0A0A0D) : const Color(0xFFF8F8FA);
-    final Color surface =
-        isDark ? const Color(0xFF16161A) : const Color(0xFFFFFFFF);
+    final Color scaffoldBg = isDark
+        ? const Color(0xFF0A0A0D)
+        : const Color(0xFFF8F8FA);
+    final Color surface = isDark
+        ? const Color(0xFF16161A)
+        : const Color(0xFFFFFFFF);
     final Color borderColor = ink.withValues(alpha: isDark ? 0.08 : 0.05);
 
     final List<PassportProfile> passports = ref.watch(passportListProvider);
@@ -143,255 +146,233 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   addAutomaticKeepAlives: false,
                   addRepaintBoundaries: true,
                   children: [
-                  RepaintBoundary(
-                    child: _AnimatedPressScale(
-                      onTap: () {
-                        HapticService.select();
-                        Navigator.of(context).push(
-                          CupertinoPageRoute<void>(
-                            builder: (_) => const UserCardDetailScreen(),
+                    RepaintBoundary(
+                      child: _AnimatedPressScale(
+                        onTap: () {
+                          HapticService.select();
+                          Navigator.of(context).push(
+                            CupertinoPageRoute<void>(
+                              builder: (_) => const UserCardDetailScreen(),
+                            ),
+                          );
+                        },
+                        child: SizedBox(
+                          height: kSettingsHeroHeight,
+                          child: ValueListenableBuilder<bool>(
+                            valueListenable: _effectsOn,
+                            builder: (BuildContext context, bool effectsOn, _) {
+                              return WalletMembershipCard(
+                                passports: passports,
+                                idDocs: idDocs,
+                                isDark: isDark,
+                                enableMotion: effectsOn,
+                              );
+                            },
                           ),
-                        );
-                      },
-                      child: SizedBox(
-                        height: kSettingsHeroHeight,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: RepaintBoundary(
                         child: ValueListenableBuilder<bool>(
                           valueListenable: _effectsOn,
                           builder: (BuildContext context, bool effectsOn, _) {
-                            return WalletMembershipCard(
-                              passports: passports,
-                              idDocs: idDocs,
+                            return _TapToOpenShineLabel(
                               isDark: isDark,
-                              enableMotion: effectsOn,
+                              ink: ink,
+                              enabled: effectsOn,
                             );
                           },
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Center(
-                    child: RepaintBoundary(
-                      child: ValueListenableBuilder<bool>(
-                        valueListenable: _effectsOn,
-                        builder: (BuildContext context, bool effectsOn, _) {
-                          return _TapToOpenShineLabel(
-                            isDark: isDark,
-                            ink: ink,
-                            enabled: effectsOn,
-                          );
-                        },
-                      ),
+                    const SizedBox(height: 18),
+                    _SettingsSection(
+                      title: 'Appearance',
+                      surface: surface,
+                      borderColor: borderColor,
+                      isDark: isDark,
+                      children: [
+                        const _ThemeAppearanceBlock(),
+                        const _SettingsDivider(),
+                        _SettingsToggleRow(
+                          title: 'Haptics',
+                          value: ref.watch(hapticsEnabledProvider),
+                          onChanged: (_) {
+                            final bool enabled = ref.read(
+                              hapticsEnabledProvider,
+                            );
+                            if (enabled) HapticService.select();
+                            ref.read(hapticsEnabledProvider.notifier).toggle();
+                          },
+                        ),
+                        const _SettingsDivider(),
+                        _ProfileAvatarShapeRow(
+                          shape: ref.watch(profileAvatarShapeProvider),
+                          onTap: () {
+                            HapticService.select();
+                            ref
+                                .read(profileAvatarShapeProvider.notifier)
+                                .toggle();
+                          },
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  _SettingsSection(
-                    title: 'Appearance',
-                    surface: surface,
-                    borderColor: borderColor,
-                    isDark: isDark,
-                    children: [
-                      const _ThemeAppearanceBlock(),
-                      const _SettingsDivider(),
-                      _SettingsToggleRow(
-                        icon: Icons.vibration_rounded,
-                        iconColor: const Color(0xFFE07A2F),
-                        title: 'Haptics',
-                        value: ref.watch(hapticsEnabledProvider),
-                        onChanged: (_) {
-                          final bool enabled =
-                              ref.read(hapticsEnabledProvider);
-                          if (enabled) HapticService.select();
-                          ref.read(hapticsEnabledProvider.notifier).toggle();
-                        },
-                      ),
-                      const _SettingsDivider(),
-                      _ProfileAvatarShapeRow(
-                        shape: ref.watch(profileAvatarShapeProvider),
-                        onTap: () {
-                          HapticService.select();
-                          ref.read(profileAvatarShapeProvider.notifier).toggle();
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  _SettingsSection(
-                    title: 'Navigation',
-                    surface: surface,
-                    borderColor: borderColor,
-                    isDark: isDark,
-                    children: [
-                      _SettingsToggleRow(
-                        icon: CupertinoIcons.textformat_abc,
-                        iconColor: const Color(0xFF2F6FED),
-                        title: 'Labels',
-                        value: ref.watch(showNavLabelsProvider),
-                        onChanged: (_) {
-                          HapticService.select();
-                          ref.read(showNavLabelsProvider.notifier).toggle();
-                        },
-                      ),
-                      const _SettingsDivider(),
-                      _SettingsToggleRow(
-                        icon: Icons.search_rounded,
-                        iconColor: const Color(0xFF0FA968),
-                        title: 'Search button',
-                        subtitle:
-                            'Search your wallet from the Home header',
-                        value: ref.watch(searchButtonEnabledProvider),
-                        onChanged: (_) {
-                          HapticService.select();
-                          ref
-                              .read(searchButtonEnabledProvider.notifier)
-                              .toggle();
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  _SettingsSection(
-                    title: 'Experimental',
-                    surface: surface,
-                    borderColor: borderColor,
-                    isDark: isDark,
-                    children: [
-                      _SettingsToggleRow(
-                        icon: Icons.auto_awesome_rounded,
-                        iconColor: const Color(0xFF5E5CE6),
-                        title: 'Card shine border',
-                        subtitle:
-                            'After 3.5s on ID cards, a soft iridescent border appears',
-                        value: ref.watch(cardShineBorderProvider),
-                        onChanged: (_) {
-                          HapticService.select();
-                          ref.read(cardShineBorderProvider.notifier).toggle();
-                        },
-                      ),
-                      const _SettingsDivider(),
-                      _SettingsToggleRow(
-                        icon: Icons.filter_list_rounded,
-                        iconColor: const Color(0xFF2F6FED),
-                        title: 'Card category filter',
-                        subtitle:
-                            'Filter menu on Home — pick a type or clear with ×',
-                        value: ref.watch(walletFilterEnabledProvider),
-                        onChanged: (_) {
-                          HapticService.select();
-                          ref
-                              .read(walletFilterEnabledProvider.notifier)
-                              .toggle();
-                        },
-                      ),
-                      const _SettingsDivider(),
-                      _SettingsToggleRow(
-                        icon: Icons.style_rounded,
-                        iconColor: const Color(0xFF0FA968),
-                        title: 'Stacked pass deck',
-                        subtitle:
-                            'Passes overlap in a deck you swipe sideways, '
-                            'instead of the vertical roll',
-                        value: ref.watch(passDeckModeProvider),
-                        onChanged: (_) {
-                          HapticService.select();
-                          ref.read(passDeckModeProvider.notifier).toggle();
-                        },
-                      ),
-                    ],
-                  ),
-                  if (session.isSignedIn) ...[
                     const SizedBox(height: 20),
                     _SettingsSection(
-                      title: 'Account',
+                      title: 'Navigation',
+                      surface: surface,
+                      borderColor: borderColor,
+                      isDark: isDark,
+                      children: [
+                        _SettingsToggleRow(
+                          title: 'Labels',
+                          value: ref.watch(showNavLabelsProvider),
+                          onChanged: (_) {
+                            HapticService.select();
+                            ref.read(showNavLabelsProvider.notifier).toggle();
+                          },
+                        ),
+                        const _SettingsDivider(),
+                        _SettingsToggleRow(
+                          title: 'Search button',
+                          subtitle: 'Search your wallet from the Home header',
+                          value: ref.watch(searchButtonEnabledProvider),
+                          onChanged: (_) {
+                            HapticService.select();
+                            ref
+                                .read(searchButtonEnabledProvider.notifier)
+                                .toggle();
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    _SettingsSection(
+                      title: 'Experimental',
+                      surface: surface,
+                      borderColor: borderColor,
+                      isDark: isDark,
+                      children: [
+                        _SettingsToggleRow(
+                          title: 'Card shine border',
+                          subtitle:
+                              'After 3.5s on ID cards, a soft iridescent border appears',
+                          value: ref.watch(cardShineBorderProvider),
+                          onChanged: (_) {
+                            HapticService.select();
+                            ref.read(cardShineBorderProvider.notifier).toggle();
+                          },
+                        ),
+                        const _SettingsDivider(),
+                        _SettingsToggleRow(
+                          title: 'Card category filter',
+                          subtitle:
+                              'Filter menu on Home — pick a type or clear with ×',
+                          value: ref.watch(walletFilterEnabledProvider),
+                          onChanged: (_) {
+                            HapticService.select();
+                            ref
+                                .read(walletFilterEnabledProvider.notifier)
+                                .toggle();
+                          },
+                        ),
+                        const _SettingsDivider(),
+                        _SettingsToggleRow(
+                          title: 'Stacked pass deck',
+                          subtitle:
+                              'Passes overlap in a deck you swipe sideways, '
+                              'instead of the vertical roll',
+                          value: ref.watch(passDeckModeProvider),
+                          onChanged: (_) {
+                            HapticService.select();
+                            ref.read(passDeckModeProvider.notifier).toggle();
+                          },
+                        ),
+                      ],
+                    ),
+                    if (session.isSignedIn) ...[
+                      const SizedBox(height: 20),
+                      _SettingsSection(
+                        title: 'Account',
+                        surface: surface,
+                        borderColor: borderColor,
+                        isDark: isDark,
+                        children: [
+                          _SettingsLinkRow(
+                            title: 'Manage account',
+                            subtitle: session.email,
+                            onTap: () {
+                              HapticService.select();
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const ManageAccountScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                          const _SettingsDivider(),
+                          _SettingsLinkRow(
+                            title: 'Sign out',
+                            onTap: () => _confirmSignOut(context, ref),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    _SettingsSection(
+                      title: 'About',
                       surface: surface,
                       borderColor: borderColor,
                       isDark: isDark,
                       children: [
                         _SettingsLinkRow(
-                          icon: Icons.manage_accounts_rounded,
-                          iconColor: const Color(0xFF2F6FED),
-                          title: 'Manage account',
-                          subtitle: session.email,
+                          title: 'About Docket',
                           onTap: () {
-                            HapticService.select();
                             Navigator.of(context).push(
                               MaterialPageRoute<void>(
-                                builder: (_) => const ManageAccountScreen(),
+                                builder: (_) => const AboutDocketScreen(),
                               ),
                             );
                           },
                         ),
                         const _SettingsDivider(),
                         _SettingsLinkRow(
-                          icon: Icons.logout_rounded,
-                          iconColor: const Color(0xFFFF3B30),
-                          title: 'Sign out',
-                          onTap: () => _confirmSignOut(context, ref),
+                          title: 'About developer',
+                          subtitle: kDeveloperDisplayName,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const AboutDeveloperScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        const _SettingsDivider(),
+                        _SettingsLinkRow(
+                          title: 'Mail to developer',
+                          subtitle: kDeveloperEmail,
+                          onTap: () => _mailToDeveloper(context),
+                        ),
+                        const _SettingsDivider(),
+                        _SettingsLinkRow(
+                          title: 'Weather credits',
+                          subtitle: 'Open-Meteo \u00b7 CC BY 4.0',
+                          onTap: () => _showWeatherCredits(context),
                         ),
                       ],
                     ),
-                  ],
-                  const SizedBox(height: 20),
-                  _SettingsSection(
-                    title: 'About',
-                    surface: surface,
-                    borderColor: borderColor,
-                    isDark: isDark,
-                    children: [
-                      _SettingsLinkRow(
-                        icon: Icons.info_outline_rounded,
-                        iconColor: const Color(0xFF8E8E93),
-                        title: 'About Docket',
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const AboutDocketScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      const _SettingsDivider(),
-                      _SettingsLinkRow(
-                        icon: Icons.person_outline_rounded,
-                        iconColor: const Color(0xFF8E8E93),
-                        title: 'About developer',
-                        subtitle: kDeveloperDisplayName,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const AboutDeveloperScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      const _SettingsDivider(),
-                      _SettingsLinkRow(
-                        icon: Icons.mail_outline_rounded,
-                        iconColor: const Color(0xFF8E8E93),
-                        title: 'Mail to developer',
-                        subtitle: kDeveloperEmail,
-                        onTap: () => _mailToDeveloper(context),
-                      ),
-                      const _SettingsDivider(),
-                      _SettingsLinkRow(
-                        icon: Icons.cloud_outlined,
-                        iconColor: const Color(0xFF8E8E93),
-                        title: 'Weather credits',
-                        subtitle: 'Open-Meteo \u00b7 CC BY 4.0',
-                        onTap: () => _showWeatherCredits(context),
+                    if (DevConfig.showDevMenu) ...[
+                      const SizedBox(height: 20),
+                      _DeveloperSection(
+                        surface: surface,
+                        borderColor: borderColor,
+                        isDark: isDark,
                       ),
                     ],
-                  ),
-                  if (DevConfig.showDevMenu) ...[
-                    const SizedBox(height: 20),
-                    _DeveloperSection(
-                      surface: surface,
-                      borderColor: borderColor,
-                      isDark: isDark,
-                    ),
+                    _DocketSettingsWatermark(isDark: isDark, ink: ink),
                   ],
-                  _DocketSettingsWatermark(isDark: isDark, ink: ink),
-                ],
                 ),
               ),
             ),
@@ -442,9 +423,7 @@ Future<void> _mailToDeveloper(BuildContext context) async {
   final Uri uri = Uri(
     scheme: 'mailto',
     path: kDeveloperEmail,
-    queryParameters: <String, String>{
-      'subject': 'Docket feedback',
-    },
+    queryParameters: <String, String>{'subject': 'Docket feedback'},
   );
 
   try {
@@ -518,7 +497,11 @@ Future<void> _handleGoogleSignInTap(BuildContext context, WidgetRef ref) async {
     await ref.read(authControllerProvider.notifier).signInWithGoogle();
   } on GoogleAuthFailure catch (e) {
     if (!context.mounted) return;
-    await _showAuthMessage(context, title: 'Could not sign in', message: e.message);
+    await _showAuthMessage(
+      context,
+      title: 'Could not sign in',
+      message: e.message,
+    );
   } catch (_) {
     if (!context.mounted) return;
     await _showAuthMessage(
@@ -586,7 +569,8 @@ class WalletMembershipCard extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<WalletMembershipCard> createState() => _WalletMembershipCardState();
+  ConsumerState<WalletMembershipCard> createState() =>
+      _WalletMembershipCardState();
 }
 
 class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
@@ -650,9 +634,11 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
   void _syncMotion() {
     if (!mounted) return;
     final ModalRoute<dynamic>? route = ModalRoute.of(context);
-    final bool routeVisible = route == null ||
+    final bool routeVisible =
+        route == null ||
         (route.isCurrent && (route.secondaryAnimation?.value ?? 0) == 0);
-    final bool shouldRun = widget.enableMotion &&
+    final bool shouldRun =
+        widget.enableMotion &&
         routeVisible &&
         TickerMode.valuesOf(context).enabled;
     if (shouldRun) {
@@ -677,10 +663,12 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
   Widget build(BuildContext context) {
     final DevFlags devFlags = ref.watch(devFlagsProvider);
     final AuthSession session = ref.watch(authSessionProvider);
-    final PassportProfile? primaryPassport =
-        widget.passports.isNotEmpty ? widget.passports.first : null;
-    final IdDocument? primaryId =
-        widget.idDocs.isNotEmpty ? widget.idDocs.first : null;
+    final PassportProfile? primaryPassport = widget.passports.isNotEmpty
+        ? widget.passports.first
+        : null;
+    final IdDocument? primaryId = widget.idDocs.isNotEmpty
+        ? widget.idDocs.first
+        : null;
 
     final String name = _resolveName(session, primaryPassport, primaryId);
     final List<Color> washes = walletWashColors(
@@ -749,7 +737,7 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
                         : 'Docket',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
+                    style: AppFonts.ui(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.1,
@@ -766,7 +754,7 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
                             name,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
+                            style: AppFonts.ui(
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
                               letterSpacing: -0.5,
@@ -803,8 +791,7 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
                                   (AuthControllerState s) => s.busy,
                                 ),
                               ),
-                              onTap: () =>
-                                  _handleGoogleSignInTap(context, ref),
+                              onTap: () => _handleGoogleSignInTap(context, ref),
                             ),
                           ),
                         ),
@@ -884,8 +871,9 @@ class _DeveloperSection extends ConsumerWidget {
 
   Future<void> _editApiBaseUrl(BuildContext context, WidgetRef ref) async {
     final DevFlags flags = ref.read(devFlagsProvider);
-    final TextEditingController controller =
-        TextEditingController(text: flags.apiBaseUrl);
+    final TextEditingController controller = TextEditingController(
+      text: flags.apiBaseUrl,
+    );
     final String? result = await showDialog<String>(
       context: context,
       builder: (BuildContext ctx) {
@@ -921,8 +909,9 @@ class _DeveloperSection extends ConsumerWidget {
 
   Future<void> _editDevAuthToken(BuildContext context, WidgetRef ref) async {
     final DevFlags flags = ref.read(devFlagsProvider);
-    final TextEditingController controller =
-        TextEditingController(text: flags.devAuthIdToken);
+    final TextEditingController controller = TextEditingController(
+      text: flags.devAuthIdToken,
+    );
     final String? result = await showDialog<String>(
       context: context,
       builder: (BuildContext ctx) {
@@ -983,8 +972,9 @@ class _DeveloperSection extends ConsumerWidget {
                       child: Text(
                         scheme.label,
                         style: TextStyle(
-                          fontWeight:
-                              isCurrent ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: isCurrent
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                       ),
                     ),
@@ -1017,8 +1007,6 @@ class _DeveloperSection extends ConsumerWidget {
       children: <Widget>[
         if (kDebugMode) ...[
           _SettingsLinkRow(
-            icon: Icons.auto_awesome_outlined,
-            iconColor: const Color(0xFF5E5CE6),
             title: 'Weather glance preview',
             subtitle: ref.watch(weatherGlancePreviewProvider).label,
             onTap: () async {
@@ -1042,8 +1030,6 @@ class _DeveloperSection extends ConsumerWidget {
           ),
           const _SettingsDivider(),
           _SettingsLinkRow(
-            icon: Icons.cloud_outlined,
-            iconColor: const Color(0xFF2F6FED),
             title: 'Weather scene preview',
             subtitle: ref.watch(skyPreviewProvider).label,
             onTap: () async {
@@ -1068,8 +1054,6 @@ class _DeveloperSection extends ConsumerWidget {
           const _SettingsDivider(),
         ],
         _SettingsToggleRow(
-          icon: Icons.science_rounded,
-          iconColor: const Color(0xFFAF52DE),
           title: 'Use mock passes',
           subtitle: flags.isMockPassesActive
               ? 'Fixtures · demo train & movie cards'
@@ -1082,8 +1066,6 @@ class _DeveloperSection extends ConsumerWidget {
         ),
         const _SettingsDivider(),
         _SettingsToggleRow(
-          icon: Icons.account_circle_rounded,
-          iconColor: const Color(0xFF2F6FED),
           title: 'Mock signed in',
           subtitle: flags.mockSignedIn
               ? 'Card shows name · Account section on'
@@ -1096,24 +1078,18 @@ class _DeveloperSection extends ConsumerWidget {
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(
-          icon: Icons.palette_rounded,
-          iconColor: const Color(0xFF5E5CE6),
           title: 'Card fluid gradient scheme',
           subtitle: flags.cardFluidScheme.label,
           onTap: () => _selectFluidScheme(context, ref),
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(
-          icon: Icons.link_rounded,
-          iconColor: const Color(0xFF2F6FED),
           title: 'API base URL',
           subtitle: urlLabel,
           onTap: () => _editApiBaseUrl(context, ref),
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(
-          icon: Icons.key_rounded,
-          iconColor: const Color(0xFFAF52DE),
           title: 'Dev auth token',
           subtitle: flags.devAuthIdToken.isEmpty
               ? 'Not set · needed to add passes'
@@ -1122,8 +1098,6 @@ class _DeveloperSection extends ConsumerWidget {
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(
-          icon: Icons.refresh_rounded,
-          iconColor: const Color(0xFF30D158),
           title: 'Reload passes',
           onTap: () {
             HapticService.select();
@@ -1139,8 +1113,6 @@ class _DeveloperSection extends ConsumerWidget {
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(
-          icon: Icons.badge_outlined,
-          iconColor: const Color(0xFF0A84FF),
           title: 'Load dummy IDs',
           subtitle: '5 passports + 5 Aadhaar/PAN variants',
           onTap: () {
@@ -1161,8 +1133,6 @@ class _DeveloperSection extends ConsumerWidget {
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(
-          icon: Icons.playlist_remove_rounded,
-          iconColor: const Color(0xFFFF453A),
           title: 'Remove dummy IDs',
           subtitle: 'Only cards whose id starts with dummy-',
           onTap: () {
@@ -1183,8 +1153,6 @@ class _DeveloperSection extends ConsumerWidget {
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(
-          icon: Icons.restart_alt_rounded,
-          iconColor: const Color(0xFF8E8E93),
           title: 'Reset dev flags',
           subtitle: 'Compile-time defaults',
           onTap: () async {
@@ -1266,7 +1234,7 @@ class _TapToOpenShineLabelState extends State<_TapToOpenShineLabel>
         ? Colors.white.withValues(alpha: 0.92)
         : widget.ink.withValues(alpha: 0.90);
 
-    final TextStyle labelStyle = GoogleFonts.inter(
+    final TextStyle labelStyle = AppFonts.ui(
       fontSize: 12,
       fontWeight: FontWeight.w600,
       letterSpacing: 0.2,
@@ -1294,24 +1262,8 @@ class _TapToOpenShineLabelState extends State<_TapToOpenShineLabel>
             return LinearGradient(
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
-              colors: <Color>[
-                base,
-                base,
-                mid,
-                peak,
-                mid,
-                base,
-                base,
-              ],
-              stops: const <double>[
-                0.0,
-                0.28,
-                0.42,
-                0.50,
-                0.58,
-                0.72,
-                1.0,
-              ],
+              colors: <Color>[base, base, mid, peak, mid, base, base],
+              stops: const <double>[0.0, 0.28, 0.42, 0.50, 0.58, 0.72, 1.0],
               tileMode: TileMode.clamp,
               transform: _ShimmerSlide(x / w),
             ).createShader(bounds);
@@ -1369,21 +1321,16 @@ class _ThemeAppearanceBlock extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Row(
                 children: <Widget>[
-                  const _SettingsRowIcon(
-                    icon: Icons.brightness_6_rounded,
-                    color: Color(0xFF6E40C9),
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Theme',
-                      style: GoogleFonts.inter(
+                      style: AppFonts.ui(
                         fontSize: 15.5,
                         fontWeight: FontWeight.w600,
                         letterSpacing: -0.2,
@@ -1394,12 +1341,12 @@ class _ThemeAppearanceBlock extends ConsumerWidget {
                 ],
               ),
               if (statusSubtitle != null) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Padding(
-                  padding: const EdgeInsets.only(left: 36),
+                  padding: EdgeInsets.zero,
                   child: Text(
                     statusSubtitle,
-                    style: GoogleFonts.inter(
+                    style: AppFonts.ui(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w400,
                       height: 1.25,
@@ -1413,7 +1360,9 @@ class _ThemeAppearanceBlock extends ConsumerWidget {
                 value: settings.preference,
                 onChanged: (AppThemePreference next) {
                   HapticService.select();
-                  ref.read(themeControllerProvider.notifier).setPreference(next);
+                  ref
+                      .read(themeControllerProvider.notifier)
+                      .setPreference(next);
                 },
               ),
             ],
@@ -1428,7 +1377,7 @@ class _ThemeAppearanceBlock extends ConsumerWidget {
               children: <Widget>[
                 Text(
                   'Schedule',
-                  style: GoogleFonts.inter(
+                  style: AppFonts.ui(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.1,
@@ -1518,10 +1467,7 @@ String? _themeStatusSubtitle(ThemeControllerState state) {
 }
 
 class _ThemeSegmentedControl extends StatelessWidget {
-  const _ThemeSegmentedControl({
-    required this.value,
-    required this.onChanged,
-  });
+  const _ThemeSegmentedControl({required this.value, required this.onChanged});
 
   final AppThemePreference value;
   final ValueChanged<AppThemePreference> onChanged;
@@ -1542,10 +1488,7 @@ class _ThemeSegmentedControl extends StatelessWidget {
 }
 
 class _ScheduleKindSegmented extends StatelessWidget {
-  const _ScheduleKindSegmented({
-    required this.value,
-    required this.onChanged,
-  });
+  const _ScheduleKindSegmented({required this.value, required this.onChanged});
 
   final ScheduleKind value;
   final ValueChanged<ScheduleKind> onChanged;
@@ -1610,8 +1553,9 @@ class _PillSegmentedState<T> extends State<_PillSegmented<T>> {
     final Color thumbBorder = isDark
         ? Colors.white.withValues(alpha: 0.14)
         : Colors.black.withValues(alpha: 0.04);
-    final Color selectedFg =
-        isDark ? const Color(0xFFF5F5F7) : const Color(0xFF1C1C1E);
+    final Color selectedFg = isDark
+        ? const Color(0xFFF5F5F7)
+        : const Color(0xFF1C1C1E);
     final Color unselectedFg = isDark
         ? Colors.white.withValues(alpha: 0.58)
         : ink.withValues(alpha: 0.48);
@@ -1694,7 +1638,7 @@ class _PillSegmentedState<T> extends State<_PillSegmented<T>> {
                             child: AnimatedDefaultTextStyle(
                               duration: _slideDuration,
                               curve: _slideCurve,
-                              style: GoogleFonts.inter(
+                              style: AppFonts.ui(
                                 // Slightly tighter type when 4 segments (theme row).
                                 fontSize: count >= 4 ? 11.5 : 13,
                                 fontWeight: i == selected
@@ -1750,13 +1694,13 @@ class _ThemeTimeRow extends StatelessWidget {
       child: SizedBox(
         height: 54,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 18),
           child: Row(
             children: <Widget>[
               Expanded(
                 child: Text(
                   title,
-                  style: GoogleFonts.inter(
+                  style: AppFonts.ui(
                     fontSize: 15.5,
                     fontWeight: FontWeight.w500,
                     letterSpacing: -0.2,
@@ -1766,7 +1710,7 @@ class _ThemeTimeRow extends StatelessWidget {
               ),
               Text(
                 formatMinutesOfDay(minutes),
-                style: GoogleFonts.inter(
+                style: AppFonts.ui(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w500,
                   color: muted,
@@ -1810,13 +1754,13 @@ class _SettingsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.only(left: 6, bottom: 8),
+          padding: const EdgeInsets.only(left: 18, bottom: 8),
           child: Text(
-            title,
-            style: GoogleFonts.inter(
-              fontSize: 13,
+            title.toUpperCase(),
+            style: AppFonts.ui(
+              fontSize: 11.5,
               fontWeight: FontWeight.w600,
-              letterSpacing: -0.1,
+              letterSpacing: 1.0,
               color: muted,
             ),
           ),
@@ -1851,18 +1795,14 @@ class _SettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Widget content = child ??
+    final Widget content =
+        child ??
         (children != null
-            ? Column(
-                mainAxisSize: MainAxisSize.min,
-                children: children!,
-              )
+            ? Column(mainAxisSize: MainAxisSize.min, children: children!)
             : const SizedBox.shrink());
 
     return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22.0),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(22.0)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(22.0),
         child: DecoratedBox(
@@ -1885,59 +1825,27 @@ class _SettingsDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color dividerColor = Theme.of(context)
-        .colorScheme
-        .onSurface
+    final Color dividerColor = Theme.of(context).colorScheme.onSurface
         .withValues(
           alpha: Theme.of(context).brightness == Brightness.dark ? 0.08 : 0.06,
         );
 
-    // Align under text after bare icon (14 pad + 24 icon + 12 gap).
+    // Inset to the row text; rows carry no leading icon.
     return Padding(
-      padding: const EdgeInsets.only(left: 50),
+      padding: const EdgeInsets.only(left: 18),
       child: Divider(height: 1, thickness: 0.5, color: dividerColor),
-    );
-  }
-}
-
-class _SettingsRowIcon extends StatelessWidget {
-  const _SettingsRowIcon({
-    required this.icon,
-    // Kept for call-site compatibility; all row icons use a neutral tint.
-    required this.color,
-  });
-
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    // Same default ink for every row in both modes (no accent colors).
-    final Color iconTint =
-        isDark ? const Color(0xFFE5E5EA) : const Color(0xFF3A3A3C);
-
-    // Bare glyph only — no squircle / plate behind the icon.
-    return SizedBox(
-      width: 24,
-      height: 24,
-      child: Icon(icon, size: 22, color: iconTint),
     );
   }
 }
 
 class _SettingsToggleRow extends StatelessWidget {
   const _SettingsToggleRow({
-    required this.icon,
-    required this.iconColor,
     required this.title,
     required this.value,
     required this.onChanged,
     this.subtitle,
   });
 
-  final IconData icon;
-  final Color iconColor;
   final String title;
   final String? subtitle;
   final bool value;
@@ -1952,11 +1860,9 @@ class _SettingsToggleRow extends StatelessWidget {
     return SizedBox(
       height: subtitle == null ? 58 : 66,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 18),
         child: Row(
           children: <Widget>[
-            _SettingsRowIcon(icon: icon, color: iconColor),
-            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1964,7 +1870,7 @@ class _SettingsToggleRow extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     title,
-                    style: GoogleFonts.inter(
+                    style: AppFonts.ui(
                       fontSize: 15.5,
                       fontWeight: FontWeight.w500,
                       letterSpacing: -0.2,
@@ -1977,7 +1883,7 @@ class _SettingsToggleRow extends StatelessWidget {
                       subtitle!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
+                      style: AppFonts.ui(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
                         height: 1.2,
@@ -2005,10 +1911,7 @@ class _SettingsToggleRow extends StatelessWidget {
 }
 
 class _AnimatedPressScale extends StatefulWidget {
-  const _AnimatedPressScale({
-    required this.child,
-    this.onTap,
-  });
+  const _AnimatedPressScale({required this.child, this.onTap});
 
   final Widget child;
   final VoidCallback? onTap;
@@ -2040,10 +1943,7 @@ class _AnimatedPressScaleState extends State<_AnimatedPressScale> {
 
 /// Cycles profile mesh shape: Rounded (squircle) ↔ Circle.
 class _ProfileAvatarShapeRow extends StatelessWidget {
-  const _ProfileAvatarShapeRow({
-    required this.shape,
-    required this.onTap,
-  });
+  const _ProfileAvatarShapeRow({required this.shape, required this.onTap});
 
   final ProfileAvatarShape shape;
   final VoidCallback onTap;
@@ -2059,16 +1959,9 @@ class _ProfileAvatarShapeRow extends StatelessWidget {
       child: SizedBox(
         height: 58,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 18),
           child: Row(
             children: <Widget>[
-              _SettingsRowIcon(
-                icon: shape == ProfileAvatarShape.circle
-                    ? Icons.circle_outlined
-                    : Icons.rounded_corner_rounded,
-                color: const Color(0xFFAF52DE),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -2076,7 +1969,7 @@ class _ProfileAvatarShapeRow extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       'Profile icon shape',
-                      style: GoogleFonts.inter(
+                      style: AppFonts.ui(
                         fontSize: 15.5,
                         fontWeight: FontWeight.w500,
                         letterSpacing: -0.2,
@@ -2085,7 +1978,7 @@ class _ProfileAvatarShapeRow extends StatelessWidget {
                     ),
                     Text(
                       'Top bar account control',
-                      style: GoogleFonts.inter(
+                      style: AppFonts.ui(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w400,
                         color: muted,
@@ -2096,7 +1989,7 @@ class _ProfileAvatarShapeRow extends StatelessWidget {
               ),
               Text(
                 shape.label,
-                style: GoogleFonts.inter(
+                style: AppFonts.ui(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
                   color: muted,
@@ -2118,15 +2011,11 @@ class _ProfileAvatarShapeRow extends StatelessWidget {
 
 class _SettingsLinkRow extends StatelessWidget {
   const _SettingsLinkRow({
-    required this.icon,
-    required this.iconColor,
     required this.title,
     required this.onTap,
     this.subtitle,
   });
 
-  final IconData icon;
-  final Color iconColor;
   final String title;
   final String? subtitle;
   final VoidCallback onTap;
@@ -2145,16 +2034,14 @@ class _SettingsLinkRow extends StatelessWidget {
       child: SizedBox(
         height: subtitle == null ? 58 : 66,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 18),
           child: Row(
             children: <Widget>[
-              _SettingsRowIcon(icon: icon, color: iconColor),
-              const SizedBox(width: 12),
               Expanded(
                 child: subtitle == null
                     ? Text(
                         title,
-                        style: GoogleFonts.inter(
+                        style: AppFonts.ui(
                           fontSize: 15.5,
                           fontWeight: FontWeight.w500,
                           letterSpacing: -0.2,
@@ -2167,7 +2054,7 @@ class _SettingsLinkRow extends StatelessWidget {
                         children: <Widget>[
                           Text(
                             title,
-                            style: GoogleFonts.inter(
+                            style: AppFonts.ui(
                               fontSize: 15.5,
                               fontWeight: FontWeight.w500,
                               letterSpacing: -0.2,
@@ -2179,7 +2066,7 @@ class _SettingsLinkRow extends StatelessWidget {
                             subtitle!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
+                            style: AppFonts.ui(
                               fontSize: 12,
                               fontWeight: FontWeight.w400,
                               color: muted,
@@ -2203,10 +2090,7 @@ class _SettingsLinkRow extends StatelessWidget {
 
 /// Big translucent wordmark at the foot of Settings.
 class _DocketSettingsWatermark extends StatelessWidget {
-  const _DocketSettingsWatermark({
-    required this.isDark,
-    required this.ink,
-  });
+  const _DocketSettingsWatermark({required this.isDark, required this.ink});
 
   final bool isDark;
   final Color ink;
@@ -2228,7 +2112,7 @@ class _DocketSettingsWatermark extends StatelessWidget {
                 child: Text(
                   'Docket',
                   maxLines: 1,
-                  style: GoogleFonts.inter(
+                  style: AppFonts.ui(
                     fontSize: 72,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -3.2,
@@ -2241,7 +2125,7 @@ class _DocketSettingsWatermark extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               'v$kAppVersion',
-              style: GoogleFonts.inter(
+              style: AppFonts.ui(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.4,
@@ -2264,11 +2148,13 @@ class AboutDocketScreen extends StatelessWidget {
     final bool isDark = theme.brightness == Brightness.dark;
     final Color ink = theme.colorScheme.onSurface;
     final Color muted = ink.withValues(alpha: isDark ? 0.45 : 0.55);
-    final Color surface =
-        isDark ? const Color(0xFF16161A) : theme.colorScheme.surface;
+    final Color surface = isDark
+        ? const Color(0xFF16161A)
+        : theme.colorScheme.surface;
     final Color borderColor = ink.withValues(alpha: isDark ? 0.08 : 0.06);
-    final Color bg =
-        isDark ? const Color(0xFF0A0A0D) : theme.scaffoldBackgroundColor;
+    final Color bg = isDark
+        ? const Color(0xFF0A0A0D)
+        : theme.scaffoldBackgroundColor;
 
     return Scaffold(
       backgroundColor: bg,
@@ -2289,7 +2175,7 @@ class AboutDocketScreen extends StatelessWidget {
                 children: [
                   Text(
                     'Docket',
-                    style: GoogleFonts.inter(
+                    style: AppFonts.ui(
                       fontSize: 28,
                       fontWeight: FontWeight.w700,
                       letterSpacing: -0.5,
@@ -2343,11 +2229,13 @@ class AboutDeveloperScreen extends StatelessWidget {
     final bool isDark = theme.brightness == Brightness.dark;
     final Color ink = theme.colorScheme.onSurface;
     final Color muted = ink.withValues(alpha: isDark ? 0.45 : 0.55);
-    final Color surface =
-        isDark ? const Color(0xFF16161A) : theme.colorScheme.surface;
+    final Color surface = isDark
+        ? const Color(0xFF16161A)
+        : theme.colorScheme.surface;
     final Color borderColor = ink.withValues(alpha: isDark ? 0.08 : 0.06);
-    final Color bg =
-        isDark ? const Color(0xFF0A0A0D) : theme.scaffoldBackgroundColor;
+    final Color bg = isDark
+        ? const Color(0xFF0A0A0D)
+        : theme.scaffoldBackgroundColor;
 
     return Scaffold(
       backgroundColor: bg,
@@ -2368,7 +2256,7 @@ class AboutDeveloperScreen extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     'Developer',
-                    style: GoogleFonts.inter(
+                    style: AppFonts.ui(
                       fontSize: 28,
                       fontWeight: FontWeight.w700,
                       letterSpacing: -0.5,
@@ -2404,19 +2292,13 @@ class AboutDeveloperScreen extends StatelessWidget {
                     isDark: isDark,
                     children: <Widget>[
                       _SettingsLinkRow(
-                        icon: Icons.language_rounded,
-                        iconColor: const Color(0xFF2F6FED),
                         title: 'Website',
                         subtitle: 'navadeepnaidu.com',
-                        onTap: () => _openDeveloperLink(
-                          context,
-                          kDeveloperWebsiteUrl,
-                        ),
+                        onTap: () =>
+                            _openDeveloperLink(context, kDeveloperWebsiteUrl),
                       ),
                       const _SettingsDivider(),
                       _SettingsLinkRow(
-                        icon: Icons.article_outlined,
-                        iconColor: const Color(0xFFE07A2F),
                         title: 'Blog',
                         subtitle: 'blog.navadeepnaidu.com',
                         onTap: () =>
@@ -2424,8 +2306,6 @@ class AboutDeveloperScreen extends StatelessWidget {
                       ),
                       const _SettingsDivider(),
                       _SettingsLinkRow(
-                        icon: Icons.code_rounded,
-                        iconColor: const Color(0xFF6E7681),
                         title: 'GitHub',
                         subtitle: 'github.com/navadeepnaidu7',
                         onTap: () =>
@@ -2433,8 +2313,6 @@ class AboutDeveloperScreen extends StatelessWidget {
                       ),
                       const _SettingsDivider(),
                       _SettingsLinkRow(
-                        icon: Icons.alternate_email_rounded,
-                        iconColor: const Color(0xFF1DA1F2),
                         title: 'X',
                         subtitle: '@navadeep_naidu7',
                         onTap: () =>
@@ -2442,8 +2320,6 @@ class AboutDeveloperScreen extends StatelessWidget {
                       ),
                       const _SettingsDivider(),
                       _SettingsLinkRow(
-                        icon: Icons.mail_outline_rounded,
-                        iconColor: const Color(0xFF8E8E93),
                         title: 'Mail to developer',
                         subtitle: kDeveloperEmail,
                         onTap: () => _mailToDeveloper(context),

@@ -64,8 +64,9 @@ Future<String?> showDocumentDatePicker({
     backgroundColor: Colors.transparent,
     builder: (BuildContext ctx) {
       final bool isDark = Theme.of(ctx).brightness == Brightness.dark;
-      final Color ink =
-          isDark ? const Color(0xFFF2F2F7) : const Color(0xFF1C1C1E);
+      final Color ink = isDark
+          ? const Color(0xFFF2F2F7)
+          : const Color(0xFF1C1C1E);
 
       return AppleSheet(
         title: title,

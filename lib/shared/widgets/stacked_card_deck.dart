@@ -67,8 +67,9 @@ class DeckGeometry {
         scale: math.pow(scaleStep, distance).toDouble(),
         opacity: distance <= depthFadeStart
             ? 1
-            : (1 - (distance - depthFadeStart) /
-                      (depthFadeEnd - depthFadeStart))
+            : (1 -
+                      (distance - depthFadeStart) /
+                          (depthFadeEnd - depthFadeStart))
                   .clamp(0.0, 1.0),
       );
     }
@@ -213,9 +214,7 @@ class _StackedCardDeckState extends State<StackedCardDeck>
   void _springTo(double target, double velocity) {
     _motion
       ..stop()
-      ..animateWith(
-        SpringSimulation(_spring, _motion.value, target, velocity),
-      );
+      ..animateWith(SpringSimulation(_spring, _motion.value, target, velocity));
   }
 
   void _onDragStart(DragStartDetails _) => _motion.stop();

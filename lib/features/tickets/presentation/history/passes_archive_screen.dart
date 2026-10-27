@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/assets/app_assets.dart';
 import '../../../../core/motion/entry_reveal.dart';
@@ -165,7 +164,7 @@ class ArchiveNotice extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
+              style: AppFonts.ui(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: muted,
@@ -178,7 +177,7 @@ class ArchiveNotice extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(
+                style: AppFonts.ui(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: AppTokens.tertiaryLabel(scheme),

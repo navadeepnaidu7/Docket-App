@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/motion/entry_reveal.dart';
@@ -68,10 +67,7 @@ class DocumentEntryScaffold extends StatelessWidget {
                 if (showProgress && stepCount > 1)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                    child: _StepProgress(
-                      index: stepIndex,
-                      count: stepCount,
-                    ),
+                    child: _StepProgress(index: stepIndex, count: stepCount),
                   ),
                 if (banner != null)
                   Padding(
@@ -174,7 +170,7 @@ class _EntryAppBar extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: GoogleFonts.inter(
+              style: AppFonts.ui(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.35,
@@ -185,7 +181,7 @@ class _EntryAppBar extends StatelessWidget {
           if (stepLabel != null)
             Text(
               stepLabel!,
-              style: GoogleFonts.inter(
+              style: AppFonts.ui(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: muted,
@@ -272,10 +268,7 @@ class _StickyCta extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           border: Border(
-            top: BorderSide(
-              color: AppTokens.separator(scheme),
-              width: 0.5,
-            ),
+            top: BorderSide(color: AppTokens.separator(scheme), width: 0.5),
           ),
         ),
         child: Padding(
@@ -309,7 +302,7 @@ class _StickyCta extends StatelessWidget {
                     ],
                     Text(
                       label,
-                      style: GoogleFonts.inter(
+                      style: AppFonts.ui(
                         color: fg,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -329,11 +322,7 @@ class _StickyCta extends StatelessWidget {
 
 /// Inline error / info banner for step validation.
 class EntryBanner extends StatelessWidget {
-  const EntryBanner({
-    super.key,
-    required this.message,
-    this.isError = true,
-  });
+  const EntryBanner({super.key, required this.message, this.isError = true});
 
   final String message;
   final bool isError;
@@ -352,7 +341,9 @@ class EntryBanner extends StatelessWidget {
       child: Row(
         children: <Widget>[
           Icon(
-            isError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+            isError
+                ? Icons.error_outline_rounded
+                : Icons.check_circle_outline_rounded,
             size: 18,
             color: base,
           ),
@@ -360,7 +351,7 @@ class EntryBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: GoogleFonts.inter(
+              style: AppFonts.ui(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: base,

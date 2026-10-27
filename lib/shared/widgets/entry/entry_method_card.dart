@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../bounce_tap.dart';
@@ -41,14 +40,8 @@ class EntryMethodCard extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: isDark
-                  ? const <Color>[
-                      Color(0xFF2C2C2E),
-                      Color(0xFF1C1C1E),
-                    ]
-                  : <Color>[
-                      scheme.onSurface,
-                      const Color(0xFF1C1C1E),
-                    ],
+                  ? const <Color>[Color(0xFF2C2C2E), Color(0xFF1C1C1E)]
+                  : <Color>[scheme.onSurface, const Color(0xFF1C1C1E)],
             ),
             borderRadius: BorderRadius.circular(22),
             boxShadow: <BoxShadow>[
@@ -77,7 +70,7 @@ class EntryMethodCard extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       title,
-                      style: GoogleFonts.inter(
+                      style: AppFonts.ui(
                         color: Colors.white,
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
@@ -87,7 +80,7 @@ class EntryMethodCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: GoogleFonts.inter(
+                      style: AppFonts.ui(
                         color: Colors.white.withValues(alpha: 0.72),
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -144,7 +137,7 @@ class EntryMethodCard extends StatelessWidget {
                 children: <Widget>[
                   Text(
                     title,
-                    style: GoogleFonts.inter(
+                    style: AppFonts.ui(
                       color: scheme.onSurface,
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -154,7 +147,7 @@ class EntryMethodCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     subtitle,
-                    style: GoogleFonts.inter(
+                    style: AppFonts.ui(
                       color: AppTokens.secondaryLabel(scheme),
                       fontSize: 12.5,
                       fontWeight: FontWeight.w500,
@@ -178,11 +171,7 @@ class EntryMethodCard extends StatelessWidget {
 }
 
 class EntryTextAction extends StatelessWidget {
-  const EntryTextAction({
-    super.key,
-    required this.label,
-    required this.onTap,
-  });
+  const EntryTextAction({super.key, required this.label, required this.onTap});
 
   final String label;
   final VoidCallback onTap;
@@ -198,7 +187,7 @@ class EntryTextAction extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Text(
             label,
-            style: GoogleFonts.inter(
+            style: AppFonts.ui(
               color: scheme.primary,
               fontSize: 15,
               fontWeight: FontWeight.w700,

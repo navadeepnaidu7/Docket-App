@@ -19,10 +19,7 @@ class StudioSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTokens.groupedFieldFill(scheme, isDark: isDark),
         borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-        border: Border.all(
-          color: AppTokens.separator(scheme),
-          width: 0.5,
-        ),
+        border: Border.all(color: AppTokens.separator(scheme), width: 0.5),
       ),
       child: child,
     );

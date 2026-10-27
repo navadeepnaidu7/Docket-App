@@ -86,10 +86,7 @@ class _StudioFieldState extends State<StudioField> {
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: borderColor,
-              width: isDark ? 0.5 : 1.0,
-            ),
+            border: Border.all(color: borderColor, width: isDark ? 0.5 : 1.0),
             boxShadow: <BoxShadow>[
               if (focused && !isDark && !hasError)
                 BoxShadow(
@@ -106,10 +103,7 @@ class _StudioFieldState extends State<StudioField> {
             children: <Widget>[
               Padding(
                 padding: EdgeInsets.only(top: widget.maxLines > 1 ? 16 : 0),
-                child: Icon(
-                  widget.icon,
-                  color: iconColor,
-                ),
+                child: Icon(widget.icon, color: iconColor),
               ),
               const SizedBox(width: 10),
               Expanded(

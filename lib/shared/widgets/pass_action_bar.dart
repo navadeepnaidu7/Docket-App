@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/motion/smooth_curves.dart';
 import 'bounce_tap.dart';
+import '../../core/theme/app_theme.dart';
 
 /// What a [PassActionBar] button is currently doing.
 ///
@@ -143,10 +143,10 @@ class _ActionButton extends StatelessWidget {
   final VoidCallback onTap;
 
   String get _shownLabel => switch (state) {
-        PassActionState.idle => label,
-        PassActionState.busy => busyLabel ?? label,
-        PassActionState.done => doneLabel ?? label,
-      };
+    PassActionState.idle => label,
+    PassActionState.busy => busyLabel ?? label,
+    PassActionState.done => doneLabel ?? label,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -157,7 +157,7 @@ class _ActionButton extends StatelessWidget {
       key: ValueKey<String>(_shownLabel),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: GoogleFonts.inter(
+      style: AppFonts.ui(
         color: ink,
         fontSize: 16,
         fontWeight: FontWeight.w700,

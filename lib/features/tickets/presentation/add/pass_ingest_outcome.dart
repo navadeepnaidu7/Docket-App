@@ -5,7 +5,7 @@ import '../../domain/pass_ingest.dart';
 
 /// A failed import stays on screen until the user chooses what to do next.
 ///
-/// Success is not a page. The particle field says what was added, then clears.
+/// Success is the particle field's done moment. It draws, names the pass, then clears.
 class PassIngestOutcome extends StatelessWidget {
   const PassIngestOutcome({
     super.key,

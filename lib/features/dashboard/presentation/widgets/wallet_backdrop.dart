@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../core/wallet/wallet_backdrop_tilt.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/wallet/wallet_palette.dart';
 
 class WalletBackdrop extends StatefulWidget {
@@ -250,14 +251,13 @@ class AppleCardGradientPainter extends CustomPainter {
     final double w = size.width;
     final double h = size.height;
 
-    final Color baseDocBg = isDark
-        ? const Color(0xFF080E1A)
-        : const Color(0xFFF2F2F7);
-    final Color baseTicketBg = isDark
-        ? const Color(0xFF140D0B)
-        : const Color(0xFFFFF8E8);
-    final Color neutralBase = Color.lerp(baseDocBg, baseTicketBg, ticketsMix)!;
-    final double tintStrength = isDark ? 0.22 : 0.10;
+    // Both tabs share the neutral page colour. Colour belongs to the card; the
+    // backdrop only echoes it as a halo, so switching tabs shifts the glow
+    // rather than repainting the whole screen navy or maroon.
+    final Color neutralBase = AppTheme.background(
+      isDark ? Brightness.dark : Brightness.light,
+    );
+    final double tintStrength = isDark ? 0.08 : 0.05;
     final Paint basePaint = Paint()
       ..color = Color.lerp(
         neutralBase,
@@ -265,6 +265,10 @@ class AppleCardGradientPainter extends CustomPainter {
         tintStrength,
       )!;
     canvas.drawRect(Offset.zero & size, basePaint);
+
+    // Global strength of the halo. Tuned so the focused card is clearly the
+    // most saturated thing on screen.
+    final double halo = isDark ? 0.62 : 0.5;
 
     void drawOrb(
       Color color,
@@ -274,7 +278,7 @@ class AppleCardGradientPainter extends CustomPainter {
       double blurFactor = 0.8,
     }) {
       final Paint paint = Paint()
-        ..color = color
+        ..color = color.withValues(alpha: color.a * halo)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, radius * blurFactor);
       canvas.drawCircle(Offset(cx, cy), radius, paint);
     }
@@ -366,8 +370,7 @@ class AppleCardGradientPainter extends CustomPainter {
         radius: 1.05,
         colors: [
           Colors.transparent,
-          (isDark ? Colors.black : Colors.black.withValues(alpha: 0.08))
-              .withValues(alpha: isDark ? 0.35 : 0.08),
+          Colors.black.withValues(alpha: isDark ? 0.28 : 0.0),
         ],
         stops: const [0.55, 1.0],
       ).createShader(vignetteRect);

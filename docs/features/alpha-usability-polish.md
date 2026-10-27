@@ -32,8 +32,9 @@ Run analyzer and relevant existing suites. Record device-only limits honestly.
 - Import failures remain visible until acted on. Retry keeps the original
   request. Cancelling a replacement file picker or PNR editor keeps the failed
   request. PNR edits are prefilled; invalid edits never replace it.
-- Success stays on the particle field. It names the ticket ("Your train ticket
-  is added"), mentions a missing boarding code, and then clears. An archived
+- Success stays on the particle field. A ring closes and a tick draws, then
+  it names the ticket ("Your train ticket is added") and mentions a missing
+  boarding code before it clears. An archived
   pass says it is in Archive and clears on its own. Loading text names real
   phases, without a fake percentage.
 - Sample pass labeling is visible outside developer builds. Demo import errors

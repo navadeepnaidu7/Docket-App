@@ -2,24 +2,61 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// The one UI face. Geist ships Regular to Bold in `assets/fonts/` and
+/// runtime fetching is off, so heavier weights are clamped rather than left to
+/// miss the asset lookup and fall back to Roboto.
+abstract final class AppFonts {
+  static TextStyle ui({
+    double? fontSize,
+    FontWeight? fontWeight,
+    double? letterSpacing,
+    double? height,
+    Color? color,
+    FontStyle? fontStyle,
+    List<FontFeature>? fontFeatures,
+    TextDecoration? decoration,
+    List<Shadow>? shadows,
+  }) {
+    final FontWeight w = fontWeight == null
+        ? FontWeight.w400
+        : (fontWeight.value > 700 ? FontWeight.w700 : fontWeight);
+    return GoogleFonts.geist(
+      fontSize: fontSize,
+      fontWeight: w,
+      letterSpacing: letterSpacing,
+      height: height,
+      color: color,
+      fontStyle: fontStyle,
+      fontFeatures: fontFeatures,
+      decoration: decoration,
+      shadows: shadows,
+    );
+  }
+
+  /// Tabular figures for numbers that change or align (ids, dates, counts).
+  static const List<FontFeature> tabular = <FontFeature>[
+    FontFeature.tabularFigures(),
+  ];
+}
+
 class AppTheme {
-  // ── Light palette — warm cream, deep navy ink, rich indigo ──────────────────
-  static const Color _lightBg = Color(0xFFF5F0E8); // warm cream — not grey
-  static const Color _lightSurface = Color(
-    0xFFFBF8F2,
-  ); // lighter cream for cards
+  // ── Light palette — neutral paper, near-black ink ──────────────────────────
+  // Colour lives in the cards, not the chrome. The page is a quiet warm grey so
+  // a gradient card is the brightest thing on screen; ink doubles as the
+  // primary so the main action reads as a solid black pill.
+  static const Color _lightBg = Color(0xFFF4F4F2);
+  static const Color _lightSurface = Color(0xFFFFFFFF); // grouped cards
   static const Color _lightElevated = Color(0xFFFFFFFF);
-  static const Color _lightInk = Color(0xFF0D1B2A); // deep navy — not black
-  static const Color _lightPrimary = Color(0xFF1A3A6B); // rich indigo-navy
+  static const Color _lightInk = Color(0xFF111113);
+  static const Color _lightPrimary = Color(0xFF111113);
   static const Color _lightAccent = Color(0xFFD4A853); // warm gold
 
-  // ── Dark palette — neutral graphite (matches Settings / system dark) ───────
-  // Avoid navy/electric-blue chrome; keep warm gold as the only color accent.
-  static const Color _darkBg = Color(0xFF0A0A0D); // near-black graphite
-  static const Color _darkSurface = Color(0xFF16161A); // grouped cards
-  static const Color _darkElevated = Color(0xFF1C1C1E); // sheets / raised
-  static const Color _darkInk = Color(0xFFF2F2F7); // system-like label
-  static const Color _darkPrimary = Color(0xFFE8E8ED); // light fill (not blue)
+  // ── Dark palette — neutral graphite ─────────────────────────────────────────
+  static const Color _darkBg = Color(0xFF0B0B0C);
+  static const Color _darkSurface = Color(0xFF161618); // grouped cards
+  static const Color _darkElevated = Color(0xFF1E1E21); // sheets / raised
+  static const Color _darkInk = Color(0xFFF5F5F7);
+  static const Color _darkPrimary = Color(0xFFF5F5F7); // light fill (not blue)
   static const Color _darkAccent = Color(0xFFE8B84B); // warm amber
 
   static const Color success = Color(0xFF30D158);
@@ -37,8 +74,9 @@ class AppTheme {
   /// All text inputs.
   static const double radiusInput = 14.0;
 
-  /// All primary and secondary buttons.
-  static const double radiusButton = 14.0;
+  /// All primary and secondary buttons. Fully rounded: the primary action is
+  /// a pill, never a rounded rectangle.
+  static const double radiusButton = 999.0;
 
   /// Grouped sections and cards.
   static const double radiusCard = 20.0;
@@ -51,7 +89,7 @@ class AppTheme {
   static const double radiusPill = 999.0;
 
   /// Primary CTAs, inputs, action rows.
-  static const double controlHeight = 52.0;
+  static const double controlHeight = 56.0;
 
   /// Secondary and text buttons, icon hit targets.
   static const double controlHeightSm = 44.0;
@@ -98,15 +136,15 @@ class AppTheme {
   static List<Color> studioGradient(Brightness b) {
     if (b == Brightness.dark) {
       return const <Color>[
-        Color(0xFF0A0A0D),
-        Color(0xFF121214),
-        Color(0xFF0C0C0F),
+        Color(0xFF0B0B0C),
+        Color(0xFF111113),
+        Color(0xFF0B0B0C),
       ];
     }
     return const <Color>[
-      Color(0xFFF5F0E8),
-      Color(0xFFFBF8F2),
-      Color(0xFFEDE7DD),
+      Color(0xFFF4F4F2),
+      Color(0xFFF8F8F6),
+      Color(0xFFEFEFEC),
     ];
   }
 
@@ -146,78 +184,83 @@ class AppTheme {
       outlineVariant: outline.withValues(alpha: 0.6),
     );
 
-    final TextTheme text = GoogleFonts.interTextTheme().copyWith(
-      displayLarge: GoogleFonts.inter(
+    final TextTheme text = GoogleFonts.geistTextTheme().copyWith(
+      displayLarge: AppFonts.ui(
         fontSize: 40,
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.50,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -1.2,
+        height: 1.05,
         color: ink,
       ),
-      displayMedium: GoogleFonts.inter(
+      displayMedium: AppFonts.ui(
         fontSize: 34,
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.40,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -1.0,
+        height: 1.08,
         color: ink,
       ),
-      displaySmall: GoogleFonts.inter(
+      displaySmall: AppFonts.ui(
         fontSize: 28,
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.40,
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.7,
+        height: 1.12,
         color: ink,
       ),
-      titleLarge: GoogleFonts.inter(
+      titleLarge: AppFonts.ui(
         fontSize: 22,
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.30,
-        color: ink,
-      ),
-      titleMedium: GoogleFonts.inter(
-        fontSize: 20,
         fontWeight: FontWeight.w600,
-        letterSpacing: -0.20,
+        letterSpacing: -0.5,
+        height: 1.2,
         color: ink,
       ),
-      titleSmall: GoogleFonts.inter(
-        fontSize: 17,
+      titleMedium: AppFonts.ui(
+        fontSize: 19,
         fontWeight: FontWeight.w600,
-        letterSpacing: -0.20,
+        letterSpacing: -0.35,
         color: ink,
       ),
-      bodyLarge: GoogleFonts.inter(
-        fontSize: 17,
-        height: 1.35,
-        letterSpacing: -0.20,
-        color: ink,
-      ),
-      bodyMedium: GoogleFonts.inter(
-        fontSize: 15,
-        height: 1.35,
-        letterSpacing: -0.15,
-        color: ink.withValues(alpha: isDark ? 0.78 : 0.72),
-      ),
-      bodySmall: GoogleFonts.inter(
-        fontSize: 13,
-        height: 1.30,
-        letterSpacing: -0.08,
-        color: ink.withValues(alpha: isDark ? 0.68 : 0.60),
-      ),
-      labelLarge: GoogleFonts.inter(
+      titleSmall: AppFonts.ui(
         fontSize: 16,
         fontWeight: FontWeight.w600,
-        letterSpacing: -0.16,
+        letterSpacing: -0.2,
         color: ink,
       ),
-      labelMedium: GoogleFonts.inter(
+      bodyLarge: AppFonts.ui(
+        fontSize: 17,
+        height: 1.4,
+        letterSpacing: -0.2,
+        color: ink,
+      ),
+      bodyMedium: AppFonts.ui(
+        fontSize: 15,
+        height: 1.4,
+        letterSpacing: -0.1,
+        color: ink.withValues(alpha: isDark ? 0.72 : 0.62),
+      ),
+      bodySmall: AppFonts.ui(
+        fontSize: 13,
+        height: 1.35,
+        letterSpacing: -0.05,
+        color: ink.withValues(alpha: isDark ? 0.60 : 0.52),
+      ),
+      labelLarge: AppFonts.ui(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.2,
+        color: ink,
+      ),
+      labelMedium: AppFonts.ui(
         fontSize: 12,
         fontWeight: FontWeight.w500,
-        letterSpacing: 0.00,
-        color: ink.withValues(alpha: isDark ? 0.58 : 0.50),
+        letterSpacing: 0.1,
+        color: ink.withValues(alpha: isDark ? 0.56 : 0.48),
       ),
-      labelSmall: GoogleFonts.inter(
+      // Small-caps eyebrow, e.g. "WALLET BALANCE".
+      labelSmall: AppFonts.ui(
         fontSize: 11,
-        fontWeight: FontWeight.w500,
-        letterSpacing: 0.07,
-        color: ink.withValues(alpha: isDark ? 0.52 : 0.40),
+        fontWeight: FontWeight.w600,
+        letterSpacing: 1.1,
+        color: ink.withValues(alpha: isDark ? 0.50 : 0.42),
       ),
     );
 
@@ -277,8 +320,12 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: isDark ? _darkBg : Colors.white,
-          minimumSize: const Size(48, 48),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          disabledBackgroundColor: ink.withValues(alpha: 0.12),
+          disabledForegroundColor: ink.withValues(alpha: 0.38),
+          minimumSize: const Size(48, controlHeightSm + 4),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+          elevation: 0,
+          splashFactory: NoSplash.splashFactory,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusButton),
           ),
@@ -288,9 +335,10 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: ink,
-          minimumSize: const Size(48, 48),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          minimumSize: const Size(48, controlHeightSm + 4),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
           side: BorderSide(color: outline),
+          splashFactory: NoSplash.splashFactory,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusButton),
           ),
@@ -299,8 +347,10 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: isDark ? _darkInk : primary,
+          foregroundColor: ink,
           minimumSize: const Size(48, 48),
+          textStyle: text.labelLarge,
+          splashFactory: NoSplash.splashFactory,
         ),
       ),
       appBarTheme: AppBarTheme(
@@ -335,10 +385,17 @@ class AppTheme {
         ),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: isDark ? _darkElevated : _lightInk,
-        contentTextStyle: TextStyle(color: isDark ? _darkInk : Colors.white),
+        backgroundColor: isDark ? _darkInk : _lightInk,
+        contentTextStyle: AppFonts.ui(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: isDark ? _darkBg : Colors.white,
+        ),
+        elevation: 0,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusPill),
+        ),
       ),
       dividerTheme: DividerThemeData(color: outline, thickness: 0.5, space: 1),
       listTileTheme: ListTileThemeData(
@@ -351,9 +408,7 @@ class AppTheme {
           return isDark ? const Color(0xFF8E9BB0) : Colors.white;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return primary.withValues(alpha: 0.85);
-          }
+          if (states.contains(WidgetState.selected)) return success;
           return isDark
               ? Colors.white.withValues(alpha: 0.14)
               : ink.withValues(alpha: 0.18);
@@ -367,7 +422,10 @@ class AppTheme {
         ),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(color: primary),
-      splashFactory: InkSparkle.splashFactory,
+      // Ink ripples read as stock Android chrome; presses are shown with scale
+      // and a soft highlight instead (see BounceTap / DocketButton).
+      splashFactory: NoSplash.splashFactory,
+      highlightColor: ink.withValues(alpha: isDark ? 0.06 : 0.04),
     );
   }
 }

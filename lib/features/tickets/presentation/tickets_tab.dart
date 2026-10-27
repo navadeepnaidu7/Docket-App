@@ -20,6 +20,7 @@ import 'pass_remove_flow.dart';
 import 'wallet_bus_card.dart';
 import 'wallet_movie_card.dart';
 import 'wallet_ticket_card.dart';
+import '../../../shared/widgets/wallet_empty_state.dart';
 
 class TicketsTab extends ConsumerStatefulWidget {
   const TicketsTab({super.key, required this.isActive});
@@ -406,42 +407,13 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double fabClearance = WalletLayout.fabClearance(context);
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Center(
-      child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(32, 0, 32, fabClearance),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const EmptyPassesPreview(),
-            const SizedBox(height: 28),
-            Text(
-              'No upcoming passes',
-              style: TextStyle(
-                color: isDark ? Colors.white : const Color(0xFF1C1C1E),
-                fontSize: 21,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Add a train, bus, or movie ticket. Past tickets live in Archive.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isDark
-                    ? const Color(0xFF8E8E93)
-                    : const Color(0xFF64748B),
-                fontSize: 15,
-              ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton(onPressed: onAdd, child: const Text('Add a pass')),
-          ],
-        ),
-      ),
+    return WalletEmptyState(
+      artwork: const EmptyPassesPreview(),
+      lead: 'No upcoming passes.',
+      prompt: 'Add a train, bus or movie ticket to see it here.',
+      actionLabel: 'Add a pass',
+      onAction: onAdd,
+      bottomClearance: WalletLayout.fabClearance(context),
     );
   }
 }

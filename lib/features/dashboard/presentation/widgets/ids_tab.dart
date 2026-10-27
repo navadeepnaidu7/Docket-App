@@ -17,6 +17,7 @@ import '../../../passport/domain/passport_profile.dart';
 import '../wallet_passport_card.dart';
 import 'dot_indicator.dart';
 import 'wallet_filter_controls.dart';
+import '../../../../shared/widgets/wallet_empty_state.dart';
 
 class IdsTab extends ConsumerStatefulWidget {
   const IdsTab({
@@ -200,47 +201,13 @@ class _IdsTabState extends ConsumerState<IdsTab> {
     }
 
     if (widget.allItems.isEmpty) {
-      return Center(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(32, 0, 32, fabClearance),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const EmptyDocsPreview(),
-              const SizedBox(height: 28),
-              Text(
-                'Your documents, close at hand',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : const Color(0xFF1C1C1E),
-                  fontSize: 21,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Keep your passport or ID ready whenever you need it.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? const Color(0xFF8E8E93)
-                      : const Color(0xFF64748B),
-                  fontSize: 15,
-                ),
-              ),
-              if (widget.onAdd != null) ...[
-                const SizedBox(height: 20),
-                FilledButton(
-                  onPressed: widget.onAdd,
-                  child: const Text('Add a document'),
-                ),
-              ],
-            ],
-          ),
-        ),
+      return WalletEmptyState(
+        artwork: const EmptyDocsPreview(),
+        lead: 'Nothing here yet.',
+        prompt: 'Keep your passport and IDs ready, right here.',
+        actionLabel: 'Add a document',
+        onAction: widget.onAdd,
+        bottomClearance: fabClearance,
       );
     }
 

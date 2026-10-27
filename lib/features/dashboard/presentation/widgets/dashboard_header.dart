@@ -4,7 +4,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/assets/app_assets.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -14,7 +13,7 @@ import '../dashboard_screen.dart' show DashboardViewMode;
 import 'membership_mesh.dart';
 
 TextStyle dashboardNavTitleStyle(Color ink, {required bool selected}) {
-  return GoogleFonts.inter(
+  return AppFonts.ui(
     color: selected ? ink : ink.withValues(alpha: 0.38),
     fontSize: 32,
     fontWeight: selected ? FontWeight.w800 : FontWeight.w500,

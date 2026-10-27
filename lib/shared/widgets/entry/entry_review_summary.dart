@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../bounce_tap.dart';
@@ -40,7 +39,7 @@ class EntryReviewSummary extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
-                    style: GoogleFonts.inter(
+                    style: AppFonts.ui(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.25,
@@ -63,7 +62,7 @@ class EntryReviewSummary extends StatelessWidget {
                       ),
                       child: Text(
                         'Edit',
-                        style: GoogleFonts.inter(
+                        style: AppFonts.ui(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: scheme.primary,
@@ -74,38 +73,40 @@ class EntryReviewSummary extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            ...rows.where((r) => r.$2.trim().isNotEmpty).map(
-              ((String, String) r) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    SizedBox(
-                      width: 108,
-                      child: Text(
-                        r.$1,
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: muted,
+            ...rows
+                .where((r) => r.$2.trim().isNotEmpty)
+                .map(
+                  ((String, String) r) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        SizedBox(
+                          width: 108,
+                          child: Text(
+                            r.$1,
+                            style: AppFonts.ui(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: muted,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        r.$2,
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: scheme.onSurface,
-                          height: 1.25,
+                        Expanded(
+                          child: Text(
+                            r.$2,
+                            style: AppFonts.ui(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: scheme.onSurface,
+                              height: 1.25,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
           ],
         ),
       ),
@@ -124,7 +125,7 @@ class EntrySectionLabel extends StatelessWidget {
       padding: const EdgeInsets.only(left: 4, bottom: 8, top: 4),
       child: Text(
         label.toUpperCase(),
-        style: GoogleFonts.inter(
+        style: AppFonts.ui(
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.8,

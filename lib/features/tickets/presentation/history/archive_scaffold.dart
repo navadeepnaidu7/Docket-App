@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/haptics/haptic_service.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -73,7 +72,7 @@ class ArchiveScaffold extends StatelessWidget {
                             textAlign: TextAlign.center,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
+                            style: AppFonts.ui(
                               fontSize: 17,
                               fontWeight: FontWeight.w600,
                               letterSpacing: -0.3,

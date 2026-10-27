@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../../../../core/haptics/haptic_service.dart';
+import '../../../../core/sound/sound_service.dart';
 import '../../application/pass_ingest_controller.dart';
 import '../../application/pass_ingest_service.dart';
 import '../../domain/pass_catalog.dart';
@@ -32,6 +33,7 @@ class _PassIngestParticleCardState extends State<PassIngestParticleCard>
   late final AnimationController _entrance;
   late final AnimationController _flow;
   late final AnimationController _outcome;
+  late final AnimationController _done;
   late final AnimationController _stage;
   bool _reduceMotion = false;
   String? _handledSuccessId;
@@ -52,6 +54,10 @@ class _PassIngestParticleCardState extends State<PassIngestParticleCard>
     _outcome = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 520),
+    );
+    _done = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 880),
     );
     _stage = AnimationController(
       vsync: this,
@@ -74,6 +80,7 @@ class _PassIngestParticleCardState extends State<PassIngestParticleCard>
     if (oldWidget.state.runtimeType != widget.state.runtimeType) {
       _clearTimer?.cancel();
       _outcome.value = 0;
+      _done.value = 0;
     }
     _syncMotion();
   }
@@ -106,6 +113,11 @@ class _PassIngestParticleCardState extends State<PassIngestParticleCard>
       if (_handledSuccessId == state.item.id) return;
       _handledSuccessId = state.item.id;
       HapticService.success();
+      SoundService.success();
+      _done.duration = _reduceMotion
+          ? const Duration(milliseconds: 1)
+          : const Duration(milliseconds: 880);
+      _done.forward(from: 0);
       _outcome.duration = _reduceMotion
           ? const Duration(milliseconds: 200)
           : const Duration(milliseconds: 520);
@@ -147,6 +159,7 @@ class _PassIngestParticleCardState extends State<PassIngestParticleCard>
     _entrance.dispose();
     _flow.dispose();
     _outcome.dispose();
+    _done.dispose();
     _stage.dispose();
     super.dispose();
   }
@@ -211,7 +224,13 @@ class _PassIngestParticleCardState extends State<PassIngestParticleCard>
                 ),
               ),
             ),
-            _Content(state: state, outcome: _outcome, ink: ink, muted: muted),
+            _Content(
+              state: state,
+              outcome: _outcome,
+              done: _done,
+              ink: ink,
+              muted: muted,
+            ),
           ],
         ),
       ),
@@ -329,12 +348,14 @@ class _Content extends StatelessWidget {
   const _Content({
     required this.state,
     required this.outcome,
+    required this.done,
     required this.ink,
     required this.muted,
   });
 
   final PassIngestUiState state;
   final Animation<double> outcome;
+  final Animation<double> done;
   final Color ink;
   final Color muted;
 
@@ -342,19 +363,132 @@ class _Content extends StatelessWidget {
   Widget build(BuildContext context) {
     if (state is PassIngestRunning) return const SizedBox.shrink();
 
-    final String title;
-    final String description;
     if (state case PassIngestSucceeded(:final item)) {
-      title = _addedTitle(item);
-      description = _addedDescription(item);
-    } else if (state case PassIngestFailed(:final error)) {
-      title = _errorTitle(error.code);
-      description = error.message;
-    } else {
-      return const SizedBox.shrink();
+      return _AddedMoment(
+        title: _addedTitle(item),
+        description: _addedDescription(item),
+        done: done,
+        ink: ink,
+        muted: muted,
+      );
     }
 
-    final Widget content = Center(
+    if (state case PassIngestFailed(:final error)) {
+      return FadeTransition(
+        opacity: CurvedAnimation(parent: outcome, curve: Curves.easeOutCubic),
+        child: _QuietLine(
+          title: _errorTitle(error.code),
+          description: error.message,
+          ink: ink,
+          muted: muted,
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+}
+
+/// The moment after the particles leave: a ring closes, a tick draws, and
+/// the sentence arrives. Ink, not a status color, so it belongs to the field.
+class _AddedMoment extends StatelessWidget {
+  const _AddedMoment({
+    required this.title,
+    required this.description,
+    required this.done,
+    required this.ink,
+    required this.muted,
+  });
+
+  final String title;
+  final String description;
+  final Animation<double> done;
+  final Color ink;
+  final Color muted;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: done,
+      builder: (BuildContext context, Widget? _) {
+        final double t = done.value;
+        final double markScale = 0.94 + 0.06 * _interval(t, 0, 0.45);
+        final double titleT = _interval(t, 0.38, 0.78);
+        final double detailT = _interval(t, 0.56, 1);
+        return Align(
+          alignment: const Alignment(0, -0.08),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 36),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Transform.scale(
+                  scale: markScale,
+                  child: CustomPaint(
+                    size: const Size.square(84),
+                    painter: _DoneMarkPainter(progress: t, color: ink),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                Opacity(
+                  opacity: titleT,
+                  child: Transform.translate(
+                    offset: Offset(0, (1 - titleT) * 10),
+                    child: Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: ink,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.45,
+                        height: 1.15,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Opacity(
+                  opacity: detailT,
+                  child: Transform.translate(
+                    offset: Offset(0, (1 - detailT) * 8),
+                    child: Text(
+                      description,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: muted,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _QuietLine extends StatelessWidget {
+  const _QuietLine({
+    required this.title,
+    required this.description,
+    required this.ink,
+    required this.muted,
+  });
+
+  final String title;
+  final String description;
+  final Color ink;
+  final Color muted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 36),
         child: Column(
@@ -385,12 +519,63 @@ class _Content extends StatelessWidget {
         ),
       ),
     );
-
-    return FadeTransition(
-      opacity: CurvedAnimation(parent: outcome, curve: Curves.easeOutCubic),
-      child: content,
-    );
   }
+}
+
+double _interval(double t, double start, double end) {
+  if (t <= start) return 0;
+  if (t >= end) return 1;
+  final double u = (t - start) / (end - start);
+  return Curves.easeOutCubic.transform(u);
+}
+
+class _DoneMarkPainter extends CustomPainter {
+  _DoneMarkPainter({required this.progress, required this.color});
+
+  final double progress;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Offset center = size.center(Offset.zero);
+    final double radius = size.width / 2 - 3;
+    final double ring = _interval(progress, 0, 0.55);
+    final double tick = _interval(progress, 0.42, 1);
+    final Paint stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = color.withValues(alpha: 0.06 * ring)
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      ring * math.pi * 2,
+      false,
+      stroke,
+    );
+    if (tick <= 0) return;
+
+    final Path check = Path()
+      ..moveTo(center.dx - radius * 0.34, center.dy + radius * 0.02)
+      ..lineTo(center.dx - radius * 0.08, center.dy + radius * 0.28)
+      ..lineTo(center.dx + radius * 0.38, center.dy - radius * 0.26);
+    for (final ui.PathMetric metric in check.computeMetrics()) {
+      canvas.drawPath(metric.extractPath(0, metric.length * tick), stroke);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DoneMarkPainter old) =>
+      old.progress != progress || old.color != color;
 }
 
 class _PassParticlePainter extends CustomPainter {

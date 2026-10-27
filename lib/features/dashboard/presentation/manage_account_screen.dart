@@ -2,7 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/dev/dev_flags.dart';
 import '../../../core/haptics/haptic_service.dart';
@@ -16,6 +15,7 @@ import '../application/auth_session_provider.dart';
 import '../application/profile_avatar_shape_provider.dart';
 import '../domain/account_profile.dart';
 import 'widgets/membership_mesh.dart';
+import '../../../core/theme/app_theme.dart';
 
 /// Signed-in account: photo, name/email, optional personal details.
 class ManageAccountScreen extends ConsumerWidget {
@@ -77,7 +77,7 @@ class ManageAccountScreen extends ConsumerWidget {
                     child: Text(
                       'Account',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
+                      style: AppFonts.ui(
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
                         letterSpacing: -0.3,
@@ -114,7 +114,7 @@ class ManageAccountScreen extends ConsumerWidget {
                         Text(
                           name,
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
+                          style: AppFonts.ui(
                             fontSize: 22,
                             fontWeight: FontWeight.w600,
                             letterSpacing: -0.4,
@@ -127,7 +127,7 @@ class ManageAccountScreen extends ConsumerWidget {
                           Text(
                             email,
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
+                            style: AppFonts.ui(
                               fontSize: 15,
                               fontWeight: FontWeight.w400,
                               color: muted,
@@ -212,7 +212,7 @@ class ManageAccountScreen extends ConsumerWidget {
                     child: Text(
                       'Optional. Stored only on this device.',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
+                      style: AppFonts.ui(
                         fontSize: 13,
                         height: 1.35,
                         color: muted,
@@ -400,7 +400,7 @@ class _Field extends StatelessWidget {
                   children: <Widget>[
                     Text(
                       label,
-                      style: GoogleFonts.inter(
+                      style: AppFonts.ui(
                         fontSize: 16,
                         fontWeight: FontWeight.w400,
                         letterSpacing: -0.2,
@@ -414,7 +414,7 @@ class _Field extends StatelessWidget {
                         textAlign: TextAlign.right,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
+                        style: AppFonts.ui(
                           fontSize: 16,
                           fontWeight: FontWeight.w400,
                           letterSpacing: -0.2,
@@ -630,7 +630,7 @@ class _AccountTextEditSheetState extends State<_AccountTextEditSheet> {
                         LengthLimitingTextInputFormatter(3),
                       ]
                     : null,
-                style: GoogleFonts.inter(
+                style: AppFonts.ui(
                   fontSize: 17,
                   fontWeight: FontWeight.w400,
                   letterSpacing: -0.2,
@@ -638,7 +638,7 @@ class _AccountTextEditSheetState extends State<_AccountTextEditSheet> {
                 ),
                 decoration: InputDecoration(
                   hintText: widget.title,
-                  hintStyle: GoogleFonts.inter(
+                  hintStyle: AppFonts.ui(
                     color: const Color(0xFF8E8E93),
                   ),
                   counterText: '',

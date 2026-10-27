@@ -12,6 +12,7 @@ import '../../tickets/domain/pass_catalog.dart';
 import '../../tickets/domain/ticket_models.dart';
 import '../application/space_archive_provider.dart';
 import 'widgets/dot_globe_painter.dart';
+import '../../../core/theme/app_theme.dart';
 
 class SpaceArchiveScreen extends ConsumerStatefulWidget {
   const SpaceArchiveScreen({super.key});
@@ -94,7 +95,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
             children: <Widget>[
               Text(
                 'Space Archive',
-                style: GoogleFonts.inter(
+                style: AppFonts.ui(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.5,
@@ -103,7 +104,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
               ),
               Text(
                 'Activity wrapped & date history',
-                style: GoogleFonts.inter(
+                style: AppFonts.ui(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: muted,
@@ -129,7 +130,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
                 const SizedBox(width: 4),
                 Text(
                   '2026 Edition',
-                  style: GoogleFonts.inter(
+                  style: AppFonts.ui(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: const Color(0xFF5E5CE6),
@@ -179,7 +180,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
                   child: Center(
                     child: Text(
                       'Wrapped Highlights',
-                      style: GoogleFonts.inter(
+                      style: AppFonts.ui(
                         fontSize: 13,
                         fontWeight: _selectedTab == 0 ? FontWeight.w700 : FontWeight.w500,
                         color: _selectedTab == 0 ? ink : muted,
@@ -207,7 +208,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
                   child: Center(
                     child: Text(
                       'Passes Calendar',
-                      style: GoogleFonts.inter(
+                      style: AppFonts.ui(
                         fontSize: 13,
                         fontWeight: _selectedTab == 1 ? FontWeight.w700 : FontWeight.w500,
                         color: _selectedTab == 1 ? ink : muted,
@@ -261,7 +262,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
                       children: <Widget>[
                         Text(
                           'YOUR MILESTONE',
-                          style: GoogleFonts.inter(
+                          style: AppFonts.ui(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1.0,
@@ -271,7 +272,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
                         const SizedBox(height: 6),
                         Text(
                           data.milestoneTitle,
-                          style: GoogleFonts.inter(
+                          style: AppFonts.ui(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.5,
@@ -281,7 +282,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
                         const SizedBox(height: 6),
                         Text(
                           data.milestoneSubtitle,
-                          style: GoogleFonts.inter(
+                          style: AppFonts.ui(
                             fontSize: 13,
                             height: 1.35,
                             color: muted,
@@ -342,7 +343,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
                     children: <Widget>[
                       Text(
                         'TOP CATEGORY',
-                        style: GoogleFonts.inter(
+                        style: AppFonts.ui(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.0,
@@ -351,7 +352,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
                       ),
                       Text(
                         data.topCategoryName,
-                        style: GoogleFonts.inter(
+                        style: AppFonts.ui(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: ink,
@@ -376,7 +377,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
                         children: <Widget>[
                           Text(
                             entry.key,
-                            style: GoogleFonts.inter(
+                            style: AppFonts.ui(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: ink,
@@ -421,7 +422,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
       children: <Widget>[
         Text(
           val,
-          style: GoogleFonts.inter(
+          style: AppFonts.ui(
             fontSize: 20,
             fontWeight: FontWeight.w800,
             color: ink,
@@ -430,7 +431,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
         const SizedBox(height: 2),
         Text(
           label,
-          style: GoogleFonts.inter(
+          style: AppFonts.ui(
             fontSize: 11,
             fontWeight: FontWeight.w500,
             color: muted,
@@ -480,7 +481,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
                 children: <Widget>[
                   Text(
                     'July 2026',
-                    style: GoogleFonts.inter(
+                    style: AppFonts.ui(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
                       color: ink,
@@ -521,7 +522,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
                           child: Center(
                             child: Text(
                               day,
-                              style: GoogleFonts.inter(
+                              style: AppFonts.ui(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: muted,
@@ -582,7 +583,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
                         children: <Widget>[
                           Text(
                             '$dayNum',
-                            style: GoogleFonts.inter(
+                            style: AppFonts.ui(
                               fontSize: 13,
                               fontWeight:
                                   isSelected ? FontWeight.w800 : FontWeight.w500,
@@ -618,7 +619,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
         // Passes on Selected Date Section
         Text(
           'Passes on ${_formatDateLabel(normSelected)}',
-          style: GoogleFonts.inter(
+          style: AppFonts.ui(
             fontSize: 14,
             fontWeight: FontWeight.w700,
             color: ink,
@@ -637,7 +638,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
             child: Center(
               child: Text(
                 'No recorded passes or documents for this date.',
-                style: GoogleFonts.inter(
+                style: AppFonts.ui(
                   fontSize: 13,
                   color: muted,
                 ),
@@ -716,7 +717,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
               children: <Widget>[
                 Text(
                   title,
-                  style: GoogleFonts.inter(
+                  style: AppFonts.ui(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: ink,
@@ -724,7 +725,7 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
                 ),
                 Text(
                   subtitle,
-                  style: GoogleFonts.inter(
+                  style: AppFonts.ui(
                     fontSize: 12,
                     color: muted,
                   ),

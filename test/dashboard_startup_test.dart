@@ -159,7 +159,10 @@ void main() {
     await open(tester);
     await tester.pump(const Duration(milliseconds: 800));
     await tester.pump();
-    expect(find.text('Your documents, close at hand'), findsOneWidget);
+    expect(
+      find.textContaining('Keep your passport and IDs', findRichText: true),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 1));
