@@ -24,3 +24,16 @@ enum SkyPreviewMode {
 final skyPreviewProvider = StateProvider<SkyPreviewMode>(
   (ref) => SkyPreviewMode.automatic,
 );
+
+enum WeatherGlancePreview {
+  live('Live weather & passes'),
+  movie('Movie in 4 hours'),
+  train('Train in 2 days');
+
+  const WeatherGlancePreview(this.label);
+  final String label;
+}
+
+final weatherGlancePreviewProvider = StateProvider<WeatherGlancePreview>(
+  (ref) => WeatherGlancePreview.live,
+);

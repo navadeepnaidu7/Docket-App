@@ -3,6 +3,8 @@ import 'dart:ui' as ui;
 import 'package:docket/features/dashboard/presentation/widgets/easter_egg_constants.dart';
 import 'package:docket/features/dashboard/presentation/widgets/easter_egg_drawer.dart';
 import 'package:docket/features/dashboard/presentation/widgets/weather_soft_transition.dart';
+import 'package:docket/features/dashboard/presentation/widgets/travel_weather_glance.dart';
+import 'package:docket/features/weather/domain/weather_glance_event.dart';
 import 'package:docket/features/weather/application/weather_provider.dart';
 import 'package:docket/features/weather/domain/weather_snapshot.dart';
 import 'package:flutter/material.dart';
@@ -179,6 +181,18 @@ void main() {
       expect(tester.widget<ImageFiltered>(swapFilters()).enabled, isFalse);
       expect(find.textContaining('26°C'), findsOneWidget);
       expect(find.text('Finding local weather…'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 240));
+      expect(find.text('Updating weather…'), findsNothing);
+      expect(
+        tester
+            .widget<ImageFiltered>(
+              find.byKey(const ValueKey('weather_refresh_blur')),
+            )
+            .enabled,
+        isTrue,
+        reason:
+            'A refresh frosts the complete weather region, including the sky.',
+      );
 
       change(
         () => state = WeatherState(
@@ -212,7 +226,17 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.textContaining('26°C'), findsNothing);
       expect(find.textContaining('23°C'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 600));
       expect(tester.widget<ImageFiltered>(swapFilters()).enabled, isFalse);
+      expect(find.text('Updating weather…'), findsNothing);
+      expect(
+        tester
+            .widget<ImageFiltered>(
+              find.byKey(const ValueKey('weather_refresh_blur')),
+            )
+            .enabled,
+        isFalse,
+      );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },
@@ -239,6 +263,137 @@ void main() {
     expect(tester.binding.hasScheduledFrame, isFalse);
   });
 
+  testWidgets('copy clears before a staggered heading and detail resolve', (
+    tester,
+  ) async {
+    Widget app(String name) => MaterialApp(
+      home: WeatherSoftSwap(
+        child: WeatherCopy(
+          key: ValueKey(name),
+          heading: Text('$name heading'),
+          detail: Text('$name detail'),
+        ),
+      ),
+    );
+    double opacity(String label) => tester
+        .widget<Opacity>(
+          find
+              .ancestor(of: find.text(label), matching: find.byType(Opacity))
+              .first,
+        )
+        .opacity;
+    await tester.pumpWidget(app('Weather'));
+    await tester.pumpWidget(app('Activity'));
+    await tester.pump(const Duration(milliseconds: 140));
+    expect(opacity('Activity heading'), 0);
+    expect(opacity('Activity detail'), 0);
+    await tester.pump(const Duration(milliseconds: 70));
+    expect(find.text('Weather heading'), findsNothing);
+    expect(opacity('Activity heading'), greaterThan(0));
+    expect(opacity('Activity detail'), 0);
+    await tester.pump(const Duration(milliseconds: 70));
+    expect(
+      opacity('Activity heading'),
+      greaterThan(opacity('Activity detail')),
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(opacity('Activity heading'), 1);
+    expect(opacity('Activity detail'), 1);
+  });
+
+  testWidgets(
+    'activity keeps the weather renderer and frosts its existing sky',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final offset = ValueNotifier(kEasterEggPanelHeight);
+      addTearDown(offset.dispose);
+      WeatherGlanceEvent? event;
+      late StateSetter change;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              change = setState;
+              return EasterEggDrawer(
+                dragOffsetNotifier: offset,
+                onDragUpdate: (_) {},
+                onDragEnd: (_) {},
+                onDragCancel: () {},
+                passports: const [],
+                idDocs: const [],
+                event: event,
+              );
+            },
+          ),
+        ),
+      );
+      final sky = tester.state(find.byType(TravelWeatherGlance));
+      ImageFiltered skyFilter() => tester.widget<ImageFiltered>(
+        find.descendant(
+          of: find.byKey(const ValueKey('weather_sky_blur')),
+          matching: find.byType(ImageFiltered),
+        ),
+      );
+      expect(skyFilter().enabled, isFalse);
+      change(
+        () => event = const WeatherGlanceEvent(
+          id: 'movie',
+          title: 'Movie in 4 hours',
+          detail: 'Evening show',
+          kind: 'Movie',
+        ),
+      );
+      await tester.pump();
+      expect(tester.state(find.byType(TravelWeatherGlance)), same(sky));
+      await tester.pump(const Duration(milliseconds: 800));
+      expect(skyFilter().enabled, isTrue);
+      expect(tester.state(find.byType(TravelWeatherGlance)), same(sky));
+      expect(find.text('Movie in 4 hours'), findsOneWidget);
+      change(() => event = null);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 800));
+      expect(skyFilter().enabled, isFalse);
+      expect(tester.state(find.byType(TravelWeatherGlance)), same(sky));
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'refresh veil supports reduced motion and blocks covered actions',
+    (tester) async {
+      var taps = 0;
+      Widget app(bool refreshing) => MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(disableAnimations: true),
+          child: WeatherRefreshVeil(
+            refreshing: refreshing,
+            child: Center(
+              child: TextButton(
+                onPressed: () => taps++,
+                child: const Text('Retry'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpWidget(app(true));
+      expect(
+        tester.widget<ImageFiltered>(find.byType(ImageFiltered)).enabled,
+        isFalse,
+      );
+      expect(find.text('Updating weather…'), findsNothing);
+      await tester.tap(find.text('Retry'), warnIfMissed: false);
+      expect(taps, 0);
+      await tester.pumpWidget(app(false));
+      await tester.pump();
+      expect(find.text('Updating weather…'), findsNothing);
+      await tester.tap(find.text('Retry'));
+      expect(taps, 1);
+    },
+  );
+
   testWidgets('outgoing weather actions cannot be tapped during an update', (
     tester,
   ) async {
@@ -260,7 +415,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 80));
     await tester.tap(find.text('Retry'), warnIfMissed: false);
     expect(oldTaps, 0);
-    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 750));
     await tester.tap(find.text('Settings'));
     expect(newTaps, 1);
   });
@@ -328,6 +483,11 @@ void main() {
           await tester.pump();
           expect(tester.takeException(), isNull);
           expect(find.text('No documents yet'), findsNothing);
+          if (status == WeatherStatus.loading) {
+            expect(find.byType(TextButton), findsNothing);
+            expect(find.text('Finding local weather…'), findsNothing);
+            continue;
+          }
           final button = find.byType(TextButton);
           final rect = tester.getRect(button);
           expect(rect.height, greaterThanOrEqualTo(44));
@@ -338,7 +498,11 @@ void main() {
             reason: '$status at $width with $scale text',
           );
           final before = taps;
-          await tester.tap(button);
+          if (status == WeatherStatus.loading) {
+            expect(tester.widget<TextButton>(button).onPressed, isNull);
+          } else {
+            await tester.tap(button);
+          }
           expect(taps, before + (status == WeatherStatus.loading ? 0 : 1));
         }
         await tester.pumpWidget(const SizedBox());

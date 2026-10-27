@@ -42,6 +42,7 @@ import 'widgets/add_menu.dart';
 import 'widgets/dashboard_header.dart';
 import 'widgets/easter_egg_constants.dart';
 import '../../weather/presentation/local_weather_drawer.dart';
+import '../../weather/application/weather_glance_session.dart';
 import 'widgets/travel_weather_glance.dart';
 import 'widgets/easter_egg_sheet_motion.dart';
 import 'widgets/ids_tab.dart';
@@ -65,7 +66,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _entryCtrl;
   late final Animation<double> _entryFade;
   late final Animation<Offset> _entrySlide;
@@ -73,6 +74,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   late final ValueNotifier<double> _docPage;
   late final WalletBackdropTilt _backdropTilt;
   late final AnimationController _easterEggCtrl;
+  late final WeatherGlanceSession _weatherSession;
+  Animation<double>? _coverAnimation;
+  bool _weatherRouteCovered = false;
   final ValueNotifier<double> _easterEggOffset = ValueNotifier(0.0);
   final ValueNotifier<bool> _showHomeMenu = ValueNotifier(false);
   final ValueNotifier<DashboardViewMode> _viewMode = ValueNotifier(
@@ -171,6 +175,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         _dragOffset = _easterEggOffset.value;
       }
     });
+    _weatherSession = WeatherGlanceSession(
+      onOpen: () {
+        if (!mounted ||
+            !(ModalRoute.of(context)?.isCurrent ?? true) ||
+            WidgetsBinding.instance.lifecycleState !=
+                AppLifecycleState.resumed ||
+            _showHomeMenu.value ||
+            _viewMode.value != DashboardViewMode.home ||
+            _isDragging) {
+          _weatherSession.cancel();
+          return;
+        }
+        _animateWeather(true);
+      },
+      onClose: () {
+        if (mounted) _animateWeather(false);
+      },
+    );
+    WidgetsBinding.instance.addObserver(this);
     _entryCtrl.forward();
 
     // Let the opening animation finish before mounting a hidden tab or parsing
@@ -179,6 +202,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     // makes closing the dashboard during startup safe.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _weatherSession.scheduleOpening();
       _warmUpTimer = Timer(_entryCtrl.duration!, () {
         if (!mounted) return;
         _prewarmPassesTab();
@@ -188,6 +212,56 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         unawaited(_warmOptionalArtwork());
       });
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final cover = ModalRoute.of(context)?.secondaryAnimation;
+    if (!identical(cover, _coverAnimation)) {
+      _coverAnimation?.removeListener(_onRouteCovered);
+      _coverAnimation = cover;
+      _coverAnimation?.addListener(_onRouteCovered);
+    }
+    // Dialogs can cover this route without driving its secondary animation.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _onRouteCovered();
+    });
+  }
+
+  void _onRouteCovered() {
+    final covered =
+        (_coverAnimation?.value ?? 0) > 0 ||
+        !(ModalRoute.of(context)?.isCurrent ?? true);
+    if (!covered) {
+      if (_weatherRouteCovered) {
+        _weatherRouteCovered = false;
+      }
+      return;
+    }
+    if (_weatherRouteCovered) return;
+    _weatherRouteCovered = true;
+    _weatherSession.cancel();
+    _isDragging = false;
+    _easterEggCtrl.stop();
+    _easterEggCtrl.value = 0;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _weatherSession.resume();
+    } else {
+      _weatherSession.pause();
+      if (state == AppLifecycleState.paused ||
+          state == AppLifecycleState.hidden ||
+          state == AppLifecycleState.detached) {
+        _weatherSession.cancel();
+        _isDragging = false;
+        _easterEggCtrl.stop();
+        _easterEggCtrl.value = 0;
+      }
+    }
   }
 
   Future<void> _warmOptionalArtwork() async {
@@ -202,6 +276,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _coverAnimation?.removeListener(_onRouteCovered);
+    _weatherSession.dispose();
     _warmUpTimer?.cancel();
     _showHomeMenu.removeListener(_onMenuToggle);
     _tabCtrl.removeListener(_onTabChanged);
@@ -218,6 +295,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   void _handleDragStart(DragStartDetails details) {
+    _weatherSession.pause();
     if (!_isDragging) {
       _weatherWasOpen = _easterEggOffset.value >= _weatherPanelHeight * 0.75;
       _easterEggCtrl.stop();
@@ -260,23 +338,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
 
     final double startProgress = currentOffset / panelHeight;
-    _easterEggCtrl.stop();
-    _easterEggCtrl.value = startProgress;
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _easterEggCtrl.value = open ? 1 : 0;
+    _animateWeather(open, velocityY: velocityY);
+    if (open) {
+      _weatherSession.openedManually();
     } else {
-      _easterEggCtrl.animateWith(
-        SpringSimulation(
-          const SpringDescription(mass: 1, stiffness: 150, damping: 25),
-          startProgress,
-          open ? 1 : 0,
-          // A rejected short tug returns directly; its flick must not create
-          // a second, larger reveal before the spring closes.
-          !open && !_weatherWasOpen && currentOffset < kEasterEggMinimumOpenPull
-              ? velocityY.clamp(-1200.0, 0.0) / panelHeight
-              : velocityY.clamp(-1600.0, 1600.0) / panelHeight,
-        ),
-      );
+      _weatherSession.cancel();
     }
 
     if (open && startProgress < 0.9) {
@@ -284,6 +350,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     } else if (!open && startProgress > 0.1) {
       HapticService.tap();
     }
+  }
+
+  void _animateWeather(bool open, {double velocityY = 0}) {
+    final panelHeight = _weatherPanelHeight;
+    final currentOffset = _easterEggOffset.value;
+    final startProgress = currentOffset / panelHeight;
+    _easterEggCtrl.stop();
+    _easterEggCtrl.value = startProgress;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _easterEggCtrl.value = open ? 1 : 0;
+      return;
+    }
+    _easterEggCtrl.animateWith(
+      SpringSimulation(
+        const SpringDescription(mass: 1, stiffness: 150, damping: 25),
+        startProgress,
+        open ? 1 : 0,
+        !open && !_weatherWasOpen && currentOffset < kEasterEggMinimumOpenPull
+            ? velocityY.clamp(-1200.0, 0.0) / panelHeight
+            : velocityY.clamp(-1600.0, 1600.0) / panelHeight,
+      ),
+    );
   }
 
   void _handleDragCancel() => _handleDragEnd(DragEndDetails());
@@ -543,6 +631,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         offset: _easterEggOffset,
         panelHeight: _weatherPanelHeight,
         drawer: LocalWeatherDrawer(
+          session: _weatherSession,
           offset: _easterEggOffset,
           panelHeight: _weatherPanelHeight,
           onDragStart: _handleDragStart,
@@ -800,6 +889,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           ],
         ),
       ),
+    );
+
+    scaffold = Listener(
+      onPointerDown: (_) => _weatherSession.pause(),
+      onPointerUp: (_) => _weatherSession.resume(),
+      onPointerCancel: (_) => _weatherSession.resume(),
+      child: scaffold,
     );
 
     if (secondary == null) return scaffold;

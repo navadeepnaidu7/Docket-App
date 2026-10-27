@@ -1017,6 +1017,31 @@ class _DeveloperSection extends ConsumerWidget {
       children: <Widget>[
         if (kDebugMode) ...[
           _SettingsLinkRow(
+            icon: Icons.auto_awesome_outlined,
+            iconColor: const Color(0xFF5E5CE6),
+            title: 'Weather glance preview',
+            subtitle: ref.watch(weatherGlancePreviewProvider).label,
+            onTap: () async {
+              final preview = await showDialog<WeatherGlancePreview>(
+                context: context,
+                builder: (context) => SimpleDialog(
+                  title: const Text('Weather glance preview'),
+                  children: [
+                    for (final preview in WeatherGlancePreview.values)
+                      SimpleDialogOption(
+                        onPressed: () => Navigator.pop(context, preview),
+                        child: Text(preview.label),
+                      ),
+                  ],
+                ),
+              );
+              if (preview != null && context.mounted) {
+                ref.read(weatherGlancePreviewProvider.notifier).state = preview;
+              }
+            },
+          ),
+          const _SettingsDivider(),
+          _SettingsLinkRow(
             icon: Icons.cloud_outlined,
             iconColor: const Color(0xFF2F6FED),
             title: 'Weather scene preview',

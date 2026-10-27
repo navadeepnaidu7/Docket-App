@@ -166,3 +166,48 @@ width-adaptive curve remains constant while opening, overpulling, closing and
 at rest, instead of flattening on the upward slide. Translation and navigation
 layout are unchanged. Seven focused reveal/transition checks pass, including
 the closing endpoint; static analysis is clean. No APK generated.
+
+## Automatic glance — 15 October 2026
+
+The dashboard schedules a glance once, one second after cold startup. Returning
+from another route, a picker, a dialog or the background never replays it. The existing spring moves the complete wallet and navigation down;
+manual pull-down and upward dismissal still use the same interruptible motion.
+Touch cancels a pending automatic reveal and pauses the reading timer. Covered
+routes, dialogs, backgrounding and disposal cancel scheduled movement.
+
+Refreshing silently frosts the complete exposed weather area with an 8px image
+blur. There is no loading label or tint: the live weather and its colors stay
+visible. The veil resolves over 760ms when the refresh finishes. Cached
+conditions remain behind it. The
+seven-second reading period starts when loading finishes, so network waits do
+not consume it. Overlapping refreshes cannot clear the latest request's veil.
+
+After three seconds, the weather copy dissolves into blur before the nearest
+upcoming pass appears. The heading resolves first and its detail follows about
+60ms later, using a 760ms reveal with only 4px of travel. The existing weather
+renderer stays mounted and running; its sky gradually defocuses to 8px behind
+the activity. There is no movie/train palette or replacement background. After
+seven seconds the
+wallet glides back up, retaining its curved corners. If no eligible pass exists,
+weather stays visible for the reading period. Permission/retry controls remain
+available when weather is unavailable; permission is never requested by the
+automatic reveal itself. Event messages describe pass times, not venue forecasts.
+
+For local testing: Settings → Developer → Weather glance preview → Movie in
+4 hours / Train in 2 days. Pull down manually to see the preview. These
+session-only debug previews simulate a 900ms refresh and show sample weather
+without location or network access; live mode uses the actual weather and passes.
+Release builds ignore preview overrides. No APK is generated; use `flutter run`.
+
+Verification: 72 focused checks pass across session timing, automatic/manual
+dashboard interaction, route/dialog/background handling, overlapping refreshes,
+reduced motion, provider behavior, pass selection, shader rendering, startup and
+320/390px layouts at 1x/2x text. The updated weather code and tests have clean
+static analysis. Rendered loading/movie/train previews are under
+`build/weather_flow_preview/`. Device frame timing still requires local testing.
+
+The focus refinement passes 53 transition, dashboard, layout, gesture and sky
+checks; static analysis is clean. Keyframes at 0/140/220/360/520/800ms are saved
+as `build/weather_flow_preview/focus_*.png`. They verify the continuous weather
+scene, silent loading, non-overlapping copy and staggered text reveal. No APK
+generated.
