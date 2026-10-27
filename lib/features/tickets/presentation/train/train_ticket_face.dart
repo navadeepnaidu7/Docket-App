@@ -33,6 +33,7 @@ class TrainTicketFace extends StatelessWidget {
     this.widthFactor,
     this.onOpenCodes,
     this.showCode = true,
+    this.showShadow = true,
     this.clock = DateTime.now,
   });
 
@@ -52,6 +53,7 @@ class TrainTicketFace extends StatelessWidget {
   /// pass's code once, large, below the face — two copies of the same symbol in
   /// one image gives a scanner a choice it should not have to make.
   final bool showCode;
+  final bool showShadow;
 
   /// Injected for tests so the status band's countdown is deterministic.
   final DateTime Function() clock;
@@ -75,14 +77,16 @@ class TrainTicketFace extends StatelessWidget {
       height: TrainPassMetrics.height,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(TrainPassMetrics.cornerR),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: c.shadowAlpha),
-            blurRadius: 30,
-            offset: const Offset(0, 16),
-            spreadRadius: -4,
-          ),
-        ],
+        boxShadow: showShadow
+            ? <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: c.shadowAlpha),
+                  blurRadius: 30,
+                  offset: const Offset(0, 16),
+                  spreadRadius: -4,
+                ),
+              ]
+            : const <BoxShadow>[],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(TrainPassMetrics.cornerR),

@@ -32,7 +32,11 @@ abstract class DocketApi {
   Future<void> deletePass(String id);
 }
 
-class DocketApiClient implements DocketApi {
+abstract interface class TrainJourneyApi {
+  Future<void> refreshTrainJourney(String id);
+}
+
+class DocketApiClient implements DocketApi, TrainJourneyApi {
   DocketApiClient({
     required this.baseUrl,
     required this.session,
@@ -46,6 +50,19 @@ class DocketApiClient implements DocketApi {
   final http.Client _http;
 
   static const Duration _httpTimeout = Duration(seconds: 30);
+
+  @override
+  Future<void> refreshTrainJourney(String id) async {
+    final response = await _authed(
+      (headers) => _withTimeout(
+        () => _http.post(_uri('/tickets/$id/refresh'), headers: headers),
+      ),
+    );
+    _throwIfFailed(
+      response,
+      fallback: 'Railway details are unavailable. Please try again later.',
+    );
+  }
 
   Future<T> _withTimeout<T>(Future<T> Function() operation) async {
     try {
@@ -67,7 +84,8 @@ class DocketApiClient implements DocketApi {
     // Enforce HTTPS, allowing HTTP only for explicit loopback hosts in debug builds
     if (uri.scheme == 'http') {
       final String host = uri.host.toLowerCase();
-      final bool isLoopback = host == 'localhost' ||
+      final bool isLoopback =
+          host == 'localhost' ||
           host == '127.0.0.1' ||
           host == '10.0.2.2' ||
           host == '[::1]';
@@ -111,10 +129,7 @@ class DocketApiClient implements DocketApi {
   Future<WalletPassItem?> fetchPassById(String id) async {
     final http.Response res = await _authed(
       (Map<String, String> headers) => _withTimeout(
-        () => _http.get(
-          _uri(PassApiPaths.passById(id)),
-          headers: headers,
-        ),
+        () => _http.get(_uri(PassApiPaths.passById(id)), headers: headers),
       ),
     );
     if (res.statusCode == 404) return null;
@@ -136,7 +151,9 @@ class DocketApiClient implements DocketApi {
     required String categoryHint,
     ScannedTicketCode? code,
   }) async {
-    final http.Response res = await _authed((Map<String, String> headers) async {
+    final http.Response res = await _authed((
+      Map<String, String> headers,
+    ) async {
       final http.MultipartRequest req = http.MultipartRequest(
         'POST',
         _uri(PassApiPaths.extract),
@@ -176,10 +193,7 @@ class DocketApiClient implements DocketApi {
   Future<void> deletePass(String id) async {
     final http.Response res = await _authed(
       (Map<String, String> headers) => _withTimeout(
-        () => _http.delete(
-          _uri(PassApiPaths.passById(id)),
-          headers: headers,
-        ),
+        () => _http.delete(_uri(PassApiPaths.passById(id)), headers: headers),
       ),
     );
     if (res.statusCode == 404) return;
@@ -215,9 +229,9 @@ class DocketApiClient implements DocketApi {
   }
 
   Map<String, String> _headers(String access) => <String, String>{
-        'Authorization': 'Bearer $access',
-        'Accept': 'application/json',
-      };
+    'Authorization': 'Bearer $access',
+    'Accept': 'application/json',
+  };
 
   Future<ApiTokens> _ensureTokens() async {
     final ApiTokens? stored = await session.read();
@@ -326,7 +340,9 @@ class DocketApiClient implements DocketApi {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode(<String, String>{'refreshToken': current.refreshToken}),
+        body: jsonEncode(<String, String>{
+          'refreshToken': current.refreshToken,
+        }),
       ),
     );
     if (res.statusCode == 401) {

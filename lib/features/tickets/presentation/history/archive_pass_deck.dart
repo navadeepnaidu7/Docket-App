@@ -407,6 +407,8 @@ class ArchivePassDeckState extends State<ArchivePassDeck>
         );
         final double cardAspect = widget.category == PassHistoryCategory.movie
             ? _MovieArchiveCard.aspectRatio
+            : widget.category == PassHistoryCategory.train
+            ? WalletCardMetrics.trainAspect
             : WalletCardMetrics.ticketAspect;
         final double cardWidth = math.min(
           (deckHeight - 20) * cardAspect,
@@ -689,6 +691,7 @@ class _ArchiveCardFace extends StatelessWidget {
         child: TrainTicketFace(
           ticket: ticket,
           density: TrainTicketDensity.glance,
+          showShadow: false,
         ),
       ),
       MoviePassItem(:final pass) => _MovieArchiveCard(pass: pass),

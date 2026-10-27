@@ -254,6 +254,13 @@ class TrainPass {
   /// True when the train is late by a known, positive amount.
   bool get isDelayed => (delayMinutes ?? 0) > 0;
 
+  /// PNR saved before the provider has returned the actual journey.
+  bool get isAwaitingJourney =>
+      pnr.trim().isNotEmpty &&
+      trainNumber.trim().isEmpty &&
+      fromCode.trim().isEmpty &&
+      toCode.trim().isEmpty;
+
   /// Platform to stand on, or null when no halt carries one.
   ///
   /// Before the train moves that is the origin halt; once it is underway the

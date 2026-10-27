@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/dev/dev_flags_provider.dart';
@@ -49,23 +51,61 @@ final passListProvider =
 
 class PassListNotifier extends AsyncNotifier<List<WalletPassItem>> {
   Future<void> _mutate = Future<void>.value();
+  Timer? _pendingRefresh;
+  int _pendingAttempts = 0;
+  int _generation = 0;
 
   @override
   Future<List<WalletPassItem>> build() {
     // The repository watches only data-source settings; visual changes should
     // keep the loaded wallet and its scroll position intact.
     ref.watch(passRepositoryProvider);
+    _pendingAttempts = 0;
+    ref.onDispose(() {
+      _generation++;
+      _pendingRefresh?.cancel();
+    });
     return _load();
   }
 
   PassRepository get _repo => ref.read(passRepositoryProvider);
 
-  Future<List<WalletPassItem>> _load({TicketStatus? status}) {
-    return _repo.fetchPasses(status: status);
+  Future<List<WalletPassItem>> _load({TicketStatus? status}) async {
+    final generation = _generation;
+    final items = await _repo.fetchPasses(status: status);
+    if (generation == _generation) _watchPendingJourneys(items);
+    return items;
+  }
+
+  void _watchPendingJourneys(List<WalletPassItem> items) {
+    _pendingRefresh?.cancel();
+    if (_repo is! RemotePassRepository || _pendingAttempts >= 6) return;
+    if (!items.any(
+      (item) => item is TrainPassItem && item.ticket.isAwaitingJourney,
+    )) {
+      return;
+    }
+    final generation = _generation;
+    _pendingRefresh = Timer(
+      Duration(seconds: 3 + _pendingAttempts * 3),
+      () async {
+        _pendingAttempts++;
+        try {
+          final items = await _load();
+          if (generation == _generation) state = AsyncData(items);
+        } catch (_) {
+          // Keep the saved wallet visible during a temporary provider outage.
+          if (generation == _generation) {
+            _watchPendingJourneys(state.valueOrNull ?? const []);
+          }
+        }
+      },
+    );
   }
 
   /// Pull-to-refresh / retry.
   Future<void> refresh({TicketStatus? status}) async {
+    _pendingAttempts = 0;
     // Carry the current list into the loading state. A bare AsyncLoading has no
     // value, and every derived provider that maps over this one (the archive
     // folders, the active-passes slice) would then hand its screen a spinner
