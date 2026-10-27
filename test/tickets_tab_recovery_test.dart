@@ -6,7 +6,7 @@ import 'package:docket/features/tickets/application/pass_list_provider.dart';
 import 'package:docket/features/tickets/domain/pass_catalog.dart';
 import 'package:docket/features/tickets/domain/pass_ingest.dart';
 import 'package:docket/features/tickets/presentation/tickets_tab.dart';
-import 'package:docket/features/tickets/presentation/movie_pass_detail_screen.dart';
+import 'package:docket/features/tickets/presentation/add/pass_ingest_particle_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -79,11 +79,12 @@ void main() {
       container.read(passIngestControllerProvider),
       isA<PassIngestRunning>(),
     );
-    expect(find.text('Preparing your pass…'), findsOneWidget);
+    expect(find.text('Preparing your pass…'), findsNothing);
+    expect(find.byType(PassIngestParticleCard), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
   testWidgets(
-    'archived success opens its actual detail screen and clears outcome',
+    'archived success names the ticket, then clears without a result page',
     (tester) async {
       final item = MoviePassItem.fromJson({
         'id': 'archive',
@@ -97,19 +98,19 @@ void main() {
           item: item,
         ),
       );
-      await tester.tap(find.text('View pass'));
+      await tester.pump(const Duration(milliseconds: 540));
+      expect(find.text('Your movie ticket is in Archive'), findsOneWidget);
+      expect(find.text('View pass'), findsNothing);
+      expect(find.text('Pass added'), findsNothing);
+      expect(
+        container.read(passIngestControllerProvider),
+        isA<PassIngestSucceeded>(),
+      );
+      await tester.pump(const Duration(milliseconds: 1900));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
       expect(
         container.read(passIngestControllerProvider),
         isA<PassIngestIdle>(),
-      );
-      expect(find.byType(MoviePassDetailScreen), findsOneWidget);
-      expect(
-        tester
-            .widget<MoviePassDetailScreen>(find.byType(MoviePassDetailScreen))
-            .pass,
-        same(item.pass),
       );
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());

@@ -11,13 +11,11 @@ import '../../../shared/widgets/rolling_card_page.dart';
 import '../../../shared/widgets/stacked_card_deck.dart';
 import '../../dashboard/application/pass_deck_provider.dart';
 import '../application/pass_ingest_controller.dart';
-import '../application/pass_ingest_service.dart';
 import '../application/pass_list_provider.dart';
 import '../domain/pass_catalog.dart';
 import 'add/add_pass_flow.dart';
 import 'add/pass_ingest_outcome.dart';
 import 'add/pass_ingest_particle_card.dart';
-import 'open_pass.dart';
 import 'pass_remove_flow.dart';
 import 'wallet_bus_card.dart';
 import 'wallet_movie_card.dart';
@@ -85,7 +83,6 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
       PassIngestUiState next,
     ) {
       if (next is PassIngestRunning) _focusedIngestId = null;
-      if (next is PassIngestSucceeded) HapticService.success();
       if (next is PassIngestFailed) HapticService.error();
       if (next is PassIngestSucceeded &&
           next.item.status == TicketStatus.active) {
@@ -202,52 +199,27 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
                   );
                 },
               ),
-              if (!ingestState.isIdle)
+              if (ingestState is PassIngestFailed)
                 Positioned.fill(
-                  child: ingestState is PassIngestRunning
-                      ? Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            PassIngestParticleCard(
-                              state: ingestState,
-                              isActive: widget.isActive,
-                              onFinished: () {},
-                            ),
-                            Positioned(
-                              left: 24,
-                              right: 24,
-                              bottom: fabClearance,
-                              child: Text(
-                                switch (ingestState.phase) {
-                                  PassIngestPhase.readingSource =>
-                                    'Reading your ticket…',
-                                  PassIngestPhase.submitting =>
-                                    'Preparing your pass…',
-                                  PassIngestPhase.syncingWallet =>
-                                    'Adding it to your wallet…',
-                                },
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.bodyLarge,
-                              ),
-                            ),
-                          ],
-                        )
-                      : PassIngestOutcome(
-                          state: ingestState,
-                          onRetry: () => ref
-                              .read(passIngestControllerProvider.notifier)
-                              .retry(),
-                          onReplace: () => replacePassInput(context, ref),
-                          onDismiss: () => ref
-                              .read(passIngestControllerProvider.notifier)
-                              .dismiss(),
-                          onView: (item) {
-                            ref
-                                .read(passIngestControllerProvider.notifier)
-                                .dismiss();
-                            openPass(context, item);
-                          },
-                        ),
+                  child: PassIngestOutcome(
+                    state: ingestState,
+                    onRetry: () =>
+                        ref.read(passIngestControllerProvider.notifier).retry(),
+                    onReplace: () => replacePassInput(context, ref),
+                    onDismiss: () => ref
+                        .read(passIngestControllerProvider.notifier)
+                        .dismiss(),
+                  ),
+                )
+              else if (!ingestState.isIdle)
+                Positioned.fill(
+                  child: PassIngestParticleCard(
+                    state: ingestState,
+                    isActive: widget.isActive,
+                    onFinished: () => ref
+                        .read(passIngestControllerProvider.notifier)
+                        .finishSuccess(),
+                  ),
                 ),
             ],
           ),

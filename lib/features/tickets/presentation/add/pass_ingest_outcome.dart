@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_theme.dart';
-import '../../application/pass_ingest_controller.dart';
-import '../../domain/pass_catalog.dart';
-import '../../domain/pass_display.dart';
-import '../../domain/pass_ingest.dart';
-import '../../domain/pass_status.dart';
 
-/// Outcomes remain actionable until the user chooses what to do next.
+import '../../application/pass_ingest_controller.dart';
+import '../../domain/pass_ingest.dart';
+
+/// A failed import stays on screen until the user chooses what to do next.
+///
+/// Success is not a page. The particle field says what was added, then clears.
 class PassIngestOutcome extends StatelessWidget {
   const PassIngestOutcome({
     super.key,
@@ -14,38 +13,28 @@ class PassIngestOutcome extends StatelessWidget {
     required this.onRetry,
     required this.onReplace,
     required this.onDismiss,
-    required this.onView,
   });
+
   final PassIngestUiState state;
   final VoidCallback onRetry;
   final VoidCallback onReplace;
   final VoidCallback onDismiss;
-  final ValueChanged<WalletPassItem> onView;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final failure = state is PassIngestFailed
-        ? state as PassIngestFailed
-        : null;
-    final item = state is PassIngestSucceeded
-        ? (state as PassIngestSucceeded).item
-        : null;
-    if (failure == null && item == null) return const SizedBox.shrink();
-    final title = failure != null
-        ? _failureTitle(failure.error.code)
-        : item!.status == TicketStatus.expired
-        ? 'Added to Archive'
-        : 'Pass added';
-    final canRetry =
-        failure != null &&
-        switch (failure.error.code) {
-          PassIngestCode.failed ||
-          PassIngestCode.unreadable ||
-          PassIngestCode.rateLimited => true,
-          _ => false,
-        };
+    if (state is! PassIngestFailed) return const SizedBox.shrink();
+    final PassIngestFailed failure = state as PassIngestFailed;
+    final ThemeData theme = Theme.of(context);
+    final bool canRetry = switch (failure.error.code) {
+      PassIngestCode.failed ||
+      PassIngestCode.unreadable ||
+      PassIngestCode.rateLimited => true,
+      _ => false,
+    };
+    final bool offerReplace =
+        failure.error.code != PassIngestCode.needsRemote &&
+        failure.error.code != PassIngestCode.needsAuth;
+
     return Material(
       color: theme.scaffoldBackgroundColor.withValues(alpha: 0.97),
       child: Center(
@@ -60,60 +49,29 @@ class PassIngestOutcome extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Icon(
-                    failure != null
-                        ? Icons.info_outline_rounded
-                        : Icons.check_circle_outline_rounded,
+                    Icons.info_outline_rounded,
                     size: 36,
-                    color: scheme.onSurface,
+                    color: theme.colorScheme.onSurface,
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    title,
+                    _failureTitle(failure.error.code),
                     textAlign: TextAlign.center,
                     style: theme.textTheme.titleLarge,
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    failure != null
-                        ? _failureMessage(failure.error)
-                        : passTitle(item!),
+                    _failureMessage(failure.error),
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyLarge,
                   ),
-                  if (item != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      item.passCode == null
-                          ? 'No boarding code was found. Keep your original ticket available.'
-                          : 'Boarding code saved with your pass.',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppTokens.secondaryLabel(scheme),
-                      ),
-                    ),
-                    if (item.status == TicketStatus.expired) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'Its date has passed, so you’ll find it in Archive.',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ],
-                  ],
                   const SizedBox(height: 24),
-                  if (item != null)
-                    FilledButton(
-                      onPressed: () => onView(item),
-                      child: const Text('View pass'),
-                    ),
                   if (canRetry)
                     FilledButton(
                       onPressed: onRetry,
                       child: const Text('Retry'),
                     ),
-                  if (failure != null &&
-                      failure.error.code != PassIngestCode.needsRemote &&
-                      failure.error.code != PassIngestCode.needsAuth) ...[
+                  if (offerReplace) ...[
                     if (canRetry) const SizedBox(height: 8),
                     OutlinedButton(
                       onPressed: onReplace,

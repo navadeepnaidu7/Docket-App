@@ -74,7 +74,7 @@ class OnboardingContent {
   static const String completionLoadingTitle = 'Preparing your wallet';
   static const String completionLoadingDescription =
       'Staging your documents and passes workspace.';
-  static const String completionSuccessTitle = "You're ready";
+  static const String completionSuccessTitle = 'Your wallet is ready';
   static const String completionSuccessDescription =
       'Enter Docket and tap + to add your first document.';
 }

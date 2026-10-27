@@ -29,7 +29,6 @@ void main() {
             onRetry: () => retries++,
             onReplace: () => replacements++,
             onDismiss: () => dismissed++,
-            onView: (_) {},
           ),
         ),
       ),
@@ -42,15 +41,12 @@ void main() {
     await tester.tap(find.text('Dismiss'));
     expect([retries, replacements, dismissed], [1, 1, 1]);
   });
-  testWidgets('archived import explains missing code and opens the same pass', (
-    tester,
-  ) async {
+  testWidgets('a saved pass is not shown as its own page', (tester) async {
     final item = MoviePassItem.fromJson({
       'id': 'archived',
       'movieTitle': 'Arrival',
       'status': 'expired',
     });
-    WalletPassItem? opened;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -62,16 +58,13 @@ void main() {
             onRetry: () {},
             onReplace: () {},
             onDismiss: () {},
-            onView: (pass) => opened = pass,
           ),
         ),
       ),
     );
-    await tester.pump(const Duration(seconds: 10));
-    expect(find.text('Added to Archive'), findsOneWidget);
-    expect(find.textContaining('No boarding code was found'), findsOneWidget);
-    await tester.tap(find.text('View pass'));
-    expect(opened, same(item));
+    expect(find.text('Pass added'), findsNothing);
+    expect(find.text('Added to Archive'), findsNothing);
+    expect(find.text('View pass'), findsNothing);
   });
   testWidgets(
     'demo error contains no developer setup instructions or futile retry',
@@ -90,7 +83,6 @@ void main() {
               onRetry: () {},
               onReplace: () {},
               onDismiss: () {},
-              onView: (_) {},
             ),
           ),
         ),

@@ -312,7 +312,11 @@ class _PassportPromptScreenState extends ConsumerState<PassportPromptScreen> {
     SoundService.success();
     ref.read(passportListProvider.notifier).addPassport(profile);
     ref.read(walletOrderProvider.notifier).updateOrderOnItemAdded(profile.id);
-    showWalletSaveCelebration(context);
+    showWalletSaveCelebration(
+      context,
+      successTitle: 'Your passport is added',
+      successDescription: "It's stored on this device.",
+    );
   }
 
   // ── Step bodies ────────────────────────────────────────────────────────────

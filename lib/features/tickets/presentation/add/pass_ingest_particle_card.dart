@@ -111,11 +111,15 @@ class _PassIngestParticleCardState extends State<PassIngestParticleCard>
           : const Duration(milliseconds: 520);
       _outcome.forward(from: 0).then((_) {
         if (!mounted) return;
-        if (state.item.status == TicketStatus.active) {
-          widget.onFinished();
-        } else {
-          _scheduleClear(const Duration(milliseconds: 1800));
-        }
+        // The sentence stays long enough to read, then the overlay leaves and
+        // the wallet is showing the pass. Archive needs a slightly longer hold
+        // because the pass will not be on this tab.
+        final bool archived = state.item.status == TicketStatus.expired;
+        _scheduleClear(
+          archived
+              ? Duration(milliseconds: _reduceMotion ? 1200 : 1800)
+              : Duration(milliseconds: _reduceMotion ? 900 : 1400),
+        );
       });
     } else if (state is PassIngestFailed) {
       if (identical(_handledError, state.error)) return;
@@ -164,66 +168,51 @@ class _PassIngestParticleCardState extends State<PassIngestParticleCard>
       parent: _entrance,
       curve: Curves.easeOutCubic,
     );
-    final bool revealsActivePass =
-        state is PassIngestSucceeded &&
-        state.item.status == TicketStatus.active;
-    final Animation<double> revealOpacity = revealsActivePass
-        ? Tween<double>(begin: 1, end: 0).animate(
-            CurvedAnimation(
-              parent: _outcome,
-              curve: const Interval(0.38, 1, curve: Curves.easeOutCubic),
-            ),
-          )
-        : const AlwaysStoppedAnimation<double>(1);
-
     return FadeTransition(
       opacity: fade,
-      child: FadeTransition(
-        opacity: revealOpacity,
-        child: Semantics(
-          liveRegion: true,
-          label: semanticsLabel,
-          child: Stack(
-            fit: StackFit.expand,
-            children: <Widget>[
-              ClipRect(
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-                  // Quiet the ticket directly behind the field. Feather the
-                  // veil into the surrounding wallet, with no panel edge.
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: RadialGradient(
-                        center: const Alignment(0, -0.04),
-                        radius: 0.85,
-                        colors: <Color>[
-                          veil.withValues(alpha: isDark ? 0.68 : 0.84),
-                          veil.withValues(alpha: isDark ? 0.5 : 0.7),
-                          veil.withValues(alpha: 0),
-                        ],
-                        stops: const <double>[0, 0.48, 1],
-                      ),
+      child: Semantics(
+        liveRegion: true,
+        label: semanticsLabel,
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            ClipRect(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                // Quiet the ticket directly behind the field. Feather the
+                // veil into the surrounding wallet, with no panel edge.
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: const Alignment(0, -0.04),
+                      radius: 0.85,
+                      colors: <Color>[
+                        veil.withValues(alpha: isDark ? 0.68 : 0.84),
+                        veil.withValues(alpha: isDark ? 0.5 : 0.7),
+                        veil.withValues(alpha: 0),
+                      ],
+                      stops: const <double>[0, 0.48, 1],
                     ),
                   ),
                 ),
               ),
-              RepaintBoundary(
-                child: ExcludeSemantics(
-                  child: CustomPaint(
-                    painter: _PassParticlePainter(
-                      flow: _flow,
-                      outcome: _outcome,
-                      mode: _modeFor(state),
-                      loadingStage: _stage,
-                      isDark: isDark,
-                      reduceMotion: _reduceMotion,
-                    ),
+            ),
+            RepaintBoundary(
+              child: ExcludeSemantics(
+                child: CustomPaint(
+                  painter: _PassParticlePainter(
+                    flow: _flow,
+                    outcome: _outcome,
+                    mode: _modeFor(state),
+                    loadingStage: _stage,
+                    isDark: isDark,
+                    reduceMotion: _reduceMotion,
                   ),
                 ),
               ),
-              _Content(state: state, outcome: _outcome, ink: ink, muted: muted),
-            ],
-          ),
+            ),
+            _Content(state: state, outcome: _outcome, ink: ink, muted: muted),
+          ],
         ),
       ),
     );
@@ -255,9 +244,8 @@ String _semanticsLabel(PassIngestUiState state) {
   return switch (state) {
     PassIngestRunning() =>
       '${_loadingTitle(state)}. ${_loadingDescription(state)}',
-    PassIngestSucceeded(:final item) when item.status == TicketStatus.expired =>
-      'Pass archived. ${_subjectFor(item)}.',
-    PassIngestSucceeded(:final item) => 'Pass added. ${_subjectFor(item)}.',
+    PassIngestSucceeded(:final item) =>
+      '${_addedTitle(item)}. ${_addedDescription(item)}',
     PassIngestFailed(:final error) =>
       '${_errorTitle(error.code)}. ${error.message}',
     _ => '',
@@ -296,6 +284,34 @@ String _subjectFor(WalletPassItem item) {
   return label.trim().isEmpty ? 'Your pass' : label.trim();
 }
 
+String _addedTitle(WalletPassItem item) {
+  final String thing = switch (item.kind) {
+    PassKind.train => 'train ticket',
+    PassKind.movie => 'movie ticket',
+    PassKind.bus => 'bus ticket',
+  };
+  return item.status == TicketStatus.expired
+      ? 'Your $thing is in Archive'
+      : 'Your $thing is added';
+}
+
+String _addedDescription(WalletPassItem item) {
+  final String name = _subjectFor(item);
+  if (item.status == TicketStatus.expired) {
+    final String where = name == 'Your pass'
+        ? 'Its date has passed, so it is in Archive.'
+        : '$name was saved to Archive because its date has passed.';
+    if (item.passCode == null) {
+      return '$where No boarding code was found.';
+    }
+    return where;
+  }
+  if (item.passCode == null) {
+    return 'No boarding code was found. Keep your original ticket available.';
+  }
+  return name == 'Your pass' ? "It's in your wallet." : name;
+}
+
 String _errorTitle(PassIngestCode code) {
   return switch (code) {
     PassIngestCode.needsRemote => 'Connect a server',
@@ -326,17 +342,11 @@ class _Content extends StatelessWidget {
   Widget build(BuildContext context) {
     if (state is PassIngestRunning) return const SizedBox.shrink();
 
-    if (state is PassIngestSucceeded &&
-        (state as PassIngestSucceeded).item.status == TicketStatus.active) {
-      return const SizedBox.shrink();
-    }
-
     final String title;
     final String description;
     if (state case PassIngestSucceeded(:final item)) {
-      title = 'Pass archived';
-      description =
-          '${_subjectFor(item)} was saved to Archive because its date has passed.';
+      title = _addedTitle(item);
+      description = _addedDescription(item);
     } else if (state case PassIngestFailed(:final error)) {
       title = _errorTitle(error.code);
       description = error.message;

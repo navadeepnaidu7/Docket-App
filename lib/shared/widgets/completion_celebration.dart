@@ -10,9 +10,10 @@ import 'bounce_tap.dart';
 
 class SaveCompletionContent {
   static const String loadingTitle = 'Saving to your wallet';
-  static const String loadingDescription = 'Encrypting and storing on your device.';
-  static const String successTitle = "You're all set";
-  static const String successDescription = 'Your document is securely stored in your wallet.';
+  static const String loadingDescription =
+      'Encrypting and storing on your device.';
+  static const String successTitle = 'Added to your wallet';
+  static const String successDescription = "It's stored on this device.";
 }
 
 /// Standard post-save celebration for any wallet item (passport, ID, pass, etc.).
@@ -20,35 +21,48 @@ class SaveCompletionContent {
 Future<void> showWalletSaveCelebration(
   BuildContext context, {
   int navigatorPopCount = 2,
+  String successTitle = SaveCompletionContent.successTitle,
+  String successDescription = SaveCompletionContent.successDescription,
 }) {
   return showGeneralDialog<void>(
     context: context,
     barrierColor: Colors.transparent,
     barrierDismissible: false,
-    pageBuilder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) {
-      final Color bg = Theme.of(context).scaffoldBackgroundColor;
-      return Scaffold(
-        backgroundColor: bg,
-        body: CompletionCelebration(
-          loadingTitle: SaveCompletionContent.loadingTitle,
-          loadingDescription: SaveCompletionContent.loadingDescription,
-          successTitle: SaveCompletionContent.successTitle,
-          successDescription: SaveCompletionContent.successDescription,
-          autoCompleteAfterSuccess: const Duration(milliseconds: 800),
-          onComplete: () {
-            final NavigatorState navigator = Navigator.of(context);
-            for (int i = 0; i < navigatorPopCount; i++) {
-              if (!navigator.canPop()) break;
-              navigator.pop();
-            }
-          },
-        ),
-      );
-    },
+    pageBuilder:
+        (
+          BuildContext context,
+          Animation<double> animation,
+          Animation<double> secondaryAnimation,
+        ) {
+          final Color bg = Theme.of(context).scaffoldBackgroundColor;
+          return Scaffold(
+            backgroundColor: bg,
+            body: CompletionCelebration(
+              loadingTitle: SaveCompletionContent.loadingTitle,
+              loadingDescription: SaveCompletionContent.loadingDescription,
+              successTitle: successTitle,
+              successDescription: successDescription,
+              autoCompleteAfterSuccess: const Duration(milliseconds: 800),
+              onComplete: () {
+                final NavigatorState navigator = Navigator.of(context);
+                for (int i = 0; i < navigatorPopCount; i++) {
+                  if (!navigator.canPop()) break;
+                  navigator.pop();
+                }
+              },
+            ),
+          );
+        },
     transitionDuration: const Duration(milliseconds: 300),
-    transitionBuilder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
-      return FadeTransition(opacity: animation, child: child);
-    },
+    transitionBuilder:
+        (
+          BuildContext context,
+          Animation<double> animation,
+          Animation<double> secondaryAnimation,
+          Widget child,
+        ) {
+          return FadeTransition(opacity: animation, child: child);
+        },
   );
 }
 
@@ -207,8 +221,12 @@ class _CompletionCelebrationState extends State<CompletionCelebration>
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 360),
             child: Text(
-              _isCompleted ? widget.successDescription : widget.loadingDescription,
-              key: ValueKey<String>(_isCompleted ? 'success-desc' : 'loading-desc'),
+              _isCompleted
+                  ? widget.successDescription
+                  : widget.loadingDescription,
+              key: ValueKey<String>(
+                _isCompleted ? 'success-desc' : 'loading-desc',
+              ),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: ink.withValues(alpha: 0.62),

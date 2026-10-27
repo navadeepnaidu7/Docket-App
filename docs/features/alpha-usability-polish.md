@@ -29,11 +29,13 @@ Run analyzer and relevant existing suites. Record device-only limits honestly.
   Search button and off by default; documents reveal their existing
   wallet card, and train/movie/bus results open their existing detail route.
   Results retain their query while opening and returning from pass details.
-- Import failures and successes remain visible until acted on. Retry keeps the
-  original request. Cancelling a replacement file picker or PNR editor keeps the
-  failed request. PNR edits are prefilled; invalid edits never replace it.
-- Success explains whether a boarding code exists; archived passes have a direct
-  View pass action. Loading text names real phases, without a fake percentage.
+- Import failures remain visible until acted on. Retry keeps the original
+  request. Cancelling a replacement file picker or PNR editor keeps the failed
+  request. PNR edits are prefilled; invalid edits never replace it.
+- Success stays on the particle field. It names the ticket ("Your train ticket
+  is added"), mentions a missing boarding code, and then clears. An archived
+  pass says it is in Archive and clears on its own. Loading text names real
+  phases, without a fake percentage.
 - Sample pass labeling is visible outside developer builds. Demo import errors
   use product wording rather than sending alpha testers into Developer settings.
 - Upcoming selection combines date/time fields and ignores unknown timestamps,
@@ -53,8 +55,9 @@ Removed at the owner's request (2026-09-12):
   on every card.
 
 No auth, backend, storage schema, or animation primitive changes were made for
-this work. Existing card artwork is retained. The import particle widget remains
-the loading presentation; persistent outcomes are a separate functional surface.
+this work. Existing card artwork is retained. The import particle widget is the
+loading and success presentation. Only a failed import stays up until the user
+retries, replaces the file, or dismisses it.
 
 Visual review: `tool/alpha_polish_preview_test.dart` renders the actual theme and
 Inter fonts at 390×844 (1x text) and 320×640 (2x text), in light and dark modes.

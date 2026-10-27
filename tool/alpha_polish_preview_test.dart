@@ -121,7 +121,6 @@ void main() {
               onRetry: () {},
               onReplace: () {},
               onDismiss: () {},
-              onView: (_) {},
             ),
           ),
         );

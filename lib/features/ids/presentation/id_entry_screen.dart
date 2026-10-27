@@ -170,7 +170,14 @@ class _IdEntryScreenState extends ConsumerState<IdEntryScreen> {
     ref.read(idListProvider.notifier).addDocument(doc);
     ref.read(walletOrderProvider.notifier).updateOrderOnItemAdded(doc.id);
     _attachScanOriginal(doc.id);
-    showWalletSaveCelebration(context);
+    showWalletSaveCelebration(
+      context,
+      successTitle: switch (doc.type) {
+        IdDocumentType.pan => 'Your PAN card is added',
+        IdDocumentType.aadhaar => 'Your Aadhaar card is added',
+      },
+      successDescription: "It's stored on this device.",
+    );
   }
 
   /// Keeps the scanned original as the record's first attachment.

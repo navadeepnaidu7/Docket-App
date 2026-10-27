@@ -155,7 +155,7 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 540));
 
-      expect(find.text('Pass archived'), findsOneWidget);
+      expect(find.text('Your train ticket is in Archive'), findsOneWidget);
       expect(find.text('View Archive'), findsNothing);
       expect(find.text('Done'), findsNothing);
       expect(completions, 0);
@@ -165,24 +165,24 @@ void main() {
     },
   );
 
-  testWidgets(
-    'active success reveals the real card before clearing the overlay',
-    (WidgetTester tester) async {
-      final WalletPassItem active = TrainPassItem(mockTrainPasses.first);
-      int completions = 0;
-      await tester.pumpWidget(
-        _host(
-          PassIngestSucceeded(request: _request, item: active),
-          onFinished: () => completions++,
-        ),
-      );
+  testWidgets('active success names the ticket, then clears the overlay', (
+    WidgetTester tester,
+  ) async {
+    final WalletPassItem active = TrainPassItem(mockTrainPasses.first);
+    int completions = 0;
+    await tester.pumpWidget(
+      _host(
+        PassIngestSucceeded(request: _request, item: active),
+        onFinished: () => completions++,
+      ),
+    );
 
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
-      expect(completions, 0);
-      await tester.pump(const Duration(milliseconds: 30));
-      await tester.pump();
-      expect(completions, 1);
-    },
-  );
+    await tester.pump(const Duration(milliseconds: 540));
+    expect(find.text('Your train ticket is added'), findsOneWidget);
+    expect(completions, 0);
+    // The read hold starts once the particles have settled.
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump();
+    expect(completions, 1);
+  });
 }
