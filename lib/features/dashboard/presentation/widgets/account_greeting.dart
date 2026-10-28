@@ -15,11 +15,12 @@ class AccountGreeting extends StatefulWidget {
 
 class _AccountGreetingState extends State<AccountGreeting>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _wave = AnimationController(vsync: this)
-    ..addStatusListener((status) {
-      // The asset's first frame is its authored resting pose.
-      if (status == AnimationStatus.completed) _wave.value = 0;
-    });
+  // The bundled one-shot ends in a settled pose. Keep that final frame rather
+  // than jumping back to the moving hand at the original loop's start.
+  late final AnimationController _wave = AnimationController(
+    vsync: this,
+    value: 1,
+  );
   bool _loaded = false;
   bool _played = false;
   bool _reduceMotion = false;
@@ -34,7 +35,7 @@ class _AccountGreetingState extends State<AccountGreeting>
   void _syncWave() {
     if (_reduceMotion) {
       _wave.stop();
-      _wave.value = 0;
+      _wave.value = 1;
     } else if (_loaded && !_played) {
       _played = true;
       _wave.forward(from: 0);

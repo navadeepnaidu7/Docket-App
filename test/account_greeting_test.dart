@@ -36,7 +36,7 @@ void main() {
     expect(wave.value, greaterThan(0));
     await tester.pump(const Duration(seconds: 2));
     expect(wave.isAnimating, isFalse);
-    expect(wave.value, 0);
+    expect(wave.value, 1);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
@@ -50,7 +50,7 @@ void main() {
       final wave = tester.widget<Lottie>(find.byType(Lottie)).controller!;
       expect(wave.isAnimating, isFalse);
       await tester.pump(const Duration(seconds: 2));
-      expect(wave.value, 0);
+      expect(wave.value, 1);
       expect(tester.binding.hasScheduledFrame, isFalse);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

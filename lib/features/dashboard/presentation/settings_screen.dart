@@ -197,6 +197,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         const _ThemeAppearanceBlock(),
                         const _SettingsDivider(),
                         _SettingsToggleRow(
+                          icon: Icons.vibration_rounded,
+                          iconColor: const Color(0xFFE07A2F),
                           title: 'Haptics',
                           value: ref.watch(hapticsEnabledProvider),
                           onChanged: (_) {
@@ -227,6 +229,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       isDark: isDark,
                       children: [
                         _SettingsToggleRow(
+                          icon: CupertinoIcons.textformat_abc,
+                          iconColor: const Color(0xFF2F6FED),
                           title: 'Labels',
                           value: ref.watch(showNavLabelsProvider),
                           onChanged: (_) {
@@ -236,6 +240,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const _SettingsDivider(),
                         _SettingsToggleRow(
+                          icon: Icons.search_rounded,
+                          iconColor: const Color(0xFF0FA968),
                           title: 'Search button',
                           subtitle: 'Search your wallet from the Home header',
                           value: ref.watch(searchButtonEnabledProvider),
@@ -256,6 +262,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       isDark: isDark,
                       children: [
                         _SettingsToggleRow(
+                          icon: Icons.auto_awesome_rounded,
+                          iconColor: const Color(0xFF5E5CE6),
                           title: 'Card shine border',
                           subtitle:
                               'After 3.5s on ID cards, a soft iridescent border appears',
@@ -267,6 +275,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const _SettingsDivider(),
                         _SettingsToggleRow(
+                          icon: Icons.filter_list_rounded,
+                          iconColor: const Color(0xFF2F6FED),
                           title: 'Card category filter',
                           subtitle:
                               'Filter menu on Home — pick a type or clear with ×',
@@ -280,6 +290,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const _SettingsDivider(),
                         _SettingsToggleRow(
+                          icon: Icons.style_rounded,
+                          iconColor: const Color(0xFF0FA968),
                           title: 'Stacked pass deck',
                           subtitle:
                               'Passes overlap in a deck you swipe sideways, '
@@ -301,6 +313,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         isDark: isDark,
                         children: [
                           _SettingsLinkRow(
+                            icon: Icons.manage_accounts_rounded,
+                            iconColor: const Color(0xFF2F6FED),
                             title: 'Manage account',
                             subtitle: session.email,
                             onTap: () {
@@ -314,6 +328,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                           const _SettingsDivider(),
                           _SettingsLinkRow(
+                            icon: Icons.logout_rounded,
+                            iconColor: const Color(0xFFFF3B30),
                             title: 'Sign out',
                             onTap: () => _confirmSignOut(context, ref),
                           ),
@@ -328,6 +344,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       isDark: isDark,
                       children: [
                         _SettingsLinkRow(
+                          icon: Icons.info_outline_rounded,
+                          iconColor: const Color(0xFF8E8E93),
                           title: 'About Docket',
                           onTap: () {
                             Navigator.of(context).push(
@@ -339,6 +357,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const _SettingsDivider(),
                         _SettingsLinkRow(
+                          icon: Icons.person_outline_rounded,
+                          iconColor: const Color(0xFF8E8E93),
                           title: 'About developer',
                           subtitle: kDeveloperDisplayName,
                           onTap: () {
@@ -351,12 +371,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const _SettingsDivider(),
                         _SettingsLinkRow(
+                          icon: Icons.mail_outline_rounded,
+                          iconColor: const Color(0xFF8E8E93),
                           title: 'Mail to developer',
                           subtitle: kDeveloperEmail,
                           onTap: () => _mailToDeveloper(context),
                         ),
                         const _SettingsDivider(),
                         _SettingsLinkRow(
+                          icon: Icons.cloud_outlined,
+                          iconColor: const Color(0xFF8E8E93),
                           title: 'Weather credits',
                           subtitle: 'Open-Meteo \u00b7 CC BY 4.0',
                           onTap: () => _showWeatherCredits(context),
@@ -1007,6 +1031,8 @@ class _DeveloperSection extends ConsumerWidget {
       children: <Widget>[
         if (kDebugMode) ...[
           _SettingsLinkRow(
+            icon: Icons.auto_awesome_outlined,
+            iconColor: const Color(0xFF5E5CE6),
             title: 'Weather glance preview',
             subtitle: ref.watch(weatherGlancePreviewProvider).label,
             onTap: () async {
@@ -1030,6 +1056,8 @@ class _DeveloperSection extends ConsumerWidget {
           ),
           const _SettingsDivider(),
           _SettingsLinkRow(
+            icon: Icons.cloud_outlined,
+            iconColor: const Color(0xFF2F6FED),
             title: 'Weather scene preview',
             subtitle: ref.watch(skyPreviewProvider).label,
             onTap: () async {
@@ -1054,6 +1082,8 @@ class _DeveloperSection extends ConsumerWidget {
           const _SettingsDivider(),
         ],
         _SettingsToggleRow(
+          icon: Icons.science_rounded,
+          iconColor: const Color(0xFFAF52DE),
           title: 'Use mock passes',
           subtitle: flags.isMockPassesActive
               ? 'Fixtures · demo train & movie cards'
@@ -1066,6 +1096,8 @@ class _DeveloperSection extends ConsumerWidget {
         ),
         const _SettingsDivider(),
         _SettingsToggleRow(
+          icon: Icons.account_circle_rounded,
+          iconColor: const Color(0xFF2F6FED),
           title: 'Mock signed in',
           subtitle: flags.mockSignedIn
               ? 'Card shows name · Account section on'
@@ -1078,18 +1110,24 @@ class _DeveloperSection extends ConsumerWidget {
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(
+          icon: Icons.palette_rounded,
+          iconColor: const Color(0xFF5E5CE6),
           title: 'Card fluid gradient scheme',
           subtitle: flags.cardFluidScheme.label,
           onTap: () => _selectFluidScheme(context, ref),
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(
+          icon: Icons.link_rounded,
+          iconColor: const Color(0xFF2F6FED),
           title: 'API base URL',
           subtitle: urlLabel,
           onTap: () => _editApiBaseUrl(context, ref),
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(
+          icon: Icons.key_rounded,
+          iconColor: const Color(0xFFAF52DE),
           title: 'Dev auth token',
           subtitle: flags.devAuthIdToken.isEmpty
               ? 'Not set · needed to add passes'
@@ -1098,6 +1136,8 @@ class _DeveloperSection extends ConsumerWidget {
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(
+          icon: Icons.refresh_rounded,
+          iconColor: const Color(0xFF30D158),
           title: 'Reload passes',
           onTap: () {
             HapticService.select();
@@ -1113,6 +1153,8 @@ class _DeveloperSection extends ConsumerWidget {
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(
+          icon: Icons.badge_outlined,
+          iconColor: const Color(0xFF0A84FF),
           title: 'Load dummy IDs',
           subtitle: '5 passports + 5 Aadhaar/PAN variants',
           onTap: () {
@@ -1133,6 +1175,8 @@ class _DeveloperSection extends ConsumerWidget {
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(
+          icon: Icons.playlist_remove_rounded,
+          iconColor: const Color(0xFFFF453A),
           title: 'Remove dummy IDs',
           subtitle: 'Only cards whose id starts with dummy-',
           onTap: () {
@@ -1153,6 +1197,8 @@ class _DeveloperSection extends ConsumerWidget {
         ),
         const _SettingsDivider(),
         _SettingsLinkRow(
+          icon: Icons.restart_alt_rounded,
+          iconColor: const Color(0xFF8E8E93),
           title: 'Reset dev flags',
           subtitle: 'Compile-time defaults',
           onTap: () async {
@@ -1321,12 +1367,17 @@ class _ThemeAppearanceBlock extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Row(
                 children: <Widget>[
+                  const _SettingsRowIcon(
+                    icon: Icons.brightness_6_rounded,
+                    color: Color(0xFF6E40C9),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Theme',
@@ -1341,9 +1392,9 @@ class _ThemeAppearanceBlock extends ConsumerWidget {
                 ],
               ),
               if (statusSubtitle != null) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Padding(
-                  padding: EdgeInsets.zero,
+                  padding: const EdgeInsets.only(left: 36),
                   child: Text(
                     statusSubtitle,
                     style: AppFonts.ui(
@@ -1754,13 +1805,13 @@ class _SettingsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.only(left: 18, bottom: 8),
+          padding: const EdgeInsets.only(left: 6, bottom: 8),
           child: Text(
-            title.toUpperCase(),
+            title,
             style: AppFonts.ui(
-              fontSize: 11.5,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
-              letterSpacing: 1.0,
+              letterSpacing: -0.1,
               color: muted,
             ),
           ),
@@ -1830,22 +1881,53 @@ class _SettingsDivider extends StatelessWidget {
           alpha: Theme.of(context).brightness == Brightness.dark ? 0.08 : 0.06,
         );
 
-    // Inset to the row text; rows carry no leading icon.
+    // Align under text after bare icon (14 pad + 24 icon + 12 gap).
     return Padding(
-      padding: const EdgeInsets.only(left: 18),
+      padding: const EdgeInsets.only(left: 50),
       child: Divider(height: 1, thickness: 0.5, color: dividerColor),
+    );
+  }
+}
+
+class _SettingsRowIcon extends StatelessWidget {
+  const _SettingsRowIcon({
+    required this.icon,
+    // Kept for call-site compatibility; all row icons use a neutral tint.
+    required this.color,
+  });
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    // Same default ink for every row in both modes (no accent colors).
+    final Color iconTint = isDark
+        ? const Color(0xFFE5E5EA)
+        : const Color(0xFF3A3A3C);
+
+    // Bare glyph only — no squircle / plate behind the icon.
+    return SizedBox(
+      width: 24,
+      height: 24,
+      child: Icon(icon, size: 22, color: iconTint),
     );
   }
 }
 
 class _SettingsToggleRow extends StatelessWidget {
   const _SettingsToggleRow({
+    required this.icon,
+    required this.iconColor,
     required this.title,
     required this.value,
     required this.onChanged,
     this.subtitle,
   });
 
+  final IconData icon;
+  final Color iconColor;
   final String title;
   final String? subtitle;
   final bool value;
@@ -1860,9 +1942,11 @@ class _SettingsToggleRow extends StatelessWidget {
     return SizedBox(
       height: subtitle == null ? 58 : 66,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(
           children: <Widget>[
+            _SettingsRowIcon(icon: icon, color: iconColor),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1959,9 +2043,16 @@ class _ProfileAvatarShapeRow extends StatelessWidget {
       child: SizedBox(
         height: 58,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Row(
             children: <Widget>[
+              _SettingsRowIcon(
+                icon: shape == ProfileAvatarShape.circle
+                    ? Icons.circle_outlined
+                    : Icons.rounded_corner_rounded,
+                color: const Color(0xFFAF52DE),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -2011,11 +2102,15 @@ class _ProfileAvatarShapeRow extends StatelessWidget {
 
 class _SettingsLinkRow extends StatelessWidget {
   const _SettingsLinkRow({
+    required this.icon,
+    required this.iconColor,
     required this.title,
     required this.onTap,
     this.subtitle,
   });
 
+  final IconData icon;
+  final Color iconColor;
   final String title;
   final String? subtitle;
   final VoidCallback onTap;
@@ -2034,9 +2129,11 @@ class _SettingsLinkRow extends StatelessWidget {
       child: SizedBox(
         height: subtitle == null ? 58 : 66,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Row(
             children: <Widget>[
+              _SettingsRowIcon(icon: icon, color: iconColor),
+              const SizedBox(width: 12),
               Expanded(
                 child: subtitle == null
                     ? Text(
@@ -2292,6 +2389,8 @@ class AboutDeveloperScreen extends StatelessWidget {
                     isDark: isDark,
                     children: <Widget>[
                       _SettingsLinkRow(
+                        icon: Icons.language_rounded,
+                        iconColor: const Color(0xFF2F6FED),
                         title: 'Website',
                         subtitle: 'navadeepnaidu.com',
                         onTap: () =>
@@ -2299,6 +2398,8 @@ class AboutDeveloperScreen extends StatelessWidget {
                       ),
                       const _SettingsDivider(),
                       _SettingsLinkRow(
+                        icon: Icons.article_outlined,
+                        iconColor: const Color(0xFFE07A2F),
                         title: 'Blog',
                         subtitle: 'blog.navadeepnaidu.com',
                         onTap: () =>
@@ -2306,6 +2407,8 @@ class AboutDeveloperScreen extends StatelessWidget {
                       ),
                       const _SettingsDivider(),
                       _SettingsLinkRow(
+                        icon: Icons.code_rounded,
+                        iconColor: const Color(0xFF6E7681),
                         title: 'GitHub',
                         subtitle: 'github.com/navadeepnaidu7',
                         onTap: () =>
@@ -2313,6 +2416,8 @@ class AboutDeveloperScreen extends StatelessWidget {
                       ),
                       const _SettingsDivider(),
                       _SettingsLinkRow(
+                        icon: Icons.alternate_email_rounded,
+                        iconColor: const Color(0xFF1DA1F2),
                         title: 'X',
                         subtitle: '@navadeep_naidu7',
                         onTap: () =>
@@ -2320,6 +2425,8 @@ class AboutDeveloperScreen extends StatelessWidget {
                       ),
                       const _SettingsDivider(),
                       _SettingsLinkRow(
+                        icon: Icons.mail_outline_rounded,
+                        iconColor: const Color(0xFF8E8E93),
                         title: 'Mail to developer',
                         subtitle: kDeveloperEmail,
                         onTap: () => _mailToDeveloper(context),

@@ -21,7 +21,8 @@ void registerAssetLicenses() {
       'https://fonts.gstatic.com/s/e/notoemoji/latest/1f44b/lottie.json\n'
       'Creative Commons Attribution 4.0 International (CC BY 4.0).\n'
       'https://creativecommons.org/licenses/by/4.0/\n'
-      'Bundled unmodified; playback stops at the authored resting pose.',
+      'Modified with a short settling tail: the hand eases to rest and '
+      'its motion lines fade out. Playback holds the final resting pose.',
     );
     for (final family in <String>[
       'Inter',
