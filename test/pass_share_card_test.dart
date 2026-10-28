@@ -186,11 +186,9 @@ void main() {
       expect(find.byType(PassCodeBlock), findsNothing);
     });
 
-    // This used to be a pinned wart: the train face printed a decorative
-    // `PassCodeBlock`, so a shared train pass carried that square *and* the real
-    // QR below it. The square now draws the real code, which would put two
-    // copies of the same symbol in one image, so the share card turns the
-    // face's off (`showCode: false`) and stays the only code in the export.
+    // The train face once carried a code square of its own, so a shared pass
+    // could hold two copies of one symbol. The graphite face draws no code at
+    // all; the share card's QR below it must stay the only one.
     testWidgets('train face contributes no second code to the export', (
       WidgetTester tester,
     ) async {

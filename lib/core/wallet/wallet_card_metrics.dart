@@ -53,14 +53,12 @@ class WalletCardMetrics {
   /// width/height from here, so this is the single place the train card's size
   /// is declared.
   ///
-  /// Compact train-specific layout: 442dp of ticket content and a 50dp status
-  /// strip. It keeps the original width without borrowing poster-height gaps
-  /// from the movie card.
-  ///
-  /// Keep this in step with `TrainPassMetrics.bandHeight` — the band absorbs
-  /// the whole difference between the content block and the card's bottom edge.
-  static const double trainCanvasWidth = 366;
-  static const double trainCanvasHeight = 492;
+  /// The movie card's width, so the two pass types read as one family in the
+  /// carousel. The height is the graphite face's own: its stub ends a fixed
+  /// distance below the last value baseline, so this is where the layout ends
+  /// rather than a box the content is stretched into.
+  static const double trainCanvasWidth = 382;
+  static const double trainCanvasHeight = 498;
   static const Size trainCanvas = Size(trainCanvasWidth, trainCanvasHeight);
 
   /// Train pass ratio, kept in step with [trainCanvas].

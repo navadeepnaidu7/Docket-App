@@ -3,285 +3,291 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/wallet/wallet_card_metrics.dart';
 
-/// Palette and geometry for the train pass face.
-///
-/// Every number here was measured off the Figma export by taking the min/max of
-/// each glyph path's coordinates, then converting cap heights to font sizes at
-/// Geist's 0.727 em and Instrument Serif's ~0.70 em. Coordinates are
-/// **card-local** on a [TrainPassMetrics.canvas] box — the raw SVG has the card
-/// offset by (32, 16) inside its artboard, and that offset is already removed.
-///
-/// The face is deliberately fixed-light in both themes. A wallet card is a
-/// facsimile of a paper document; [WalletPassportCard] does the same.
-abstract final class TrainPassPalette {
-  TrainPassPalette._();
-
-  static const Color surface = Color(0xFFFFF6F6);
-  static const Color border = Color(0xFFEAD5D8);
-  static const Color ink = Color(0xFF1F1619);
-  static const Color muted = Color(0xFF6B5A5E);
-  static const Color rule = Color(0xFFE8D8DA);
-  static const Color qrBorder = Color(0xFFE5D1D4);
-  static const Color chipFill = Color(0xFFE8F5E9);
-  static const Color chipInk = Color(0xFF2E7D32);
-
-  /// Deeper blush the status band settles into, so the band reads as its own
-  /// zone without needing a hard rule across the card.
-  static const Color bandTint = Color(0xFFFBEDEE);
-
-  static const Color toneWarning = Color(0xFFB26A00);
-  static const Color toneCritical = Color(0xFFC0392B);
-}
-
 /// The palette resolved for one pass state.
 ///
-/// An expired pass keeps the layout and loses the warmth — same card, drained,
-/// so a spent ticket never reads as a live one at a glance.
+/// One solid surface and nothing else: depth comes from a 1 dp top-edge
+/// highlight on the face and a shadow outside it. The face is fixed in both
+/// themes, like the movie and passport cards. Spec in
+/// `docs/features/train-pass-redesign.md`.
 @immutable
 class TrainPassColors {
-  const TrainPassColors({
+  const TrainPassColors._({
     required this.surface,
-    required this.bandTint,
-    required this.border,
     required this.ink,
     required this.muted,
-    required this.rule,
-    required this.qrBorder,
-    required this.chipFill,
-    required this.chipInk,
-    required this.ghostAlpha,
+    required this.faint,
+    required this.edge,
+    required this.warning,
+    required this.critical,
     required this.shadowAlpha,
   });
 
   final Color surface;
-  final Color bandTint;
-  final Color border;
   final Color ink;
+
+  /// Labels, city names, codes, the lead words of the status sentence.
   final Color muted;
-  final Color rule;
-  final Color qrBorder;
-  final Color chipFill;
-  final Color chipInk;
-  final double ghostAlpha;
+
+  /// The route rule and the tear dots.
+  final Color faint;
+
+  /// 1 dp highlight along the top edge.
+  final Color edge;
+
+  final Color warning;
+  final Color critical;
   final double shadowAlpha;
 
-  static const TrainPassColors active = TrainPassColors(
-    surface: TrainPassPalette.surface,
-    bandTint: TrainPassPalette.bandTint,
-    border: TrainPassPalette.border,
-    ink: TrainPassPalette.ink,
-    muted: TrainPassPalette.muted,
-    rule: TrainPassPalette.rule,
-    qrBorder: TrainPassPalette.qrBorder,
-    chipFill: TrainPassPalette.chipFill,
-    chipInk: TrainPassPalette.chipInk,
-    ghostAlpha: 0.06,
-    shadowAlpha: 0.25,
+  static const TrainPassColors active = TrainPassColors._(
+    surface: Color(0xFF1C1C1E),
+    ink: Color(0xFFF5F5F7),
+    muted: Color(0x85F5F5F7), // 52%
+    faint: Color(0x2BF5F5F7), // 17%
+    edge: Color(0x12FFFFFF),
+    warning: Color(0xFFFFB340),
+    critical: Color(0xFFFF6961),
+    shadowAlpha: 0.22,
   );
 
-  static const TrainPassColors expired = TrainPassColors(
-    surface: Color(0xFFF7F5F5),
-    bandTint: Color(0xFFF0EDED),
-    border: Color(0xFFE2DDDE),
-    ink: Color(0xFF4A4548),
-    muted: Color(0xFF8A8285),
-    rule: Color(0xFFE4E0E0),
-    qrBorder: Color(0xFFE0DBDC),
-    chipFill: Color(0xFFEDEAEA),
-    chipInk: Color(0xFF6B5A5E),
-    ghostAlpha: 0.04,
-    shadowAlpha: 0.14,
+  /// A spent ticket keeps the layout and loses the night: same card, drained,
+  /// so it never reads as a live one at a glance. Tones flatten to [muted].
+  static const TrainPassColors spent = TrainPassColors._(
+    surface: Color(0xFFE9E8E5),
+    ink: Color(0xFF58585C),
+    muted: Color(0x853C3C41),
+    faint: Color(0x293C3C41),
+    edge: Color(0xB3FFFFFF),
+    warning: Color(0x853C3C41),
+    critical: Color(0x853C3C41),
+    shadowAlpha: 0.10,
   );
 
   static TrainPassColors of({required bool isExpired}) =>
-      isExpired ? TrainPassColors.expired : TrainPassColors.active;
-
-  /// Colour for a status-band tone. Expired passes flatten every tone to
-  /// [muted] — a spent ticket has no live state worth colouring.
-  Color tone(Color live) => this == TrainPassColors.expired ? muted : live;
-
-  @override
-  bool operator ==(Object other) =>
-      other is TrainPassColors &&
-      other.surface == surface &&
-      other.ink == ink &&
-      other.ghostAlpha == ghostAlpha;
-
-  @override
-  int get hashCode => Object.hash(surface, ink, ghostAlpha);
+      isExpired ? spent : active;
 }
 
+/// Geometry for the 382 x 498 face. Every text line is placed by its
+/// **baseline**, never by its top: the fallback face google_fonts paints before
+/// Geist resolves has different ascents, and top-placed text would jump once
+/// the real font arrives.
 abstract final class TrainPassMetrics {
   TrainPassMetrics._();
 
   /// Derived from [WalletCardMetrics.trainCanvas] rather than restated, because
-  /// the two were independent literals and the card is scaled by the canvas
-  /// while it is *laid out* against these — so a change to one and not the
-  /// other silently stretched every baseline instead of failing.
+  /// the card is scaled by the canvas while it is laid out against these — two
+  /// independent literals silently stretched every baseline when one moved.
   static const double width = WalletCardMetrics.trainCanvasWidth;
   static const double height = WalletCardMetrics.trainCanvasHeight;
   static const Size canvas = Size(width, height);
 
-  static const double cornerR = 32;
+  static const double cornerR = 24;
+  static const double notchR = 10;
 
-  /// Left inset; the content column is [width] - 2 * [inset] wide.
-  static const double inset = 24;
-  static const double contentRight = width - inset; // 342
+  /// Horizontal inset. Every left column starts here and every right column
+  /// ends at [contentRight].
+  static const double inset = 26;
+  static const double contentRight = width - inset;
+  static const double contentWidth = width - 2 * inset;
 
-  // ── Station header ──
-  static const double codeBaseline = 68;
-  static const double codeSize = 48;
-  static const double codeMaxWidth = 112.5;
-  static const double connectorY = 55.5;
+  // ── Header ──
+  static const double nameBaseline = 48;
+  static const double numberBaseline = 72;
 
-  /// Clear space between a station code and the route connector.
-  static const double codeConnectorGap = 16;
-  static const double stationNameBaseline = 91;
+  // ── Journey ──
+  static const double cityBaseline = 140;
+  static const double timeBaseline = 188;
 
-  static const double headerRuleY = 111;
+  /// Vertical middle of the times' cap height (Geist cap height is 0.71 em).
+  static const double ruleY = timeBaseline - TrainPassType.timeSize * 0.71 / 2;
 
-  // ── Train identity ──
-  static const double trainNameBaseline = 139;
-  static const double trainNumberBaseline = 159;
-  static const double chipLeft = 295;
-  static const double chipTop = 132;
-  static const double chipWidth = 47;
-  static const double chipHeight = 29;
+  /// Height reserved above the rule for the duration, and the clear space
+  /// between the duration's line box and the rule.
+  static const double ruleLift = 24;
+  static const double durationGap = 6;
 
-  // ── Data grid ──
-  static const double gridColumnTwoX = 192;
-  static const double gridFirstLabelBaseline = 191;
-  static const double gridLabelToValue = 21;
-  static const double gridRowPitch = 49;
+  /// Clear space between a time and the end of the route rule.
+  static const double ruleGap = 16;
+  static const double codeBaseline = 212;
 
-  static double gridLabelBaseline(int row) =>
-      gridFirstLabelBaseline + row * gridRowPitch;
-  static double gridValueBaseline(int row) =>
-      gridLabelBaseline(row) + gridLabelToValue;
+  /// The +1 day marker hangs in the right margin, top-aligned to the time's cap
+  /// line, so the arrival time itself keeps the shared right edge.
+  static const double dayMarkerBaseline =
+      timeBaseline - TrainPassType.timeSize * 0.71 + 9;
+  static const double dayMarkerGap = 3;
 
-  // ── Passenger block ──
-  static const double tearRuleY = 329;
-  static const double passengerLabelBaseline = 355;
-  static const double passengerValueBaseline = 377;
-  static const double pnrLabelBaseline = 400;
-  static const double pnrValueBaseline = 422;
+  // ── Status ──
+  static const double leadBaseline = 275;
+  static const double detailBaseline = 301;
 
-  /// Right edge of the passenger column, leaving a gutter before the QR.
-  static const double passengerRight = width - 104; // 262
-
-  // ── QR ──
-  static const double qrLeft = 274;
-  static const double qrTop = 353;
-  static const double qrSize = 68;
-
-  // ── Status band ──
+  // ── Stub ──
   //
-  // A compact strip below the passenger/PNR block.
-  static const double bandTop = 442;
-  static const double bandHeight = height - bandTop; // 50
+  // The grid holds equal space above the first label's cap line and below the
+  // last value's baseline, so it sits optically centred under the tear.
+  static const double tearY = 341;
+  static const double stubPad = 32;
+  static const double labelCap = TrainPassType.labelSize * 0.71;
+  static const double firstLabelBaseline = tearY + stubPad + labelCap;
+  static const double labelToValue = 24;
+  static const double rowPitch = 60;
 
-  /// Size of the ghosted wordmark behind the band messages, and how far its
-  /// baseline is pushed past the card's bottom edge so the clip cuts it.
-  ///
-  /// Both are ratios of [bandHeight], not literals: at the export's 68/-24
-  /// against a 58dp band the wordmark's cap line rose to the band's top edge
-  /// and crowded the message it is supposed to sit behind. Expressed this way,
-  /// retuning the band height carries the backdrop with it.
-  static const double bandGhostSize = bandHeight * 0.755;
-  static const double bandGhostDrop = bandHeight * 0.267;
+  static double labelBaseline(int row) => firstLabelBaseline + row * rowPitch;
+  static double valueBaseline(int row) => labelBaseline(row) + labelToValue;
+
+  /// Three equal columns across the content width.
+  static const double columnWidth = contentWidth / 3;
+  static const double columnTwoX = inset + columnWidth;
+
+  /// Berth runs on into the third column's spare room; Class there only ever
+  /// holds a two-letter code.
+  static const double berthWidth = contentWidth - columnWidth - 64;
+
+  /// Distance from the card's bottom edge to the notch centre.
+  static const double notchFromBottom = height - tearY;
 }
 
-/// Type ramp. Geist for everything structural, Instrument Serif for the codes.
-///
-/// Geist tops out at w700 and Instrument Serif ships only w400 — nothing here
-/// may ask for a weight outside that, or google_fonts silently synthesises the
-/// nearest one and the card stops matching the export.
+/// Type ramp. Geist only, and never heavier than w700 — that is the heaviest
+/// weight bundled, and google_fonts would otherwise synthesise one.
 abstract final class TrainPassType {
   TrainPassType._();
 
-  static TextStyle stationCode(Color color) => GoogleFonts.instrumentSerif(
-    color: color,
-    fontSize: TrainPassMetrics.codeSize,
-    fontWeight: FontWeight.w400,
-    height: 1.0,
-  );
+  static const double timeSize = 44;
+  static const double timeTracking = -1.76;
+  static const double labelSize = 13;
 
-  static TextStyle stationName(Color color) => GoogleFonts.geist(
-    color: color,
-    fontSize: 10.75,
-    fontWeight: FontWeight.w500,
-    letterSpacing: 0.5,
-    height: 1.0,
-  );
+  static const List<FontFeature> _tabular = <FontFeature>[
+    FontFeature.tabularFigures(),
+  ];
 
-  static TextStyle trainName(Color color) => GoogleFonts.geist(
-    color: color,
-    fontSize: 15.5,
+  static TextStyle name(Color c) => GoogleFonts.geist(
+    color: c,
+    fontSize: 20,
     fontWeight: FontWeight.w600,
-    letterSpacing: -0.1,
+    letterSpacing: -0.4,
     height: 1.0,
   );
 
-  static TextStyle trainNumber(Color color) => GoogleFonts.geist(
-    color: color,
-    fontSize: 11.7,
-    fontWeight: FontWeight.w500,
-    height: 1.0,
-  );
-
-  static TextStyle chip(Color color) => GoogleFonts.geist(
-    color: color,
-    fontSize: 13,
-    fontWeight: FontWeight.w600,
-    letterSpacing: 0.2,
-    height: 1.0,
-  );
-
-  static TextStyle label(Color color) => GoogleFonts.geist(
-    color: color,
-    fontSize: 11,
-    fontWeight: FontWeight.w500,
-    height: 1.0,
-  );
-
-  static TextStyle value(Color color) => GoogleFonts.geist(
-    color: color,
+  static TextStyle date(Color c) => GoogleFonts.geist(
+    color: c,
     fontSize: 15,
-    fontWeight: FontWeight.w600,
-    letterSpacing: -0.1,
+    fontWeight: FontWeight.w500,
     height: 1.0,
   );
 
-  static TextStyle secondary(Color color) => GoogleFonts.geist(
-    color: color,
+  static TextStyle small(Color c) => GoogleFonts.geist(
+    color: c,
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    height: 1.0,
+    fontFeatures: _tabular,
+  );
+
+  /// The big times. Proportional figures on purpose: Geist's tabular "1" sits
+  /// centred in a full-width cell, which pushed a time starting with 1 about
+  /// 7 dp right of the city name above it. These never animate, so they gain
+  /// nothing from `tnum`.
+  static TextStyle time(Color c) => GoogleFonts.geist(
+    color: c,
+    fontSize: timeSize,
+    fontWeight: FontWeight.w400,
+    letterSpacing: timeTracking,
+    height: 1.0,
+  );
+
+  static TextStyle duration(Color c) => GoogleFonts.geist(
+    color: c,
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    height: 1.0,
+    fontFeatures: _tabular,
+  );
+
+  static TextStyle dayMarker(Color c) => GoogleFonts.geist(
+    color: c,
     fontSize: 12,
     fontWeight: FontWeight.w500,
     height: 1.0,
   );
 
-  static TextStyle bandMessage(Color color) => GoogleFonts.geist(
-    color: color,
-    fontSize: 15,
-    fontWeight: FontWeight.w600,
-    letterSpacing: -0.1,
+  static TextStyle lead(Color c) => GoogleFonts.geist(
+    color: c,
+    fontSize: 24,
+    fontWeight: FontWeight.w500,
+    letterSpacing: -0.6,
     height: 1.0,
   );
 
-  static TextStyle bandGhost(Color color) => GoogleFonts.instrumentSerif(
-    color: color,
-    fontSize: TrainPassMetrics.bandGhostSize,
-    fontWeight: FontWeight.w400,
+  static TextStyle detail(Color c) => GoogleFonts.geist(
+    color: c,
+    fontSize: 14.5,
+    fontWeight: FontWeight.w500,
     height: 1.0,
   );
 
-  /// Kicks off the network fetch for every weight this face uses, so `main()`'s
+  static TextStyle label(Color c) => GoogleFonts.geist(
+    color: c,
+    fontSize: labelSize,
+    fontWeight: FontWeight.w500,
+    height: 1.0,
+  );
+
+  static TextStyle value(Color c) => GoogleFonts.geist(
+    color: c,
+    fontSize: 17,
+    fontWeight: FontWeight.w500,
+    letterSpacing: -0.17,
+    height: 1.0,
+    fontFeatures: _tabular,
+  );
+
+  /// Kicks off loading for every weight this face uses, so `main()`'s
   /// `GoogleFonts.pendingFonts()` wait covers them.
   ///
   /// google_fonts starts loading on the first call for a family+weight, so the
   /// return values are deliberately discarded — asking is the whole point.
   static void warmUp() {
-    stationCode(const Color(0xFF000000));
-    label(const Color(0xFF000000));
-    value(const Color(0xFF000000));
+    const Color c = Color(0xFF000000);
+    time(c);
+    small(c);
+    name(c);
+  }
+}
+
+/// Side bearings of Geist Regular's default (proportional) figures, in em,
+/// read off `assets/fonts/Geist-Regular.ttf` with fontTools.
+///
+/// At 50 dp a figure carries 1-5.5 dp of empty space before and after its ink,
+/// against about 1 dp for the 14 dp letters above and below it. Without
+/// correction the time looks indented from the city name it sits under.
+abstract final class TrainTimeOptics {
+  TrainTimeOptics._();
+
+  static const Map<String, double> _lsb = <String, double>{
+    '0': 0.050, '1': 0.040, '2': 0.060, '3': 0.050, '4': 0.030,
+    '5': 0.060, '6': 0.060, '7': 0.020, '8': 0.040, '9': 0.060,
+  };
+
+  static const Map<String, double> _rsb = <String, double>{
+    '0': 0.050, '1': 0.110, '2': 0.060, '3': 0.050, '4': 0.050,
+    '5': 0.061, '6': 0.061, '7': 0.000, '8': 0.040, '9': 0.061,
+  };
+
+  /// Typical side bearing of the 14 dp text the time aligns with.
+  static const double _companion = 1.0;
+
+  /// How far to pull a left-aligned time left so its ink meets the edge.
+  static double leftPull(String text) {
+    if (text.isEmpty) return 0;
+    final double lsb = _lsb[text[0]] ?? 0.05;
+    return lsb * TrainPassType.timeSize - _companion;
+  }
+
+  /// How far to push a right-aligned time right so its ink meets the edge.
+  ///
+  /// Flutter adds letter spacing after the last glyph too, so with negative
+  /// tracking the ink already overhangs the box by that much.
+  static double rightPush(String text) {
+    if (text.isEmpty) return 0;
+    final double rsb = _rsb[text[text.length - 1]] ?? 0.05;
+    return rsb * TrainPassType.timeSize + TrainPassType.timeTracking - _companion;
   }
 }

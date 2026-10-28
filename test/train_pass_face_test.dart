@@ -1,31 +1,34 @@
 import 'package:docket/features/tickets/domain/ticket_models.dart';
+import 'package:docket/features/tickets/presentation/pass_code_block.dart';
 import 'package:docket/features/tickets/presentation/train/train_pass_theme.dart';
 import 'package:docket/features/tickets/presentation/train/train_ticket_face.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:docket/features/tickets/domain/pass_code.dart';
-import 'package:docket/features/tickets/presentation/pass_code_block.dart';
-import 'package:docket/features/tickets/presentation/pass_code_view.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 TrainPass _pass({
-  String fromCode = 'HYB',
   String fromName = 'Hyderabad',
-  String toCode = 'BLR',
   String toName = 'Bengaluru',
+  String departTime = '07:10 AM',
+  String arriveTime = '02:40 PM',
+  String arrivalDate = '16 Aug 2026',
+  TrainRunState runState = TrainRunState.scheduled,
+  int? delayMinutes,
+  String? codePayload,
 }) {
   return TrainPass(
     id: 't',
     operator: 'IRCTC',
     trainNumber: '12932',
     trainName: 'Rajdhani Express',
-    fromCode: fromCode,
+    fromCode: 'HYB',
     fromName: fromName,
-    toCode: toCode,
+    toCode: 'BLR',
     toName: toName,
-    departTime: '07:10 AM',
-    arriveTime: '02:40 PM',
+    departTime: departTime,
+    arriveTime: arriveTime,
     date: '16 Aug 2026',
-    arrivalDate: '16 Aug 2026',
+    arrivalDate: arrivalDate,
     duration: '7h 30m',
     ticketClass: 'AC 2 Tier',
     passengers: const <TicketPassenger>[
@@ -39,6 +42,9 @@ TrainPass _pass({
     pnr: '1234567890',
     bookingId: 'B',
     status: TicketStatus.active,
+    runState: runState,
+    delayMinutes: delayMinutes,
+    codePayload: codePayload,
   );
 }
 
@@ -63,134 +69,115 @@ Future<void> _pumpFace(WidgetTester tester, TrainPass pass) async {
   await tester.pump();
 }
 
+/// The visible time behind [key]. `find.text` would also match the invisible
+/// copies the face lays out to size the route rule.
+String? _time(WidgetTester tester, Key key) =>
+    tester.widget<Text>(find.byKey(key)).data;
+
 void main() {
-  testWidgets('PNR uses equal groups and absent codes draw no indicator', (
+  // Real Geist, from the bundled assets, so geometry checks measure the face as
+  // it ships rather than the test font's full-em boxes.
+  setUpAll(() async {
+    GoogleFonts.config.allowRuntimeFetching = false;
+    TrainPassType.warmUp();
+    for (final FontWeight w in <FontWeight>[
+      FontWeight.w400,
+      FontWeight.w500,
+      FontWeight.w600,
+    ]) {
+      GoogleFonts.geist(fontWeight: w);
+    }
+    await GoogleFonts.pendingFonts();
+  });
+
+  testWidgets('prints 24-hour times, the class code and sentence-case labels', (
     tester,
   ) async {
     await _pumpFace(tester, _pass());
-    expect(find.text('12345 67890'), findsOneWidget);
+
+    expect(_time(tester, TrainTicketFace.departureKey), '07:10');
+    expect(_time(tester, TrainTicketFace.arrivalKey), '14:40');
+    expect(find.text('2A'), findsOneWidget);
+    expect(find.text('32 Lower'), findsOneWidget);
+    expect(find.text('Sun, 16 Aug'), findsOneWidget);
+    for (final String label in <String>[
+      'Coach',
+      'Berth',
+      'Class',
+      'Passengers',
+      'Platform',
+    ]) {
+      expect(find.text(label), findsOneWidget);
+    }
+  });
+
+  testWidgets('draws no code of any kind', (tester) async {
+    await _pumpFace(tester, _pass(codePayload: 'REAL'));
     expect(find.byType(PassCodeBlock), findsNothing);
-    expect(TrainPassMetrics.height, lessThan(500));
   });
 
-  testWidgets(
-    'code indicator never builds a miniature renderer and opens on tap',
-    (tester) async {
-      var opened = false;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: PassCodeBlock(
-              size: 68,
-              code: PassCode.parse(payload: List.filled(2000, 'A').join())!,
-              borderColor: Colors.grey,
-              onTap: () => opened = true,
-            ),
-          ),
-        ),
-      );
-      expect(find.byType(PassCodeView), findsNothing);
-      expect(find.byIcon(Icons.document_scanner_outlined), findsOneWidget);
-      await tester.tap(find.text('View code'));
-      expect(opened, isTrue);
-      expect(tester.takeException(), isNull);
-    },
-  );
+  testWidgets('an overnight arrival carries a day marker', (tester) async {
+    await _pumpFace(
+      tester,
+      _pass(
+        departTime: '16:55',
+        arriveTime: '08:35',
+        arrivalDate: '17 Aug 2026',
+      ),
+    );
+    expect(find.text('+1'), findsOneWidget);
+  });
 
-  group('station header alignment', () {
-    // RenderBaseline lays its child out loose and pins it flush left, so a
-    // `width` + `textAlign: right` combination silently does nothing and the
-    // destination column renders from the wrong edge. Nothing throws and no
-    // overflow is reported — only a screenshot catches it, which is exactly
-    // why it is pinned here.
-    testWidgets('origin and destination hang off opposite content edges', (
-      WidgetTester tester,
-    ) async {
-      await _pumpFace(tester, _pass());
+  testWidgets('a same-day arrival has none', (tester) async {
+    await _pumpFace(tester, _pass());
+    expect(find.textContaining('+'), findsNothing);
+  });
 
+  group('time alignment', () {
+    // The two times are the widest things on the card; their boxes must stay
+    // within a few dp of the content edges, which is where the city names and
+    // codes above and below them start and end.
+    testWidgets('times sit on the content edges', (tester) async {
+      await _pumpFace(tester, _pass(departTime: '16:55', arriveTime: '08:35'));
       final Rect card = tester.getRect(find.byType(TrainTicketFace));
-
-      final Rect fromCode = tester.getRect(find.text('HYB'));
-      final Rect toCode = tester.getRect(find.text('BLR'));
-      final Rect fromName = tester.getRect(find.text('HYDERABAD'));
-      final Rect toName = tester.getRect(find.text('BENGALURU'));
-
-      const double inset = TrainPassMetrics.inset;
-
-      expect(fromCode.left - card.left, moreOrLessEquals(inset, epsilon: 1));
-      expect(card.right - toCode.right, moreOrLessEquals(inset, epsilon: 1));
-
-      expect(fromName.left - card.left, moreOrLessEquals(inset, epsilon: 1));
-      expect(card.right - toName.right, moreOrLessEquals(inset, epsilon: 1));
-    });
-
-    testWidgets('a long destination name still ends at the content edge', (
-      WidgetTester tester,
-    ) async {
-      await _pumpFace(tester, _pass(toName: 'Chennai Central'));
-
-      final Rect card = tester.getRect(find.byType(TrainTicketFace));
-      final Rect toName = tester.getRect(find.text('CHENNAI CENTRAL'));
+      final Rect dep = tester.getRect(find.byKey(TrainTicketFace.departureKey));
+      final Rect arr = tester.getRect(find.byKey(TrainTicketFace.arrivalKey));
 
       expect(
-        card.right - toName.right,
-        moreOrLessEquals(TrainPassMetrics.inset, epsilon: 1),
+        dep.left - card.left,
+        moreOrLessEquals(TrainPassMetrics.inset, epsilon: 3),
       );
-      expect(toName.left, greaterThan(card.left + TrainPassMetrics.inset));
+      expect(
+        card.right - arr.right,
+        moreOrLessEquals(TrainPassMetrics.inset, epsilon: 3),
+      );
+    });
+
+    testWidgets('the route rule spans the gap between the times', (
+      tester,
+    ) async {
+      await _pumpFace(tester, _pass(departTime: '16:55', arriveTime: '08:35'));
+      final Rect dep = tester.getRect(find.byKey(TrainTicketFace.departureKey));
+      final Rect arr = tester.getRect(find.byKey(TrainTicketFace.arrivalKey));
+      final Rect rule = tester.getRect(find.byKey(TrainTicketFace.routeKey));
+
+      expect(rule.left, greaterThan(dep.right));
+      expect(rule.right, lessThan(arr.left));
+      expect(rule.width, greaterThan(20));
     });
   });
 
-  group('station connector', () {
-    // The rule spans the whole content width and is masked back by an opaque
-    // swatch behind each code, so the gap is produced at layout time. That is
-    // deliberate: an earlier version measured the codes with a TextPainter in
-    // build, which ran once — before google_fonts resolved Instrument Serif —
-    // and left the rule sized for the fallback face permanently.
-
-    testWidgets('spans the full content width', (WidgetTester tester) async {
-      await _pumpFace(tester, _pass());
-
-      final Rect card = tester.getRect(find.byType(TrainTicketFace));
-      final Rect rule = tester.getRect(
-        find.byKey(TrainTicketFace.connectorKey),
-      );
-
-      expect(
-        rule.left - card.left,
-        moreOrLessEquals(TrainPassMetrics.inset, epsilon: 0.5),
-      );
-      expect(
-        card.right - rule.right,
-        moreOrLessEquals(TrainPassMetrics.inset, epsilon: 0.5),
-      );
-      expect(
-        rule.center.dy - card.top,
-        moreOrLessEquals(TrainPassMetrics.connectorY, epsilon: 0.5),
-      );
-    });
-
-    testWidgets('each code carries a mask wider than its own lettering', (
-      WidgetTester tester,
-    ) async {
-      await _pumpFace(tester, _pass());
-
-      final Rect fromCode = tester.getRect(find.text('HYB'));
-      final Rect fromMask = tester.getRect(
-        find
-            .ancestor(of: find.text('HYB'), matching: find.byType(ColoredBox))
-            .first,
-      );
-
-      // The swatch overhangs the glyphs by the connector gap on the inner
-      // side, which is what holds the dashes clear of the lettering.
-      expect(
-        fromMask.right - fromCode.right,
-        moreOrLessEquals(TrainPassMetrics.codeConnectorGap, epsilon: 1),
-      );
-      // ...and covers the rule's row, or it would not mask anything.
-      final Rect card = tester.getRect(find.byType(TrainTicketFace));
-      expect(fromMask.top, lessThan(card.top + TrainPassMetrics.connectorY));
-    });
+  testWidgets('a known delay moves the departure and strikes the schedule', (
+    tester,
+  ) async {
+    await _pumpFace(
+      tester,
+      _pass(runState: TrainRunState.delayed, delayMinutes: 25),
+    );
+    expect(_time(tester, TrainTicketFace.departureKey), '07:35');
+    expect(find.text('07:10'), findsOneWidget); // struck, beside the code
+    final Text struck = tester.widget<Text>(find.text('07:10'));
+    expect(struck.style?.decoration, TextDecoration.lineThrough);
   });
 
   _backendPayloadTests();
@@ -254,8 +241,6 @@ void _backendPayloadTests() {
 
       final List<String> errors = await _renderAndCollect(tester, sparse);
       expect(errors, isEmpty, reason: errors.join(' | '));
-
-      // Missing values read as missing.
       expect(find.text('—'), findsWidgets);
     });
 
@@ -270,6 +255,7 @@ void _backendPayloadTests() {
         'ticketClass': 'Air Conditioned Three Tier Economy Sleeper',
         'pnr': '1234567890',
         'date': '16 Aug 2026',
+        'duration': '27h 45m',
         'passengers': <Map<String, dynamic>>[
           <String, dynamic>{
             'name': 'Venkataraman Subrahmanyan Chandrasekhar',
@@ -277,6 +263,7 @@ void _backendPayloadTests() {
             'seat': '64',
             'berth': 'Side Upper',
           },
+          <String, dynamic>{'name': 'A', 'coach': 'B13', 'seat': '65'},
         ],
       });
 
@@ -284,7 +271,9 @@ void _backendPayloadTests() {
       expect(errors, isEmpty, reason: errors.join(' | '));
     });
 
-    testWidgets('a full payload drives the band', (WidgetTester tester) async {
+    testWidgets('a full payload drives the status sentence', (
+      WidgetTester tester,
+    ) async {
       final TrainPass live = TrainPass.fromJson(<String, dynamic>{
         'id': 'x',
         'fromCode': 'HYB',
@@ -303,15 +292,13 @@ void _backendPayloadTests() {
         ],
       });
 
-      expect(live.runState, TrainRunState.delayed);
-      expect(live.isDelayed, isTrue);
-      expect(live.platformLabel, 'PF 5');
-
       final List<String> errors = await _renderAndCollect(tester, live);
       expect(errors, isEmpty, reason: errors.join(' | '));
-      expect(find.text('45 mins delayed'), findsOneWidget);
-
-      await tester.pumpWidget(const SizedBox.shrink());
+      expect(find.text('5'), findsOneWidget); // platform, prefix stripped
+      expect(
+        find.textContaining('Running 45 min late', findRichText: true),
+        findsOneWidget,
+      );
     });
   });
 }

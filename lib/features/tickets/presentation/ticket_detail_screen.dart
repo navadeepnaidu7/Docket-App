@@ -4,6 +4,7 @@ import '../../../core/haptics/haptic_service.dart';
 import '../../../core/motion/smooth_curves.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/wallet/wallet_card_metrics.dart';
+import '../../../shared/widgets/docket_button.dart';
 import '../domain/pass_catalog.dart';
 import '../domain/pnr_format.dart';
 import '../domain/ticket_models.dart';
@@ -145,10 +146,20 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                         ticket: t,
                         density: TrainTicketDensity.detail,
                         useBrandColors: true,
-                        onOpenCodes: () => _openCodes(context, t),
                       ),
                     ),
                   ),
+                  // The face draws no code, so this is the way to it. Omitted
+                  // entirely when there is none: a button that opens an empty
+                  // plate is worse than no button.
+                  if (t.passCode != null) ...<Widget>[
+                    const SizedBox(height: 18),
+                    DocketButton(
+                      label: 'Show ticket code',
+                      expand: true,
+                      onPressed: () => _openCodes(context, t),
+                    ),
+                  ],
                   const SizedBox(height: 22),
                   _SegmentedTabs(
                     index: _tab,
