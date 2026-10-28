@@ -58,7 +58,7 @@ class WalletCardMetrics {
   /// distance below the last value baseline, so this is where the layout ends
   /// rather than a box the content is stretched into.
   static const double trainCanvasWidth = 382;
-  static const double trainCanvasHeight = 498;
+  static const double trainCanvasHeight = 560;
   static const Size trainCanvas = Size(trainCanvasWidth, trainCanvasHeight);
 
   /// Train pass ratio, kept in step with [trainCanvas].

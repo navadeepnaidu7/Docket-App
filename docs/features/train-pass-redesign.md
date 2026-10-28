@@ -22,7 +22,12 @@ What the user rejected on the way here, so nobody reintroduces it:
 What stays: one solid surface, the dotted tear line with side notches, sentence-case labels,
 the two-tone status sentence (the same voice as `AccountSummary`), generous fixed spacing.
 
-## Layout (382 x 498 canvas)
+## Layout (382 x 560 canvas)
+
+Ratio 0.68, Wallet boarding-pass proportions; 498 tall (0.77) read squat beside the movie card's
+0.62. The extra height is spacing only - nothing new on the face. In the carousel
+`WalletTicketCard` draws the canvas at 94% of its slot, the movie glance card's width factor,
+so both pass types share one width.
 
 ```
  Rajdhani Express                 Thu, 30 Oct     name 20/600, date 15/500
@@ -126,7 +131,7 @@ already prints the code below the face.
 | `train/train_journey_status.dart` | new — pure status resolver |
 | `train/train_status_band.dart` | deleted |
 | `train/train_ticket_face.dart` | rewritten; `TrainTicketFace` / `TrainTicketDensity` API kept |
-| `core/wallet/wallet_card_metrics.dart` | `trainCanvas` 382 x 498 |
+| `core/wallet/wallet_card_metrics.dart` | `trainCanvas` 382 x 560 |
 | `ticket_detail_screen.dart` | code button replaces the tap target on the face |
 | `share/pass_share_card.dart` | drops `showCode` |
 | `test/train_journey_status_test.dart` | new |

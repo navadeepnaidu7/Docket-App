@@ -252,7 +252,7 @@ void main() {
 
       expect(train.width, closeTo(movie.width, 0.5));
       expect(train.height, lessThan(movie.height));
-      expect(train.height, closeTo(342 * 498 / 382, 0.5));
+      expect(train.height, closeTo(342 * 560 / 382, 0.5));
       // And it clears the page box rather than exactly filling it, which is
       // what made the old card read as oversized.
       expect(train.height, lessThan(584));

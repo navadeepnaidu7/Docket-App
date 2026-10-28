@@ -66,7 +66,7 @@ class TrainPassColors {
       isExpired ? spent : active;
 }
 
-/// Geometry for the 382 x 498 face. Every text line is placed by its
+/// Geometry for the 382 x 560 face. Every text line is placed by its
 /// **baseline**, never by its top: the fallback face google_fonts paints before
 /// Geist resolves has different ascents, and top-placed text would jump once
 /// the real font arrives.
@@ -90,12 +90,12 @@ abstract final class TrainPassMetrics {
   static const double contentWidth = width - 2 * inset;
 
   // ── Header ──
-  static const double nameBaseline = 48;
-  static const double numberBaseline = 72;
+  static const double nameBaseline = 52;
+  static const double numberBaseline = 76;
 
   // ── Journey ──
-  static const double cityBaseline = 140;
-  static const double timeBaseline = 188;
+  static const double cityBaseline = 158;
+  static const double timeBaseline = 206;
 
   /// Vertical middle of the times' cap height (Geist cap height is 0.71 em).
   static const double ruleY = timeBaseline - TrainPassType.timeSize * 0.71 / 2;
@@ -107,7 +107,7 @@ abstract final class TrainPassMetrics {
 
   /// Clear space between a time and the end of the route rule.
   static const double ruleGap = 16;
-  static const double codeBaseline = 212;
+  static const double codeBaseline = 230;
 
   /// The +1 day marker hangs in the right margin, top-aligned to the time's cap
   /// line, so the arrival time itself keeps the shared right edge.
@@ -116,19 +116,19 @@ abstract final class TrainPassMetrics {
   static const double dayMarkerGap = 3;
 
   // ── Status ──
-  static const double leadBaseline = 275;
-  static const double detailBaseline = 301;
+  static const double leadBaseline = 300;
+  static const double detailBaseline = 327;
 
   // ── Stub ──
   //
   // The grid holds equal space above the first label's cap line and below the
   // last value's baseline, so it sits optically centred under the tear.
-  static const double tearY = 341;
-  static const double stubPad = 32;
+  static const double tearY = 380;
+  static const double stubPad = 40;
   static const double labelCap = TrainPassType.labelSize * 0.71;
   static const double firstLabelBaseline = tearY + stubPad + labelCap;
   static const double labelToValue = 24;
-  static const double rowPitch = 60;
+  static const double rowPitch = 66;
 
   static double labelBaseline(int row) => firstLabelBaseline + row * rowPitch;
   static double valueBaseline(int row) => labelBaseline(row) + labelToValue;

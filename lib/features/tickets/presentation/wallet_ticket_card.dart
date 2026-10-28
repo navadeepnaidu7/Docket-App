@@ -9,6 +9,9 @@ import 'train/train_ticket_face.dart';
 
 export '../domain/ticket_models.dart';
 
+/// Matches `MovieTicketFace`'s glance width factor.
+const double _glanceWidthFactor = 0.94;
+
 /// Train pass glance card — press shell around [TrainTicketFace].
 class WalletTicketCard extends StatefulWidget {
   const WalletTicketCard({
@@ -64,10 +67,15 @@ class _WalletTicketCardState extends State<WalletTicketCard>
       builder: (BuildContext context, BoxConstraints constraints) {
         // The face sizes itself from its content, so it used to grow past
         // short viewports. Pin it to a canvas and scale that to fit instead.
-        final Size card = WalletCardMetrics.resolve(
-          constraints,
-          WalletCardMetrics.trainAspect,
-        );
+        // Inset to the movie glance card's 94% so every pass in the carousel
+        // shares one width. The face is a fixed canvas, so the whole box
+        // scales rather than the layout reflowing narrower.
+        final Size card =
+            WalletCardMetrics.resolve(
+              constraints,
+              WalletCardMetrics.trainAspect,
+            ) *
+            _glanceWidthFactor;
 
         return GestureDetector(
           onTapDown: (_) => _pressCtrl.forward(),
