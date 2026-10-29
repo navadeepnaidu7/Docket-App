@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,8 @@ import '../../../core/validation/document_validators.dart';
 import '../../../shared/widgets/scanner/scanner_chrome.dart';
 import '../../../shared/widgets/scanner_capture_button.dart';
 import '../application/id_scanner_service.dart';
+import '../application/id_media_service.dart';
+import 'id_image_editor.dart';
 import '../domain/id_document.dart';
 
 enum _ScanState { permission, scanning, processing, preview, error }
@@ -30,6 +33,7 @@ class _IdScannerScreenState extends State<IdScannerScreen>
   String? _capturedImagePath;
   String _errorMessage = '';
   String _qrCodeData = '';
+  final _importSession = IdImportSession();
 
   // Preview editable controllers
   late final TextEditingController _nameCtrl;
@@ -56,6 +60,7 @@ class _IdScannerScreenState extends State<IdScannerScreen>
 
   @override
   void dispose() {
+    _importSession.close();
     WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
     _nameCtrl.dispose();
@@ -135,8 +140,21 @@ class _IdScannerScreenState extends State<IdScannerScreen>
     try {
       final xFile = await _controller!.takePicture();
       _capturedImagePath = xFile.path;
+      final bytes = await normaliseIdImage(
+        await File(xFile.path).readAsBytes(),
+      );
+      if (!mounted) return;
+      final edited = await Navigator.of(context).push<Uint8List>(
+        MaterialPageRoute(builder: (_) => IdImageEditor(bytes: bytes)),
+      );
+      if (!mounted) return;
+      if (edited == null) {
+        setState(() => _state = _ScanState.scanning);
+        return;
+      }
+      final working = await _importSession.workingImage(edited);
       final result = await IdScannerService.processImage(
-        xFile.path,
+        working.path,
         widget.type,
       );
       if (!mounted) return;
@@ -561,7 +579,10 @@ class _IdScannerScreenState extends State<IdScannerScreen>
               style: TextStyle(color: Colors.white60, fontSize: 15),
             ),
             const SizedBox(height: 32),
-            ScannerOutlineButton(label: 'Open Settings', onTap: openAppSettings),
+            ScannerOutlineButton(
+              label: 'Open Settings',
+              onTap: openAppSettings,
+            ),
             const SizedBox(height: 12),
             ScannerOutlineButton(
               label: 'Enter Manually',

@@ -14,6 +14,7 @@ class PromptReviewRow {
     required this.value,
     required this.source,
     this.missing = false,
+    this.needsReview = false,
   });
 
   final String stepId;
@@ -24,6 +25,7 @@ class PromptReviewRow {
   /// An optional field that was skipped — offered as "Add" rather than hidden,
   /// so the user can see what they chose not to fill in.
   final bool missing;
+  final bool needsReview;
 }
 
 /// The final summary. Every row is tappable and edits in place.
@@ -69,7 +71,9 @@ class PromptReviewCard extends StatelessWidget {
               const SizedBox(width: Space.x2),
               Text(
                 'Verified against the chip',
-                style: theme.textTheme.promptHelper(scheme).copyWith(
+                style: theme.textTheme
+                    .promptHelper(scheme)
+                    .copyWith(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: AppTokens.success(scheme),
@@ -160,12 +164,10 @@ class _Row extends StatelessWidget {
                           color: scheme.primary,
                         ),
                       )
-                    : Text(
-                        row.value,
-                        style: theme.textTheme.promptReviewValue,
-                      ),
+                    : Text(row.value, style: theme.textTheme.promptReviewValue),
               ),
-              if (!row.missing) _Provenance(source: row.source),
+              if (!row.missing)
+                _Provenance(source: row.source, needsReview: row.needsReview),
               const SizedBox(width: Space.x2),
               Icon(
                 Icons.chevron_right_rounded,
@@ -183,9 +185,10 @@ class _Row extends StatelessWidget {
 /// Where a value came from. Typed values show nothing — the common case
 /// should be the quiet one.
 class _Provenance extends StatelessWidget {
-  const _Provenance({required this.source});
+  const _Provenance({required this.source, this.needsReview = false});
 
   final FieldSource source;
+  final bool needsReview;
 
   @override
   Widget build(BuildContext context) {
@@ -193,12 +196,15 @@ class _Provenance extends StatelessWidget {
     final ColorScheme scheme = theme.colorScheme;
 
     return switch (source) {
-      FieldSource.chip =>
-        Icon(Icons.nfc_rounded, size: 13, color: scheme.primary),
+      FieldSource.chip => Icon(
+        Icons.nfc_rounded,
+        size: 13,
+        color: scheme.primary,
+      ),
       FieldSource.scanned => Text(
-          'SCANNED',
-          style: theme.textTheme.promptStepCount(scheme).copyWith(fontSize: 10),
-        ),
+        needsReview ? 'Check' : 'SCANNED',
+        style: theme.textTheme.promptStepCount(scheme).copyWith(fontSize: 10),
+      ),
       FieldSource.typed => const SizedBox.shrink(),
     };
   }

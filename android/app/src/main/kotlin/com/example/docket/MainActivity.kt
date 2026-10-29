@@ -1,6 +1,7 @@
 package com.example.docket
 
 import android.graphics.Bitmap
+import android.content.Intent
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.IsoDep
@@ -37,9 +38,13 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
     private var isScanning = false
     private var scanResult: MethodChannel.Result? = null
     private var bacKey: BACKey? = null
+    private var idShareReceiver: IdShareReceiver? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        idShareReceiver = IdShareReceiver(this,
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.docket/id_import"))
+        idShareReceiver?.receive(intent)
         
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
         
@@ -107,6 +112,18 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                 result.notImplemented()
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        idShareReceiver?.receive(intent)
+    }
+
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        idShareReceiver?.close()
+        idShareReceiver = null
+        super.cleanUpFlutterEngine(flutterEngine)
     }
 
     /**

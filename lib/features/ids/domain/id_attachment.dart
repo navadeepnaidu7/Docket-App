@@ -23,8 +23,9 @@ class IdAttachment {
     required this.sizeBytes,
     DateTime? addedAt,
     this.source = '',
-  })  : id = id ?? _generateAttachmentId(),
-        addedAt = addedAt ?? DateTime.now();
+    this.label = '',
+  }) : id = id ?? _generateAttachmentId(),
+       addedAt = addedAt ?? DateTime.now();
 
   final String id;
   final IdAttachmentKind kind;
@@ -32,6 +33,7 @@ class IdAttachment {
   final int sizeBytes;
   final DateTime addedAt;
   final String source;
+  final String label;
 
   IdAttachment copyWith({
     String? id,
@@ -40,6 +42,7 @@ class IdAttachment {
     int? sizeBytes,
     DateTime? addedAt,
     String? source,
+    String? label,
   }) {
     return IdAttachment(
       id: id ?? this.id,
@@ -48,17 +51,19 @@ class IdAttachment {
       sizeBytes: sizeBytes ?? this.sizeBytes,
       addedAt: addedAt ?? this.addedAt,
       source: source ?? this.source,
+      label: label ?? this.label,
     );
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'kind': kind.name,
-        'fileName': fileName,
-        'sizeBytes': sizeBytes,
-        'addedAt': addedAt.toIso8601String(),
-        'source': source,
-      };
+    'id': id,
+    'kind': kind.name,
+    'fileName': fileName,
+    'sizeBytes': sizeBytes,
+    'addedAt': addedAt.toIso8601String(),
+    'source': source,
+    'label': label,
+  };
 
   factory IdAttachment.fromMap(Map<String, dynamic> map) {
     final rawKind = map['kind'];
@@ -70,7 +75,8 @@ class IdAttachment {
     final rawAddedAt = map['addedAt'];
     DateTime addedAt;
     if (rawAddedAt is String) {
-      addedAt = DateTime.tryParse(rawAddedAt) ??
+      addedAt =
+          DateTime.tryParse(rawAddedAt) ??
           DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
     } else {
       addedAt = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
@@ -88,6 +94,7 @@ class IdAttachment {
       sizeBytes: sizeBytes,
       addedAt: addedAt,
       source: (map['source'] as String?) ?? '',
+      label: map['label'] is String ? map['label'] as String : '',
     );
   }
 }

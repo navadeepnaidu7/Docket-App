@@ -243,9 +243,11 @@ class _IdAttachmentSheetState extends ConsumerState<_IdAttachmentSheet> {
     );
 
     if (confirmed != true) return;
-    await ref
-        .read(idListProvider.notifier)
-        .removeAttachment(widget.documentId, attachment.id);
+    try {
+      await ref.read(idListProvider.notifier).removeAttachment(widget.documentId, attachment.id);
+    } catch (_) {
+      if (mounted) _showRejection('The copy was kept because the change could not be saved.');
+    }
   }
 
   @override

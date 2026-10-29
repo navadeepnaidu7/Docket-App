@@ -1,9 +1,5 @@
-import 'dart:io';
-import 'dart:ui' as ui;
-
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 import '../domain/id_document.dart';
@@ -34,7 +30,7 @@ class IdScanResult {
 
 /// ML Kit OCR for the ID cards.
 ///
-/// **Ownership contract:** the three detectors below are `static final` — one
+/// **Ownership contract:** the two detectors below are `static final` — one
 /// instance per app run, shared by every scan. They are therefore owned by the
 /// app, not by whichever screen happened to open first, and **must not be
 /// closed** when a scanner screen is disposed. Closing them left the static
@@ -49,12 +45,6 @@ class IdScannerService {
 
   static final _recognizer = TextRecognizer(
     script: TextRecognitionScript.latin,
-  );
-
-  static final _faceDetector = FaceDetector(
-    options: FaceDetectorOptions(
-      enableTracking: false,
-    ),
   );
 
   static final _barcodeScanner = BarcodeScanner(
@@ -72,21 +62,6 @@ class IdScannerService {
       final recognized = await _recognizer.processImage(input);
       final text = recognized.text;
 
-      // 2. Run Face Detection & Crop if a face is found
-      String faceCropPath = '';
-      try {
-        final faces = await _faceDetector.processImage(input);
-        if (faces.isNotEmpty) {
-          final face = faces.first;
-          final cropped = await _cropImageRect(imagePath, face.boundingBox);
-          if (cropped != null) {
-            faceCropPath = cropped;
-          }
-        }
-      } catch (e) {
-        debugPrint('[IdScannerService] Face detection/crop error: $e');
-      }
-
       // 3. Run Barcode/QR Scanning
       String qrData = '';
       try {
@@ -95,24 +70,34 @@ class IdScannerService {
           qrData = barcodes.first.rawValue ?? '';
         }
       } catch (e) {
-        debugPrint('[IdScannerService] Barcode/QR scan error: $e');
+        debugPrint('[IdScannerService] QR recognition unavailable.');
       }
 
-      final finalImagePath = faceCropPath.isNotEmpty ? faceCropPath : imagePath;
+      final finalImagePath = imagePath;
 
       return switch (type) {
         IdDocumentType.pan => _extractPan(text, finalImagePath, qrData),
         IdDocumentType.aadhaar => _extractAadhaar(text, finalImagePath, qrData),
       };
     } catch (e) {
-      debugPrint('[IdScannerService] Error: $e');
+      debugPrint('[IdScannerService] Text recognition unavailable.');
       return null;
     }
   }
 
+  static IdScanResult? extractText(String text, IdDocumentType type) =>
+      switch (type) {
+        IdDocumentType.pan => _extractPan(text, '', ''),
+        IdDocumentType.aadhaar => _extractAadhaar(text, '', ''),
+      };
+
   // ── PAN Card extractor ────────────────────────────────────────────────────
 
-  static IdScanResult? _extractPan(String text, String imagePath, String qrCodeData) {
+  static IdScanResult? _extractPan(
+    String text,
+    String imagePath,
+    String qrCodeData,
+  ) {
     final lines = text
         .split('\n')
         .map((l) => l.trim())
@@ -193,7 +178,11 @@ class IdScannerService {
 
   // ── Aadhaar Card extractor ────────────────────────────────────────────────
 
-  static IdScanResult? _extractAadhaar(String text, String imagePath, String qrCodeData) {
+  static IdScanResult? _extractAadhaar(
+    String text,
+    String imagePath,
+    String qrCodeData,
+  ) {
     final aadhaarRegex = RegExp(r'\b(\d{4})\s(\d{4})\s(\d{4})\b');
     final aadhaarMatch = aadhaarRegex.firstMatch(text);
     final documentNumber = aadhaarMatch != null
@@ -265,52 +254,6 @@ class IdScannerService {
       capturedImagePath: imagePath,
       qrCodeData: qrCodeData,
     );
-  }
-
-  static Future<String?> _cropImageRect(String imagePath, ui.Rect boundingBox) async {
-    try {
-      final bytes = await File(imagePath).readAsBytes();
-      final codec = await ui.instantiateImageCodec(bytes);
-      final frame = await codec.getNextFrame();
-      final image = frame.image;
-
-      final imgWidth = image.width;
-      final imgHeight = image.height;
-
-      final left = boundingBox.left.clamp(0.0, imgWidth.toDouble());
-      final top = boundingBox.top.clamp(0.0, imgHeight.toDouble());
-      final width = boundingBox.width.clamp(0.0, imgWidth.toDouble() - left);
-      final height = boundingBox.height.clamp(0.0, imgHeight.toDouble() - top);
-
-      if (width <= 0 || height <= 0) return null;
-
-      final recorder = ui.PictureRecorder();
-      final canvas = ui.Canvas(recorder);
-
-      canvas.drawImageRect(
-        image,
-        ui.Rect.fromLTWH(left, top, width, height),
-        ui.Rect.fromLTWH(0, 0, width, height),
-        ui.Paint(),
-      );
-
-      final picture = recorder.endRecording();
-      final croppedImg = await picture.toImage(width.round(), height.round());
-      final byteData = await croppedImg.toByteData(
-        format: ui.ImageByteFormat.png,
-      );
-
-      if (byteData == null) return null;
-
-      final tempDir = Directory.systemTemp;
-      final tempPath =
-          '${tempDir.path}/face_crop_${DateTime.now().millisecondsSinceEpoch}.png';
-      await File(tempPath).writeAsBytes(byteData.buffer.asUint8List());
-      return tempPath;
-    } catch (e) {
-      debugPrint('[IdScannerService] Crop error: $e');
-      return null;
-    }
   }
 
   static String _toTitleCase(String s) => s

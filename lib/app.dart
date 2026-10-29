@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
+import 'features/ids/presentation/id_incoming_imports.dart';
 
 class DocketApp extends ConsumerStatefulWidget {
   final bool hasSeenOnboarding;
@@ -26,6 +27,7 @@ class _DocketAppState extends ConsumerState<DocketApp>
   late ThemeData _fromTheme;
   late ThemeData _toTheme;
   late Brightness _targetBrightness;
+  final _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
@@ -135,8 +137,8 @@ class _DocketAppState extends ConsumerState<DocketApp>
         final ThemeData theme = t >= 1.0
             ? _toTheme
             : t <= 0.0
-                ? _fromTheme
-                : ThemeData.lerp(_fromTheme, _toTheme, t);
+            ? _fromTheme
+            : ThemeData.lerp(_fromTheme, _toTheme, t);
 
         // Soft veil that peaks at mid-transition to hide the brightness snap.
         final double veil = (t < 0.5 ? t : 1.0 - t) * 2.0; // 0 → 1 → 0
@@ -152,6 +154,7 @@ class _DocketAppState extends ConsumerState<DocketApp>
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: _overlayFor(theme),
           child: MaterialApp(
+            navigatorKey: _navigatorKey,
             debugShowCheckedModeBanner: false,
             title: 'Docket',
             // Single driven theme — avoids MaterialApp's binary themeMode snap.
@@ -163,7 +166,11 @@ class _DocketAppState extends ConsumerState<DocketApp>
               return Stack(
                 fit: StackFit.expand,
                 children: <Widget>[
-                  ?child,
+                  if (child != null)
+                    IdIncomingImports(
+                      navigatorKey: _navigatorKey,
+                      child: child,
+                    ),
                   if (veilOpacity > 0.004)
                     IgnorePointer(
                       child: ColoredBox(

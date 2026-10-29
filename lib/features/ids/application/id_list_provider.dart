@@ -11,6 +11,21 @@ import '../domain/id_attachment.dart';
 import '../domain/id_document.dart';
 import 'attachment_providers.dart';
 
+class IdOriginalInput {
+  const IdOriginalInput(this.file, {this.label = '', this.source = 'import'});
+  final File file;
+  final String label;
+  final String source;
+}
+
+class DuplicateIdException implements Exception {
+  const DuplicateIdException(this.document);
+  final IdDocument document;
+}
+
+String normaliseIdNumber(String value) =>
+    value.replaceAll(RegExp(r'\s|-'), '').toUpperCase();
+
 final idListProvider =
     StateNotifierProvider<IdListController, List<IdDocument>>((ref) {
       final controller = IdListController(ref);
@@ -130,6 +145,92 @@ class IdListController extends StateNotifier<List<IdDocument>> {
   /// Running adds one at a time makes check-then-append atomic.
   Future<void> _attachQueue = Future<void>.value();
 
+  /// Commits the record and its originals before publishing completion.
+  /// The same operation queue owns attachment adds, so metadata cannot race.
+  Future<void> saveDocumentDurably(
+    IdDocument document, {
+    List<IdOriginalInput> originals = const [],
+    bool isEditing = false,
+  }) {
+    final completer = Completer<void>();
+    _attachQueue = _attachQueue.then((_) async {
+      final staged = <IdAttachment>[];
+      var commitAttempted = false;
+      try {
+        await loaded;
+        await _saveQueue;
+        if (SecureDocumentStore.isUnreadable(_storageKey)) {
+          throw StateError('Stored documents could not be read.');
+        }
+        final number = normaliseIdNumber(document.documentNumber);
+        for (final other in state) {
+          if (number.isNotEmpty &&
+              other.id != document.id &&
+              other.type == document.type &&
+              normaliseIdNumber(other.documentNumber) == number) {
+            throw DuplicateIdException(other);
+          }
+        }
+        final index = state.indexWhere((d) => d.id == document.id);
+        if (isEditing && index < 0) throw StateError('This ID was removed.');
+        final attachments = [
+          ...(index < 0 ? document.attachments : state[index].attachments),
+        ];
+        final store = ref.read(attachmentStoreProvider);
+        for (final input in originals) {
+          final kind = kindForExtension(input.file.path);
+          final size = await input.file.length();
+          if (kind == null ||
+              size == 0 ||
+              rejectionFor(
+                    existing: attachments,
+                    incoming: kind,
+                    sizeBytes: size,
+                  ) !=
+                  null) {
+            throw const FormatException(
+              'Unsupported file or attachment limit exceeded.',
+            );
+          }
+          final saved = (await store.save(
+            docId: document.id,
+            file: input.file,
+            kind: kind,
+            source: input.source,
+          )).copyWith(label: input.label);
+          staged.add(saved);
+          attachments.add(saved);
+        }
+        final saved = document.copyWith(attachments: attachments);
+        final next = [...state];
+        if (index < 0) {
+          next.insert(0, saved);
+        } else {
+          next[index] = saved;
+        }
+        commitAttempted = true;
+        await _queueSaveAwaited(next);
+        if (mounted) state = next;
+        completer.complete();
+      } catch (error, stack) {
+        for (final attachment in staged) {
+          // A storage exception can leave commit status unknown. Keep encrypted
+          // bytes until the next successful startup read reconciles ownership.
+          if (commitAttempted) break;
+          try {
+            await ref
+                .read(attachmentStoreProvider)
+                .delete(document.id, attachment);
+          } catch (_) {
+            /* Startup orphan sweep is the backstop. */
+          }
+        }
+        completer.completeError(error, stack);
+      }
+    });
+    return completer.future;
+  }
+
   /// Adds a file attachment to an existing ID document.
   ///
   /// Enforces limits before performing file I/O to avoid orphaned files on disk.
@@ -139,11 +240,14 @@ class IdListController extends StateNotifier<List<IdDocument>> {
     String docId,
     File file, {
     String source = 'picker',
+    String label = '',
   }) {
     final Completer<AttachResult> completer = Completer<AttachResult>();
     _attachQueue = _attachQueue.then((_) async {
       try {
-        completer.complete(await _performAttach(docId, file, source: source));
+        completer.complete(
+          await _performAttach(docId, file, source: source, label: label),
+        );
       } catch (e, st) {
         completer.completeError(e, st);
       }
@@ -155,7 +259,10 @@ class IdListController extends StateNotifier<List<IdDocument>> {
     String docId,
     File file, {
     required String source,
+    required String label,
   }) async {
+    await loaded;
+    await _saveQueue;
     // (a) Resolve kind from file extension
     final kind = kindForExtension(file.path);
     if (kind == null) {
@@ -246,17 +353,47 @@ class IdListController extends StateNotifier<List<IdDocument>> {
 
     final latestDoc = state[latestIndex];
     final updatedDoc = latestDoc.copyWith(
-      attachments: [...latestDoc.attachments, savedAttachment],
+      attachments: [
+        ...latestDoc.attachments,
+        savedAttachment.copyWith(label: label),
+      ],
     );
 
-    updateDocument(latestIndex, updatedDoc);
-    return AttachSuccess(savedAttachment);
+    final next = [...state];
+    next[latestIndex] = updatedDoc;
+    try {
+      await _queueSaveAwaited(next);
+      if (mounted) state = next;
+      return AttachSuccess(savedAttachment.copyWith(label: label));
+    } catch (_) {
+      // Commit status is unknown: retain ciphertext. The gated startup sweep
+      // will remove it only if a successful record read proves it unreferenced.
+      return const AttachFailure(
+        AttachRejection.ioError,
+        'The file could not be saved. Please retry.',
+      );
+    }
   }
 
   /// Removes an attachment from an ID document.
   ///
   /// Removes the metadata row and persists first, then deletes the encrypted file.
-  Future<void> removeAttachment(String docId, String attachmentId) async {
+  Future<void> removeAttachment(String docId, String attachmentId) {
+    final completer = Completer<void>();
+    _attachQueue = _attachQueue.then((_) async {
+      try {
+        await loaded;
+        await _saveQueue;
+        await _removeAttachment(docId, attachmentId);
+        completer.complete();
+      } catch (error, stack) {
+        completer.completeError(error, stack);
+      }
+    });
+    return completer.future;
+  }
+
+  Future<void> _removeAttachment(String docId, String attachmentId) async {
     final docIndex = state.indexWhere((d) => d.id == docId);
     if (docIndex == -1) return;
 
@@ -279,15 +416,14 @@ class IdListController extends StateNotifier<List<IdDocument>> {
     // already gone, which surfaces as an undecryptable attachment next launch.
     final List<IdDocument> next = [...state];
     next[docIndex] = updatedDoc;
-    state = next;
-
     try {
       await _queueSaveAwaited(next);
     } catch (_) {
       // The record still lists the attachment, so leave the file in place and
       // keep the two consistent. The row stays visible and can be retried.
-      return;
+      rethrow;
     }
+    if (mounted) state = next;
 
     try {
       final store = ref.read(attachmentStoreProvider);

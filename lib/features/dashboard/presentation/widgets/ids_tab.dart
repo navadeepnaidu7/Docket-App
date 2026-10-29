@@ -13,6 +13,7 @@ import '../../../../shared/widgets/rolling_card_page.dart';
 import '../../../../shared/widgets/wallet_card_shine_border.dart';
 import '../../../ids/domain/id_document.dart';
 import '../../../ids/presentation/wallet_id_card.dart';
+import '../../../ids/presentation/id_document_screen.dart';
 import '../../../passport/domain/passport_profile.dart';
 import '../wallet_passport_card.dart';
 import 'dot_indicator.dart';
@@ -315,6 +316,29 @@ class _IdsTabState extends ConsumerState<IdsTab> {
                         ),
                       ),
                     ),
+                  Positioned(
+                    left: 20,
+                    right: 28,
+                    bottom: fabClearance + 4,
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: _activePage,
+                      builder: (context, page, _) {
+                        final item = items[page.clamp(0, items.length - 1)];
+                        if (item is! IdDocument) return const SizedBox.shrink();
+                        return Center(
+                          child: TextButton(
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    IdDocumentScreen(documentId: item.id),
+                              ),
+                            ),
+                            child: const Text('Open document'),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
         if (showFilterButton)
