@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/motion/smooth_curves.dart';
 import '../../core/theme/app_theme.dart';
 import 'docket_button.dart';
+import 'wallet_list_headline.dart';
 
 /// Empty wallet tab: artwork, a two-tone headline and one full-width action.
 ///
@@ -19,6 +20,11 @@ class WalletEmptyState extends StatelessWidget {
     required this.actionLabel,
     required this.onAction,
     required this.bottomClearance,
+    this.actionIcon,
+    this.actionTone = DocketButtonTone.primary,
+    this.secondaryLabel,
+    this.secondaryIcon,
+    this.onSecondary,
     this.footnote,
   });
 
@@ -32,6 +38,15 @@ class WalletEmptyState extends StatelessWidget {
   final String actionLabel;
   final VoidCallback? onAction;
   final double bottomClearance;
+
+  /// Leading glyph for the action, usually a `LineIcon`.
+  final Widget? actionIcon;
+  final DocketButtonTone actionTone;
+
+  /// Optional quiet pill beside the primary, for a view with two exits.
+  final String? secondaryLabel;
+  final Widget? secondaryIcon;
+  final VoidCallback? onSecondary;
 
   /// Optional small line under the button.
   final Widget? footnote;
@@ -50,22 +65,7 @@ class WalletEmptyState extends StatelessWidget {
       color: ink,
     );
 
-    List<Effect<dynamic>> rise(int step) => reduced
-        ? const <Effect<dynamic>>[]
-        : <Effect<dynamic>>[
-            FadeEffect(
-              delay: Duration(milliseconds: 60 + step * 70),
-              duration: const Duration(milliseconds: 420),
-              curve: strongEaseOut,
-            ),
-            MoveEffect(
-              delay: Duration(milliseconds: 60 + step * 70),
-              duration: const Duration(milliseconds: 520),
-              curve: strongEaseOut,
-              begin: const Offset(0, 14),
-              end: Offset.zero,
-            ),
-          ];
+    List<Effect<dynamic>> rise(int step) => walletRise(step, reduced: reduced);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -116,13 +116,29 @@ class WalletEmptyState extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ).animate(effects: rise(1)),
                     const SizedBox(height: 22),
-                    Center(
-                      child: DocketButton(
-                        label: actionLabel,
-                        onPressed: onAction,
-                        expand: false,
-                        compact: true,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        DocketButton(
+                          label: actionLabel,
+                          onPressed: onAction,
+                          expand: false,
+                          compact: true,
+                          tone: actionTone,
+                          leading: actionIcon,
+                        ),
+                        if (secondaryLabel != null) ...<Widget>[
+                          const SizedBox(width: 10),
+                          DocketButton(
+                            label: secondaryLabel!,
+                            onPressed: onSecondary,
+                            tone: DocketButtonTone.secondary,
+                            expand: false,
+                            compact: true,
+                            leading: secondaryIcon,
+                          ),
+                        ],
+                      ],
                     ).animate(effects: rise(2)),
                     if (footnote != null) ...[
                       const SizedBox(height: 18),
@@ -149,7 +165,8 @@ class WalletFootnote extends StatelessWidget {
     this.onTap,
   });
 
-  final IconData icon;
+  /// A `LineIcon` or `Icon`; sized and tinted through [IconTheme].
+  final Widget icon;
   final String strong;
   final String rest;
   final VoidCallback? onTap;
@@ -169,7 +186,10 @@ class WalletFootnote extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 15, color: muted),
+            IconTheme.merge(
+              data: IconThemeData(size: 15, color: muted),
+              child: icon,
+            ),
             const SizedBox(width: 6),
             Text.rich(
               TextSpan(

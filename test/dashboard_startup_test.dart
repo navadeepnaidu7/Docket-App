@@ -5,6 +5,7 @@ import 'package:docket/app.dart';
 import 'package:docket/features/dashboard/application/wallet_order_provider.dart';
 import 'package:docket/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:docket/features/dashboard/presentation/widgets/pill_tab_bar.dart';
+import 'package:docket/features/dashboard/presentation/widgets/dashboard_header.dart';
 import 'package:docket/features/passport/domain/passport_profile.dart';
 import 'package:docket/features/tickets/presentation/tickets_tab.dart';
 import 'package:flutter/material.dart';
@@ -42,9 +43,7 @@ void main() {
     );
   }
 
-  testWidgets('first frame paints without mounting hidden Passes', (
-    tester,
-  ) async {
+  testWidgets('hidden Passes stays unmounted after startup', (tester) async {
     await open(tester);
     expect(find.byType(DashboardScreen), findsOneWidget);
     expect(find.byType(TicketsTab), findsNothing);
@@ -52,8 +51,26 @@ void main() {
     expect(find.byType(TicketsTab), findsNothing);
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
-    expect(find.byType(TicketsTab), findsOneWidget);
+    expect(find.byType(TicketsTab), findsNothing);
     expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('reduced motion shows the header immediately', (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await open(tester);
+    final fade = tester.widget<FadeTransition>(
+      find
+          .ancestor(
+            of: find.byType(DashboardHeader),
+            matching: find.byType(FadeTransition),
+          )
+          .first,
+    );
+    expect(fade.opacity.value, 1);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 1));
   });

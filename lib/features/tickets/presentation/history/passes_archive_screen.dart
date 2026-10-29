@@ -13,7 +13,7 @@ import 'archive_scaffold.dart';
 import 'history_category_screen.dart';
 import 'history_folder_tile.dart';
 
-/// Archive root: one folder per category of archived passes.
+/// Archive root: one photographic tile per category of archived passes.
 class PassesArchiveScreen extends ConsumerWidget {
   const PassesArchiveScreen({
     super.key,
@@ -82,45 +82,55 @@ class _FolderGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final TextScaler textScaler = MediaQuery.textScalerOf(context);
     // One reveal for the whole grid. Per-tile stagger would replay every time a
     // recycled sliver child scrolled back into view.
-    return EntryReveal(
-      child: CustomScrollView(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        slivers: <Widget>[
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(
-              Space.gutter,
-              Space.x3,
-              Space.gutter,
-              MediaQuery.paddingOf(context).bottom + Space.x6,
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final int columns = textScaler.scale(17) > 24 ? 1 : 2;
+        final double tileWidth =
+            (constraints.maxWidth - Space.gutter * 2 - 16 * (columns - 1)) /
+            columns;
+        return EntryReveal(
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
             ),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                // A little more air down the page than across it: the tiles
-                // now carry a drop shadow, and rows read as shelves.
-                mainAxisSpacing: 18,
-                crossAxisSpacing: 16,
-                childAspectRatio: HistoryFolderTile.aspectRatio,
+            slivers: <Widget>[
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  Space.gutter,
+                  Space.x6,
+                  Space.gutter,
+                  MediaQuery.paddingOf(context).bottom + Space.x6,
+                ),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns,
+                    mainAxisSpacing: 20,
+                    crossAxisSpacing: 16,
+                    mainAxisExtent: HistoryFolderTile.extentFor(
+                      tileWidth,
+                      textScaler,
+                    ),
+                  ),
+                  delegate: SliverChildBuilderDelegate((
+                    BuildContext context,
+                    int index,
+                  ) {
+                    final HistoryFolderSummary folder = folders[index];
+                    return HistoryFolderTile(
+                      key: ValueKey<String>(folder.category.name),
+                      folder: folder,
+                      onTap: () => onOpen(folder),
+                    );
+                  }, childCount: folders.length),
+                ),
               ),
-              delegate: SliverChildBuilderDelegate((
-                BuildContext context,
-                int index,
-              ) {
-                final HistoryFolderSummary folder = folders[index];
-                return HistoryFolderTile(
-                  key: ValueKey<String>(folder.category.name),
-                  folder: folder,
-                  onTap: () => onOpen(folder),
-                );
-              }, childCount: folders.length),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

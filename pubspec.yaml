@@ -116,6 +116,15 @@ flutter:
   # never silently start shipping. Every entry below is reachable from
   # lib/core/assets/app_assets.dart or a literal path in lib/features/tickets/.
   assets:
+    - assets/archive/covers/trains.jpg
+    - assets/archive/covers/movies.jpg
+    - assets/archive/covers/buses.jpg
+    - assets/summary/brands/bookmyshow.jpg
+    - assets/summary/brands/district.png
+    - assets/summary/brands/irctc.png
+    - assets/summary/brands/redbus.png
+    - assets/summary/cinema.svg
+    - assets/summary/coach.svg
     - assets/emoji/waving_hand.json
     # Exact google_fonts variants, available offline on the first launch.
     - assets/fonts/Inter-Regular.ttf
@@ -153,6 +162,8 @@ flutter:
     # Lucide line icons (ISC) — see ATTRIBUTIONS.md. Directory entry: this set
     # grows as pass categories are added.
     - assets/passes/icons/
+    # Lucide UI glyphs (ISC), same set and stroke as above. See ATTRIBUTIONS.md.
+    - assets/icons/
     - assets/auth/google/android_dark_rd_SI.svg
     - assets/auth/google/ios_dark_rd_SI.svg
     - assets/auth/google/ios_dark_rd_na.svg

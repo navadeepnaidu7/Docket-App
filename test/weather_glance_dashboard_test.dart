@@ -58,17 +58,27 @@ void main() {
     expect(tester.takeException(), isNull);
   }
 
+  testWidgets('launch leaves the wallet stationary', (tester) async {
+    await open(tester);
+    for (final delay in [200, 800, 1000, 8000]) {
+      await tester.pump(Duration(milliseconds: delay));
+      expect(offset(tester), 0);
+      expect(find.byType(EasterEggDrawer), findsNothing);
+    }
+    await close(tester);
+  });
+
   for (final preview in [
     WeatherGlancePreview.movie,
     WeatherGlancePreview.train,
   ]) {
-    testWidgets('automatic ${preview.name} glance reveals, cycles and closes', (
+    testWidgets('manual ${preview.name} glance reveals, cycles and closes', (
       tester,
     ) async {
       await open(tester, preview: preview);
       await tester.pump(const Duration(milliseconds: 999));
       expect(offset(tester), 0);
-      await tester.pump(const Duration(milliseconds: 1));
+      await tester.drag(find.byType(DashboardHeader), const Offset(0, 160));
       await tester.pump(const Duration(milliseconds: 300));
       expect(offset(tester), greaterThan(0));
       expect(find.byType(EasterEggDrawer), findsOneWidget);
@@ -127,7 +137,8 @@ void main() {
     'resuming mid-refresh keeps the veil until the latest refresh ends',
     (tester) async {
       await open(tester);
-      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.drag(find.byType(DashboardHeader), const Offset(0, 160));
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 200));
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);

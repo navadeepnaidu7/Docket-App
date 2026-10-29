@@ -32,6 +32,16 @@ abstract final class AppAssets {
   /// Zomato District official logo vector (for footer).
   static const String districtLogo = 'assets/passes/district-logo.svg';
 
+  /// Source app artwork for the inline account summary, bundled unchanged.
+  /// Pinned listing URLs and hashes: tool/design_src/summary_brands/sources.json.
+  static const String summaryBookMyShow =
+      'assets/summary/brands/bookmyshow.jpg';
+  static const String summaryDistrict = 'assets/summary/brands/district.png';
+  static const String summaryIrctc = 'assets/summary/brands/irctc.png';
+  static const String summaryRedBus = 'assets/summary/brands/redbus.png';
+  static const String summaryCinema = 'assets/summary/cinema.svg';
+  static const String summaryBus = 'assets/summary/coach.svg';
+
   /// redBus coach photograph for the bus pass header (transparent PNG).
   ///
   /// Downscaled from the 1855px source to 1000px: it renders about 250dp wide,
@@ -43,6 +53,12 @@ abstract final class AppAssets {
 
   /// Clock-history icon for past / expired passes.
   static const String passesHistory = 'assets/passes/history_clock.svg';
+
+  /// Offline category-cover photographs. Sources and hashes are pinned in
+  /// tool/design_src/archive_covers/sources.json.
+  static const String archiveTrainCover = 'assets/archive/covers/trains.jpg';
+  static const String archiveMovieCover = 'assets/archive/covers/movies.jpg';
+  static const String archiveBusCover = 'assets/archive/covers/buses.jpg';
 
   // ── Pass category icons ────────────────────────────────────────────────────
 
@@ -62,6 +78,17 @@ abstract final class AppAssets {
   static const String passIconCamera = 'assets/passes/icons/camera.svg';
   static const String passIconFile = 'assets/passes/icons/file-text.svg';
   static const String passIconPnr = 'assets/passes/icons/hash.svg';
+
+  // ── UI glyphs ──────────────────────────────────────────────────────────────
+
+  /// Interface glyphs from the same Lucide set and 1.5 stroke as the pass
+  /// icons, so Manage and Trash stop mixing Material's filled-outline shapes
+  /// into a line-drawn UI. Render through `LineIcon`.
+  static const String iconTrash = 'assets/icons/trash-2.svg';
+  static const String iconRestore = 'assets/icons/undo-2.svg';
+  static const String iconAdd = 'assets/icons/plus.svg';
+  static const String iconGrip = 'assets/icons/grip-vertical.svg';
+  static const String iconHome = 'assets/icons/house.svg';
 
   // ── Auth ─────────────────────────────────────────────────────────────────────
 

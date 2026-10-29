@@ -20,6 +20,7 @@ import '../../passport/domain/passport_profile.dart';
 import '../../passport/presentation/passport_prompt_screen.dart';
 import '../../tickets/application/pass_ingest_controller.dart';
 import '../../tickets/application/pass_share_service.dart';
+import '../../tickets/application/pass_list_provider.dart';
 import '../../tickets/presentation/add/add_pass_flow.dart';
 import '../../tickets/presentation/history/passes_archive_screen.dart';
 import '../../tickets/presentation/tickets_tab.dart';
@@ -69,7 +70,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _entryCtrl;
   late final Animation<double> _entryFade;
-  late final Animation<Offset> _entrySlide;
   late final TabController _tabCtrl;
   late final ValueNotifier<double> _docPage;
   late final WalletBackdropTilt _backdropTilt;
@@ -100,7 +100,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   final LayerLink _headerTitleLink = LayerLink();
   DashboardViewMode _openedMode = DashboardViewMode.home;
 
-  /// Passes tab is heavy — prewarm after first paint; kept under [_HomeTabTransition].
+  /// Keep the heavy passes widget tree unmounted until selected.
   bool _passesTabMounted = false;
   Timer? _warmUpTimer;
   int _lastTabIndex = 0;
@@ -129,11 +129,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     }
   }
 
-  void _prewarmPassesTab() {
-    if (!mounted || _passesTabMounted) return;
-    setState(() => _passesTabMounted = true);
-  }
-
   @override
   void initState() {
     super.initState();
@@ -149,19 +144,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     _backdropTilt = WalletBackdropTilt();
     _entryCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 560),
+      duration: const Duration(milliseconds: 200),
     );
-    _entryFade = CurvedAnimation(
-      parent: _entryCtrl,
-      curve: const Interval(0.0, 0.65, curve: Curves.easeOut),
-    );
-    _entrySlide = Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
-        .animate(
-          CurvedAnimation(
-            parent: _entryCtrl,
-            curve: const Interval(0.0, 1.0, curve: Curves.easeOutQuint),
-          ),
-        );
+    _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
     _tabCtrl = TabController(length: 2, vsync: this);
     _tabCtrl.addListener(_onTabChanged);
     _easterEggCtrl = AnimationController.unbounded(
@@ -196,16 +181,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     WidgetsBinding.instance.addObserver(this);
     _entryCtrl.forward();
 
-    // Let the opening animation finish before mounting a hidden tab or parsing
+    // Let the opening fade finish before fetching passes or parsing
     // optional artwork. Idle scheduler tasks can starve under continuous
     // animation and spin the widget-test event loop. A cancellable timer also
     // makes closing the dashboard during startup safe.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _weatherSession.scheduleOpening();
       _warmUpTimer = Timer(_entryCtrl.duration!, () {
         if (!mounted) return;
-        _prewarmPassesTab();
+        // Warm data only. Building off-screen cards competes with the wallet.
+        ref.read(passListProvider);
         // Active documents get the keystore first. Trash and orphan scanning
         // are maintenance and must not compete with the initial wallet reads.
         unawaited(sweepAttachmentOrphans(ref));
@@ -217,6 +202,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) _entryCtrl.value = 1;
     final cover = ModalRoute.of(context)?.secondaryAnimation;
     if (!identical(cover, _coverAnimation)) {
       _coverAnimation?.removeListener(_onRouteCovered);
@@ -399,18 +385,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   /// the haptic fires inside [showMorphSheet].
   void _showAddSheet() {
     if (_tabCtrl.index == 0) {
-      showAddDocumentsMenu(
-        context: context,
-        onSelectPassportKind: _openPassportEntry,
-        onSelectIdType: _openIdEntry,
-        passesStep: () => passesRootStep(context, ref),
-        // Move the tab under the sheet as well, so dismissing leaves the user
-        // looking at the section they just switched into.
-        onSwitchToPasses: () => _tabCtrl.animateTo(1),
-      );
+      _showAddDocumentsSheet();
     } else {
       showAddPassFlow(context, ref);
     }
+  }
+
+  /// The documents menu regardless of tab: Manage lists documents only, so its
+  /// add action must not open the pass flow when Passes was the last tab.
+  void _showAddDocumentsSheet() {
+    showAddDocumentsMenu(
+      context: context,
+      onSelectPassportKind: _openPassportEntry,
+      onSelectIdType: _openIdEntry,
+      passesStep: () => passesRootStep(context, ref),
+      // Move the tab under the sheet as well, so dismissing leaves the user
+      // looking at the section they just switched into.
+      onSwitchToPasses: () => _tabCtrl.animateTo(1),
+    );
   }
 
   bool _ordersEqual(List<String> a, List<String> b) {
@@ -681,127 +673,124 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             SafeArea(
               child: FadeTransition(
                 opacity: _entryFade,
-                child: SlideTransition(
-                  position: _entrySlide,
-                  child: Column(
-                    children: [
-                      // Header with Drag Interceptor
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onVerticalDragStart: _handleDragStart,
-                        onVerticalDragUpdate: _handleDragUpdate,
-                        onVerticalDragEnd: _handleDragEnd,
-                        onVerticalDragCancel: _handleDragCancel,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                          child: ValueListenableBuilder<bool>(
-                            valueListenable: _showHomeMenu,
-                            builder: (context, isMenuOpen, _) {
-                              return ValueListenableBuilder<DashboardViewMode>(
-                                valueListenable: _viewMode,
-                                builder: (context, currentMode, _) {
-                                  final bool onPasses = _tabCtrl.index == 1;
-                                  final bool showHistory =
-                                      currentMode == DashboardViewMode.home &&
-                                      onPasses;
-                                  return DashboardHeader(
-                                    meshSeed: meshSeed,
-                                    washes: meshWashes,
-                                    isMenuOpen: isMenuOpen,
-                                    currentMode: currentMode,
-                                    onHomeTap: () {
-                                      _showHomeMenu.value =
-                                          !_showHomeMenu.value;
-                                    },
-                                    onAvatarTap: _openSettings,
-                                    onSearchTap: searchButtonEnabled
-                                        ? _openWalletSearch
-                                        : null,
-                                    headerTitleLink: _headerTitleLink,
-                                    showHistoryButton: showHistory,
-                                    onHistoryTap: showHistory
-                                        ? () =>
-                                              _openArchive(meshSeed, meshWashes)
-                                        : null,
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Tab content
-                      ValueListenableBuilder<DashboardViewMode>(
-                        valueListenable: _viewMode,
-                        builder: (context, mode, _) {
-                          Widget viewChild;
-                          switch (mode) {
-                            case DashboardViewMode.home:
-                              viewChild = KeyedSubtree(
-                                key: const ValueKey('home_view'),
-                                child: _HomeTabTransition(
-                                  controller: _tabCtrl,
-                                  ids: IdsTab(
-                                    items: displayItems,
-                                    allItems: items,
-                                    onDeletePassport: _showDeleteDialog,
-                                    onDeleteId: _showDeleteIdDialog,
-                                    onAdd: _showAddSheet,
-                                    pageNotifier: _docPage,
-                                    revealItemId: _revealItemId,
-                                    backdropTilt: _backdropTilt,
-                                  ),
-                                  passes: _passesTabMounted
-                                      ? TicketsTab(
-                                          isActive: _tabCtrl.index == 1,
-                                        )
-                                      : const SizedBox.expand(),
-                                ),
-                              );
-                              break;
-                            case DashboardViewMode.manage:
-                              viewChild = ManageCardsView(
-                                key: const ValueKey('manage_view'),
-                                items: items,
-                                onRevealItem: _revealWalletItem,
-                                onRemoveItem: _removeWalletItem,
-                                onOpenTrash: () {
-                                  _viewMode.value = DashboardViewMode.trash;
-                                },
-                              );
-                              break;
-                            case DashboardViewMode.trash:
-                              viewChild = const TrashView(
-                                key: ValueKey('trash_view'),
-                              );
-                              break;
-                          }
-
-                          return Expanded(
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 350),
-                              switchInCurve: strongEaseOut,
-                              switchOutCurve: strongEaseOut,
-                              transitionBuilder: (child, animation) {
-                                return FadeTransition(
-                                  opacity: animation,
-                                  child: SlideTransition(
-                                    position: Tween<Offset>(
-                                      begin: const Offset(0, 0.04),
-                                      end: Offset.zero,
-                                    ).animate(animation),
-                                    child: child,
-                                  ),
+                child: Column(
+                  children: [
+                    // Header with Drag Interceptor
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onVerticalDragStart: _handleDragStart,
+                      onVerticalDragUpdate: _handleDragUpdate,
+                      onVerticalDragEnd: _handleDragEnd,
+                      onVerticalDragCancel: _handleDragCancel,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                        child: ValueListenableBuilder<bool>(
+                          valueListenable: _showHomeMenu,
+                          builder: (context, isMenuOpen, _) {
+                            return ValueListenableBuilder<DashboardViewMode>(
+                              valueListenable: _viewMode,
+                              builder: (context, currentMode, _) {
+                                final bool onPasses = _tabCtrl.index == 1;
+                                final bool showHistory =
+                                    currentMode == DashboardViewMode.home &&
+                                    onPasses;
+                                return DashboardHeader(
+                                  meshSeed: meshSeed,
+                                  washes: meshWashes,
+                                  isMenuOpen: isMenuOpen,
+                                  currentMode: currentMode,
+                                  onHomeTap: () {
+                                    _showHomeMenu.value = !_showHomeMenu.value;
+                                  },
+                                  onAvatarTap: _openSettings,
+                                  onSearchTap: searchButtonEnabled
+                                      ? _openWalletSearch
+                                      : null,
+                                  headerTitleLink: _headerTitleLink,
+                                  showHistoryButton: showHistory,
+                                  onHistoryTap: showHistory
+                                      ? () => _openArchive(meshSeed, meshWashes)
+                                      : null,
                                 );
                               },
-                              child: viewChild,
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Tab content
+                    ValueListenableBuilder<DashboardViewMode>(
+                      valueListenable: _viewMode,
+                      builder: (context, mode, _) {
+                        Widget viewChild;
+                        switch (mode) {
+                          case DashboardViewMode.home:
+                            viewChild = KeyedSubtree(
+                              key: const ValueKey('home_view'),
+                              child: _HomeTabTransition(
+                                controller: _tabCtrl,
+                                ids: IdsTab(
+                                  items: displayItems,
+                                  allItems: items,
+                                  onDeletePassport: _showDeleteDialog,
+                                  onDeleteId: _showDeleteIdDialog,
+                                  onAdd: _showAddSheet,
+                                  pageNotifier: _docPage,
+                                  revealItemId: _revealItemId,
+                                  backdropTilt: _backdropTilt,
+                                ),
+                                passes: _passesTabMounted
+                                    ? TicketsTab(isActive: _tabCtrl.index == 1)
+                                    : const SizedBox.expand(),
+                              ),
+                            );
+                            break;
+                          case DashboardViewMode.manage:
+                            viewChild = ManageCardsView(
+                              key: const ValueKey('manage_view'),
+                              items: items,
+                              onRevealItem: _revealWalletItem,
+                              onRemoveItem: _removeWalletItem,
+                              onAdd: _showAddDocumentsSheet,
+                              onOpenTrash: () {
+                                _viewMode.value = DashboardViewMode.trash;
+                              },
+                            );
+                            break;
+                          case DashboardViewMode.trash:
+                            viewChild = TrashView(
+                              key: const ValueKey('trash_view'),
+                              onGoHome: () {
+                                _viewMode.value = DashboardViewMode.home;
+                              },
+                            );
+                            break;
+                        }
+
+                        return Expanded(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 350),
+                            switchInCurve: strongEaseOut,
+                            switchOutCurve: strongEaseOut,
+                            transitionBuilder: (child, animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0, 0.04),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: viewChild,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
             ),

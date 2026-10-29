@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/widgets/line_icon.dart';
 import '../../../../core/wallet/wallet_palette.dart';
 import '../../../ids/domain/id_document.dart';
 import '../../../ids/domain/id_document_catalog.dart';
@@ -68,12 +69,17 @@ class WalletRowTile extends StatelessWidget {
     this.trailing,
     this.onTap,
     this.showDivider = true,
+    this.removed = false,
   });
 
   final Object item;
   final Widget? trailing;
   final VoidCallback? onTap;
   final bool showDivider;
+
+  /// Trash rows: the mini card fades, so the list reads as "out of the
+  /// wallet" before a word is read. The text stays full strength to scan.
+  final bool removed;
 
   /// Aligns the divider with the title rather than the mini card.
   static const double _dividerIndent = 60;
@@ -92,13 +98,13 @@ class WalletRowTile extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: <Widget>[
-                  WalletMiniCard(palette: meta.palette),
+                  Opacity(
+                    opacity: removed ? 0.42 : 1,
+                    child: WalletMiniCard(palette: meta.palette),
+                  ),
                   const SizedBox(width: 12),
                   Text(
                     meta.title,
@@ -180,7 +186,7 @@ class WalletMiniCard extends StatelessWidget {
   }
 }
 
-/// Plain icon action for the Trash row's trailing slot.
+/// Plain line-glyph action for the Trash row's trailing slot.
 ///
 /// No tinted circle behind it — the colour alone carries the meaning, and a
 /// filled plate on every row turned the list into a field of coloured dots.
@@ -193,7 +199,8 @@ class WalletRowAction extends StatelessWidget {
     required this.tooltip,
   });
 
-  final IconData icon;
+  /// An `AppAssets.icon*` Lucide glyph.
+  final String icon;
   final Color color;
   final VoidCallback onTap;
   final String tooltip;
@@ -202,7 +209,7 @@ class WalletRowAction extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       onPressed: onTap,
-      icon: Icon(icon, size: 20, color: color),
+      icon: LineIcon(icon, size: 20, color: color),
       tooltip: tooltip,
       visualDensity: VisualDensity.compact,
       padding: const EdgeInsets.all(6),

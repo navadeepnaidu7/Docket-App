@@ -4,6 +4,7 @@ import 'package:docket/features/dashboard/application/wallet_loading_provider.da
 import 'package:docket/features/dashboard/application/wallet_order_provider.dart';
 import 'package:docket/features/dashboard/presentation/widgets/ids_tab.dart';
 import 'package:docket/features/dashboard/presentation/widgets/manage_cards_view.dart';
+import 'package:docket/features/dashboard/presentation/widgets/manage_order_preview.dart';
 import 'package:docket/features/dashboard/presentation/widgets/wallet_row_tile.dart';
 import 'package:docket/features/ids/domain/id_document.dart';
 import 'package:docket/features/passport/domain/passport_profile.dart';
@@ -97,7 +98,13 @@ Future<void> _pumpManage(
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  if (items.isEmpty) {
+    // Not pumpAndSettle: the empty state's artwork shimmers on a loop and
+    // never reaches a quiescent frame. Pump past the entrance motion instead.
+    await tester.pump(const Duration(seconds: 1));
+  } else {
+    await tester.pumpAndSettle();
+  }
 }
 
 void main() {
@@ -126,7 +133,14 @@ void main() {
     ) async {
       await _pumpManage(tester, items: <Object>[_passport(), _id()]);
 
-      expect(find.text('2 documents · drag to reorder'), findsOneWidget);
+      expect(
+        find.textContaining('2 documents.', findRichText: true),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Drag to reorder. Swipe left to remove.'),
+        findsOneWidget,
+      );
       // The old view drew its own "Wallet order" heading directly under the
       // shared header's "Manage" title. Two titles, one gap apart.
       expect(find.text('Wallet order'), findsNothing);
@@ -201,8 +215,43 @@ void main() {
     ) async {
       await _pumpManage(tester, items: <Object>[]);
 
-      expect(find.text('No cards in wallet'), findsOneWidget);
+      expect(
+        find.textContaining('Nothing to arrange yet.', findRichText: true),
+        findsOneWidget,
+      );
+      expect(find.text('Add'), findsOneWidget);
+      expect(find.byType(ManageOrderPreview), findsOneWidget);
       expect(find.byType(WalletRowTile), findsNothing);
+    });
+
+    testWidgets('empty wallet offers Add and Trash side by side', (
+      WidgetTester tester,
+    ) async {
+      int added = 0;
+      int opened = 0;
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: ManageCardsView(
+                items: const <Object>[],
+                onRevealItem: (_) {},
+                onRemoveItem: (_) {},
+                onAdd: () => added++,
+                onOpenTrash: () => opened++,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 1));
+
+      await tester.tap(find.text('Add'));
+      await tester.tap(find.text('Trash'));
+      await tester.pump();
+
+      expect(added, 1);
+      expect(opened, 1);
     });
 
     testWidgets('trash footer routes to the trash view', (
@@ -215,7 +264,7 @@ void main() {
         onOpenTrash: () => opened++,
       );
 
-      await tester.tap(find.text('Trash'));
+      await tester.tap(find.textContaining('Trash', findRichText: true));
       await tester.pumpAndSettle();
 
       expect(opened, 1);

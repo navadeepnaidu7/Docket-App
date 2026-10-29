@@ -15,6 +15,34 @@ import 'package:flutter/services.dart';
 void registerAssetLicenses() {
   LicenseRegistry.addLicense(() async* {
     yield const LicenseEntryWithLineBreaks(
+      <String>['Archive category photographs'],
+      'Category-cover photography from Pexels.\n'
+      'Trains: GOWTHAM AGM — Running Indian Train.\n'
+      'https://www.pexels.com/photo/running-indian-train-20309650/\n'
+      'Movies: Linda Gschwentner — Number in a Red Seat.\n'
+      'https://www.pexels.com/photo/number-in-a-red-seat-11718584/\n'
+      'Buses: 虎 曼 — Photo of a Coach on a Road in Perspective.\n'
+      'https://www.pexels.com/photo/photo-of-a-coach-on-a-road-in-perspective-16962781/\n\n'
+      'Pexels License: https://www.pexels.com/license/\n'
+      'Bundled as the downloaded CDN-sized JPEGs. The interface crops the '
+      'covers and adds a slight dark-mode veil; stored pixels are unchanged. '
+      'The photographers and depicted brands do not endorse Docket.',
+    );
+    yield const LicenseEntryWithLineBreaks(
+      <String>['Summary source app artwork'],
+      'Unmodified app artwork identifying the source of passes.\n'
+      'BookMyShow — Bigtree Entertainment Pvt. Ltd.\n'
+      'https://apps.apple.com/in/app/id405894842\n'
+      'District — Zomato / Eternal Limited.\n'
+      'https://play.google.com/store/apps/details?id=com.application.zomato.district\n'
+      'IRCTC Rail Connect — Indian Railway Catering and Tourism Corporation.\n'
+      'https://play.google.com/store/apps/details?id=cris.org.in.prs.ima\n'
+      'redBus — redBus / Pilani Soft Labs.\n'
+      'https://play.google.com/store/apps/details?id=in.redbus.android\n\n'
+      'Artwork and trademarks remain the property of their respective owners. '
+      'Their use identifies pass sources and does not imply endorsement.',
+    );
+    yield const LicenseEntryWithLineBreaks(
       <String>['Animated Noto Emoji (waving hand)'],
       'Waving hand animation by Google, from Animated Noto Emoji.\n'
       'https://googlefonts.github.io/noto-emoji-files/\n'
@@ -44,8 +72,12 @@ void registerAssetLicenses() {
       'Weather illustrations are original Docket artwork.',
     );
     yield const LicenseEntryWithLineBreaks(
-      <String>['Pass category icons (assets/passes/icons)'],
-      'Line icons from Lucide (https://lucide.dev), bundled unmodified.\n'
+      <String>[
+        'Pass category icons (assets/passes/icons)',
+        'Interface icons (assets/icons)',
+      ],
+      'Line icons from Lucide (https://lucide.dev), stroke-width reduced '
+      'from 2 to 1.5; geometry unmodified.\n'
       '\n'
       'Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 '
       'as part of Feather (MIT). All other copyright (c) for Lucide are held '

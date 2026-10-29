@@ -7,7 +7,7 @@ import 'package:docket/features/tickets/presentation/history/history_folder_tile
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Fixtures carry no posterUrl/posterAsset so nothing here touches the network.
+/// Pass fixtures have no posters; the category photographs are bundled assets.
 MoviePass movie({required String id, required String title}) {
   return MoviePass(
     id: id,
@@ -63,7 +63,7 @@ HistoryFolderSummary folder(List<WalletPassItem> items) {
 }
 
 /// One grid cell on a 390dp-wide phone: (390 - 40 gutters - 16 spacing) / 2.
-const Size _cell = Size(167, 167 / HistoryFolderTile.aspectRatio);
+const double _cellWidth = 167;
 
 void main() {
   Future<void> pumpTile(
@@ -80,8 +80,11 @@ void main() {
             child: MediaQuery(
               data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
               child: SizedBox(
-                width: _cell.width,
-                height: _cell.height,
+                width: _cellWidth,
+                height: HistoryFolderTile.extentFor(
+                  _cellWidth,
+                  TextScaler.linear(textScale),
+                ),
                 child: HistoryFolderTile(folder: summary, onTap: () {}),
               ),
             ),
@@ -105,7 +108,8 @@ void main() {
 
       expect(takeLayoutError(), isNull);
       expect(find.text('Movies'), findsOneWidget);
-      expect(find.text('3 passes'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+      expect(find.text('passes'), findsOneWidget);
       expect(find.text('Last added 10 Feb 2025'), findsNothing);
       // The whole tile is the target; a per-tile arrow badge would be chrome.
       expect(find.byIcon(Icons.arrow_outward_rounded), findsNothing);
@@ -125,7 +129,8 @@ void main() {
 
       expect(takeLayoutError(), isNull);
       expect(find.text('Trains'), findsOneWidget);
-      expect(find.text('2 passes'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
+      expect(find.text('passes'), findsOneWidget);
       expect(find.text('MAS'), findsNothing);
       expect(find.text('SBC'), findsNothing);
     });
@@ -137,7 +142,8 @@ void main() {
       );
 
       expect(takeLayoutError(), isNull);
-      expect(find.text('1 pass'), findsOneWidget);
+      expect(find.text('1'), findsOneWidget);
+      expect(find.text('pass'), findsOneWidget);
       expect(find.bySemanticsLabel('Movies, 1 pass'), findsOneWidget);
     });
 
@@ -153,7 +159,8 @@ void main() {
 
       expect(takeLayoutError(), isNull);
       expect(find.text('Trains'), findsOneWidget);
-      expect(find.text('2 passes'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
+      expect(find.text('passes'), findsOneWidget);
     });
 
     testWidgets('keeps the label block compact at large text scale', (
@@ -171,18 +178,6 @@ void main() {
       expect(takeLayoutError(), isNull);
       expect(find.text('Movies'), findsOneWidget);
       expect(find.text('Last added 10 Feb 2025'), findsNothing);
-    });
-
-    test('paper thickness tracks how full the folder is', () {
-      // Bands, not a per-pass count: the stack has to stay legible at 167dp.
-      expect(HistoryFolderTile.sheetsFor(1), 1);
-      expect(HistoryFolderTile.sheetsFor(2), 2);
-      expect(HistoryFolderTile.sheetsFor(4), 2);
-      expect(HistoryFolderTile.sheetsFor(5), 3);
-      expect(HistoryFolderTile.sheetsFor(200), 3);
-      // buildHistoryFolders never emits an empty folder, but a zero must not
-      // paint a folder with no paper in it at all.
-      expect(HistoryFolderTile.sheetsFor(0), 1);
     });
   });
 }

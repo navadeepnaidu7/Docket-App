@@ -432,62 +432,54 @@ class SummaryApp {
 
   static const SummaryApp bookMyShow = SummaryApp(
     name: 'BookMyShow',
-    background: <Color>[Color(0xFFFF5470), Color(0xFFE0304A)],
-    svg: AppAssets.bookMyShowLogo,
-    tint: Colors.white,
-    glyph: 0.62,
+    background: <Color>[Color(0xFFFF004F), Color(0xFFFF004F)],
+    png: AppAssets.summaryBookMyShow,
   );
   static const SummaryApp district = SummaryApp(
     name: 'District',
-    background: <Color>[Color(0xFF8155FF), Color(0xFF5B37E8)],
-    svg: AppAssets.districtLogo,
-    glyph: 0.7,
+    background: <Color>[Color(0xFF8733D2), Color(0xFF5130B4)],
+    png: AppAssets.summaryDistrict,
   );
   static const SummaryApp cinema = SummaryApp(
     name: 'Movies',
-    background: <Color>[Color(0xFF48484C), Color(0xFF1C1C1E)],
-    svg: AppAssets.passIconTicket,
-    tint: Colors.white,
-    glyph: 0.5,
+    background: <Color>[Color(0xFF424B66), Color(0xFF30374C)],
+    svg: AppAssets.summaryCinema,
+    glyph: 0.70,
   );
   static const SummaryApp irctc = SummaryApp(
     name: 'IRCTC',
     background: <Color>[Color(0xFFFFFFFF), Color(0xFFEDEDEA)],
-    svg: AppAssets.passIconTrain,
-    tint: Color(0xFF1B3B8F),
-    glyph: 0.54,
+    png: AppAssets.summaryIrctc,
   );
   static const SummaryApp redBus = SummaryApp(
     name: 'redBus',
-    background: <Color>[Color(0xFFF0606A), Color(0xFFC9333F)],
-    svg: AppAssets.passIconBus,
-    tint: Colors.white,
-    glyph: 0.52,
+    background: <Color>[Color(0xFFCF4A53), Color(0xFFB93642)],
+    png: AppAssets.summaryRedBus,
   );
   static const SummaryApp bus = SummaryApp(
     name: 'Bus',
-    background: <Color>[Color(0xFF48484C), Color(0xFF1C1C1E)],
-    svg: AppAssets.passIconBus,
-    tint: Colors.white,
-    glyph: 0.52,
+    background: <Color>[Color(0xFF415D70), Color(0xFF2E4557)],
+    svg: AppAssets.summaryBus,
+    glyph: 0.68,
   );
   static const SummaryApp aadhaar = SummaryApp(
     name: 'Aadhaar',
     background: <Color>[Color(0xFFFFFFFF), Color(0xFFEDEDEA)],
     svg: AppAssets.aadhaarLogo,
-    glyph: 0.64,
+    glyph: 0.76,
   );
   static const SummaryApp pan = SummaryApp(
     name: 'PAN',
-    background: <Color>[Color(0xFF2A62D6), Color(0xFF0E3A8A)],
+    background: <Color>[Color(0xFFE7EEFF), Color(0xFFCAD8F4)],
+    tint: Color(0xFF234283),
     label: 'PAN',
   );
   static const SummaryApp passport = SummaryApp(
     name: 'Passport',
     background: <Color>[Color(0xFF34407A), Color(0xFF141C45)],
-    png: AppAssets.passportEmblemWatermark,
+    png: AppAssets.passportEmblemLarge,
     tint: Color(0xFFE2C374),
-    glyph: 0.56,
+    glyph: 0.68,
   );
 }
 
@@ -555,7 +547,7 @@ class _AppIconStackState extends State<AppIconStack>
   @override
   Widget build(BuildContext context) {
     final double size = widget.size;
-    final double step = size * 0.68;
+    final double step = size * 0.78;
     final int extra = widget.apps.length - AppIconStack.maxShown;
     final List<SummaryApp> shown = extra > 0
         ? widget.apps.take(AppIconStack.maxShown - 1).toList()
@@ -663,9 +655,8 @@ class _AppIconStackState extends State<AppIconStack>
   }
 }
 
-/// One app icon with home-screen weight: a superellipse, a lit fill, a sharp
-/// logo, a hairline edge, a top gloss and a two-layer shadow. A ring in the
-/// page colour separates it from the icon it overlaps.
+/// Sharp source artwork in a consistent superellipse, separated by a fine
+/// page-colour edge. Brand artwork keeps its own colour and lighting.
 class AppIconTile extends StatelessWidget {
   const AppIconTile({
     super.key,
@@ -696,7 +687,7 @@ class AppIconTile extends StatelessWidget {
             : ColorFilter.mode(app.tint!, BlendMode.srcIn),
       );
     } else if (app.png != null && app.tint == null) {
-      // A real app icon: full bleed, the tile only adds the edge and gloss.
+      // Preserve the source app artwork at its native proportions.
       logo = Image.asset(
         app.png!,
         width: size,
@@ -718,10 +709,10 @@ class AppIconTile extends StatelessWidget {
       logo = Text(
         app.label ?? '',
         style: AppFonts.ui(
-          fontSize: size * 0.23,
+          fontSize: size * 0.30,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.2,
-          color: Colors.white,
+          color: app.tint ?? Colors.white,
         ),
       );
     }
@@ -734,18 +725,18 @@ class AppIconTile extends StatelessWidget {
           borderRadius: radius,
           side: BorderSide(
             color: ringColor,
-            width: 2.5,
+            width: 1.5,
             strokeAlign: BorderSide.strokeAlignOutside,
           ),
         ),
         shadows: <BoxShadow>[
           BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? 0.5 : 0.09),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: dark ? 0.22 : 0.07),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: dark ? 0.4 : 0.06),
+            color: Colors.black.withValues(alpha: dark ? 0.14 : 0.04),
             blurRadius: 1.5,
             offset: const Offset(0, 0.5),
           ),
@@ -766,26 +757,27 @@ class AppIconTile extends StatelessWidget {
               ),
             ),
             Center(child: logo),
-            // Gloss: light catching the top edge.
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.center,
-                  colors: <Color>[
-                    Colors.white.withValues(alpha: 0.22),
-                    Colors.white.withValues(alpha: 0),
-                  ],
+            // Only custom document/category tiles need a hint of surface light.
+            if (app.png == null || app.tint != null)
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.center,
+                    colors: <Color>[
+                      Colors.white.withValues(alpha: 0.06),
+                      Colors.white.withValues(alpha: 0),
+                    ],
+                  ),
                 ),
               ),
-            ),
             DecoratedBox(
               decoration: ShapeDecoration(
                 shape: RoundedSuperellipseBorder(
                   borderRadius: radius,
                   side: BorderSide(
                     color: dark
-                        ? Colors.white.withValues(alpha: 0.16)
+                        ? Colors.white.withValues(alpha: 0.10)
                         : Colors.black.withValues(alpha: 0.08),
                     width: 0.75,
                   ),
@@ -827,7 +819,7 @@ class _MoreTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(size * 0.27),
           side: BorderSide(
             color: ringColor,
-            width: 2.5,
+            width: 1.5,
             strokeAlign: BorderSide.strokeAlignOutside,
           ),
         ),

@@ -149,6 +149,22 @@ class TrashController extends StateNotifier<TrashState> {
       }
     }
   }
+
+  /// Deletes every trashed document for good.
+  ///
+  /// Deliberately a loop over [permanentlyDeleteItem], one awaited item at a
+  /// time, not a second deletion path: attachment cleanup and the
+  /// [SecureDocumentStore] write interlock live there. Awaiting each call also
+  /// keeps the read-filter-write of one item from interleaving with the next,
+  /// and a write that throws stops the loop rather than pressing on.
+  Future<void> emptyTrash() async {
+    await loaded;
+    final List<Object> items = <Object>[...state.passports, ...state.idDocs];
+    for (final Object item in items) {
+      if (!mounted) return;
+      await permanentlyDeleteItem(item);
+    }
+  }
 }
 
 final trashProvider = StateNotifierProvider<TrashController, TrashState>((ref) {

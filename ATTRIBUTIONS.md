@@ -47,12 +47,43 @@ Feather (MIT). All other copyright (c) for Lucide are held by Lucide Contributor
 Files: `train-front`, `bus`, `plane`, `ticket`, `calendar-days`, `ellipsis`,
 `camera`, `file-text`, `hash`.
 
+The interface glyphs in `assets/icons/` come from the same Lucide release
+(1.31.0) with the same single modification (`stroke-width` 2 to 1.5), so they
+match the pass icons' weight. Files: `trash-2`, `undo-2`, `plus`,
+`grip-vertical`, `house`.
+
 ISC is permissive: use, copy, modify and distribute freely, provided the
 copyright and permission notice travel with the work. That notice is registered
 with `LicenseRegistry` in `lib/core/assets/asset_licenses.dart` so it ships
 inside the app, not only in this file.
 
+## Archive category photographs — Pexels License
+
+The Archive category chooser bundles the three photographs approved in the
+Apple + Sofa preview. They are category artwork and do not depict a particular
+saved booking. Their downloaded JPEG bytes are unchanged; the interface applies
+a cover crop and a slight dark-mode veil.
+
+| Bundled as | Photograph | Photographer |
+|---|---|---|
+| `assets/archive/covers/trains.jpg` | [Running Indian Train](https://www.pexels.com/photo/running-indian-train-20309650/) | GOWTHAM AGM |
+| `assets/archive/covers/movies.jpg` | [Number in a Red Seat](https://www.pexels.com/photo/number-in-a-red-seat-11718584/) | Linda Gschwentner |
+| `assets/archive/covers/buses.jpg` | [Photo of a Coach on a Road in Perspective](https://www.pexels.com/photo/photo-of-a-coach-on-a-road-in-perspective-16962781/) | 虎 曼 |
+
+Used under the [Pexels License](https://www.pexels.com/license/). The credits are
+also registered in-app. Download URLs, byte lengths, and SHA-256 hashes are pinned
+in `tool/design_src/archive_covers/sources.json`.
+
 ## Other bundled assets
+
+- `assets/summary/brands/` — unmodified source app artwork used to identify
+  BookMyShow, District, IRCTC Rail Connect, and redBus in the account summary.
+  Artwork and trademarks belong to their respective owners. Listing URLs,
+  download URLs, owners, and SHA-256 hashes are pinned in
+  `tool/design_src/summary_brands/sources.json`. These marks identify the source
+  of passes and do not imply endorsement. Credits also appear in-app.
+- `assets/summary/cinema.svg` and `assets/summary/coach.svg` — original Docket
+  artwork for unbranded cinema and bus passes.
 
 - `assets/emoji/waving_hand.json` — Google’s [Animated Noto Emoji](https://googlefonts.github.io/noto-emoji-files/?view=docs),
   [waving hand Lottie asset](https://fonts.gstatic.com/s/e/notoemoji/latest/1f44b/lottie.json),

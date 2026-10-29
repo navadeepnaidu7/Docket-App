@@ -109,6 +109,7 @@ class _WalletPassportCardState extends State<WalletPassportCard>
   late final AnimationController _flipCtrl;
   late final Animation<double> _flipAnim;
   bool _showBack = false;
+  bool _backMounted = false;
 
   // -- tilt --
   final _tiltX = ValueNotifier<double>(0);
@@ -168,6 +169,9 @@ class _WalletPassportCardState extends State<WalletPassportCard>
 
   void _handleTap() {
     if (_dragging) return;
+    // Decode the hidden portrait only when details are requested, then retain
+    // the page so subsequent flips reuse its image and layout.
+    if (!_backMounted) setState(() => _backMounted = true);
     HapticService.flip();
     SoundService.flip();
     if (_showBack) {
@@ -267,7 +271,9 @@ class _WalletPassportCardState extends State<WalletPassportCard>
                         Transform(
                           alignment: Alignment.center,
                           transform: Matrix4.rotationY(math.pi),
-                          child: _backCard,
+                          child: _backMounted
+                              ? _backCard
+                              : const SizedBox.expand(),
                         ),
                         _frontCard,
                       ],

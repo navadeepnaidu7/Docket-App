@@ -51,8 +51,8 @@ void main() {
     expect(find.text('पासपोर्ट'), findsOneWidget);
     expect(find.text('PASSPORT'), findsOneWidget);
 
-    // Old front chrome. The back still holds the name / number, and both
-    // faces stay in the flip stack, so those strings are not asserted here.
+    // Hidden details must not mount or decode portraits during startup.
+    expect(find.text('SURNAME'), findsNothing);
     expect(find.text('Tap to view details'), findsNothing);
     expect(find.text('HOLDER NAME'), findsNothing);
     expect(find.byKey(const Key('e-passport-chip')), findsNothing);

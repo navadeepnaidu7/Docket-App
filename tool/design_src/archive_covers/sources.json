@@ -1,0 +1,39 @@
+{
+  "runtime_treatment": "Cover crop and dark-mode veil; stored JPEG pixels unchanged",
+  "covers": [
+    {
+      "license": "Pexels License",
+      "sha256": "1a29221107655cf292bdf9bafc8e5f5286fbf57d52f62bfc371144fb79d8c4be",
+      "author": "GOWTHAM AGM",
+      "download": "https://images.pexels.com/photos/20309650/pexels-photo-20309650.jpeg?auto=compress&cs=tinysrgb&w=1000",
+      "modified_after_download": false,
+      "asset": "assets/archive/covers/trains.jpg",
+      "license_url": "https://www.pexels.com/license/",
+      "source": "https://www.pexels.com/photo/running-indian-train-20309650/",
+      "bytes": 216409
+    },
+    {
+      "license": "Pexels License",
+      "sha256": "62658597829960ec014e0c6d0c28dc7e002528f3a4cf5bb8be55182ab4e94763",
+      "author": "Linda Gschwentner",
+      "download": "https://images.pexels.com/photos/11718584/pexels-photo-11718584.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "modified_after_download": false,
+      "asset": "assets/archive/covers/movies.jpg",
+      "license_url": "https://www.pexels.com/license/",
+      "source": "https://www.pexels.com/photo/number-in-a-red-seat-11718584/",
+      "bytes": 66094
+    },
+    {
+      "license": "Pexels License",
+      "sha256": "e5271c6b653682958db3b0e9c650dd8ba312c838537303e96bf40d34cac32255",
+      "author": "虎 曼",
+      "download": "https://images.pexels.com/photos/16962781/pexels-photo-16962781.jpeg?auto=compress&cs=tinysrgb&w=1000",
+      "modified_after_download": false,
+      "asset": "assets/archive/covers/buses.jpg",
+      "license_url": "https://www.pexels.com/license/",
+      "source": "https://www.pexels.com/photo/photo-of-a-coach-on-a-road-in-perspective-16962781/",
+      "bytes": 96205
+    }
+  ],
+  "downloaded": "2026-10-29"
+}

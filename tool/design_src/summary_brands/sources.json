@@ -1,0 +1,47 @@
+[
+  {
+    "name": "bookmyshow",
+    "appId": 405894842,
+    "owner": "Bigtree Entertainment Pvt. Ltd.",
+    "listing": "https://apps.apple.com/in/app/bookmyshow-movies-events/id405894842?uo=4",
+    "source": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/32/23/03/32230398-9320-dff7-764f-a75561ad1bb6/AppIcon-1x_U007epad-0-1-0-P3-85-220-0.png/512x512bb.jpg",
+    "file": "assets/summary/brands/bookmyshow.jpg",
+    "sha256": "231628f38b1e47e5702574161819df523ff850dfa2363944b16d60a6c87de278",
+    "bytes": 25440,
+    "downloaded": "2026-10-28",
+    "modified": false
+  },
+  {
+    "listing": "https://play.google.com/store/apps/details?id=com.application.zomato.district&hl=en&gl=IN",
+    "source": "https://play-lh.googleusercontent.com/t0LH2EDF97k1-d2i8kSh_vUlZlnntAGWRYIX8BVSRSAyMGUlNAraa-q4kez1YMKQmGc_9BeEFGmD3wTud5NDOg=s0-br30",
+    "file": "assets/summary/brands/district.png",
+    "bytes": 95593,
+    "sha256": "38278333faa493215e28e7eb91e38969593045b7e9fc3fd7928a0eda2bbd6de0",
+    "modified": false,
+    "name": "district",
+    "owner": "Zomato Media Pvt. Ltd.",
+    "downloaded": "2026-10-28"
+  },
+  {
+    "listing": "https://play.google.com/store/apps/details?id=cris.org.in.prs.ima&hl=en&gl=IN",
+    "source": "https://play-lh.googleusercontent.com/zwiNMuB10nmp3HTXdM9gNoAZBAQOur4AvXr-JMr9PPmsYtqxPGGGp-RJnKC14WVcnPWjhMpmb876okDltLDD0g=s0-br30",
+    "file": "assets/summary/brands/irctc.png",
+    "bytes": 120475,
+    "sha256": "047018e08724c6b7ed394f04076919aabd1711f91962bf51d798e0bff172dcbf",
+    "modified": false,
+    "name": "irctc",
+    "owner": "Indian Railway Catering and Tourism Corporation Limited",
+    "downloaded": "2026-10-28"
+  },
+  {
+    "listing": "https://play.google.com/store/apps/details?id=in.redbus.android&hl=en&gl=IN",
+    "source": "https://play-lh.googleusercontent.com/43E5nFgmkuKssO6qMp8RVnhQFDKVUWiRj4onvTASAFV38f7UI1ywQ0xYRhq4CLVc2sWf8Glm8GRS5n4lj-aFyIg=s0-br30",
+    "file": "assets/summary/brands/redbus.png",
+    "bytes": 19607,
+    "sha256": "5e034bb7fc1f4bbcc8da0018f6be17bc158f8b882991b24eb403083a7e877365",
+    "modified": false,
+    "name": "redbus",
+    "owner": "PILANI SOFT LABS PRIVATE LIMITED",
+    "downloaded": "2026-10-28"
+  }
+]
