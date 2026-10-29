@@ -1,13 +1,9 @@
+import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 
-/// Empty-state artwork for Trash: a glass tray holding one card, while a
-/// second card rises out of it and settles back in.
-///
-/// The story is the view's promise — removed documents are kept, and come
-/// back out whole — told in the glass material and palette of Home's
-/// [EmptyDocsPreview] and Manage's [ManageOrderPreview].
+/// A kept ID lifting out of a frosted wastebasket, ready to be restored.
 class TrashTrayPreview extends StatefulWidget {
   const TrashTrayPreview({super.key});
 
@@ -19,20 +15,12 @@ class _TrashTrayPreviewState extends State<TrashTrayPreview>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 4400),
+    duration: const Duration(milliseconds: 5400),
   );
-
-  static const double _cardWidth = 136;
-  static const double _cardHeight = 86;
-
-  /// Card top when lifted clear of the tray, and when resting inside it.
-  static const double _outY = 4;
-  static const double _inY = 56;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Reduced motion rests on the lifted frame: card out, tray visible.
     if (MediaQuery.disableAnimationsOf(context)) {
       _ctrl
         ..stop()
@@ -48,217 +36,227 @@ class _TrashTrayPreviewState extends State<TrashTrayPreview>
     super.dispose();
   }
 
-  static double _ramp(double t, double a, double b) =>
-      Curves.easeInOutCubic.transform(((t - a) / (b - a)).clamp(0.0, 1.0));
-
   @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (BuildContext context, _) {
-        final double t = _ctrl.value;
-        // Out, sink, rest inside, rise, rest out.
-        final double sink = _ramp(t, 0.18, 0.42) - _ramp(t, 0.62, 0.86);
-
-        return SizedBox(
-          width: 220,
-          height: 164,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: <Widget>[
-              // Tray back wall.
-              Positioned(
-                left: 18,
-                right: 18,
-                top: 74,
-                height: 84,
-                child: _Glass(
-                  radius: 22,
-                  tint: const Color(0xFF2A9D8F),
-                  fill: 0.26,
-                  tintAlpha: 0.10,
-                ),
-              ),
-              // The card that stays: already kept.
-              Positioned(
-                left: (220 - _cardWidth) / 2 - 10,
-                top: 64,
-                child: Transform.rotate(
-                  angle: 0.06,
-                  child: const _GhostCard(
-                    color: Color(0xFF7C5CBF),
-                    alpha: 0.50,
-                    width: _cardWidth,
-                    height: _cardHeight,
-                  ),
-                ),
-              ),
-              // The card that comes and goes.
-              Positioned(
-                left: (220 - _cardWidth) / 2 + 6,
-                top: lerpDouble(_outY, _inY, sink),
-                child: Transform.rotate(
-                  angle: lerpDouble(-0.07, -0.01, sink)!,
-                  child: _GhostCard(
-                    color: const Color(0xFF4C7CFF),
-                    alpha: 0.72,
-                    width: _cardWidth,
-                    height: _cardHeight,
-                    lift: 1 - sink,
-                  ),
-                ),
-              ),
-              // Tray front lip, over both cards.
-              Positioned(
-                left: 18,
-                right: 18,
-                top: 102,
-                height: 56,
-                child: _Glass(
-                  radius: 20,
-                  tint: const Color(0xFF2A9D8F),
-                  fill: 0.62,
-                  tintAlpha: 0.12,
-                  child: Align(
-                    alignment: const Alignment(0, -0.45),
-                    child: Container(
-                      width: 38,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2A9D8F).withValues(alpha: 0.22),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  Widget build(BuildContext context) => RepaintBoundary(
+    child: SizedBox(
+      width: 220,
+      height: 164,
+      child: CustomPaint(
+        painter: _TrashBasketPainter(
+          motion: _ctrl,
+          scheme: Theme.of(context).colorScheme,
+        ),
+      ),
+    ),
+  );
 }
 
-class _Glass extends StatelessWidget {
-  const _Glass({
-    required this.radius,
-    required this.tint,
-    required this.fill,
-    required this.tintAlpha,
-    this.child,
-  });
+class _TrashBasketPainter extends CustomPainter {
+  _TrashBasketPainter({required this.motion, required this.scheme})
+    : super(repaint: motion);
 
-  final double radius;
-  final Color tint;
-  final double fill;
-  final double tintAlpha;
-  final Widget? child;
+  final Animation<double> motion;
+  final ColorScheme scheme;
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            Color.alphaBlend(
-              tint.withValues(alpha: tintAlpha),
-              Colors.white.withValues(alpha: fill),
-            ),
-            Colors.white.withValues(alpha: fill * 0.7),
-          ],
-        ),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.78)),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: tint.withValues(alpha: 0.10),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-}
+  static const Color _teal = Color(0xFF2A9D8F);
+  static const Color _blue = Color(0xFF4C7CFF);
 
-/// A document card with nothing on it: photo block and three text bars, the
-/// same anatomy as Home's ghost cards at a smaller size.
-class _GhostCard extends StatelessWidget {
-  const _GhostCard({
-    required this.color,
-    required this.alpha,
-    required this.width,
-    required this.height,
-    this.lift = 0,
-  });
+  bool get _dark => scheme.brightness == Brightness.dark;
 
-  final Color color;
-  final double alpha;
-  final double width;
-  final double height;
+  static double _ramp(double t, double start, double end) => Curves
+      .easeInOutSine
+      .transform(((t - start) / (end - start)).clamp(0.0, 1.0));
 
-  /// 0 resting in the tray, 1 held clear of it.
-  final double lift;
+  Color _tint(Color color) =>
+      _dark ? Color.lerp(color, Colors.white, 0.30)! : color;
+
+  Color _surface(Color color, double strength, {bool lower = false}) =>
+      Color.alphaBlend(
+        color.withValues(alpha: strength),
+        _dark
+            ? (lower ? scheme.surface : scheme.surfaceContainerHighest)
+            : Colors.white.withValues(alpha: lower ? 0.78 : 0.94),
+      );
+
+  void _roundRect(Canvas canvas, Rect rect, double radius, Color color) =>
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, Radius.circular(radius)),
+        Paint()..color = color,
+      );
 
   @override
-  Widget build(BuildContext context) {
-    final Color mark = color.withValues(alpha: 0.18 * alpha);
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.scale(size.width / 220, size.height / 164);
+    final double t = motion.value;
+    final double lift = 1 - _ramp(t, 0.16, 0.40) + _ramp(t, 0.66, 0.90);
+    final Color rim = _tint(_teal);
 
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: LinearGradient(
+    // A soft contact shadow grounds the basket without a surrounding glow.
+    canvas.drawOval(
+      const Rect.fromLTWH(69, 150, 94, 10),
+      Paint()
+        ..color = (_dark ? Colors.black : _teal).withValues(
+          alpha: _dark ? 0.32 : 0.12,
+        )
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
+
+    final Path back = Path()
+      ..moveTo(51, 85)
+      ..lineTo(63, 141)
+      ..quadraticBezierTo(66, 154, 81, 154)
+      ..lineTo(147, 154)
+      ..quadraticBezierTo(162, 154, 165, 141)
+      ..lineTo(177, 85)
+      ..close();
+    canvas.drawPath(back, Paint()..color = _surface(_teal, 0.15));
+
+    // The recessed mouth remains visible behind the document.
+    const Rect opening = Rect.fromLTWH(50, 76, 128, 20);
+    canvas.drawOval(
+      opening,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            _surface(_teal, _dark ? 0.08 : 0.19, lower: true),
+            _surface(_teal, _dark ? 0.22 : 0.10),
+          ],
+        ).createShader(opening),
+    );
+    canvas.drawArc(
+      opening,
+      math.pi,
+      math.pi,
+      false,
+      Paint()
+        ..color = rim.withValues(alpha: _dark ? 0.40 : 0.28)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
+
+    _paintDocument(canvas, lift);
+
+    // Tapered sides and recessed ribs make this a basket, rather than a tray.
+    final Path front = Path()
+      ..moveTo(51, 85)
+      ..cubicTo(77, 98, 151, 98, 177, 85)
+      ..lineTo(165, 141)
+      ..quadraticBezierTo(162, 154, 147, 154)
+      ..lineTo(81, 154)
+      ..quadraticBezierTo(66, 154, 63, 141)
+      ..close();
+    canvas.drawPath(
+      front,
+      Paint()
+        ..shader = LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: <Color>[
-            Color.alphaBlend(
-              color.withValues(alpha: 0.16 * alpha),
-              Colors.white.withValues(alpha: 0.66),
-            ),
-            Colors.white.withValues(alpha: 0.48),
+          colors: [
+            _surface(_teal, _dark ? 0.24 : 0.15),
+            _surface(_teal, _dark ? 0.12 : 0.08, lower: true),
           ],
-        ),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.80)),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: color.withValues(alpha: (0.10 + 0.14 * lift) * alpha),
-            blurRadius: 14 + 14 * lift,
-            offset: Offset(0, 6 + 8 * lift),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Container(
-            width: 32,
-            height: 24,
-            decoration: BoxDecoration(
-              color: mark,
-              borderRadius: BorderRadius.circular(7),
-            ),
-          ),
-          const Spacer(),
-          for (int i = 0; i < 2; i++) ...<Widget>[
-            if (i > 0) const SizedBox(height: 6),
-            Container(
-              width: i == 0 ? 76 : 48,
-              height: 5,
-              decoration: BoxDecoration(
-                color: mark,
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-          ],
-        ],
-      ),
+        ).createShader(const Rect.fromLTWH(51, 85, 126, 69)),
     );
+    canvas.drawPath(
+      front,
+      Paint()
+        ..color = rim.withValues(alpha: _dark ? 0.46 : 0.25)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.1,
+    );
+
+    for (final double x in [92.0, 114.0, 136.0]) {
+      final double inward = (114 - x) * 0.12;
+      final Path rib = Path()
+        ..moveTo(x, 112)
+        ..lineTo(x + inward, 137);
+      canvas.drawPath(
+        rib.shift(const Offset(1, 0)),
+        Paint()
+          ..color = Colors.white.withValues(alpha: _dark ? 0.07 : 0.64)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4.5
+          ..strokeCap = StrokeCap.round,
+      );
+      canvas.drawPath(
+        rib,
+        Paint()
+          ..color = rim.withValues(alpha: _dark ? 0.22 : 0.20)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.5
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+    canvas.restore();
   }
+
+  void _paintDocument(Canvas canvas, double lift) {
+    canvas.save();
+    canvas.translate(116, lerpDouble(104, 77, lift)!);
+    canvas.rotate(lerpDouble(-0.10, -0.16, lift)!);
+    const Rect bounds = Rect.fromLTWH(-46, -62, 92, 62);
+    final RRect card = RRect.fromRectAndRadius(
+      bounds,
+      const Radius.circular(9),
+    );
+    final Color tint = _tint(_blue);
+    canvas.drawRRect(
+      card.shift(const Offset(0, 4)),
+      Paint()
+        ..color = (_dark ? Colors.black : _blue).withValues(
+          alpha: _dark ? 0.20 : 0.10,
+        )
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 4 + 3 * lift),
+    );
+    canvas.drawRRect(
+      card,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _surface(_blue, _dark ? 0.37 : 0.16),
+            _surface(_blue, _dark ? 0.18 : 0.05),
+          ],
+        ).createShader(bounds),
+    );
+    canvas.drawRRect(
+      card,
+      Paint()
+        ..color = tint.withValues(alpha: _dark ? 0.62 : 0.28)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.1,
+    );
+
+    _roundRect(
+      canvas,
+      const Rect.fromLTWH(-33, -48, 19, 22),
+      4,
+      tint.withValues(alpha: _dark ? 0.46 : 0.20),
+    );
+    final Color mark = tint.withValues(alpha: _dark ? 0.80 : 0.50);
+    canvas.drawCircle(const Offset(-23.5, -40), 3.1, Paint()..color = mark);
+    _roundRect(canvas, const Rect.fromLTWH(-30, -34, 13, 5), 2.5, mark);
+    _roundRect(canvas, const Rect.fromLTWH(-5, -45, 35, 3.5), 1.75, mark);
+    _roundRect(
+      canvas,
+      const Rect.fromLTWH(-5, -34, 24, 3.5),
+      1.75,
+      mark.withValues(alpha: _dark ? 0.60 : 0.32),
+    );
+    _roundRect(
+      canvas,
+      const Rect.fromLTWH(-32, -15, 47, 3.5),
+      1.75,
+      mark.withValues(alpha: _dark ? 0.54 : 0.28),
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_TrashBasketPainter oldDelegate) =>
+      oldDelegate.scheme != scheme || oldDelegate.motion != motion;
 }

@@ -125,3 +125,29 @@ Validation:
 - Live camera capture and iOS compilation/runtime were not manually verified in
   this pass. Gallery uses the platform picker; the checked image path was Android
   incoming sharing, and the checked PDF path was the Android file picker.
+
+## Open-document affordance refinement
+
+Place the action directly below its ID card instead of above the bottom navigation.
+Reuse the Settings membership card's quiet shining text and small chevron, enlarged
+to 16-point type with a 48-point touch target. Group it with the card during paging,
+leave a 12-point layout gap, and pause the shine during swipes or reduced motion.
+Keep the card artwork, tap-to-flip and passport presentation intact.
+
+After the card settles, wait 1.5 seconds before fading the action in over 700 ms
+with ease-in-out sine easing, so it gently emerges instead of flashing into view.
+Hide it immediately when paging starts and restart the full delay after the next
+settle. Retain its layout space so the card does not move when the label appears;
+hidden actions must not receive taps or accessibility focus.
+
+Implemented through a shared ShiningActionLabel, preserving the Settings label's
+original treatment. Hot reloaded and visually checked below the PAN card on the
+phone; tapping the relocated action opened the document view, then returned to the
+wallet. Focused analysis found no errors or warnings, with one existing Settings
+cacheExtent deprecation info. No automated tests or APK rebuild were run.
+
+The delayed reveal was hot reloaded and checked with recorded phone swipes,
+including an Aadhaar-to-PAN page change: no action during movement or the idle
+delay, then the action appears below the settled card without shifting it.
+Focused analysis of ids_tab.dart reported No issues found. Temporary recordings
+were removed from the phone; local review copies remain in ignored build output.

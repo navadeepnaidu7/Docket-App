@@ -119,7 +119,14 @@ class _GhostRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color mark = color.withValues(alpha: (0.18 + 0.10 * lift) * alpha);
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final bool dark = scheme.brightness == Brightness.dark;
+    final Color tint = dark ? Color.lerp(color, Colors.white, 0.30)! : color;
+    final Color mark = tint.withValues(
+      alpha: dark
+          ? 0.45 + 0.38 * alpha + 0.08 * lift
+          : (0.18 + 0.10 * lift) * alpha,
+    );
 
     return Transform.scale(
       scale: 1 + 0.04 * lift,
@@ -133,17 +140,34 @@ class _GhostRow extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: <Color>[
-              Color.alphaBlend(
-                color.withValues(alpha: 0.14 * alpha),
-                Colors.white.withValues(alpha: 0.56),
-              ),
-              Colors.white.withValues(alpha: 0.40),
+              if (dark) ...[
+                Color.alphaBlend(
+                  color.withValues(alpha: 0.14 + 0.10 * alpha + 0.04 * lift),
+                  scheme.surfaceContainerHighest,
+                ),
+                Color.alphaBlend(
+                  color.withValues(alpha: 0.04 + 0.05 * alpha),
+                  scheme.surfaceContainerHighest,
+                ),
+              ] else ...[
+                Color.alphaBlend(
+                  color.withValues(alpha: 0.14 * alpha),
+                  Colors.white.withValues(alpha: 0.56),
+                ),
+                Colors.white.withValues(alpha: 0.40),
+              ],
             ],
           ),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.78)),
+          border: Border.all(
+            color: dark
+                ? tint.withValues(alpha: 0.24 + 0.22 * alpha + 0.10 * lift)
+                : Colors.white.withValues(alpha: 0.78),
+          ),
           boxShadow: <BoxShadow>[
             BoxShadow(
-              color: color.withValues(alpha: (0.12 + 0.16 * lift) * alpha),
+              color: tint.withValues(
+                alpha: (dark ? 0.06 + 0.10 * lift : 0.12 + 0.16 * lift) * alpha,
+              ),
               blurRadius: 14 + 14 * lift,
               offset: Offset(0, 6 + 8 * lift),
             ),
@@ -160,8 +184,12 @@ class _GhostRow extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: <Color>[
-                    color.withValues(alpha: 0.55 * alpha),
-                    color.withValues(alpha: 0.30 * alpha),
+                    tint.withValues(
+                      alpha: dark ? 0.48 + 0.30 * alpha : 0.55 * alpha,
+                    ),
+                    tint.withValues(
+                      alpha: dark ? 0.28 + 0.22 * alpha : 0.30 * alpha,
+                    ),
                   ],
                 ),
               ),

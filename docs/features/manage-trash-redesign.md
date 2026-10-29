@@ -20,8 +20,8 @@ outlined rectangles. This brings them into the wallet's own language.
 
 - **Each view gets its own artwork.** Reusing Home's fanned cards says
   "cards", which is Home's job. Manage animates a row being dragged into a new
-  slot (`ManageOrderPreview`). Trash animates a card sinking into a tray and
-  rising back out (`TrashTrayPreview`): kept, and recoverable.
+  slot (`ManageOrderPreview`). Trash animates an ID rising from a frosted
+  wastebasket and settling back (`TrashTrayPreview`): kept, and recoverable.
 - **Empty Manage offers Add and Trash.** Manage hides the dashboard FAB, so
   without its own Add the empty view was a dead end. Trash stays reachable at
   zero documents, which is exactly when someone looks for what they removed.
@@ -36,8 +36,11 @@ outlined rectangles. This brings them into the wallet's own language.
   drop into `DocketButton.leading` like an `Icon`.
 - **Trash rows look removed.** Their mini card is drawn at reduced opacity so
   the list reads as "out of the wallet" at a glance.
-- **"Empty Trash" is a quiet secondary pill under the list**, confirmed by a
-  destructive dialog. It loops the existing `permanentlyDeleteItem` path one
+- **"Empty Trash" uses a deliberate swipe control pinned below the list.**
+  Reaching the end and releasing transforms the footer into an inline confirmation
+  with Cancel and Empty actions. Short swipes, Cancel and Back restore the slider.
+  Keyboard and screen-reader activation use the same inline confirmation. It loops
+  the existing `permanentlyDeleteItem` path one
   item at a time rather than adding a second deletion path, so attachment
   cleanup and the write interlock stay in one place.
 

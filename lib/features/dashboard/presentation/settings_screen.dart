@@ -35,6 +35,7 @@ import 'manage_account_screen.dart';
 import 'user_card_detail_screen.dart';
 import 'widgets/membership_mesh.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/shining_action_label.dart';
 import '../application/nav_labels_provider.dart';
 
 /// Apple Card–like hero dimensions (scrolls with the settings list).
@@ -178,9 +179,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         child: ValueListenableBuilder<bool>(
                           valueListenable: _effectsOn,
                           builder: (BuildContext context, bool effectsOn, _) {
-                            return _TapToOpenShineLabel(
-                              isDark: isDark,
-                              ink: ink,
+                            return ShiningActionLabel(
+                              label: 'Tap to open',
                               enabled: effectsOn,
                             );
                           },
@@ -1210,138 +1210,6 @@ class _DeveloperSection extends ConsumerWidget {
         ),
       ],
     );
-  }
-}
-
-// ── "Tap to open" shimmer ───────────────────────────────────────────────────
-
-/// Soft left→right shine across the membership-card affordance (~2.5s loop).
-class _TapToOpenShineLabel extends StatefulWidget {
-  const _TapToOpenShineLabel({
-    required this.isDark,
-    required this.ink,
-    this.enabled = true,
-  });
-
-  final bool isDark;
-  final Color ink;
-  final bool enabled;
-
-  @override
-  State<_TapToOpenShineLabel> createState() => _TapToOpenShineLabelState();
-}
-
-class _TapToOpenShineLabelState extends State<_TapToOpenShineLabel>
-    with SingleTickerProviderStateMixin {
-  /// Slow glint across the affordance.
-  static const Duration _period = Duration(milliseconds: 2500);
-
-  late final AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(vsync: this, duration: _period);
-    _syncShine();
-  }
-
-  @override
-  void didUpdateWidget(covariant _TapToOpenShineLabel oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.enabled != widget.enabled) {
-      _syncShine();
-    }
-  }
-
-  void _syncShine() {
-    if (widget.enabled) {
-      if (!_ctrl.isAnimating) _ctrl.repeat();
-    } else if (_ctrl.isAnimating) {
-      _ctrl.stop();
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final Color base = widget.ink.withValues(
-      alpha: widget.isDark ? 0.40 : 0.48,
-    );
-    // Soft peak — hard pure-white edges read as letter-by-letter strobing.
-    final Color mid = widget.isDark
-        ? Colors.white.withValues(alpha: 0.72)
-        : widget.ink.withValues(alpha: 0.72);
-    final Color peak = widget.isDark
-        ? Colors.white.withValues(alpha: 0.92)
-        : widget.ink.withValues(alpha: 0.90);
-
-    final TextStyle labelStyle = AppFonts.ui(
-      fontSize: 12,
-      fontWeight: FontWeight.w600,
-      letterSpacing: 0.2,
-      // Solid for ShaderMask; gradient supplies the visible color.
-      color: Colors.white,
-    );
-
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (BuildContext context, Widget? child) {
-        // Ease the travel so it doesn't feel linear/mechanical.
-        final double t = Curves.easeInOutCubic.transform(_ctrl.value);
-
-        return ShaderMask(
-          blendMode: BlendMode.srcIn,
-          shaderCallback: (Rect bounds) {
-            // Wide band (~55% of label width) slides in pixel space so the
-            // highlight covers multiple glyphs at once instead of snapping
-            // letter-to-letter.
-            final double w = bounds.width;
-            final double band = w * 0.55;
-            // Travel fully off-screen left → fully off-screen right.
-            final double x = (w + band) * t - band;
-
-            return LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: <Color>[base, base, mid, peak, mid, base, base],
-              stops: const <double>[0.0, 0.28, 0.42, 0.50, 0.58, 0.72, 1.0],
-              tileMode: TileMode.clamp,
-              transform: _ShimmerSlide(x / w),
-            ).createShader(bounds);
-          },
-          child: child,
-        );
-      },
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Text('Tap to open', style: labelStyle),
-          const SizedBox(width: 4),
-          const Icon(
-            Icons.arrow_forward_ios_rounded,
-            size: 10,
-            color: Colors.white,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Translates a gradient along X in units of the shader bounds width.
-class _ShimmerSlide extends GradientTransform {
-  const _ShimmerSlide(this.dxInWidths);
-
-  final double dxInWidths;
-
-  @override
-  Matrix4? transform(Rect bounds, {TextDirection? textDirection}) {
-    return Matrix4.translationValues(bounds.width * dxInWidths, 0, 0);
   }
 }
 

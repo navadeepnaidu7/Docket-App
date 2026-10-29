@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +13,7 @@ import '../../../../shared/widgets/line_icon.dart';
 import '../../../../shared/widgets/wallet_empty_state.dart';
 import '../../../../shared/widgets/wallet_list_headline.dart';
 import '../../application/trash_provider.dart';
+import 'swipe_to_empty_trash.dart';
 import 'trash_tray_preview.dart';
 import 'wallet_row_tile.dart';
 
@@ -19,15 +21,22 @@ import 'wallet_row_tile.dart';
 ///
 /// Speaks the same language as Manage, its sibling under the nav-title
 /// picker: the two-tone [WalletListHeadline] over a grouped list of
-/// [WalletRowTile]s, quiet [DocketButton] pills, Lucide glyphs. Rows are
+/// [WalletRowTile]s and a bottom swipe control with inline confirmation. Rows are
 /// drawn `removed` — faded mini card — so the list reads as "out of the
 /// wallet" at a glance. See `docs/features/manage-trash-redesign.md`.
-class TrashView extends ConsumerWidget {
+class TrashView extends ConsumerStatefulWidget {
   const TrashView({super.key, this.onGoHome});
 
   /// Switches the dashboard to Home. The empty state's only exit: with
   /// nothing to restore, the wallet itself is the useful place to land.
   final VoidCallback? onGoHome;
+
+  @override
+  ConsumerState<TrashView> createState() => _TrashViewState();
+}
+
+class _TrashViewState extends ConsumerState<TrashView> {
+  bool _emptying = false;
 
   Future<bool> _confirm(
     BuildContext context, {
@@ -62,6 +71,7 @@ class TrashView extends ConsumerWidget {
     WidgetRef ref,
     Object item,
   ) async {
+    if (_emptying) return;
     final bool ok = await _confirm(
       context,
       title: 'Delete for good?',
@@ -70,28 +80,38 @@ class TrashView extends ConsumerWidget {
           'This cannot be undone.',
       action: 'Delete',
     );
-    if (!ok) return;
+    if (!ok || !mounted || _emptying) return;
     await ref.read(trashProvider.notifier).permanentlyDeleteItem(item);
   }
 
-  Future<void> _emptyTrash(
-    BuildContext context,
-    WidgetRef ref,
-    int count,
-  ) async {
-    final bool ok = await _confirm(
-      context,
-      title: 'Empty Trash?',
-      body:
-          '${count == 1 ? '1 document' : '$count documents'} will be erased '
-          'from this device. This cannot be undone.',
-      action: 'Empty Trash',
-    );
-    if (!ok) return;
-    await ref.read(trashProvider.notifier).emptyTrash();
+  Future<void> _emptyTrash(List<String> reviewedIds) async {
+    if (_emptying) return;
+    final TrashState current = ref.read(trashProvider);
+    final Set<String> currentIds = {
+      ...current.passports.map(walletItemId),
+      ...current.idDocs.map(walletItemId),
+    };
+    if (!setEquals(currentIds, reviewedIds.toSet())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Trash changed. Review it and slide again.'),
+        ),
+      );
+      return;
+    }
+    if (currentIds.isEmpty) return;
+    final controller = ref.read(trashProvider.notifier);
+    setState(() => _emptying = true);
+    try {
+      HapticService.destructive();
+      await controller.emptyTrash();
+    } finally {
+      if (mounted) setState(() => _emptying = false);
+    }
   }
 
   void _restore(BuildContext context, WidgetRef ref, Object item) {
+    if (_emptying) return;
     HapticService.select();
     ref.read(trashProvider.notifier).restoreItem(item, ref);
     ScaffoldMessenger.of(context)
@@ -108,7 +128,7 @@ class TrashView extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
     final TrashState trashState = ref.watch(trashProvider);
@@ -127,76 +147,98 @@ class TrashView extends ConsumerWidget {
         actionLabel: 'Go to Home',
         actionIcon: const LineIcon(AppAssets.iconHome),
         actionTone: DocketButtonTone.secondary,
-        onAction: onGoHome,
+        onAction: widget.onGoHome,
         bottomClearance: bottomInset + 24,
       );
     }
 
-    return ListView(
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
-      padding: EdgeInsets.only(bottom: bottomInset + 24),
-      children: <Widget>[
-        WalletListHeadline(
-          lead: '${items.length} in Trash.',
-          prompt: 'Restore what you need.',
-          hint: 'Nothing here is erased until you delete it.',
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppTokens.groupedFieldFill(
-                scheme,
-                isDark: theme.brightness == Brightness.dark,
-              ),
-              borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-              border: Border.all(
-                color: AppTokens.separator(scheme),
-                width: 0.5,
-              ),
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
             ),
-            child: Column(
-              children: <Widget>[
-                for (int i = 0; i < items.length; i++)
-                  WalletRowTile(
-                    key: ValueKey<String>('trash-${walletItemId(items[i])}'),
-                    item: items[i],
-                    removed: true,
-                    showDivider: i != items.length - 1,
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        WalletRowAction(
-                          icon: AppAssets.iconRestore,
-                          color: AppTheme.ink(theme.brightness),
-                          tooltip: 'Restore',
-                          onTap: () => _restore(context, ref, items[i]),
+            padding: const EdgeInsets.only(bottom: 24),
+            children: <Widget>[
+              WalletListHeadline(
+                lead: '${items.length} in Trash.',
+                prompt: 'Restore what you need.',
+                hint: 'Nothing here is erased until you delete it.',
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: ExcludeSemantics(
+                  excluding: _emptying,
+                  child: ExcludeFocus(
+                    excluding: _emptying,
+                    child: AbsorbPointer(
+                      absorbing: _emptying,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppTokens.groupedFieldFill(
+                            scheme,
+                            isDark: theme.brightness == Brightness.dark,
+                          ),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusCard,
+                          ),
+                          border: Border.all(
+                            color: AppTokens.separator(scheme),
+                            width: 0.5,
+                          ),
                         ),
-                        const SizedBox(width: 2),
-                        WalletRowAction(
-                          icon: AppAssets.iconTrash,
-                          color: AppTheme.danger,
-                          tooltip: 'Delete for good',
-                          onTap: () => _deleteForGood(context, ref, items[i]),
+                        child: Column(
+                          children: <Widget>[
+                            for (int i = 0; i < items.length; i++)
+                              WalletRowTile(
+                                key: ValueKey<String>(
+                                  'trash-${walletItemId(items[i])}',
+                                ),
+                                item: items[i],
+                                removed: true,
+                                showDivider: i != items.length - 1,
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    WalletRowAction(
+                                      icon: AppAssets.iconRestore,
+                                      color: AppTheme.ink(theme.brightness),
+                                      tooltip: 'Restore',
+                                      onTap: () =>
+                                          _restore(context, ref, items[i]),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    WalletRowAction(
+                                      icon: AppAssets.iconTrash,
+                                      color: AppTheme.danger,
+                                      tooltip: 'Delete for good',
+                                      onTap: () => _deleteForGood(
+                                        context,
+                                        ref,
+                                        items[i],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-              ],
-            ),
+                ),
+              ).animate(effects: walletRise(2, reduced: reduced)),
+            ],
           ),
-        ).animate(effects: walletRise(2, reduced: reduced)),
-        const SizedBox(height: 24),
-        Center(
-          child: DocketButton(
-            label: 'Empty Trash',
-            onPressed: () => _emptyTrash(context, ref, items.length),
-            tone: DocketButtonTone.secondary,
-            expand: false,
-            compact: true,
-            leading: const LineIcon(AppAssets.iconTrash),
+        ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(24, 16, 24, bottomInset + 20),
+          child: Center(
+            child: SwipeToEmptyTrash(
+              itemIds: items.map(walletItemId).toList(growable: false),
+              onDelete: _emptyTrash,
+            ),
           ),
         ).animate(effects: walletRise(3, reduced: reduced)),
       ],

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,7 @@ import '../../application/card_shine_border_provider.dart';
 import '../../application/wallet_filter_provider.dart';
 import '../../application/wallet_loading_provider.dart';
 import '../../../../shared/widgets/rolling_card_page.dart';
+import '../../../../shared/widgets/shining_action_label.dart';
 import '../../../../shared/widgets/wallet_card_shine_border.dart';
 import '../../../ids/domain/id_document.dart';
 import '../../../ids/presentation/wallet_id_card.dart';
@@ -283,13 +285,26 @@ class _IdsTabState extends ConsumerState<IdsTab> {
                                     _scrolling,
                                   ]),
                                   builder: (context, _) {
-                                    return WalletCardShineBorder(
-                                      enabled: shineEnabled,
-                                      isActive:
-                                          !_scrolling.value &&
-                                          _activePage.value == index,
-                                      borderRadius: 24,
-                                      child: card,
+                                    final bool isActive =
+                                        !_scrolling.value &&
+                                        _activePage.value == index;
+                                    return Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                          child: WalletCardShineBorder(
+                                            enabled: shineEnabled,
+                                            isActive: isActive,
+                                            borderRadius: 24,
+                                            child: card,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        _DocumentOpenAction(
+                                          documentId: item.id,
+                                          isActive: isActive,
+                                        ),
+                                      ],
                                     );
                                   },
                                 )
@@ -316,29 +331,6 @@ class _IdsTabState extends ConsumerState<IdsTab> {
                         ),
                       ),
                     ),
-                  Positioned(
-                    left: 20,
-                    right: 28,
-                    bottom: fabClearance + 4,
-                    child: ValueListenableBuilder<int>(
-                      valueListenable: _activePage,
-                      builder: (context, page, _) {
-                        final item = items[page.clamp(0, items.length - 1)];
-                        if (item is! IdDocument) return const SizedBox.shrink();
-                        return Center(
-                          child: TextButton(
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    IdDocumentScreen(documentId: item.id),
-                              ),
-                            ),
-                            child: const Text('Open document'),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
                 ],
               ),
         if (showFilterButton)
@@ -351,6 +343,96 @@ class _IdsTabState extends ConsumerState<IdsTab> {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _DocumentOpenAction extends StatefulWidget {
+  const _DocumentOpenAction({required this.documentId, required this.isActive});
+
+  final String documentId;
+  final bool isActive;
+
+  @override
+  State<_DocumentOpenAction> createState() => _DocumentOpenActionState();
+}
+
+class _DocumentOpenActionState extends State<_DocumentOpenAction> {
+  Timer? _revealTimer;
+  bool _visible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleReveal();
+  }
+
+  @override
+  void didUpdateWidget(_DocumentOpenAction oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive ||
+        oldWidget.documentId != widget.documentId) {
+      _scheduleReveal();
+    }
+  }
+
+  void _scheduleReveal() {
+    _revealTimer?.cancel();
+    _visible = false;
+    if (!widget.isActive) return;
+    _revealTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (!mounted || !widget.isActive) return;
+      setState(() => _visible = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _revealTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool visible = _visible && widget.isActive;
+    final bool reducedMotion = MediaQuery.disableAnimationsOf(context);
+    return IgnorePointer(
+      ignoring: !visible,
+      child: ExcludeSemantics(
+        excluding: !visible,
+        child: AnimatedOpacity(
+          opacity: visible ? 1 : 0,
+          // Disappear in the first swipe frame; only the reveal fades.
+          duration: visible && !reducedMotion
+              ? const Duration(milliseconds: 700)
+              : Duration.zero,
+          curve: Curves.easeInOutSine,
+          child: TextButton(
+            style: TextButton.styleFrom(
+              minimumSize: const Size(48, 48),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              foregroundColor: Theme.of(context).colorScheme.onSurface,
+            ),
+            onPressed: visible
+                ? () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          IdDocumentScreen(documentId: widget.documentId),
+                    ),
+                  )
+                : null,
+            child: RepaintBoundary(
+              child: ShiningActionLabel(
+                label: 'Open document',
+                enabled: visible,
+                fontSize: 16,
+                arrowSize: 12,
+                baseOpacity: 0.62,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
