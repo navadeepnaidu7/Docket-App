@@ -336,8 +336,14 @@ class MoviePass {
         .whereType<Map>()
         .map((Map m) => MovieSeat.fromJson(Map<String, dynamic>.from(m)))
         .toList();
+    // A calendar-imported pass says when it has no seat; it must not gain one.
+    final bool imported = json['importInfo'] is Map;
     if (seats.isEmpty) {
-      seats.add(const MovieSeat(row: 'A', number: '1'));
+      seats.add(
+        imported
+            ? const MovieSeat(row: '', number: '—')
+            : const MovieSeat(row: 'A', number: '1'),
+      );
     }
 
     return MoviePass(
@@ -357,9 +363,10 @@ class MoviePass {
       orderId: json['orderId']?.toString() ?? '',
       status: TicketStatus.fromJson(json['status']),
       posterHint: MoviePosterHint.fromJson(json['posterHint']),
-      certification: json['certification']?.toString() ?? 'UA',
+      certification:
+          json['certification']?.toString() ?? (imported ? '' : 'UA'),
       runtime: json['runtime']?.toString() ?? '',
-      gateType: json['gateType']?.toString() ?? 'QR Scan',
+      gateType: json['gateType']?.toString() ?? (imported ? '' : 'QR Scan'),
       sourcePlatform: json['sourcePlatform']?.toString(),
       codeType: MovieTicketCodeType.fromJson(json['codeType']),
       codePayload: json['codePayload']?.toString(),

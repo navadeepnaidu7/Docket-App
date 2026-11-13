@@ -120,22 +120,38 @@ void main() {
       initial: TrashState(passports: [_passport()], idDocs: [_pan()]),
     );
 
-    await tester.tap(find.text('Empty Trash'));
-    await tester.pumpAndSettle();
-    expect(find.text('Empty Trash?'), findsOneWidget);
+    // The control is a swipe. Its accessible action opens the same review
+    // that a completed slide opens, without depending on the thumb's pixels.
+    await _reviewEmptyTrash(tester);
+    expect(find.textContaining('permanently?'), findsOneWidget);
 
     await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     expect(fake.deleted, isEmpty);
 
-    await tester.tap(find.text('Empty Trash'));
-    await tester.pumpAndSettle();
-    // The dialog's destructive action shares the button's label.
-    await tester.tap(find.text('Empty Trash').last);
+    await _reviewEmptyTrash(tester);
+    await tester.tap(find.text('Delete'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
 
     expect(fake.deleted, hasLength(2));
     expect(find.byType(TrashTrayPreview), findsOneWidget);
   });
+}
+
+Future<void> _reviewEmptyTrash(WidgetTester tester) async {
+  final Finder slide = find.byKey(const ValueKey<String>('slide'));
+  final Rect rect = tester.getRect(slide);
+  // The thumb sits at the leading edge. A drag past the end opens the review.
+  final TestGesture gesture = await tester.startGesture(
+    Offset(rect.left + 34, rect.center.dy),
+  );
+  await tester.pump(const Duration(milliseconds: 50));
+  await gesture.moveBy(Offset(rect.width - 48, 0));
+  await tester.pump(const Duration(milliseconds: 50));
+  await gesture.up();
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 300));
+  await tester.pump();
 }

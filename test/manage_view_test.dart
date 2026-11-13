@@ -40,10 +40,9 @@ IdDocument _id({
 
 /// Pumps [IdsTab] with a loaded wallet and returns after the reveal handoff.
 ///
-/// The loading overrides are load-bearing: `passportLoadingProvider` and
-/// `idLoadingProvider` both default to true, so without them IdsTab renders a
-/// spinner, never builds the PageView, and every reveal assertion passes for
-/// the wrong reason.
+/// The loading overrides are load-bearing: the passport, ID, and card loading
+/// flags all default to true, so without them IdsTab renders a spinner, never
+/// builds the PageView, and every reveal assertion passes for the wrong reason.
 Future<void> _pumpIdsTab(
   WidgetTester tester, {
   required List<Object> items,
@@ -55,6 +54,7 @@ Future<void> _pumpIdsTab(
       overrides: <Override>[
         passportLoadingProvider.overrideWith((Ref ref) => false),
         idLoadingProvider.overrideWith((Ref ref) => false),
+        cardLoadingProvider.overrideWith((Ref ref) => false),
       ],
       child: MaterialApp(
         home: Scaffold(

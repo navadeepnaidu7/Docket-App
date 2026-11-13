@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 import '../application/ticket_code_scanner.dart';
+import '../domain/calendar_import.dart';
 import '../domain/pass_catalog.dart';
 import '../domain/pass_ingest.dart';
 import '../domain/pass_status.dart';
@@ -24,6 +25,8 @@ abstract class DocketApi {
     required String mimeType,
     required String categoryHint,
     ScannedTicketCode? code,
+    // Completes a calendar-imported pass that lacked details, in place.
+    String? attachToPassId,
   });
 
   Future<String> createFromPnr(String pnr);
@@ -36,7 +39,21 @@ abstract interface class TrainJourneyApi {
   Future<void> refreshTrainJourney(String id);
 }
 
-class DocketApiClient implements DocketApi, TrainJourneyApi {
+/// Google Calendar link (`/v1/integrations/google-calendar`). The app never sees a Google
+/// token: it only opens the consent URL the server mints and reads status back.
+abstract interface class CalendarImportApi {
+  Future<CalendarConnectionStatus> fetchCalendarStatus();
+
+  /// Returns the Google consent URL for this signed-in user.
+  Future<Uri> startCalendarConnect();
+
+  Future<CalendarConnectionStatus> requestCalendarSync();
+
+  Future<void> disconnectCalendar();
+}
+
+class DocketApiClient
+    implements DocketApi, TrainJourneyApi, CalendarImportApi {
   DocketApiClient({
     required this.baseUrl,
     required this.session,
@@ -61,6 +78,100 @@ class DocketApiClient implements DocketApi, TrainJourneyApi {
     _throwIfFailed(
       response,
       fallback: 'Railway details are unavailable. Please try again later.',
+    );
+  }
+
+  @override
+  Future<CalendarConnectionStatus> fetchCalendarStatus() async {
+    final http.Response res = await _authed(
+      (Map<String, String> headers) => _withTimeout(
+        () => _http.get(_uri(PassApiPaths.googleCalendar), headers: headers),
+      ),
+    );
+    _throwIfCalendarFailed(res);
+    return CalendarConnectionStatus.fromJson(_jsonMap(res.body));
+  }
+
+  @override
+  Future<Uri> startCalendarConnect() async {
+    final http.Response res = await _authed(
+      (Map<String, String> headers) => _withTimeout(
+        () => _http.post(
+          _uri(PassApiPaths.googleCalendarConnect),
+          headers: headers,
+        ),
+      ),
+    );
+    _throwIfCalendarFailed(res);
+    final Uri? url = Uri.tryParse(
+      _jsonMap(res.body)['authorizationUrl']?.toString() ?? '',
+    );
+    // Only ever hand Google's own consent page to the browser.
+    if (url == null || url.scheme != 'https' || url.host != 'accounts.google.com') {
+      throw const CalendarImportException(
+        'failed',
+        'The server sent an unexpected sign-in link.',
+      );
+    }
+    return url;
+  }
+
+  @override
+  Future<CalendarConnectionStatus> requestCalendarSync() async {
+    final http.Response res = await _authed(
+      (Map<String, String> headers) => _withTimeout(
+        () => _http.post(_uri(PassApiPaths.googleCalendarSync), headers: headers),
+      ),
+    );
+    _throwIfCalendarFailed(res);
+    return CalendarConnectionStatus.fromJson(_jsonMap(res.body));
+  }
+
+  @override
+  Future<void> disconnectCalendar() async {
+    final http.Response res = await _authed(
+      (Map<String, String> headers) => _withTimeout(
+        () => _http.delete(_uri(PassApiPaths.googleCalendar), headers: headers),
+      ),
+    );
+    _throwIfCalendarFailed(res);
+  }
+
+  Map<String, dynamic> _jsonMap(String body) {
+    final Object? decoded = body.isEmpty ? null : jsonDecode(body);
+    if (decoded is! Map) {
+      throw const CalendarImportException(
+        'failed',
+        'The server sent an unexpected calendar response.',
+      );
+    }
+    return Map<String, dynamic>.from(decoded);
+  }
+
+  void _throwIfCalendarFailed(http.Response res) {
+    if (res.statusCode >= 200 && res.statusCode < 300) return;
+    if (res.statusCode == 401) {
+      _throwIfFailed(res, fallback: '');
+    }
+    String code = 'failed';
+    String? message;
+    int? retryAfter = int.tryParse(res.headers['retry-after'] ?? '');
+    try {
+      final Object? decoded = jsonDecode(res.body);
+      if (decoded is Map) {
+        code = decoded['code']?.toString() ?? code;
+        message = decoded['error']?.toString();
+        retryAfter ??= (decoded['retryAfterSeconds'] as num?)?.toInt();
+      }
+    } catch (_) {}
+    throw CalendarImportException(
+      code,
+      code == 'failed' && (message == null || message.isEmpty)
+          ? 'Calendar request failed. Try again.'
+          : calendarReasonCopy(code) == calendarReasonCopy(null)
+              ? (message ?? calendarReasonCopy(null))
+              : calendarReasonCopy(code),
+      retryAfterSeconds: retryAfter,
     );
   }
 
@@ -150,6 +261,7 @@ class DocketApiClient implements DocketApi, TrainJourneyApi {
     required String mimeType,
     required String categoryHint,
     ScannedTicketCode? code,
+    String? attachToPassId,
   }) async {
     final http.Response res = await _authed((
       Map<String, String> headers,
@@ -160,6 +272,7 @@ class DocketApiClient implements DocketApi, TrainJourneyApi {
       );
       req.headers.addAll(headers);
       req.fields['category'] = categoryHint;
+      if (attachToPassId != null) req.fields['attachToPassId'] = attachToPassId;
       // The code decoded on device, when there was one. Sent as fields rather
       // than folded into the file so the server stores it verbatim instead of
       // asking a model to read a bitmap it cannot read.

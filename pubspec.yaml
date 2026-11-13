@@ -188,6 +188,36 @@ flutter:
     - assets/wallet/passport/covers/passport_regular.svg
     - assets/wallet/passport/covers/passport_epassport.svg
     - assets/wallet/aadhaar/logo.svg
+    - assets/wallet/banks/hdfc.svg
+    - assets/wallet/banks/icici.svg
+    - assets/wallet/banks/sbi.svg
+    - assets/wallet/banks/axis.svg
+    - assets/wallet/banks/kotak.svg
+    - assets/wallet/banks/pnb.svg
+    - assets/wallet/banks/bob.svg
+    - assets/wallet/banks/canara.svg
+    - assets/wallet/banks/ubi.svg
+    - assets/wallet/banks/idfc.svg
+    - assets/wallet/banks/indus.svg
+    - assets/wallet/banks/yes.svg
+    - assets/wallet/banks/federal.svg
+    - assets/wallet/banks/rbl.svg
+    - assets/wallet/banks/hsbc.svg
+    - assets/wallet/banks/standard.svg
+    - assets/wallet/banks/citi.svg
+    - assets/wallet/banks/chase.svg
+    - assets/wallet/banks/boa.svg
+    - assets/wallet/banks/wells.svg
+    - assets/wallet/banks/barclays.svg
+    - assets/wallet/banks/deutsche.svg
+    - assets/wallet/banks/dbs.svg
+    - assets/wallet/banks/LICENSE.txt
+    - assets/wallet/networks/amex.svg
+    - assets/wallet/networks/discover.svg
+    - assets/wallet/networks/unionpay.svg
+    - assets/wallet/networks/jcb.svg
+    - assets/wallet/networks/diners.svg
+    - assets/wallet/networks/LICENSE.txt
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

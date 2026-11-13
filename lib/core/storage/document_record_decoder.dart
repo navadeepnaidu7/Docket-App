@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../../features/cards/domain/payment_card.dart';
 import '../../features/ids/domain/id_document.dart';
 import '../../features/passport/domain/passport_profile.dart';
 
@@ -49,6 +50,19 @@ DecodedRecords<PassportProfile> decodePassportRecords(List<String> sources) {
     needsMigration: migrated,
     hasInvalidRecords: invalid,
   );
+}
+
+DecodedRecords<PaymentCard> decodePaymentCardRecords(List<String> sources) {
+  final List<PaymentCard> records = <PaymentCard>[];
+  var invalid = false;
+  for (final String source in sources) {
+    try {
+      records.add(PaymentCard.fromJson(source));
+    } catch (_) {
+      invalid = true;
+    }
+  }
+  return DecodedRecords(records, hasInvalidRecords: invalid);
 }
 
 DecodedRecords<IdDocument> decodeIdRecords(List<String> sources) {

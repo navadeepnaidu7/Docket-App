@@ -31,6 +31,23 @@ Uint8List? _decodeImagePayload(String payload) {
 /// [placeholder] is shown when the payload is empty or will not decode, so a
 /// document with no usable photo looks deliberately empty rather than broken.
 class SafeBase64Image extends StatefulWidget {
+  // A small launch-only handoff, cleared after the first frame. Reusing the
+  // identical bytes also reuses the MemoryImage decoded in Flutter's cache.
+  static final _prepared = <String, Uint8List>{};
+
+  static Future<MemoryImage?> prepare(String payload) async {
+    if (payload.trim().isEmpty) return null;
+    final bytes = payload.length <= 64 * 1024
+        ? _decodeImagePayload(payload)
+        : await compute(_decodeImagePayload, payload);
+    if (bytes == null) return null;
+    if (_prepared.length >= 4) _prepared.remove(_prepared.keys.first);
+    _prepared[payload] = bytes;
+    return MemoryImage(bytes);
+  }
+
+  static void clearPrepared() => _prepared.clear();
+
   const SafeBase64Image({
     super.key,
     required this.base64,
@@ -69,7 +86,8 @@ class _SafeBase64ImageState extends State<SafeBase64Image> {
   void _decode() {
     final int generation = ++_decodeGeneration;
     final String payload = widget.base64;
-    _bytes = null;
+    _bytes = SafeBase64Image._prepared[payload];
+    if (_bytes != null) return;
     // Avoid isolate setup for small portraits. A 64 KiB base64 string represents
     // about 48 KiB of compressed image data.
     if (payload.length <= 64 * 1024) {

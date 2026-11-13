@@ -13,6 +13,10 @@ import '../../application/wallet_loading_provider.dart';
 import '../../../../shared/widgets/rolling_card_page.dart';
 import '../../../../shared/widgets/shining_action_label.dart';
 import '../../../../shared/widgets/wallet_card_shine_border.dart';
+import '../../../cards/domain/payment_card.dart';
+import '../../../cards/presentation/card_detail_screen.dart';
+import '../../../cards/presentation/payment_card_stack_view.dart';
+import '../../../cards/presentation/wallet_payment_card.dart';
 import '../../../ids/domain/id_document.dart';
 import '../../../ids/presentation/wallet_id_card.dart';
 import '../../../ids/presentation/id_document_screen.dart';
@@ -29,6 +33,7 @@ class IdsTab extends ConsumerStatefulWidget {
     required this.allItems,
     required this.onDeletePassport,
     required this.onDeleteId,
+    this.onDeleteCard,
     required this.pageNotifier,
     this.revealItemId,
     this.backdropTilt,
@@ -42,6 +47,7 @@ class IdsTab extends ConsumerStatefulWidget {
   final List<Object> allItems;
   final void Function(PassportProfile) onDeletePassport;
   final void Function(IdDocument) onDeleteId;
+  final void Function(PaymentCard card)? onDeleteCard;
   final VoidCallback? onAdd;
   final ValueNotifier<double> pageNotifier;
 
@@ -59,6 +65,7 @@ class _IdsTabState extends ConsumerState<IdsTab> {
   late final PageController _pageCtrl;
   final ValueNotifier<int> _activePage = ValueNotifier<int>(0);
   final ValueNotifier<bool> _scrolling = ValueNotifier<bool>(false);
+  final ValueNotifier<String?> _stackRevealId = ValueNotifier<String?>(null);
   List<String> _lastVisibleIds = const [];
   @override
   void initState() {
@@ -129,6 +136,10 @@ class _IdsTabState extends ConsumerState<IdsTab> {
   /// Post-frame is load-bearing: the request is set while this widget is
   /// unmounted (Manage is on screen), so at listener time the new
   /// [PageController] has no clients and `jumpToPage` would throw.
+  ///
+  /// The carousel is also absent while [walletLoadingProvider] is true. Clearing
+  /// the request on that frame would leave the wallet on the first document
+  /// once the pages appear.
   void _scheduleRevealJump() {
     if (widget.revealItemId?.value == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -136,16 +147,30 @@ class _IdsTabState extends ConsumerState<IdsTab> {
       final String? pending = widget.revealItemId?.value;
       if (pending == null) return;
 
+      if (ref.read(walletLoadingProvider)) {
+        _scheduleRevealJump();
+        return;
+      }
+      if (!_pageCtrl.hasClients) {
+        // Loaded, and there is still no page: nothing is on screen to land on.
+        widget.revealItemId?.value = null;
+        return;
+      }
+
       final int index = widget.items.indexWhere(
-        (Object item) => walletItemId(item) == pending,
+        (Object item) =>
+            walletItemId(item) == pending ||
+            (item is PaymentCardStackGroup && item.containsId(pending)),
       );
-      // Consume the request either way. If the card is not in the visible list
-      // — filtered out, or removed between tap and frame — drop it rather than
-      // page to an arbitrary neighbour, which would look like it worked.
+      // A missing card is dropped rather than paged onto a neighbour, which
+      // would look like the request worked.
       widget.revealItemId?.value = null;
-      if (index < 0 || !_pageCtrl.hasClients) return;
+      if (index < 0) return;
 
       _pageCtrl.jumpToPage(index);
+      if (widget.items[index] is PaymentCardStackGroup) {
+        _stackRevealId.value = pending;
+      }
       _activePage.value = index;
       widget.pageNotifier.value = index.toDouble();
       _lastVisibleIds = _idsFor(widget.items);
@@ -159,6 +184,7 @@ class _IdsTabState extends ConsumerState<IdsTab> {
     _pageCtrl.dispose();
     _activePage.dispose();
     _scrolling.dispose();
+    _stackRevealId.dispose();
     super.dispose();
   }
 
@@ -207,7 +233,7 @@ class _IdsTabState extends ConsumerState<IdsTab> {
       return WalletEmptyState(
         artwork: const EmptyDocsPreview(),
         lead: 'Nothing here yet.',
-        prompt: 'Keep your passport and IDs ready, right here.',
+        prompt: 'Keep your passport, IDs, and cards ready, right here.',
         actionLabel: 'Add a document',
         onAction: widget.onAdd,
         bottomClearance: fabClearance,
@@ -256,6 +282,25 @@ class _IdsTabState extends ConsumerState<IdsTab> {
                       itemBuilder: (context, index) {
                         final item = items[index];
                         final Widget card = switch (item) {
+                          PaymentCardStackGroup group =>
+                            ValueListenableBuilder<int>(
+                              valueListenable: _activePage,
+                              builder: (context, activePage, _) =>
+                                  PaymentCardStackView(
+                                    cards: group.cards,
+                                    isActive: activePage == index,
+                                    revealCardId: _stackRevealId,
+                                    onRemove: widget.onDeleteCard,
+                                    onOpen: (payment) =>
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute<void>(
+                                            builder: (_) => CardDetailScreen(
+                                              cardId: payment.id,
+                                            ),
+                                          ),
+                                        ),
+                                  ),
+                            ),
                           PassportProfile profile => WalletPassportCard(
                             key: ValueKey<String>('passport-${profile.id}'),
                             profile: profile,
@@ -270,6 +315,13 @@ class _IdsTabState extends ConsumerState<IdsTab> {
                             backdropTilt: widget.backdropTilt,
                             onLongPress: () => widget.onDeleteId(document),
                           ),
+                          PaymentCard payment => WalletPaymentCard(
+                            key: ValueKey<String>('card-${payment.id}'),
+                            card: payment,
+                            onLongPress: widget.onDeleteCard == null
+                                ? null
+                                : () => widget.onDeleteCard!(payment),
+                          ),
                           _ => const SizedBox.shrink(),
                         };
 
@@ -278,7 +330,7 @@ class _IdsTabState extends ConsumerState<IdsTab> {
                           controller: _pageCtrl,
                           index: index,
                           padding: EdgeInsets.fromLTRB(20, 8, 28, fabClearance),
-                          child: item is IdDocument
+                          child: item is IdDocument || item is PaymentCard
                               ? AnimatedBuilder(
                                   animation: Listenable.merge([
                                     _activePage,
@@ -301,8 +353,32 @@ class _IdsTabState extends ConsumerState<IdsTab> {
                                         ),
                                         const SizedBox(height: 12),
                                         _DocumentOpenAction(
-                                          documentId: item.id,
+                                          itemId: walletItemId(item),
                                           isActive: isActive,
+                                          label: item is PaymentCard
+                                              ? 'Open card'
+                                              : 'Open document',
+                                          onOpen: () {
+                                            if (item is PaymentCard) {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute<void>(
+                                                  builder: (_) =>
+                                                      CardDetailScreen(
+                                                        cardId: item.id,
+                                                      ),
+                                                ),
+                                              );
+                                            } else if (item is IdDocument) {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute<void>(
+                                                  builder: (_) =>
+                                                      IdDocumentScreen(
+                                                        documentId: item.id,
+                                                      ),
+                                                ),
+                                              );
+                                            }
+                                          },
                                         ),
                                       ],
                                     );
@@ -348,10 +424,17 @@ class _IdsTabState extends ConsumerState<IdsTab> {
 }
 
 class _DocumentOpenAction extends StatefulWidget {
-  const _DocumentOpenAction({required this.documentId, required this.isActive});
+  const _DocumentOpenAction({
+    required this.itemId,
+    required this.isActive,
+    required this.label,
+    required this.onOpen,
+  });
 
-  final String documentId;
+  final String itemId;
   final bool isActive;
+  final String label;
+  final VoidCallback onOpen;
 
   @override
   State<_DocumentOpenAction> createState() => _DocumentOpenActionState();
@@ -371,7 +454,8 @@ class _DocumentOpenActionState extends State<_DocumentOpenAction> {
   void didUpdateWidget(_DocumentOpenAction oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.isActive != widget.isActive ||
-        oldWidget.documentId != widget.documentId) {
+        oldWidget.itemId != widget.itemId ||
+        oldWidget.label != widget.label) {
       _scheduleReveal();
     }
   }
@@ -413,17 +497,10 @@ class _DocumentOpenActionState extends State<_DocumentOpenAction> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               foregroundColor: Theme.of(context).colorScheme.onSurface,
             ),
-            onPressed: visible
-                ? () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          IdDocumentScreen(documentId: widget.documentId),
-                    ),
-                  )
-                : null,
+            onPressed: visible ? widget.onOpen : null,
             child: RepaintBoundary(
               child: ShiningActionLabel(
-                label: 'Open document',
+                label: widget.label,
                 enabled: visible,
                 fontSize: 16,
                 arrowSize: 12,

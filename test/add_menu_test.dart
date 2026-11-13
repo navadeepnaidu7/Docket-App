@@ -12,6 +12,7 @@ Future<void> _openDocumentsMenu(
   WidgetTester tester, {
   void Function(bool)? onSelectPassportKind,
   void Function(IdDocumentType)? onSelectIdType,
+  VoidCallback? onSelectCard,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -23,6 +24,7 @@ Future<void> _openDocumentsMenu(
                 context: context,
                 onSelectPassportKind: onSelectPassportKind ?? (_) {},
                 onSelectIdType: onSelectIdType ?? (_) {},
+                onSelectCard: onSelectCard ?? () {},
               ),
               child: const Text('open'),
             ),
@@ -42,8 +44,25 @@ void main() {
     expect(find.text('Documents'), findsOneWidget);
     expect(find.text('Passport'), findsOneWidget);
     expect(find.text('ID Cards'), findsOneWidget);
+    expect(find.text('Cards'), findsOneWidget);
+    expect(find.text('Visa, Mastercard, RuPay'), findsOneWidget);
     // Passport is illustrated with real cover art, not a glyph.
     expect(find.byType(PassportCoverArt), findsOneWidget);
+  });
+
+  testWidgets('choosing Cards closes the sheet and reports the choice', (
+    WidgetTester tester,
+  ) async {
+    var selected = 0;
+    await _openDocumentsMenu(tester, onSelectCard: () => selected++);
+
+    await tester.ensureVisible(find.text('Cards'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cards'));
+    await tester.pumpAndSettle();
+
+    expect(selected, 1);
+    expect(find.byType(MorphSheet), findsNothing);
   });
 
   testWidgets('choosing Passport morphs to the kind step without a new route', (
@@ -150,6 +169,7 @@ void main() {
                   context: context,
                   onSelectPassportKind: (_) {},
                   onSelectIdType: (_) {},
+                  onSelectCard: () {},
                   passesStep: () => MorphStep(
                     id: 'passes',
                     title: 'Passes',
@@ -167,6 +187,8 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('Add a pass instead'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Add a pass instead'));
     await tester.pumpAndSettle();
 

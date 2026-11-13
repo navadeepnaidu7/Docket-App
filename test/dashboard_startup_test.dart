@@ -177,7 +177,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 800));
     await tester.pump();
     expect(
-      find.textContaining('Keep your passport and IDs', findRichText: true),
+      find.textContaining(
+        'Keep your passport, IDs, and cards',
+        findRichText: true,
+      ),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);

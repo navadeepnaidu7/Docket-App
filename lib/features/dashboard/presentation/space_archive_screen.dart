@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/motion/smooth_curves.dart';
+import '../../cards/domain/payment_card.dart';
 import '../../ids/domain/id_document.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../tickets/domain/movie_pass_models.dart';
@@ -691,6 +692,12 @@ class _SpaceArchiveScreenState extends ConsumerState<SpaceArchiveScreen> {
       subtitle = item.name;
       icon = Icons.public_rounded;
       accent = const Color(0xFF1E3A8A);
+    } else if (item is PaymentCard) {
+      title = item.displayBank;
+      final String last = item.lastFour;
+      subtitle = last.isEmpty ? item.holderName : '•••• $last';
+      icon = Icons.credit_card_rounded;
+      accent = const Color(0xFF3A3A3C);
     }
 
     return Container(

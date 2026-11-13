@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'core/assets/asset_licenses.dart';
 import 'core/theme/app_theme.dart';
+import 'core/wallet/wallet_startup.dart';
+import 'shared/widgets/safe_base64_image.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,9 +39,8 @@ Future<void> main() async {
     ),
   );
 
-  // Only routing preferences and system chrome gate the first frame. Themes
-  // are cached lazily by DocketApp; hidden screens load their bundled fonts
-  // when they are first needed.
+  // Keep the native launch surface until local wallet data and its first
+  // document artwork are ready. Optional screens still load on demand.
   final Future<SharedPreferences> prefsFuture = SharedPreferences.getInstance();
 
   final SharedPreferences prefs = await prefsFuture;
@@ -49,5 +50,15 @@ Future<void> main() async {
   // persisted true skips onboarding; document storage is independent of this.
   final bool hasSeenOnboarding = prefs.get('has_seen_onboarding') == true;
 
-  runApp(ProviderScope(child: DocketApp(hasSeenOnboarding: hasSeenOnboarding)));
+  final container = ProviderContainer();
+  if (hasSeenOnboarding) await prepareWalletStartup(container);
+  WidgetsBinding.instance.addPostFrameCallback(
+    (_) => SafeBase64Image.clearPrepared(),
+  );
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: DocketApp(hasSeenOnboarding: hasSeenOnboarding),
+    ),
+  );
 }

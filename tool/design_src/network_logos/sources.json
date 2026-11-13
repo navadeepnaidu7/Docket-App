@@ -1,0 +1,42 @@
+[
+  {
+    "name": "amex",
+    "url": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/logo/amex.svg",
+    "sha256": "c9e69fc83a307407c427b0dbb759aeac0f801302aa093b283bb2331227550408",
+    "bundledSha256": "2d6f3f5715f0d8185a195c25275fc109850c382c0e968665c0e3e23b472ee573",
+    "viewBox": "-0.997 112.094 781.983 275.823",
+    "changes": "Crop transparent outer canvas; no path geometry changes."
+  },
+  {
+    "name": "discover",
+    "url": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/logo/discover.svg",
+    "sha256": "8ef8d5002bc7364c2468f24156a6cb5bd9321a4461f4fda5de5aa21cfc9a13ca",
+    "bundledSha256": "9d5de290ec5f9c656a9df439345bd5ead4bbcc0ac81dd35ac2c8fafb922da1d7",
+    "viewBox": "60.690 196.260 658.607 107.484",
+    "changes": "Crop transparent outer canvas; no path geometry changes."
+  },
+  {
+    "name": "unionpay",
+    "url": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/logo/unionpay.svg",
+    "sha256": "9352f48b6796a44cf70abf5c06dfe5636c492804ff61e40decb547e5ad36c164",
+    "bundledSha256": "90b14cf9f33e04bdd93064d947c204e1924f847f6f1cda4d79c496dd16d88827",
+    "viewBox": "103.590 68.791 572.819 362.420",
+    "changes": "Crop transparent outer canvas; no path geometry changes."
+  },
+  {
+    "name": "jcb",
+    "url": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/logo/jcb.svg",
+    "sha256": "5feacae1824b67253308bf7e85e5d128bacf834d6c422370eb4ecafd206444dc",
+    "bundledSha256": "c94b7a7f48144cac372ab2a5ac511b96ec6d30f0d2a4366648b2bed57c3a9ba2",
+    "viewBox": "146.753 62.379 486.487 375.251",
+    "changes": "Crop transparent outer canvas; no path geometry changes."
+  },
+  {
+    "name": "diners",
+    "url": "https://raw.githubusercontent.com/aaronfagan/svg-credit-card-payment-icons/6dd023ae32415ed7b01bf809f15a25613a52098c/logo/diners.svg",
+    "sha256": "3fff05e537bf45e3d8b2e76e861654b5cb9e519eb98fef267d76b1a2060008b8",
+    "bundledSha256": "364cb6566f04629ad2953481b0c048c481fe7b4f49c6e9f33142be1f34faba60",
+    "viewBox": "179.059 82.350 421.871 335.302",
+    "changes": "Crop transparent outer canvas; no path geometry changes."
+  }
+]

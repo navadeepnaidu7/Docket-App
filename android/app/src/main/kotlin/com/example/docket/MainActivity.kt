@@ -6,6 +6,7 @@ import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.IsoDep
 import android.os.Bundle
+import android.view.WindowManager
 import android.util.Base64
 import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
@@ -107,6 +108,23 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
                 )
             } else if (call.method == "stopNfcRead") {
                 stopNfcScanning()
+                result.success(null)
+            } else {
+                result.notImplemented()
+            }
+        }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "com.docket/screen_secure",
+        ).setMethodCallHandler { call, result ->
+            if (call.method == "setSecure") {
+                val enabled = call.argument<Boolean>("enabled") == true
+                if (enabled) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                }
                 result.success(null)
             } else {
                 result.notImplemented()

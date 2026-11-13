@@ -1,0 +1,209 @@
+[
+  {
+    "id": "hdfc",
+    "name": "HDFC Bank",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/indian-bank/hdfc.svg",
+    "bytes": 556,
+    "sha256": "164bb8e171bad8fdb13c915e68586a9474b83504309b11b0e58b8a79d61e97bf",
+    "bundledSha256": "164bb8e171bad8fdb13c915e68586a9474b83504309b11b0e58b8a79d61e97bf",
+    "changes": "None"
+  },
+  {
+    "id": "icici",
+    "name": "ICICI Bank",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/indian-bank/icici.svg",
+    "bytes": 1544,
+    "sha256": "38d103175d3e10047e3458aefba1d286999fdd1a344dcaef0d2f773131b14348",
+    "bundledSha256": "38d103175d3e10047e3458aefba1d286999fdd1a344dcaef0d2f773131b14348",
+    "changes": "None"
+  },
+  {
+    "id": "sbi",
+    "name": "State Bank of India",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/indian-bank/sbi.svg",
+    "bytes": 649,
+    "sha256": "52d3c39af8a831b92e48648f3af511f7f69bcec9b7a838872f6e722d935b3ad2",
+    "bundledSha256": "52d3c39af8a831b92e48648f3af511f7f69bcec9b7a838872f6e722d935b3ad2",
+    "changes": "None"
+  },
+  {
+    "id": "axis",
+    "name": "Axis Bank",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/indian-bank/axis.svg",
+    "bytes": 1061,
+    "sha256": "88e870a3630316ed89c1670042303ca9e1a8715ee4cfface1dc745982356c723",
+    "bundledSha256": "88e870a3630316ed89c1670042303ca9e1a8715ee4cfface1dc745982356c723",
+    "changes": "None"
+  },
+  {
+    "id": "kotak",
+    "name": "Kotak",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/indian-bank/kotak.svg",
+    "bytes": 1448,
+    "sha256": "69b6320db62dcdfa846ee0a0374a8dfadc4d6af4ea7a857dc7a468b59f26af7f",
+    "bundledSha256": "69b6320db62dcdfa846ee0a0374a8dfadc4d6af4ea7a857dc7a468b59f26af7f",
+    "changes": "None"
+  },
+  {
+    "id": "pnb",
+    "name": "Punjab National Bank",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/indian-bank/pnb.svg",
+    "bytes": 1603,
+    "sha256": "13f7baa18e0aa2588eb14ccf1a88bbd6774e3c455565b432e93a8c7084cd793c",
+    "bundledSha256": "13f7baa18e0aa2588eb14ccf1a88bbd6774e3c455565b432e93a8c7084cd793c",
+    "changes": "None"
+  },
+  {
+    "id": "bob",
+    "name": "Bank of Baroda",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/indian-bank/bob.svg",
+    "bytes": 7693,
+    "sha256": "cfa22efcafe75f5e57d823042cb546722a6a5cc20f39580a440afbace10e4bd6",
+    "bundledSha256": "cfa22efcafe75f5e57d823042cb546722a6a5cc20f39580a440afbace10e4bd6",
+    "changes": "None"
+  },
+  {
+    "id": "canara",
+    "name": "Canara Bank",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/indian-bank/canara.svg",
+    "bytes": 1255,
+    "sha256": "f9d8383df396cf6b98eff9c870c5dbd5b4e47509251a693cfe7bc8773f0cfe0e",
+    "bundledSha256": "f9d8383df396cf6b98eff9c870c5dbd5b4e47509251a693cfe7bc8773f0cfe0e",
+    "changes": "None"
+  },
+  {
+    "id": "ubi",
+    "name": "Union Bank of India",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/indian-bank/ubi.svg",
+    "bytes": 2271,
+    "sha256": "7be87ca306cee532d1c388d1f1856a2b819141b2b8021c06a123bf3a05ba46ab",
+    "bundledSha256": "7be87ca306cee532d1c388d1f1856a2b819141b2b8021c06a123bf3a05ba46ab",
+    "changes": "None"
+  },
+  {
+    "id": "idfc",
+    "name": "IDFC FIRST Bank",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/indian-bank/idfc.svg",
+    "bytes": 593,
+    "sha256": "e0f20c50e7cd56f40cfdf9b6053b922b666c73409ea059a37fff2837981c3373",
+    "bundledSha256": "e0f20c50e7cd56f40cfdf9b6053b922b666c73409ea059a37fff2837981c3373",
+    "changes": "None"
+  },
+  {
+    "id": "indus",
+    "name": "IndusInd Bank",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/indian-bank/indus.svg",
+    "bytes": 4905,
+    "sha256": "406014cb9820d2147d99d9d36a90eea1b53dbf7c147ee590dc971de8c7a37a8b",
+    "bundledSha256": "406014cb9820d2147d99d9d36a90eea1b53dbf7c147ee590dc971de8c7a37a8b",
+    "changes": "None"
+  },
+  {
+    "id": "yes",
+    "name": "YES Bank",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/indian-bank/yes.svg",
+    "bytes": 1220,
+    "sha256": "99a119bf33c6c97e858c33d0eeefaa09b0eedec01f198a0e6b849bed3d597678",
+    "bundledSha256": "99a119bf33c6c97e858c33d0eeefaa09b0eedec01f198a0e6b849bed3d597678",
+    "changes": "None"
+  },
+  {
+    "id": "federal",
+    "name": "Federal Bank",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/indian-bank/federal.svg",
+    "bytes": 910,
+    "sha256": "a1d0609bbeda80a9b0527df8e002a202ffc812428f00ab60a5c7cd5d8096d26f",
+    "bundledSha256": "7df2ed52665a81942cef997e5ec28aec178e2efc8d7488442fee5e612998fc09",
+    "changes": "Inline CSS fills; remove style and metadata elements."
+  },
+  {
+    "id": "rbl",
+    "name": "RBL Bank",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/indian-bank/rbl.svg",
+    "bytes": 824,
+    "sha256": "ee68d2df797e25c305dba137217c68a4c5b0b27c103368cf401df652de7c7c1c",
+    "bundledSha256": "ee68d2df797e25c305dba137217c68a4c5b0b27c103368cf401df652de7c7c1c",
+    "changes": "None"
+  },
+  {
+    "id": "hsbc",
+    "name": "HSBC",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/international-bank/hsbc.svg",
+    "bytes": 632,
+    "sha256": "26e8fa5035d99f0d08c501f58e23fe0d73643f5a4f696164562ded5f798041bf",
+    "bundledSha256": "26e8fa5035d99f0d08c501f58e23fe0d73643f5a4f696164562ded5f798041bf",
+    "changes": "None"
+  },
+  {
+    "id": "standard",
+    "name": "Standard Chartered",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/international-bank/standard.svg",
+    "bytes": 1950,
+    "sha256": "acc801d627e5446a107f907573620c991fdaa7ffd60fa28578da6c0fd01db529",
+    "bundledSha256": "acc801d627e5446a107f907573620c991fdaa7ffd60fa28578da6c0fd01db529",
+    "changes": "None"
+  },
+  {
+    "id": "citi",
+    "name": "Citibank",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/international-bank/citi.svg",
+    "bytes": 1538,
+    "sha256": "8d1fbf71d1feaaadaf559f138a63307b056d761033b47d6793e27a39fbf6e3af",
+    "bundledSha256": "8d1fbf71d1feaaadaf559f138a63307b056d761033b47d6793e27a39fbf6e3af",
+    "changes": "None"
+  },
+  {
+    "id": "chase",
+    "name": "Chase",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/international-bank/chase.svg",
+    "bytes": 731,
+    "sha256": "7e40548b4c209b2f0f6b7dbe63af86013cb9981f9661e6aee7f6e7cbde9f0cc2",
+    "bundledSha256": "7e40548b4c209b2f0f6b7dbe63af86013cb9981f9661e6aee7f6e7cbde9f0cc2",
+    "changes": "None"
+  },
+  {
+    "id": "boa",
+    "name": "Bank of America",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/international-bank/boa.svg",
+    "bytes": 1476,
+    "sha256": "bbaaf714718aa6de78e9e81fcfb034c51ae6def32a8b696683cfa9119810738d",
+    "bundledSha256": "bbaaf714718aa6de78e9e81fcfb034c51ae6def32a8b696683cfa9119810738d",
+    "changes": "None"
+  },
+  {
+    "id": "wells",
+    "name": "Wells Fargo",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/international-bank/wells.svg",
+    "bytes": 3256,
+    "sha256": "2e2bce8072fd6983baff22eb62d43a025213b6dbdb2a5acd9f6fa53970f58aca",
+    "bundledSha256": "5a01700c85a839ad982599f57b17cc6f21e15e81586707593770326ae0cfc8c9",
+    "changes": "Inline CSS fills; remove style and metadata elements."
+  },
+  {
+    "id": "barclays",
+    "name": "Barclays",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/international-bank/barclays.svg",
+    "bytes": 3079,
+    "sha256": "171717145a803263b3825e8ad34378e36d1df110c9f8b54c8fdfcd42b5d6ed06",
+    "bundledSha256": "171717145a803263b3825e8ad34378e36d1df110c9f8b54c8fdfcd42b5d6ed06",
+    "changes": "None"
+  },
+  {
+    "id": "deutsche",
+    "name": "Deutsche Bank",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/international-bank/deutsche.svg",
+    "bytes": 462,
+    "sha256": "1d5863ac7a26536b7694945f571e01b1f0a49ba522273e8372eb517c808a3dcf",
+    "bundledSha256": "1d5863ac7a26536b7694945f571e01b1f0a49ba522273e8372eb517c808a3dcf",
+    "changes": "None"
+  },
+  {
+    "id": "dbs",
+    "name": "DBS Bank",
+    "url": "https://raw.githubusercontent.com/auraveni/global-bank-logos/ad33060ca976397a9fcb46dd40c2d77bce5ce7e1/assets/bank/international-bank/dbs.svg",
+    "bytes": 2201,
+    "sha256": "c8a13cf699a512ee2c830a7b7b74427c232243a6ec22bff364fdd6f2e02a8127",
+    "bundledSha256": "c8a13cf699a512ee2c830a7b7b74427c232243a6ec22bff364fdd6f2e02a8127",
+    "changes": "None"
+  }
+]

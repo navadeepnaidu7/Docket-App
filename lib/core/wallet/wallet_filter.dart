@@ -1,3 +1,4 @@
+import '../../features/cards/domain/payment_card.dart';
 import '../../features/ids/domain/id_document.dart';
 import '../../features/ids/domain/id_document_catalog.dart';
 import '../../features/passport/domain/passport_profile.dart';
@@ -8,6 +9,7 @@ enum WalletFilterCategory {
   passport,
   pan,
   aadhaar,
+  card,
 }
 
 extension WalletFilterCategoryMeta on WalletFilterCategory {
@@ -18,6 +20,7 @@ extension WalletFilterCategoryMeta on WalletFilterCategory {
           IdDocumentCatalog.shortLabelFor(IdDocumentType.pan),
         WalletFilterCategory.aadhaar =>
           IdDocumentCatalog.shortLabelFor(IdDocumentType.aadhaar),
+        WalletFilterCategory.card => 'Cards',
       };
 }
 
@@ -28,6 +31,7 @@ WalletFilterCategory walletCategoryFor(Object item) {
         IdDocumentType.pan => WalletFilterCategory.pan,
         IdDocumentType.aadhaar => WalletFilterCategory.aadhaar,
       },
+    PaymentCard() => WalletFilterCategory.card,
     _ => WalletFilterCategory.all,
   };
 }
@@ -52,6 +56,7 @@ List<WalletFilterCategory> walletFilterOptionsFor(List<Object> items) {
     WalletFilterCategory.passport,
     WalletFilterCategory.pan,
     WalletFilterCategory.aadhaar,
+    WalletFilterCategory.card,
   ];
 
   return order.where((c) {
@@ -73,5 +78,6 @@ String walletFilterEmptyMessage(WalletFilterCategory category) {
     WalletFilterCategory.passport => 'No passports in your wallet.',
     WalletFilterCategory.pan => 'No PAN cards in your wallet.',
     WalletFilterCategory.aadhaar => 'No Aadhaar cards in your wallet.',
+    WalletFilterCategory.card => 'No cards in your wallet.',
   };
 }

@@ -12,6 +12,7 @@ import '../../../../shared/widgets/docket_button.dart';
 import '../../../../shared/widgets/line_icon.dart';
 import '../../../../shared/widgets/wallet_empty_state.dart';
 import '../../../../shared/widgets/wallet_list_headline.dart';
+import '../../../cards/application/card_list_provider.dart';
 import '../../application/trash_provider.dart';
 import 'swipe_to_empty_trash.dart';
 import 'trash_tray_preview.dart';
@@ -90,6 +91,7 @@ class _TrashViewState extends ConsumerState<TrashView> {
     final Set<String> currentIds = {
       ...current.passports.map(walletItemId),
       ...current.idDocs.map(walletItemId),
+      ...current.cards.map(walletItemId),
     };
     if (!setEquals(currentIds, reviewedIds.toSet())) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -110,10 +112,35 @@ class _TrashViewState extends ConsumerState<TrashView> {
     }
   }
 
-  void _restore(BuildContext context, WidgetRef ref, Object item) {
+  Future<void> _restore(BuildContext context, WidgetRef ref, Object item) async {
     if (_emptying) return;
     HapticService.select();
-    ref.read(trashProvider.notifier).restoreItem(item, ref);
+    try {
+      await ref.read(trashProvider.notifier).restoreItem(item, ref);
+    } on DuplicateCardException {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('This card is already in your wallet.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      return;
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Could not restore this document.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      return;
+    }
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -135,6 +162,7 @@ class _TrashViewState extends ConsumerState<TrashView> {
     final List<Object> items = <Object>[
       ...trashState.passports,
       ...trashState.idDocs,
+      ...trashState.cards,
     ];
     final double bottomInset = MediaQuery.of(context).padding.bottom;
     final bool reduced = MediaQuery.disableAnimationsOf(context);

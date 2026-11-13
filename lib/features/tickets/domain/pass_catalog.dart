@@ -1,4 +1,5 @@
 import 'bus_pass_models.dart';
+import 'calendar_import.dart';
 import 'movie_pass_models.dart';
 import 'pass_code.dart';
 import 'ticket_models.dart';
@@ -18,12 +19,24 @@ sealed class WalletPassItem {
   /// `docs/features/ticket-code-extraction.md`.
   PassCode? get passCode;
 
+  /// Set when the pass came from (or was merged with) a Google Calendar event.
+  PassImportInfo? get importInfo;
+
   Map<String, dynamic> toJson();
 }
 
+Map<String, dynamic> _nestedWithImport(
+  Map<String, dynamic> pass,
+  PassImportInfo? info,
+) =>
+    info == null ? pass : <String, dynamic>{...pass, 'importInfo': info.toJson()};
+
 final class TrainPassItem extends WalletPassItem {
-  const TrainPassItem(this.ticket);
+  const TrainPassItem(this.ticket, {this.importInfo});
   final TrainPass ticket;
+
+  @override
+  final PassImportInfo? importInfo;
 
   @override
   String get id => ticket.id;
@@ -40,7 +53,7 @@ final class TrainPassItem extends WalletPassItem {
   @override
   Map<String, dynamic> toJson() => <String, dynamic>{
         'kind': kind.toJson(),
-        'train': ticket.toJson(),
+        'train': _nestedWithImport(ticket.toJson(), importInfo),
       };
 
   factory TrainPassItem.fromJson(Map<String, dynamic> json) {
@@ -48,13 +61,19 @@ final class TrainPassItem extends WalletPassItem {
     final Map<String, dynamic> map = nested is Map
         ? Map<String, dynamic>.from(nested)
         : json;
-    return TrainPassItem(TrainPass.fromJson(map));
+    return TrainPassItem(
+      TrainPass.fromJson(map),
+      importInfo: PassImportInfo.fromJson(map['importInfo']),
+    );
   }
 }
 
 final class MoviePassItem extends WalletPassItem {
-  const MoviePassItem(this.pass);
+  const MoviePassItem(this.pass, {this.importInfo});
   final MoviePass pass;
+
+  @override
+  final PassImportInfo? importInfo;
 
   @override
   String get id => pass.id;
@@ -71,7 +90,7 @@ final class MoviePassItem extends WalletPassItem {
   @override
   Map<String, dynamic> toJson() => <String, dynamic>{
         'kind': kind.toJson(),
-        'movie': pass.toJson(),
+        'movie': _nestedWithImport(pass.toJson(), importInfo),
       };
 
   factory MoviePassItem.fromJson(Map<String, dynamic> json) {
@@ -79,13 +98,19 @@ final class MoviePassItem extends WalletPassItem {
     final Map<String, dynamic> map = nested is Map
         ? Map<String, dynamic>.from(nested)
         : json;
-    return MoviePassItem(MoviePass.fromJson(map));
+    return MoviePassItem(
+      MoviePass.fromJson(map),
+      importInfo: PassImportInfo.fromJson(map['importInfo']),
+    );
   }
 }
 
 final class BusPassItem extends WalletPassItem {
-  const BusPassItem(this.pass);
+  const BusPassItem(this.pass, {this.importInfo});
   final BusPass pass;
+
+  @override
+  final PassImportInfo? importInfo;
 
   @override
   String get id => pass.id;
@@ -102,7 +127,7 @@ final class BusPassItem extends WalletPassItem {
   @override
   Map<String, dynamic> toJson() => <String, dynamic>{
         'kind': kind.toJson(),
-        'bus': pass.toJson(),
+        'bus': _nestedWithImport(pass.toJson(), importInfo),
       };
 
   factory BusPassItem.fromJson(Map<String, dynamic> json) {
@@ -110,7 +135,10 @@ final class BusPassItem extends WalletPassItem {
     final Map<String, dynamic> map = nested is Map
         ? Map<String, dynamic>.from(nested)
         : json;
-    return BusPassItem(BusPass.fromJson(map));
+    return BusPassItem(
+      BusPass.fromJson(map),
+      importInfo: PassImportInfo.fromJson(map['importInfo']),
+    );
   }
 }
 

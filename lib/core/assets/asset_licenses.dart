@@ -14,6 +14,25 @@ import 'package:flutter/services.dart';
 /// startup.
 void registerAssetLicenses() {
   LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(
+      <String>['Additional payment-network marks'],
+      'Amex, Discover, UnionPay, JCB and Diners Club SVGs by Aaron Fagan.\n'
+      'https://github.com/aaronfagan/svg-credit-card-payment-icons\n'
+      'Transparent outer canvas cropped; paths unchanged. Amex and Discover are rendered '
+      'in white on dark faces. Marks identify networks and do not imply endorsement.\n\n'
+      '${await rootBundle.loadString('assets/wallet/networks/LICENSE.txt')}',
+    );
+    yield LicenseEntryWithLineBreaks(
+      <String>['Bank identification marks'],
+      'Bank SVGs from auraveni/global-bank-logos.\n'
+      'Federal Bank and Wells Fargo: CSS fills inlined and metadata removed '
+      'for Flutter compatibility; colors and geometry unchanged. '
+      'Other bank SVGs are unmodified.\n'
+      'https://github.com/auraveni/global-bank-logos\n'
+      'Bank marks belong to their respective owners and identify the issuer; '
+      'their use does not imply endorsement.\n\n'
+      '${await rootBundle.loadString('assets/wallet/banks/LICENSE.txt')}',
+    );
     yield const LicenseEntryWithLineBreaks(
       <String>['Archive category photographs'],
       'Category-cover photography from Pexels.\n'

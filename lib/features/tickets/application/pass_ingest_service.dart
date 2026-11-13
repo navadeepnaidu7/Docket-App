@@ -83,6 +83,7 @@ class PassIngestService {
     required File file,
     required PassInputCategory category,
     PassIngestProgressCallback? onPhase,
+    String? attachToPassId,
   }) async {
     onPhase?.call(PassIngestPhase.readingSource);
     final String path = file.path;
@@ -123,6 +124,7 @@ class PassIngestService {
             mimeType: mime,
             categoryHint: category.hint,
             code: code,
+            attachToPassId: attachToPassId,
           )
           .timeout(_ingestTimeout);
       return _resolve(api, id, onPhase: onPhase);

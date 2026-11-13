@@ -19,11 +19,14 @@ import '../../../core/haptics/haptic_service.dart';
 import '../../../core/haptics/haptics_provider.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../core/theme/theme_time_picker.dart';
+import '../../cards/application/card_list_provider.dart';
+import '../../cards/application/payment_card_stack_provider.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../tickets/application/pass_list_provider.dart';
+import '../../tickets/presentation/calendar/calendar_import_screen.dart';
 import '../application/auth_session_provider.dart';
 import '../application/google_auth_gateway.dart';
 import '../application/card_shine_border_provider.dart';
@@ -262,6 +265,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       isDark: isDark,
                       children: [
                         _SettingsToggleRow(
+                          icon: Icons.account_balance_wallet_outlined,
+                          iconColor: const Color(0xFF2F6FED),
+                          title: 'Stack payment cards',
+                          subtitle:
+                              'Group bank cards into one Wallet-style stack',
+                          value: ref.watch(paymentCardStackProvider),
+                          onChanged: (enabled) {
+                            HapticService.select();
+                            ref
+                                .read(paymentCardStackProvider.notifier)
+                                .setEnabled(enabled);
+                          },
+                        ),
+                        const _SettingsDivider(),
+                        _SettingsToggleRow(
                           icon: Icons.auto_awesome_rounded,
                           iconColor: const Color(0xFF5E5CE6),
                           title: 'Card shine border',
@@ -322,6 +340,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
                                   builder: (_) => const ManageAccountScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                          const _SettingsDivider(),
+                          _SettingsLinkRow(
+                            icon: Icons.event_available_rounded,
+                            iconColor: const Color(0xFF0FA968),
+                            title: 'Google Calendar',
+                            subtitle: 'Import bookings automatically',
+                            onTap: () {
+                              HapticService.select();
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const CalendarImportScreen(),
                                 ),
                               );
                             },
@@ -698,6 +731,7 @@ class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
     final List<Color> washes = walletWashColors(
       passports: widget.passports,
       idDocs: widget.idDocs,
+      cards: ref.watch(cardListProvider),
       scheme: devFlags.cardFluidScheme,
     );
 

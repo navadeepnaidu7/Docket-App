@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/dev/dev_flags_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../cards/application/card_list_provider.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../tickets/application/pass_list_provider.dart';
@@ -28,6 +29,7 @@ class WalletSearchScreen extends ConsumerWidget {
     final entries = <WalletSearchEntry>[
       ...ref.watch(passportListProvider).map(WalletSearchEntry.document),
       ...ref.watch(idListProvider).map(WalletSearchEntry.document),
+      ...ref.watch(cardListProvider).map(WalletSearchEntry.document),
       ...?passes.valueOrNull?.map(WalletSearchEntry.pass),
     ];
     return WalletSearchView(

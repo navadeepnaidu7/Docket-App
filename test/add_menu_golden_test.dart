@@ -78,6 +78,7 @@ void main() {
                 context: context,
                 onSelectPassportKind: (_) {},
                 onSelectIdType: (_) {},
+                onSelectCard: () {},
                 passesStep: () => MorphStep(
                   id: 'passes',
                   title: 'Passes',
@@ -150,6 +151,7 @@ void main() {
                 context: context,
                 onSelectPassportKind: (_) {},
                 onSelectIdType: (_) {},
+                onSelectCard: () {},
               ),
               child: const Text('open'),
             ),

@@ -34,11 +34,10 @@ class _DocketAppState extends ConsumerState<DocketApp>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Default = device: start from current platform brightness.
-    final Brightness platform =
-        WidgetsBinding.instance.platformDispatcher.platformBrightness;
-    _targetBrightness = platform;
-    _fromTheme = _themeFor(platform);
+    // main has already loaded the saved mode. Start at that endpoint instead
+    // of playing a device-theme → saved-theme transition during launch.
+    _targetBrightness = _brightnessForMode(ref.read(resolvedThemeModeProvider));
+    _fromTheme = _themeFor(_targetBrightness);
     _toTheme = _fromTheme;
 
     _anim = AnimationController(vsync: this, duration: _kThemeAnimDuration);

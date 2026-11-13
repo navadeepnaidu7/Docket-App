@@ -27,19 +27,19 @@ void main() {
     );
     await tester.pump();
 
-    final Widget appearanceBefore = tester.widget(find.text('APPEARANCE'));
-    final Widget navigationBefore = tester.widget(find.text('NAVIGATION'));
+    final Widget appearanceBefore = tester.widget(find.text('Appearance'));
+    final Widget navigationBefore = tester.widget(find.text('Navigation'));
 
     await tester.drag(find.byType(ListView), const Offset(0, -160));
     await tester.pump();
 
     expect(
-      identical(tester.widget(find.text('APPEARANCE')), appearanceBefore),
+      identical(tester.widget(find.text('Appearance')), appearanceBefore),
       isTrue,
       reason: 'A scroll rebuilt the Appearance section.',
     );
     expect(
-      identical(tester.widget(find.text('NAVIGATION')), navigationBefore),
+      identical(tester.widget(find.text('Navigation')), navigationBefore),
       isTrue,
       reason: 'A scroll rebuilt the Navigation section.',
     );

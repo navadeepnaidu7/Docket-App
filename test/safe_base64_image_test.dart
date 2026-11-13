@@ -26,6 +26,21 @@ Future<void> _mount(WidgetTester tester, String payload) {
 }
 
 void main() {
+  testWidgets('prepared portrait uses the same bytes on its first build', (
+    tester,
+  ) async {
+    final large = _validPng + List.filled(70 * 1024, ' ').join();
+    final prepared = await tester.runAsync(
+      () => SafeBase64Image.prepare(large),
+    );
+    await _mount(tester, large);
+    final image = tester.widget<Image>(find.byType(Image));
+    expect(
+      identical((image.image as MemoryImage).bytes, prepared!.bytes),
+      isTrue,
+    );
+    SafeBase64Image.clearPrepared();
+  });
   testWidgets('large decode completes without overwriting a newer payload', (
     WidgetTester tester,
   ) async {

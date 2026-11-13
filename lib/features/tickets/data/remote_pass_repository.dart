@@ -41,4 +41,9 @@ abstract final class PassApiPaths {
   static const String authRefresh = '/v1/auth/refresh';
   static const String authLogout = '/v1/auth/logout';
   static const String me = '/v1/me';
+  static const String googleCalendar = '/v1/integrations/google-calendar';
+  static const String googleCalendarConnect =
+      '/v1/integrations/google-calendar/connect';
+  static const String googleCalendarSync =
+      '/v1/integrations/google-calendar/sync';
 }

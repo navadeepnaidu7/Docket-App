@@ -9,6 +9,11 @@ import '../../../core/storage/secure_document_store.dart';
 import '../../../core/motion/smooth_curves.dart';
 import '../../../core/motion/studio_page_route.dart';
 
+import '../../cards/application/card_list_provider.dart';
+import '../../cards/application/payment_card_stack_provider.dart';
+import '../../cards/application/card_providers.dart';
+import '../../cards/domain/payment_card.dart';
+import '../../cards/presentation/card_scan_screen.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
 import '../../ids/application/attachment_open_service.dart';
@@ -145,6 +150,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     _entryCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
+      value: 1,
     );
     _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
     _tabCtrl = TabController(length: 2, vsync: this);
@@ -179,9 +185,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       },
     );
     WidgetsBinding.instance.addObserver(this);
-    _entryCtrl.forward();
 
-    // Let the opening fade finish before fetching passes or parsing
+    // Keep the first visible wallet frame clear of fetching passes or parsing
     // optional artwork. Idle scheduler tasks can starve under continuous
     // animation and spin the widget-test event loop. A cancellable timer also
     // makes closing the dashboard during startup safe.
@@ -194,6 +199,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         // Active documents get the keystore first. Trash and orphan scanning
         // are maintenance and must not compete with the initial wallet reads.
         unawaited(sweepAttachmentOrphans(ref));
+        unawaited(sweepCardScanOrphans(ref));
         unawaited(_warmOptionalArtwork());
       });
     });
@@ -381,6 +387,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     ).push(studioPageRoute<void>(builder: (_) => IdEntryScreen(type: type)));
   }
 
+  void _openCardScan() {
+    Navigator.of(
+      context,
+    ).push(studioPageRoute<void>(builder: (_) => const CardScanScreen()));
+  }
+
   /// Both branches open one morphing sheet that carries its own sub-steps —
   /// the haptic fires inside [showMorphSheet].
   void _showAddSheet() {
@@ -398,6 +410,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       context: context,
       onSelectPassportKind: _openPassportEntry,
       onSelectIdType: _openIdEntry,
+      onSelectCard: _openCardScan,
       passesStep: () => passesRootStep(context, ref),
       // Move the tab under the sheet as well, so dismissing leaves the user
       // looking at the section they just switched into.
@@ -468,6 +481,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         ref.read(idListProvider.notifier).removeDocument(doc.id);
         ref.read(trashProvider.notifier).moveToTrash(doc);
         ref.read(walletOrderProvider.notifier).updateOrderOnItemRemoved(doc.id);
+      case PaymentCard card:
+        ref.read(cardListProvider.notifier).removeCard(card.id);
+        ref.read(trashProvider.notifier).moveToTrash(card);
+        ref
+            .read(walletOrderProvider.notifier)
+            .updateOrderOnItemRemoved(card.id);
     }
   }
 
@@ -529,13 +548,47 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     );
   }
 
+  void _showDeleteCardDialog(PaymentCard card) {
+    HapticService.destructive();
+    final String last = card.lastFour;
+    final String which = last.isEmpty
+        ? card.displayBank
+        : '${card.displayBank} ending $last';
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext ctx) => CupertinoActionSheet(
+        title: const Text('Remove card?'),
+        message: Text('This will remove $which from your wallet.'),
+        actions: <CupertinoActionSheetAction>[
+          CupertinoActionSheetAction(
+            isDestructiveAction: true,
+            onPressed: () {
+              _removeWalletItem(card);
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Remove'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<PassportProfile> passports = ref.watch(passportListProvider);
     final List<IdDocument> idDocs = ref.watch(idListProvider);
+    final List<PaymentCard> cards = ref.watch(cardListProvider);
     final List<String> order = ref.watch(walletOrderProvider);
 
-    final activeIds = activeWalletItemIds(passports: passports, idDocs: idDocs);
+    final activeIds = activeWalletItemIds(
+      passports: passports,
+      idDocs: idDocs,
+      cards: cards,
+    );
     final reconciledOrder = reconcileWalletOrder(
       order: order,
       activeIds: activeIds,
@@ -545,6 +598,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         ref.read(walletOrderProvider.notifier).isLoaded &&
         !SecureDocumentStore.isUnreadable('saved_passports') &&
         !SecureDocumentStore.isUnreadable('saved_id_documents') &&
+        !SecureDocumentStore.isUnreadable(savedPaymentCardsKey) &&
         !SecureDocumentStore.isUnreadable('wallet_items_order');
     if (canReconcile && !_ordersEqual(reconciledOrder, order)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -558,6 +612,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           activeIds: activeWalletItemIds(
             passports: ref.read(passportListProvider),
             idDocs: ref.read(idListProvider),
+            cards: ref.read(cardListProvider),
           ),
         );
         if (!_ordersEqual(next, currentOrder)) {
@@ -569,6 +624,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final List<Object> items = sortWalletItems(
       passports: passports,
       idDocs: idDocs,
+      cards: cards,
       order: reconciledOrder,
     );
 
@@ -590,9 +646,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       });
     }
 
-    final List<Object> displayItems = filterEnabled
+    final List<Object> filteredItems = filterEnabled
         ? filterWalletItems(items: items, category: filterCategory)
         : items;
+    final List<Object> displayItems = ref.watch(paymentCardStackProvider)
+        ? groupWalletPaymentCards(filteredItems)
+        : filteredItems;
 
     final AuthSession session = ref.watch(authSessionProvider);
     final PassIngestUiState passIngest = ref.watch(
@@ -602,10 +661,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       session: session,
       passports: passports,
       idDocs: idDocs,
+      cards: cards,
     );
     final List<Color> meshWashes = walletWashColors(
       passports: passports,
       idDocs: idDocs,
+      cards: cards,
       scheme: ref.watch(devFlagsProvider).cardFluidScheme,
     );
 
@@ -735,6 +796,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                   allItems: items,
                                   onDeletePassport: _showDeleteDialog,
                                   onDeleteId: _showDeleteIdDialog,
+                                  onDeleteCard: _showDeleteCardDialog,
                                   onAdd: _showAddSheet,
                                   pageNotifier: _docPage,
                                   revealItemId: _revealItemId,
@@ -906,6 +968,7 @@ String _profileMeshSeed({
   required AuthSession session,
   required List<PassportProfile> passports,
   required List<IdDocument> idDocs,
+  List<PaymentCard> cards = const <PaymentCard>[],
 }) {
   final String? email = session.email?.trim();
   if (email != null && email.isNotEmpty) return email.toLowerCase();
@@ -924,6 +987,12 @@ String _profileMeshSeed({
     final String n = d.holderName.trim();
     if (n.isNotEmpty) return '${d.id}:$n';
     return d.id;
+  }
+  if (cards.isNotEmpty) {
+    final PaymentCard card = cards.first;
+    final String name = card.holderName.trim();
+    if (name.isNotEmpty) return '${card.id}:$name';
+    return card.id;
   }
   return 'docket-guest';
 }

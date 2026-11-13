@@ -60,6 +60,7 @@ class _FakeApi implements DocketApi {
     required String mimeType,
     required String categoryHint,
     ScannedTicketCode? code,
+    String? attachToPassId,
   }) async =>
       'm1';
 

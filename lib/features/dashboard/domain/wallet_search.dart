@@ -1,3 +1,5 @@
+import '../../cards/domain/card_number.dart';
+import '../../cards/domain/payment_card.dart';
 import '../../ids/domain/id_document.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../tickets/domain/pass_catalog.dart';
@@ -31,6 +33,11 @@ class WalletSearchEntry {
         d.holderName,
         d.documentNumber,
       ),
+      PaymentCard card => (
+        card.displayBank,
+        card.holderName,
+        card.lastFour.isEmpty ? '' : '•••• ${card.lastFour}',
+      ),
       _ => throw ArgumentError('Unsupported wallet document'),
     };
     return WalletSearchEntry(
@@ -40,7 +47,9 @@ class WalletSearchEntry {
         fields.$2,
         fields.$3,
       ].where((s) => s.trim().isNotEmpty).join(' · '),
-      searchText: '${fields.$1} ${fields.$2} ${fields.$3}',
+      searchText: item is PaymentCard
+          ? '${fields.$1} ${fields.$2} ${fields.$3} ${cardDigits(item.number)} ${item.network?.name ?? ''} ${item.kind.name}'
+          : '${fields.$1} ${fields.$2} ${fields.$3}',
       scope: WalletSearchScope.documents,
     );
   }

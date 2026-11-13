@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../features/cards/domain/card_surface.dart';
+import '../../features/cards/domain/payment_card.dart';
 import '../../features/ids/domain/id_document.dart';
 import '../../features/ids/domain/id_document_catalog.dart';
 import '../../features/passport/domain/passport_profile.dart';
@@ -44,8 +46,28 @@ class WalletPalette {
     return switch (item) {
       PassportProfile() => passport,
       IdDocument doc => forIdType(doc.type),
+      PaymentCard card => forPaymentCard(card),
+      PaymentCardStackGroup group => forPaymentCard(group.cards.first),
       _ => empty,
     };
+  }
+
+  static WalletPalette forPaymentCard(PaymentCard card) {
+    final CardSurfaceStyle surface = cardSurfaceStyle(
+      card.issuerId,
+      card.surfaceIndex,
+    );
+    final Color foot = Color.lerp(
+      surface.background,
+      const Color(0xFF000000),
+      0.18,
+    )!;
+    return WalletPalette(
+      primary: surface.background,
+      secondary: foot,
+      ambient: surface.background,
+      baseTint: surface.light ? surface.background : const Color(0xFFE8ECF2),
+    );
   }
 
   static WalletPalette forIdType(IdDocumentType type) {
@@ -54,12 +76,14 @@ class WalletPalette {
     final HSLColor hsl = HSLColor.fromColor(primary);
     return WalletPalette(
       primary: primary,
-      secondary: hsl.withHue((hsl.hue + 32) % 360).withLightness(
-        (hsl.lightness + 0.08).clamp(0.0, 1.0),
-      ).toColor(),
-      ambient: hsl.withHue((hsl.hue - 28 + 360) % 360).withSaturation(
-        (hsl.saturation * 0.75).clamp(0.0, 1.0),
-      ).toColor(),
+      secondary: hsl
+          .withHue((hsl.hue + 32) % 360)
+          .withLightness((hsl.lightness + 0.08).clamp(0.0, 1.0))
+          .toColor(),
+      ambient: hsl
+          .withHue((hsl.hue - 28 + 360) % 360)
+          .withSaturation((hsl.saturation * 0.75).clamp(0.0, 1.0))
+          .toColor(),
       // Light pastel for light mode; backdrop darkens this when isDark.
       baseTint: hsl.withLightness(0.92).withSaturation(0.35).toColor(),
     );
@@ -90,8 +114,11 @@ class WalletPalette {
     final int idx1 = page.floor().clamp(0, maxIndex);
     final int idx2 = page.ceil().clamp(0, maxIndex);
     final double t = page - page.floor();
-    final WalletPalette docsPalette =
-        _lerpPalettes(forItem(items[idx1]), forItem(items[idx2]), t);
+    final WalletPalette docsPalette = _lerpPalettes(
+      forItem(items[idx1]),
+      forItem(items[idx2]),
+      t,
+    );
     return _lerpPalettes(docsPalette, tickets, ticketsMix);
   }
 

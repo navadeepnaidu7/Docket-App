@@ -140,7 +140,7 @@ class TrainPass {
     this.codePayload,
     this.codePayloadBase64,
     this.codeFormat,
-  }) : assert(passengers.length >= 1 && passengers.length <= 6);
+  }) : assert(passengers.length <= 6);
 
   final String id;
   final String operator;
@@ -204,7 +204,9 @@ class TrainPass {
 
   String get trainTitle => '$trainNumber · $trainName';
 
-  TicketPassenger get primaryPassenger => passengers.first;
+  TicketPassenger get primaryPassenger => passengers.isEmpty
+      ? const TicketPassenger(name: '', coach: '', seat: '', berth: '')
+      : passengers.first;
 
   String get passengerName => primaryPassenger.name;
   String get coach => primaryPassenger.coach;
@@ -214,12 +216,14 @@ class TrainPass {
   int get passengerCount => passengers.length;
 
   String get passengerSummary {
+    if (passengers.isEmpty) return '';
     if (passengers.length == 1) return passengers.first.name;
     final String first = passengers.first.name.split(' ').first;
     return '$first +${passengers.length - 1}';
   }
 
   String get seatSummary {
+    if (passengers.isEmpty) return '';
     if (passengers.length == 1) return passengers.first.seatLabel;
     return '${passengers.length} seats';
   }
@@ -286,6 +290,7 @@ class TrainPass {
   }
 
   factory TrainPass.fromJson(Map<String, dynamic> json) {
+    final bool imported = json['importInfo'] is Map;
     final List<dynamic> paxRaw =
         json['passengers'] is List ? json['passengers'] as List : const [];
     final List<dynamic> haltRaw =
@@ -299,7 +304,7 @@ class TrainPass {
         )
         .toList();
 
-    if (passengers.isEmpty) {
+    if (passengers.isEmpty && !imported) {
       passengers.add(
         const TicketPassenger(
           name: 'Passenger',
@@ -329,10 +334,10 @@ class TrainPass {
       pnr: json['pnr']?.toString() ?? '',
       bookingId: json['bookingId']?.toString() ?? '',
       status: TicketStatus.fromJson(json['status']),
-      bookingStatus: json['bookingStatus']?.toString() ?? 'Confirmed',
-      chartStatus: json['chartStatus']?.toString() ?? 'Chart Prepared',
+      bookingStatus: json['bookingStatus']?.toString() ?? (imported ? '' : 'Confirmed'),
+      chartStatus: json['chartStatus']?.toString() ?? (imported ? '' : 'Chart Prepared'),
       liveStatusLabel:
-          json['liveStatusLabel']?.toString() ?? 'Running on time',
+          json['liveStatusLabel']?.toString() ?? (imported ? '' : 'Running on time'),
       // Absent means "the backend did not say", which is not the same as
       // "scheduled with no delay" -- but scheduled is the only safe default,
       // and delayMinutes stays null so the band shows a countdown rather than

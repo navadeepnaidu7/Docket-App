@@ -31,6 +31,7 @@ Future<void> showAddDocumentsMenu({
   required BuildContext context,
   required void Function(bool isEPassport) onSelectPassportKind,
   required void Function(IdDocumentType type) onSelectIdType,
+  required VoidCallback onSelectCard,
   MorphStep Function()? passesStep,
   VoidCallback? onSwitchToPasses,
 }) {
@@ -63,6 +64,16 @@ Future<void> showAddDocumentsMenu({
                   aspectRatio: _kDocumentTileAspect,
                   icon: Icons.badge_outlined,
                   onTap: () => controller.push(_idTypeStep(onSelectIdType)),
+                ),
+                SquircleTile(
+                  label: 'Cards',
+                  sublabel: 'Visa, Mastercard, RuPay',
+                  aspectRatio: _kDocumentTileAspect,
+                  icon: Icons.credit_card_outlined,
+                  onTap: () {
+                    controller.close();
+                    onSelectCard();
+                  },
                 ),
               ],
             ),

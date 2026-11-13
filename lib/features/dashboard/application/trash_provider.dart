@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/storage/secure_document_store.dart';
 import '../../../core/storage/document_record_decoder.dart';
+import '../../cards/application/card_list_provider.dart';
+import '../../cards/application/card_scan_provider.dart';
+import '../../cards/domain/payment_card.dart';
 import '../../ids/application/attachment_providers.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
@@ -8,19 +11,28 @@ import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
 import 'wallet_order_provider.dart';
 
+const String trashPaymentCardsKey = 'trash_payment_cards';
+
 class TrashState {
   final List<PassportProfile> passports;
   final List<IdDocument> idDocs;
+  final List<PaymentCard> cards;
 
-  const TrashState({required this.passports, required this.idDocs});
+  const TrashState({
+    required this.passports,
+    required this.idDocs,
+    this.cards = const <PaymentCard>[],
+  });
 
   TrashState copyWith({
     List<PassportProfile>? passports,
     List<IdDocument>? idDocs,
+    List<PaymentCard>? cards,
   }) {
     return TrashState(
       passports: passports ?? this.passports,
       idDocs: idDocs ?? this.idDocs,
+      cards: cards ?? this.cards,
     );
   }
 }
@@ -33,6 +45,7 @@ class TrashController extends StateNotifier<TrashState> {
 
   static const _passportsKey = 'trash_passports';
   static const _idsKey = 'trash_ids';
+  static const _cardsKey = trashPaymentCardsKey;
 
   /// Completes when the initial read has finished. See [IdListController.loaded]
   /// -- trashed records still own their attachment files, so a sweep that ran
@@ -58,6 +71,7 @@ class TrashController extends StateNotifier<TrashState> {
     final lists = await Future.wait([
       _readForStartup(_passportsKey),
       _readForStartup(_idsKey),
+      _readForStartup(_cardsKey),
     ]);
     if (!mounted) return;
     final passports = await decodeStoredRecords(
@@ -65,12 +79,18 @@ class TrashController extends StateNotifier<TrashState> {
       decodePassportRecords,
     );
     final ids = await decodeStoredRecords(lists[1], decodeIdRecords);
+    final cards = await decodeStoredRecords(lists[2], decodePaymentCardRecords);
     if (!mounted) return;
     if (passports.hasInvalidRecords) {
       SecureDocumentStore.markUnreadable(_passportsKey);
     }
     if (ids.hasInvalidRecords) SecureDocumentStore.markUnreadable(_idsKey);
-    state = TrashState(passports: passports.records, idDocs: ids.records);
+    if (cards.hasInvalidRecords) SecureDocumentStore.markUnreadable(_cardsKey);
+    state = TrashState(
+      passports: passports.records,
+      idDocs: ids.records,
+      cards: cards.records,
+    );
   }
 
   Future<void> moveToTrash(Object item) async {
@@ -89,6 +109,13 @@ class TrashController extends StateNotifier<TrashState> {
       await SecureDocumentStore.writeList(
         _idsKey,
         updated.map((d) => d.toJson()).toList(),
+      );
+    } else if (item is PaymentCard) {
+      final List<PaymentCard> updated = <PaymentCard>[...state.cards, item];
+      state = state.copyWith(cards: updated);
+      await SecureDocumentStore.writeList(
+        _cardsKey,
+        updated.map((PaymentCard card) => card.toJson()).toList(),
       );
     }
   }
@@ -120,6 +147,29 @@ class TrashController extends StateNotifier<TrashState> {
       ref.read(idListProvider.notifier).addDocument(item);
       // 3. Add to order
       ref.read(walletOrderProvider.notifier).updateOrderOnItemAdded(item.id);
+    } else if (item is PaymentCard) {
+      final TrashState previous = state;
+      final List<PaymentCard> updated = state.cards
+          .where((PaymentCard card) => card.id != item.id)
+          .toList();
+      state = state.copyWith(cards: updated);
+      try {
+        await SecureDocumentStore.writeList(
+          _cardsKey,
+          updated.map((PaymentCard card) => card.toJson()).toList(),
+        );
+        await ref.read(cardListProvider.notifier).saveCard(item);
+      } catch (_) {
+        if (mounted) state = previous;
+        try {
+          await SecureDocumentStore.writeList(
+            _cardsKey,
+            previous.cards.map((PaymentCard card) => card.toJson()).toList(),
+          );
+        } catch (_) {}
+        rethrow;
+      }
+      ref.read(walletOrderProvider.notifier).updateOrderOnItemAdded(item.id);
     }
   }
 
@@ -147,6 +197,18 @@ class TrashController extends StateNotifier<TrashState> {
       } catch (_) {
         // Swallowed so storage cleanup failures do not prevent trash item removal
       }
+    } else if (item is PaymentCard) {
+      final List<PaymentCard> updated = state.cards
+          .where((PaymentCard card) => card.id != item.id)
+          .toList();
+      state = state.copyWith(cards: updated);
+      await SecureDocumentStore.writeList(
+        _cardsKey,
+        updated.map((PaymentCard card) => card.toJson()).toList(),
+      );
+      try {
+        await ref.read(cardScanStoreProvider).deleteAllFor(item.id);
+      } catch (_) {}
     }
   }
 
@@ -159,7 +221,11 @@ class TrashController extends StateNotifier<TrashState> {
   /// and a write that throws stops the loop rather than pressing on.
   Future<void> emptyTrash() async {
     await loaded;
-    final List<Object> items = <Object>[...state.passports, ...state.idDocs];
+    final List<Object> items = <Object>[
+      ...state.passports,
+      ...state.idDocs,
+      ...state.cards,
+    ];
     for (final Object item in items) {
       if (!mounted) return;
       await permanentlyDeleteItem(item);

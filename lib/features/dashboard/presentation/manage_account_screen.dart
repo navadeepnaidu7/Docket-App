@@ -8,6 +8,7 @@ import '../../../core/haptics/haptic_service.dart';
 import '../../../shared/widgets/apple_sheet.dart';
 import '../../../shared/widgets/document_date_picker.dart';
 import '../../../shared/widgets/safe_base64_image.dart';
+import '../../cards/application/card_list_provider.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../application/account_profile_provider.dart';
@@ -48,6 +49,7 @@ class ManageAccountScreen extends ConsumerWidget {
     final List<Color> washes = walletWashColors(
       passports: ref.watch(passportListProvider),
       idDocs: ref.watch(idListProvider),
+      cards: ref.watch(cardListProvider),
       scheme: CardFluidScheme.auto,
     );
 

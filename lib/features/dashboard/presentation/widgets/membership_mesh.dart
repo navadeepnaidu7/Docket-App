@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/dev/dev_flags.dart';
 import '../../../../core/wallet/wallet_palette.dart';
+import '../../../cards/domain/payment_card.dart';
 import '../../../ids/domain/id_document.dart';
 import '../../../passport/domain/passport_profile.dart';
 
@@ -22,6 +23,7 @@ Color toWashAccent(Color source, {required bool isDark}) {
 List<Color> walletWashColors({
   required List<PassportProfile> passports,
   required List<IdDocument> idDocs,
+  List<PaymentCard> cards = const <PaymentCard>[],
   required CardFluidScheme scheme,
 }) {
   switch (scheme) {
@@ -56,7 +58,7 @@ List<Color> walletWashColors({
         Color(0xFFD97706),
       ];
     case CardFluidScheme.auto:
-      final List<Object> items = <Object>[...passports, ...idDocs];
+      final List<Object> items = <Object>[...passports, ...idDocs, ...cards];
       if (items.isEmpty) {
         return const <Color>[
           Color(0xFFFF7A00),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/line_icon.dart';
 import '../../../../core/wallet/wallet_palette.dart';
+import '../../../cards/domain/payment_card.dart';
 import '../../../ids/domain/id_document.dart';
 import '../../../ids/domain/id_document_catalog.dart';
 import '../../../passport/domain/passport_profile.dart';
@@ -37,6 +38,15 @@ class WalletRowMeta {
         value: item.passportNumber.trim().isEmpty
             ? 'No number'
             : item.passportNumber.trim(),
+        palette: WalletPalette.forItem(item),
+      );
+    }
+
+    if (item is PaymentCard) {
+      final String last = item.lastFour;
+      return WalletRowMeta(
+        title: item.displayBank,
+        value: last.isEmpty ? 'No number' : '•••• $last',
         palette: WalletPalette.forItem(item),
       );
     }
