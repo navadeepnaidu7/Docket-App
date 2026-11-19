@@ -407,7 +407,8 @@ class ArchivePassDeckState extends State<ArchivePassDeck>
         );
         final double cardAspect = widget.category == PassHistoryCategory.movie
             ? _MovieArchiveCard.aspectRatio
-            : widget.category == PassHistoryCategory.train
+            : widget.category == PassHistoryCategory.train ||
+                  widget.category == PassHistoryCategory.bus
             ? WalletCardMetrics.trainAspect
             : WalletCardMetrics.ticketAspect;
         final double cardWidth = math.min(
@@ -696,8 +697,8 @@ class _ArchiveCardFace extends StatelessWidget {
       ),
       MoviePassItem(:final pass) => _MovieArchiveCard(pass: pass),
       BusPassItem(:final pass) => WalletCardCanvas(
-        designSize: WalletCardMetrics.ticketCanvas,
-        child: BusTicketFace(pass: pass),
+        designSize: WalletCardMetrics.trainCanvas,
+        child: BusTicketFace(pass: pass, showShadow: false),
       ),
     };
   }

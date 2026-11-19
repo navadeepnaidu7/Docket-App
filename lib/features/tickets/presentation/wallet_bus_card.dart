@@ -7,6 +7,9 @@ import '../domain/bus_pass_models.dart';
 import 'bus/bus_pass_detail_screen.dart';
 import 'bus/bus_ticket_face.dart';
 
+/// Matches `WalletTicketCard`'s glance width factor.
+const double _glanceWidthFactor = 0.94;
+
 class WalletBusCard extends StatefulWidget {
   const WalletBusCard({
     super.key,
@@ -59,10 +62,14 @@ class _WalletBusCardState extends State<WalletBusCard>
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final Size card = WalletCardMetrics.resolve(
-          constraints,
-          WalletCardMetrics.ticketAspect,
-        );
+        // The train canvas at the movie glance card's 94%, so every pass in
+        // the carousel shares one width.
+        final Size card =
+            WalletCardMetrics.resolve(
+              constraints,
+              WalletCardMetrics.trainAspect,
+            ) *
+            _glanceWidthFactor;
         return GestureDetector(
           onTapDown: (_) => _pressCtrl.forward(),
           onTapUp: (_) => _pressCtrl.reverse(),
@@ -82,7 +89,7 @@ class _WalletBusCardState extends State<WalletBusCard>
               width: card.width,
               height: card.height,
               child: WalletCardCanvas(
-                designSize: WalletCardMetrics.ticketCanvas,
+                designSize: WalletCardMetrics.trainCanvas,
                 child: BusTicketFace(pass: widget.pass),
               ),
             ),

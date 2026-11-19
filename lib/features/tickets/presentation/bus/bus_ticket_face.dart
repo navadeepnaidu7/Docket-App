@@ -1,28 +1,31 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../domain/bus_pass_models.dart';
 import '../../domain/pass_activity_date.dart';
+import '../movie/movie_ticket_chrome.dart';
+import '../train/train_pass_theme.dart';
 import 'bus_brand_style.dart';
+import 'bus_coach_painter.dart';
+import 'bus_journey_status.dart';
 import 'bus_pass_theme.dart';
 
-/// Bus pass face — brand header over a paper body.
+export 'bus_journey_status.dart' show busArrivalDayOffset, busDurationLabel;
+
+/// Bus pass face — the train pass's layout on one solid operator surface, with
+/// a tone-on-tone coach pulling out of the stub's corner.
 ///
-/// One clean rounded rectangle. Real coach tickets have a die-cut notch
-/// between the stub and the body; it is skipped here deliberately, because on
-/// a phone it reads as decoration and costs a custom clipper plus a border
-/// that has to trace the same path.
-///
-/// The chrome is per-operator and comes from [BusBrandStyle], so adding an
-/// operator does not touch this file. An operator with no style of its own
-/// gets a neutral slate header rather than someone else's branding.
-///
-/// Coach artwork identifies the pass type; the remaining marks are type and
-/// plain rules, keeping the face focused on the journey.
+/// Laid out against a fixed canvas and scaled by `WalletCardCanvas`. Every line
+/// is placed by baseline. The face never draws a code; the detail screen shows
+/// it under the card. Spec in `docs/features/bus-pass-redesign.md`.
 class BusTicketFace extends StatelessWidget {
   const BusTicketFace({
     super.key,
     required this.pass,
     this.useBrandColors = false,
+    this.showShadow = true,
+    this.clock = DateTime.now,
   });
 
   final BusPass pass;
@@ -30,109 +33,349 @@ class BusTicketFace extends StatelessWidget {
   /// Force the live palette on a pass the wallet considers expired.
   final bool useBrandColors;
 
+  final bool showShadow;
+
+  /// Injected for tests so the status sentence is deterministic.
+  final DateTime Function() clock;
+
+  @visibleForTesting
+  static const Key departureKey = Key('bus_pass.departure');
+  @visibleForTesting
+  static const Key arrivalKey = Key('bus_pass.arrival');
+  @visibleForTesting
+  static const Key coachKey = Key('bus_pass.coach');
+
   @override
   Widget build(BuildContext context) {
-    final BusBrandStyle brand = BusBrandStyle.forPass(
-      pass,
+    final BusPass p = pass;
+    final BusBrandStyle c = BusBrandStyle.forPass(
+      p,
       useBrandColors: useBrandColors,
     );
+    final BusJourneyStatus status = resolveBusJourneyStatus(p, clock());
+
+    final ({String time, String meridiem})? dep = busClock12(p.departTime);
+    final ({String time, String meridiem})? arr = busClock12(p.arriveTime);
+    final int dayOffset = busArrivalDayOffset(p);
+    final String duration = busDurationLabel(p);
+    final String booking = p.bookingId.trim();
+    final String fare = p.fare.trim();
+    final String seat = _seatLabel(p);
+
+    const double inset = BusPassMetrics.inset;
+    const double width = BusPassMetrics.contentWidth;
+    const double half = BusPassMetrics.halfWidth;
+
+    final String fromCity = _orDash(p.resolvedFromCity);
+    final String toCity = _orDash(p.resolvedToCity);
+    final String fromStop = _stopUnder(
+      _stationOf(p.boardingLocation, p.boardingPoint),
+      fromCity,
+    );
+    final String toStop = _stopUnder(_stationOf(p.dropLocation, ''), toCity);
 
     return Container(
       width: BusPassMetrics.width,
       height: BusPassMetrics.height,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(BusPassMetrics.cornerR),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: brand.shadowAlpha),
-            blurRadius: 30,
-            offset: const Offset(0, 16),
-            spreadRadius: -6,
-          ),
-        ],
+        boxShadow: showShadow
+            ? <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: c.shadowAlpha),
+                  blurRadius: 24,
+                  offset: const Offset(0, 12),
+                  spreadRadius: -4,
+                ),
+              ]
+            : const <BoxShadow>[],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(BusPassMetrics.cornerR),
-        child: ColoredBox(
-          color: brand.bodySurface,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              SizedBox(
-                height: BusPassMetrics.headerHeight,
-                child: _Header(pass: pass, brand: brand),
-              ),
-              Expanded(
-                child: _Body(pass: pass, brand: brand),
-              ),
-            ],
-          ),
+      child: ClipPath(
+        clipper: const TicketShapeClipper(
+          cornerR: BusPassMetrics.cornerR,
+          notchR: BusPassMetrics.notchR,
+          notchFromBottom: BusPassMetrics.notchFromBottom,
         ),
-      ),
-    );
-  }
-}
-
-// ── Header ────────────────────────────────────────────────────────────────────
-
-class _Header extends StatelessWidget {
-  const _Header({required this.pass, required this.brand});
-
-  final BusPass pass;
-  final BusBrandStyle brand;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: brand.headerGradient,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: BusPassMetrics.inset,
-          vertical: 26,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
+          clipBehavior: Clip.none,
           children: <Widget>[
-            _Wordmark(pass: pass, brand: brand),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Transform.translate(
-                    offset: const Offset(
-                      BusPassMetrics.inset + BusPassMetrics.coachOverflow,
-                      0,
-                    ),
-                    child: brand.coachAsset == null
-                        ? const SizedBox.shrink()
-                        : Opacity(
-                            opacity: brand.coachOpacity,
-                            child: Image.asset(
-                              brand.coachAsset!,
-                              width: BusPassMetrics.coachWidth,
-                              height: double.infinity,
-                              fit: BoxFit.contain,
-                              alignment: Alignment.centerRight,
-                              excludeFromSemantics: true,
-                              filterQuality: FilterQuality.high,
-                            ),
-                          ),
+            Positioned.fill(child: ColoredBox(color: c.surface)),
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              height: 1,
+              child: ColoredBox(color: c.edge),
+            ),
+
+            // Under everything else, so a long value passes over it rather
+            // than behind it.
+            Positioned(
+              left: BusPassMetrics.coachLeft,
+              top: BusPassMetrics.coachTop,
+              width: BusPassMetrics.coachWidth,
+              height: BusPassMetrics.coachHeight,
+              child: ExcludeSemantics(
+                child: CustomPaint(
+                  key: BusTicketFace.coachKey,
+                  painter: BusCoachPainter(
+                    body: c.coachBody,
+                    shade: c.coachShade,
+                    surface: c.surface,
                   ),
                 ),
               ),
             ),
-            Text(
-              _routeLine(pass),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: BusPassType.headerRoute(brand.headerInk),
+
+            // ── Header ──
+            _Baselined(
+              baseline: BusPassMetrics.nameBaseline,
+              left: inset,
+              width: width,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: <Widget>[
+                  Expanded(
+                    child: _Wordmark(pass: p, style: c),
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    _headerDate(p.date),
+                    maxLines: 1,
+                    style: BusPassType.date(c.ink),
+                  ),
+                ],
+              ),
+            ),
+            if (booking.isNotEmpty)
+              _Baselined(
+                baseline: BusPassMetrics.bookingBaseline,
+                left: inset,
+                width: width,
+                child: Text(
+                  'Booking $booking',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: BusPassType.small(c.muted),
+                ),
+              ),
+
+            // ── Journey ──
+            _Baselined(
+              baseline: BusPassMetrics.cityBaseline,
+              left: inset,
+              width: width,
+              child: _Ends(
+                start: Text(
+                  fromCity,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: BusPassType.small(c.muted),
+                ),
+                end: Text(
+                  toCity,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: BusPassType.small(c.muted),
+                ),
+              ),
+            ),
+
+            // The rule spans exactly the gap the two times leave, duration
+            // centred above it. The times are laid out again inside the
+            // delegate, invisibly, so the rule's ends come from layout rather
+            // than a TextPainter measured once before Geist resolves.
+            Positioned(
+              left: inset,
+              right: inset,
+              top: BusPassMetrics.ruleY - 0.5 - BusPassMetrics.ruleLift,
+              height: BusPassMetrics.ruleLift + 1,
+              child: CustomMultiChildLayout(
+                delegate: _BetweenTimesDelegate(),
+                children: <Widget>[
+                  LayoutId(
+                    id: _Slot.departure,
+                    child: Opacity(opacity: 0, child: _Time(dep, c)),
+                  ),
+                  LayoutId(
+                    id: _Slot.arrival,
+                    child: Opacity(opacity: 0, child: _Time(arr, c)),
+                  ),
+                  LayoutId(
+                    id: _Slot.rule,
+                    child: CustomPaint(
+                      painter: _RoutePainter(
+                        progress: status.progress,
+                        track: c.faint,
+                        fill: c.ink,
+                      ),
+                    ),
+                  ),
+                  if (duration.isNotEmpty)
+                    LayoutId(
+                      id: _Slot.duration,
+                      child: Text(
+                        duration,
+                        maxLines: 1,
+                        overflow: TextOverflow.clip,
+                        softWrap: false,
+                        style: BusPassType.duration(c.muted),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            _Baselined(
+              baseline: BusPassMetrics.timeBaseline,
+              left:
+                  inset -
+                  (dep == null ? 0 : TrainTimeOptics.leftPull(dep.time)),
+              child: _Time(dep, c, key: BusTicketFace.departureKey),
+            ),
+            // The meridiem ends the row, so the arrival needs no bearing
+            // correction: 14 dp capitals sit on the edge like the text above.
+            _Baselined(
+              baseline: BusPassMetrics.timeBaseline,
+              right: inset,
+              child: _Time(arr, c, key: BusTicketFace.arrivalKey),
+            ),
+            if (dayOffset > 0)
+              _Baselined(
+                baseline: BusPassMetrics.dayMarkerBaseline,
+                left: BusPassMetrics.contentRight + BusPassMetrics.dayMarkerGap,
+                child: Text(
+                  '+$dayOffset',
+                  maxLines: 1,
+                  softWrap: false,
+                  style: BusPassType.dayMarker(c.muted),
+                ),
+              ),
+            if (fromStop.isNotEmpty)
+              _Baselined(
+                baseline: BusPassMetrics.stopBaseline,
+                left: inset,
+                width: half,
+                child: Text(
+                  fromStop,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: BusPassType.stop(c.muted),
+                ),
+              ),
+            if (toStop.isNotEmpty)
+              _Baselined(
+                baseline: BusPassMetrics.stopBaseline,
+                right: inset,
+                width: half,
+                child: Text(
+                  toStop,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: BusPassType.stop(c.muted),
+                ),
+              ),
+
+            // ── Status ──
+            _Baselined(
+              // A lone lead line drops to the middle of the two-line block, so
+              // a card with nothing more to say keeps even space to the tear.
+              baseline: status.detail.isEmpty
+                  ? (BusPassMetrics.leadBaseline +
+                            BusPassMetrics.detailBaseline) /
+                        2
+                  : BusPassMetrics.leadBaseline,
+              left: inset,
+              width: width,
+              child: Text.rich(
+                TextSpan(
+                  children: <TextSpan>[
+                    if (status.lead.isNotEmpty)
+                      TextSpan(
+                        text: '${status.lead} ',
+                        style: BusPassType.lead(c.muted),
+                      ),
+                    TextSpan(
+                      text: status.emphasis,
+                      style: BusPassType.lead(
+                        c.ink,
+                      ).copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (status.detail.isNotEmpty)
+              _Baselined(
+                baseline: BusPassMetrics.detailBaseline,
+                left: inset,
+                width: width,
+                child: Text(
+                  status.detail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: BusPassType.detail(c.muted),
+                ),
+              ),
+
+            // ── Stub ──
+            Positioned(
+              left: BusPassMetrics.notchR + 6,
+              right: BusPassMetrics.notchR + 6,
+              top: BusPassMetrics.tearY - 1.5,
+              height: 3,
+              child: CustomPaint(painter: _DotRulePainter(c.faint)),
+            ),
+            _Baselined(
+              baseline: BusPassMetrics.seatLabelBaseline,
+              left: inset,
+              child: Text('Seat', style: BusPassType.label(c.muted)),
+            ),
+            _Baselined(
+              baseline: BusPassMetrics.seatBaseline,
+              left: inset,
+              width: BusPassMetrics.seatWidth,
+              child: Text(
+                seat,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: BusPassType.seat(
+                  c.ink,
+                  long: seat.length > BusPassType.seatShortLength,
+                ),
+              ),
+            ),
+            if (fare.isNotEmpty) ...<Widget>[
+              _Baselined(
+                baseline: BusPassMetrics.seatLabelBaseline,
+                right: inset,
+                child: Text('Fare', style: BusPassType.label(c.muted)),
+              ),
+              _Baselined(
+                baseline: BusPassMetrics.seatBaseline,
+                right: inset,
+                child: Text(fare, maxLines: 1, style: BusPassType.value(c.ink)),
+              ),
+            ],
+            _Baselined(
+              baseline: BusPassMetrics.passengerLabelBaseline,
+              left: inset,
+              child: Text('Passengers', style: BusPassType.label(c.muted)),
+            ),
+            _Baselined(
+              baseline: BusPassMetrics.passengerBaseline,
+              left: inset,
+              width: BusPassMetrics.passengerWidth,
+              child: Text(
+                _passengers(p),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: BusPassType.value(c.ink),
+              ),
             ),
           ],
         ),
@@ -141,34 +384,35 @@ class _Header extends StatelessWidget {
   }
 }
 
+// ── Pieces ────────────────────────────────────────────────────────────────────
+
 class _Wordmark extends StatelessWidget {
-  const _Wordmark({required this.pass, required this.brand});
+  const _Wordmark({required this.pass, required this.style});
 
   final BusPass pass;
-  final BusBrandStyle brand;
+  final BusBrandStyle style;
 
   @override
   Widget build(BuildContext context) {
-    if (!brand.hasWordmark) {
+    if (!style.hasWordmark) {
       return Text(
-        _orDash(pass.operator),
-        maxLines: 2,
+        _orDash(pass.operator.trim()),
+        maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: BusPassType.operatorName(brand.headerInk),
+        style: BusPassType.name(style.ink),
       );
     }
-
     // Two runs on one baseline, so "redBus" keeps its light-then-bold lockup.
     return Text.rich(
       TextSpan(
         children: <TextSpan>[
           TextSpan(
-            text: brand.wordmarkLead,
-            style: BusPassType.wordmarkLead(brand.headerInk),
+            text: style.wordmarkLead,
+            style: BusPassType.nameLight(style.ink),
           ),
           TextSpan(
-            text: brand.wordmarkTail,
-            style: BusPassType.wordmarkTail(brand.headerInk),
+            text: style.wordmarkTail,
+            style: BusPassType.name(style.ink),
           ),
         ],
       ),
@@ -178,270 +422,39 @@ class _Wordmark extends StatelessWidget {
   }
 }
 
-// ── Body ──────────────────────────────────────────────────────────────────────
+/// A big time with its meridiem on the same baseline, or a dash when the
+/// ticket's time does not parse — free text at 44 dp would run off the card.
+class _Time extends StatelessWidget {
+  const _Time(this.clock, this.style, {super.key});
 
-class _Body extends StatelessWidget {
-  const _Body({required this.pass, required this.brand});
-
-  final BusPass pass;
-  final BusBrandStyle brand;
-
-  @override
-  Widget build(BuildContext context) {
-    final String platform = pass.platform.trim();
-
-    return Padding(
-      padding: const EdgeInsets.all(BusPassMetrics.inset),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          _StopRow(pass: pass, brand: brand),
-          _Rule(brand: brand, top: 18, bottom: 18),
-          _TripleField(
-            brand: brand,
-            fields: <(String, String)>[
-              ('Date', _orDash(pass.date)),
-              ('Departure', _orDash(pass.departTime)),
-              ('Seat', _seatLabel(pass)),
-            ],
-          ),
-          _Rule(brand: brand, top: 18, bottom: 18),
-          _BoardingRow(pass: pass, brand: brand, platform: platform),
-        ],
-      ),
-    );
-  }
-}
-
-class _Rule extends StatelessWidget {
-  const _Rule({required this.brand, required this.top, required this.bottom});
-
-  final BusBrandStyle brand;
-  final double top;
-  final double bottom;
+  final ({String time, String meridiem})? clock;
+  final BusBrandStyle style;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(top: top, bottom: bottom),
-      child: SizedBox(height: 1, child: ColoredBox(color: brand.rule)),
-    );
-  }
-}
-
-/// FROM and TO either side of a short vertical rail.
-class _StopRow extends StatelessWidget {
-  const _StopRow({required this.pass, required this.brand});
-
-  final BusPass pass;
-  final BusBrandStyle brand;
-
-  @override
-  Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Expanded(
-            child: _Stop(
-              label: 'From',
-              name: _stationOf(pass.boardingLocation, pass.boardingPoint),
-              city: pass.resolvedFromCity,
-              brand: brand,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _Stop(
-              label: 'To',
-              name: _stationOf(pass.dropLocation, ''),
-              city: pass.resolvedToCity,
-              brand: brand,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Stop extends StatelessWidget {
-  const _Stop({
-    required this.label,
-    required this.name,
-    required this.city,
-    required this.brand,
-  });
-
-  final String label;
-  final String name;
-  final String city;
-  final BusBrandStyle brand;
-
-  @override
-  Widget build(BuildContext context) {
-    // A stop with no comma yields the same string for both lines; printing it
-    // twice looks like a bug, so the city line drops out.
-    final bool showCity = city.trim().isNotEmpty && city.trim() != name.trim();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: BusPassType.label(brand.muted),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          name,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: BusPassType.stopName(brand.ink),
-        ),
-        if (showCity) ...<Widget>[
-          const SizedBox(height: 4),
-          Text(
-            city,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: BusPassType.secondary(brand.muted),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-/// Date and departure get more room than the compact seat value.
-class _TripleField extends StatelessWidget {
-  const _TripleField({required this.brand, required this.fields});
-
-  final BusBrandStyle brand;
-  final List<(String, String)> fields;
-
-  @override
-  Widget build(BuildContext context) {
-    final List<Widget> children = <Widget>[];
-    for (int i = 0; i < fields.length; i++) {
-      if (i > 0) {
-        children.add(
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: SizedBox(width: 1, child: ColoredBox(color: brand.rule)),
-          ),
-        );
-      }
-      final (String label, String value) = fields[i];
-      children.add(
-        Expanded(
-          flex: i == 2 ? 1 : 2,
-          child: _Field(label: label, value: value, brand: brand),
-        ),
-      );
+    final ({String time, String meridiem})? t = clock;
+    if (t == null) {
+      return Text(_absent, maxLines: 1, style: BusPassType.time(style.ink));
     }
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: children,
-      ),
-    );
-  }
-}
-
-class _Field extends StatelessWidget {
-  const _Field({required this.label, required this.value, required this.brand});
-
-  final String label;
-  final String value;
-  final BusBrandStyle brand;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
       children: <Widget>[
         Text(
-          label,
+          t.time,
           maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: BusPassType.label(brand.muted),
+          softWrap: false,
+          style: BusPassType.time(style.ink),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(width: BusPassMetrics.meridiemGap),
         Text(
-          value,
+          t.meridiem,
           maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: BusPassType.value(brand.ink),
+          softWrap: false,
+          style: BusPassType.meridiem(style.muted),
         ),
       ],
-    );
-  }
-}
-
-/// Boarding point with its bay, beside the fare.
-class _BoardingRow extends StatelessWidget {
-  const _BoardingRow({
-    required this.pass,
-    required this.brand,
-    required this.platform,
-  });
-
-  final BusPass pass;
-  final BusBrandStyle brand;
-  final String platform;
-
-  @override
-  Widget build(BuildContext context) {
-    final String fare = pass.fare.trim();
-
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Boarding point',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: BusPassType.label(brand.muted),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  _stationOf(pass.boardingLocation, pass.boardingPoint),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: BusPassType.stopName(brand.ink),
-                ),
-                if (platform.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: 4),
-                  Text(
-                    platform,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: BusPassType.secondary(brand.muted),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (fare.isNotEmpty) ...<Widget>[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: SizedBox(width: 1, child: ColoredBox(color: brand.rule)),
-            ),
-            Expanded(
-              flex: 2,
-              child: _Field(label: 'Fare', value: fare, brand: brand),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }
@@ -452,33 +465,48 @@ const String _absent = '—';
 
 String _orDash(String value) => value.trim().isEmpty ? _absent : value.trim();
 
-/// "Bengaluru to Mysuru" for the header.
-///
-/// An en-dash arrow rather than an icon: the brief rules out icons, and an
-/// arrow set in the same face as the words beside it stays on the baseline at
-/// every scale, which a glyph from an icon font does not.
-String _routeLine(BusPass pass) {
-  final String from = pass.resolvedFromCity;
-  final String to = pass.resolvedToCity;
-  if (from.isEmpty && to.isEmpty) return _absent;
-  if (from.isEmpty) return to;
-  if (to.isEmpty) return from;
-  return '$from  →  $to';
+const List<String> _weekdays = <String>[
+  'Mon',
+  'Tue',
+  'Wed',
+  'Thu',
+  'Fri',
+  'Sat',
+  'Sun',
+];
+const List<String> _months = <String>[
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+/// "16 Aug 2026" -> "Sun, 16 Aug". The year is noise on a live ticket; the
+/// weekday is what people plan around.
+String _headerDate(String raw) {
+  final DateTime? d = PassActivityDate.parse(raw);
+  if (d == null) return _orDash(raw);
+  return '${_weekdays[d.weekday - 1]}, ${d.day} ${_months[d.month - 1]}';
 }
 
 /// The station part of a free-text stop.
 ///
 /// Operators write the stop as "city, station" ("Bengaluru, Kempegowda Bus
-/// Station"), and it is the station a traveller needs at the kerb, so the
-/// trailing segment is the headline and the city sits under it. An explicit
-/// boarding point from the payload wins outright.
+/// Station"); the city already sits above the time, so the station is what
+/// goes under it. An explicit boarding point from the payload wins outright.
 String _stationOf(String location, String explicitPoint) {
   final String point = explicitPoint.trim();
   if (point.isNotEmpty) return point;
 
   final String value = location.trim();
-  if (value.isEmpty) return _absent;
-
   final int i = value.indexOf(',');
   if (i < 0) return value;
 
@@ -486,54 +514,216 @@ String _stationOf(String location, String explicitPoint) {
   return tail.isEmpty ? value : tail;
 }
 
+/// [station], unless it only repeats [city] — printing the same word above
+/// and below a time looks like a bug.
+String _stopUnder(String station, String city) =>
+    station.toLowerCase() == city.toLowerCase() ? '' : station;
+
+/// "12A" for one seat; a short list for a small group, and the first seat plus
+/// a count past three — a cut-off list reads as broken.
 String _seatLabel(BusPass pass) {
-  final String seats = pass.seatDetails.trim();
-  if (seats.isNotEmpty) return seats;
-
-  final Iterable<String> fromPassengers = pass.passengers
-      .map((BusPassenger p) => p.seat.trim())
-      .where((String s) => s.isNotEmpty);
-  if (fromPassengers.isEmpty) return _absent;
-  return fromPassengers.join(', ');
+  final String explicit = pass.seatDetails.trim();
+  final List<String> seats = explicit.isNotEmpty
+      ? explicit
+            .split(',')
+            .map((String s) => s.trim())
+            .where((String s) => s.isNotEmpty)
+            .toList()
+      : <String>[
+          for (final BusPassenger p in pass.passengers)
+            if (p.seat.trim().isNotEmpty) p.seat.trim(),
+        ];
+  if (seats.isEmpty) return _absent;
+  if (seats.length <= 3) return seats.join(', ');
+  return '${seats.first} and ${seats.length - 1} more';
 }
 
-/// Calendar days the arrival lands past the departure, for callers that show
-/// an overnight marker.
-///
-/// Prefers the ISO instants and falls back to the display dates. Returns 0
-/// when neither parses — an unmarked arrival beats a wrong one.
-int busArrivalDayOffset(BusPass pass) {
-  final DateTime? depart =
-      PassActivityDate.parse(pass.departAt) ??
-      PassActivityDate.parse(pass.date);
-  final DateTime? arrive =
-      PassActivityDate.parse(pass.arriveAt) ??
-      PassActivityDate.parse(pass.arrivalDate);
-  if (depart == null || arrive == null) return 0;
-
-  final int days = DateTime(
-    arrive.year,
-    arrive.month,
-    arrive.day,
-  ).difference(DateTime(depart.year, depart.month, depart.day)).inDays;
-  return days > 0 ? days : 0;
+/// "Navadeep Naidu" alone; "Navadeep and 1 other" for a group, as on the
+/// train face.
+String _passengers(BusPass pass) {
+  if (pass.passengers.isEmpty) return _absent;
+  final String lead = pass.passengers.first.name.trim();
+  if (pass.passengers.length == 1) return _orDash(lead);
+  final String first = lead.isEmpty ? 'Traveller' : lead.split(' ').first;
+  final int others = pass.passengers.length - 1;
+  return '$first and $others ${others == 1 ? 'other' : 'others'}';
 }
 
-/// Journey length, e.g. "8h 15m", or empty when it cannot be computed.
-///
-/// The display times carry no date, so an overnight run computed from them
-/// alone would come out negative; only the ISO instants are trustworthy.
-String busDurationLabel(BusPass pass) {
-  final DateTime? depart = PassActivityDate.parse(pass.departAt);
-  final DateTime? arrive = PassActivityDate.parse(pass.arriveAt);
-  if (depart == null || arrive == null) return '';
+// ── Layout helpers ────────────────────────────────────────────────────────────
+//
+// The same three helpers the train face uses, kept local rather than shared
+// while that face has work in flight.
 
-  final Duration d = arrive.difference(depart);
-  if (d.inMinutes <= 0) return '';
+/// Positions [child] so its text baseline lands exactly on [baseline].
+class _Baselined extends StatelessWidget {
+  const _Baselined({
+    required this.baseline,
+    required this.child,
+    this.left,
+    this.right,
+    this.width,
+  });
 
-  final int hours = d.inHours;
-  final int minutes = d.inMinutes % 60;
-  if (hours == 0) return '${minutes}m';
-  if (minutes == 0) return '${hours}h';
-  return '${hours}h ${minutes}m';
+  final double baseline;
+  final Widget child;
+  final double? left;
+  final double? right;
+
+  /// Width of the text column, passed to the child as a *tight* constraint so
+  /// `textAlign` has a box to align in — `Baseline` loosens its constraints.
+  final double? width;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget sized = width == null
+        ? child
+        : SizedBox(width: width, child: child);
+    return Positioned(
+      left: left,
+      right: right,
+      width: width,
+      top: 0,
+      child: Baseline(
+        baseline: baseline,
+        baselineType: TextBaseline.alphabetic,
+        child: sized,
+      ),
+    );
+  }
+}
+
+/// Two texts pinned to opposite ends of one baseline-aligned row, each allowed
+/// at most half the width so a long name ellipsizes instead of colliding.
+class _Ends extends StatelessWidget {
+  const _Ends({required this.start, required this.end});
+
+  final Widget start;
+  final Widget end;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: <Widget>[
+        Expanded(child: _side(start, MainAxisAlignment.start)),
+        const SizedBox(width: BusPassMetrics.columnGap),
+        Expanded(child: _side(end, MainAxisAlignment.end)),
+      ],
+    );
+  }
+
+  static Widget _side(Widget child, MainAxisAlignment alignment) => Row(
+    mainAxisAlignment: alignment,
+    crossAxisAlignment: CrossAxisAlignment.baseline,
+    textBaseline: TextBaseline.alphabetic,
+    children: <Widget>[Flexible(child: child)],
+  );
+}
+
+enum _Slot { departure, arrival, rule, duration }
+
+/// Lays the route rule into the gap between the two times and centres the
+/// duration above it. A delegate rather than a Row, because a Row asserts when
+/// the times outgrow the card; here the rule just collapses.
+class _BetweenTimesDelegate extends MultiChildLayoutDelegate {
+  _BetweenTimesDelegate();
+
+  @override
+  void performLayout(Size size) {
+    final BoxConstraints loose = BoxConstraints(maxWidth: size.width);
+    final double dep = layoutChild(_Slot.departure, loose).width;
+    final double arr = layoutChild(_Slot.arrival, loose).width;
+    positionChild(_Slot.departure, Offset.zero);
+    positionChild(_Slot.arrival, Offset.zero);
+
+    final double start = dep + BusPassMetrics.ruleGap;
+    final double ruleWidth = math.max(
+      0,
+      size.width - arr - BusPassMetrics.ruleGap - start,
+    );
+    layoutChild(
+      _Slot.rule,
+      BoxConstraints.tightFor(width: ruleWidth, height: 1),
+    );
+    positionChild(_Slot.rule, Offset(start, size.height - 1));
+
+    if (hasChild(_Slot.duration)) {
+      // The duration may use the clear space either side of the rule too; a
+      // long overnight run on a short rule still prints whole.
+      final double room = ruleWidth + 2 * BusPassMetrics.ruleGap - 4;
+      final Size d = layoutChild(
+        _Slot.duration,
+        BoxConstraints(maxWidth: math.max(0, room)),
+      );
+      positionChild(
+        _Slot.duration,
+        Offset(
+          start + (ruleWidth - d.width) / 2,
+          size.height - 1 - BusPassMetrics.durationGap - d.height,
+        ),
+      );
+    }
+  }
+
+  @override
+  bool shouldRelayout(covariant MultiChildLayoutDelegate oldDelegate) => false;
+}
+
+/// The route line: a faint track with the travelled share drawn in ink.
+class _RoutePainter extends CustomPainter {
+  const _RoutePainter({
+    required this.progress,
+    required this.track,
+    required this.fill,
+  });
+
+  final double progress;
+  final Color track;
+  final Color fill;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double y = size.height / 2;
+    final Paint paint = Paint()..strokeWidth = 1;
+    canvas.drawLine(Offset(0, y), Offset(size.width, y), paint..color = track);
+    if (progress > 0) {
+      canvas.drawLine(
+        Offset(0, y),
+        Offset(size.width * progress.clamp(0.0, 1.0), y),
+        paint..color = fill,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RoutePainter old) =>
+      old.progress != progress || old.track != track || old.fill != fill;
+}
+
+/// The tear: round dots on an even pitch, centred so both ends match.
+class _DotRulePainter extends CustomPainter {
+  const _DotRulePainter(this.color);
+
+  final Color color;
+
+  static const double _pitch = 8;
+  static const double _radius = 1.1;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()..color = color;
+    final int count = (size.width / _pitch).floor();
+    final double start = (size.width - (count - 1) * _pitch) / 2;
+    for (int i = 0; i < count; i++) {
+      canvas.drawCircle(
+        Offset(start + i * _pitch, size.height / 2),
+        _radius,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DotRulePainter old) => old.color != color;
 }

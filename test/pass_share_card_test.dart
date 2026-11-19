@@ -228,7 +228,7 @@ void main() {
     ) async {
       final Map<WalletPassItem, Size> canvases = <WalletPassItem, Size>{
         TrainPassItem(_train()): TrainPassMetrics.canvas,
-        BusPassItem(_bus()): WalletCardMetrics.ticketCanvas,
+        BusPassItem(_bus()): WalletCardMetrics.trainCanvas,
         MoviePassItem(_movie()): WalletCardMetrics.ticketCanvas,
       };
 

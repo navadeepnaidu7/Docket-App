@@ -42,15 +42,6 @@ abstract final class AppAssets {
   static const String summaryCinema = 'assets/summary/cinema.svg';
   static const String summaryBus = 'assets/summary/coach.svg';
 
-  /// redBus coach photograph for the bus pass header (transparent PNG).
-  ///
-  /// Downscaled from the 1855px source to 1000px: it renders about 250dp wide,
-  /// so 1000px still covers a 3x screen while cutting the bundle cost.
-  static const String redBusCoach = 'assets/passes/redbus_coach.png';
-
-  /// Unbranded ivory-and-teal coach for all other bus providers (transparent PNG).
-  static const String busCoach = 'assets/passes/bus_coach.png';
-
   /// Clock-history icon for past / expired passes.
   static const String passesHistory = 'assets/passes/history_clock.svg';
 
