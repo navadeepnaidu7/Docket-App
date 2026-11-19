@@ -320,7 +320,9 @@ double _progress(
 
 bool _unconfirmed(String raw) {
   final String s = raw.trim().toUpperCase();
-  if (s.isEmpty) return false;
+  // The server sends "Unknown" when it has no reservation status; that is
+  // the absence of a status, not a warning.
+  if (s.isEmpty || s == 'UNKNOWN') return false;
   return !(s.startsWith('CNF') ||
       s.startsWith('CONFIRM') ||
       s.startsWith('COMPLETE'));

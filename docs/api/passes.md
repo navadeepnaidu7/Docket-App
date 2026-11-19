@@ -97,8 +97,8 @@ Either the same envelope as one list item, or the nested object only. Client acc
 | `pnr` | string | yes | |
 | `bookingId` | string | yes | |
 | `status` | string | yes | `active` \| `expired` |
-| `bookingStatus` | string | yes, except calendar imports | current reservation status (`WL/12`, `Waitlisted`, `RAC`, `Confirmed`, `Cancelled`, or `Unknown`). Never assumed confirmed |
-| `chartStatus` | string | yes, except calendar imports | `Chart Prepared` only when the provider said so; otherwise `Chart not prepared` |
+| `bookingStatus` | string | yes, except a calendar import the PNR endpoint has not answered | current reservation status (`WL/12`, `Waitlisted`, `RAC`, `Confirmed`, `Cancelled`, or `Unknown`). `PNR not found` when the endpoint has no record yet. `PNR flushed` when a PNR that previously returned data comes back empty; stored journey details are kept. Never assumed confirmed |
+| `chartStatus` | string | yes, except a calendar import the PNR endpoint has not answered | `Chart Prepared` only when the provider said so; otherwise `Chart not prepared` |
 | `liveStatusLabel` | string | no | live tab, free text |
 | `runState` | string | no | `scheduled` \| `onTime` \| `delayed` \| `arrived` \| `cancelled` |
 | `delayMinutes` | integer | no | minutes late; **omit when unknown** |
