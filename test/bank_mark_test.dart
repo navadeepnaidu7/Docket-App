@@ -2,9 +2,23 @@ import 'package:docket/features/cards/domain/card_issuer.dart';
 import 'package:docket/features/cards/domain/payment_card.dart';
 import 'package:docket/features/cards/presentation/wallet_payment_card.dart';
 import 'package:flutter/material.dart';
+import 'package:docket/core/theme/app_theme.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+Future<void> _warmCardFonts(WidgetTester tester) => tester.runAsync(() async {
+  for (final weight in [
+    FontWeight.w400,
+    FontWeight.w500,
+    FontWeight.w600,
+    FontWeight.w700,
+  ]) {
+    AppFonts.ui(fontWeight: weight);
+    GoogleFonts.robotoMono(fontWeight: weight);
+  }
+  await GoogleFonts.pendingFonts();
+});
 
 void main() {
   setUp(() => GoogleFonts.config.allowRuntimeFetching = false);
@@ -92,6 +106,7 @@ void main() {
   );
 
   testWidgets('bank marks on dark and light card faces', (tester) async {
+    await _warmCardFonts(tester);
     await tester.binding.setSurfaceSize(const Size(900, 1470));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final List<CardIssuer> examples = <CardIssuer>[
@@ -150,6 +165,7 @@ void main() {
   });
 
   testWidgets('bank artwork and same-bank shade variants', (tester) async {
+    await _warmCardFonts(tester);
     await tester.binding.setSurfaceSize(const Size(1380, 1490));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final examples = <(String, String, int)>[

@@ -315,12 +315,21 @@ class _IdsTabState extends ConsumerState<IdsTab> {
                             backdropTilt: widget.backdropTilt,
                             onLongPress: () => widget.onDeleteId(document),
                           ),
-                          PaymentCard payment => WalletPaymentCard(
-                            key: ValueKey<String>('card-${payment.id}'),
-                            card: payment,
-                            onLongPress: widget.onDeleteCard == null
-                                ? null
-                                : () => widget.onDeleteCard!(payment),
+                          PaymentCard payment => AnimatedBuilder(
+                            animation: Listenable.merge([
+                              _activePage,
+                              _scrolling,
+                            ]),
+                            builder: (context, _) => WalletPaymentCard(
+                              key: ValueKey<String>('card-${payment.id}'),
+                              card: payment,
+                              animate:
+                                  _activePage.value == index &&
+                                  !_scrolling.value,
+                              onLongPress: widget.onDeleteCard == null
+                                  ? null
+                                  : () => widget.onDeleteCard!(payment),
+                            ),
                           ),
                           _ => const SizedBox.shrink(),
                         };

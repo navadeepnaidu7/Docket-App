@@ -1,3 +1,4 @@
+import 'helpers/pump_card_transitions.dart';
 import 'package:docket/core/theme/app_theme.dart';
 import 'package:docket/features/cards/application/card_list_provider.dart';
 import 'package:docket/features/cards/domain/payment_card.dart';
@@ -65,7 +66,7 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await pumpCardTransitions(tester);
   }
 
   testWidgets('copy exact values without revealing number or security code', (
@@ -102,14 +103,10 @@ void main() {
     await tester.pump(const Duration(seconds: 3));
     expect(find.text('3782 822463 10005'), findsNothing);
     expect(find.text('1234'), findsOneWidget);
-    tester.binding.handleAppLifecycleStateChanged(
-      AppLifecycleState.inactive,
-    );
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     await tester.pump();
     expect(find.text('1234'), findsNothing);
-    tester.binding.handleAppLifecycleStateChanged(
-      AppLifecycleState.resumed,
-    );
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
   });
 
   testWidgets('absent values have no copy or reveal action', (tester) async {
@@ -164,7 +161,7 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await pumpCardTransitions(tester);
       await expectLater(
         find.byKey(const Key('details')),
         matchesGoldenFile(

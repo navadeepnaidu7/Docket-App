@@ -1,3 +1,4 @@
+import 'helpers/pump_card_transitions.dart';
 import 'package:docket/core/theme/app_theme.dart';
 import 'package:docket/core/wallet/wallet_items.dart';
 import 'package:docket/core/wallet/wallet_palette.dart';
@@ -127,7 +128,7 @@ Future<void> pumpStack(
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  await pumpCardTransitions(tester);
 }
 
 void main() {
@@ -204,7 +205,7 @@ void main() {
       await pumpStack(tester, onOpen: (card) => opened = card);
       final start = tester.getTopLeft(face('icici')).dy;
       await tapFace(tester, 'icici');
-      await tester.pumpAndSettle();
+      await pumpCardTransitions(tester);
       expect(opened, isNull);
       expect(tester.getTopLeft(face('icici')).dy, lessThan(start));
       expect(find.byKey(const Key('return-to-card-stack')), findsOneWidget);
@@ -212,7 +213,7 @@ void main() {
       await tapFace(tester, 'icici');
       expect(opened?.id, 'icici');
       await tester.tap(find.byKey(const Key('return-to-card-stack')));
-      await tester.pumpAndSettle();
+      await pumpCardTransitions(tester);
       expect(tester.getTopLeft(face('icici')).dy, closeTo(start, .1));
     },
   );
@@ -222,14 +223,14 @@ void main() {
   ) async {
     await pumpStack(tester);
     await tapFace(tester, 'hdfc');
-    await tester.pumpAndSettle();
+    await pumpCardTransitions(tester);
     await Navigator.of(
       tester.element(find.byType(PaymentCardStackView)),
     ).maybePop();
-    await tester.pumpAndSettle();
+    await pumpCardTransitions(tester);
     expect(find.byKey(const Key('return-to-card-stack')), findsNothing);
     await tapFace(tester, 'icici');
-    await tester.pumpAndSettle();
+    await pumpCardTransitions(tester);
     await pumpStack(
       tester,
       cards: samples().where((card) => card.id != 'icici').toList(),
@@ -247,7 +248,7 @@ void main() {
       expect(find.text('4'), findsNothing);
       expect(find.textContaining('Tap a card'), findsNothing);
       await tapFace(tester, 'icici');
-      await tester.pumpAndSettle();
+      await pumpCardTransitions(tester);
       expect(find.text('All cards'), findsNothing);
       expect(find.textContaining('Tap the card'), findsNothing);
     },
@@ -273,15 +274,15 @@ void main() {
       );
       await gesture.moveBy(const Offset(-100, 0));
       await gesture.up();
-      await tester.pumpAndSettle();
+      await pumpCardTransitions(tester);
       await tapFace(tester, 'canara');
       expect(opened?.id, 'canara');
       await tester.drag(face('canara'), const Offset(240, 0));
-      await tester.pumpAndSettle();
+      await pumpCardTransitions(tester);
       await tapFace(tester, 'icici');
       expect(opened?.id, 'icici');
       await tester.drag(face('icici'), const Offset(0, 110));
-      await tester.pumpAndSettle();
+      await pumpCardTransitions(tester);
       expect(find.byKey(const Key('return-to-card-stack')), findsNothing);
       expect(tester.takeException(), isNull);
     },
@@ -295,18 +296,18 @@ void main() {
     PaymentCard? opened;
     await pumpStack(tester, reveal: reveal, onOpen: (card) => opened = card);
     await tester.drag(face('hdfc'), const Offset(220, 0));
-    await tester.pumpAndSettle();
+    await pumpCardTransitions(tester);
     await tapFace(tester, 'hdfc');
     expect(opened?.id, 'hdfc');
     reveal.value = 'amex';
-    await tester.pumpAndSettle();
+    await pumpCardTransitions(tester);
     await tester.drag(face('amex'), const Offset(-220, 0));
-    await tester.pumpAndSettle();
+    await pumpCardTransitions(tester);
     final drag = await tester.startGesture(tester.getCenter(face('amex')));
     await drag.moveBy(const Offset(45, 0));
     await tester.pump();
     await drag.cancel();
-    await tester.pumpAndSettle();
+    await pumpCardTransitions(tester);
     await tapFace(tester, 'amex');
     expect(opened?.id, 'amex');
     expect(tester.takeException(), isNull);
@@ -331,7 +332,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       expect(tester.getTopLeft(face('icici')).dy, closeTo(held, .1));
       await drag.cancel();
-      await tester.pumpAndSettle();
+      await pumpCardTransitions(tester);
       expect(tester.getTopLeft(face('icici')).dy, closeTo(28, .1));
       expect(tester.takeException(), isNull);
     },
@@ -348,9 +349,9 @@ void main() {
         await pumpStack(tester, cards: cards, onOpen: (card) => opened = card);
         for (int i = 0; i < count; i++) {
           await tester.ensureVisible(face('many-$i'));
-          await tester.pumpAndSettle();
+          await pumpCardTransitions(tester);
           await tapFace(tester, 'many-$i');
-          await tester.pumpAndSettle();
+          await pumpCardTransitions(tester);
           expect(
             find.byKey(const Key('return-to-card-stack')),
             findsOneWidget,
@@ -359,7 +360,7 @@ void main() {
           await tapFace(tester, 'many-$i');
           expect(opened?.id, 'many-$i');
           await tester.tap(find.byKey(const Key('return-to-card-stack')));
-          await tester.pumpAndSettle();
+          await pumpCardTransitions(tester);
         }
         expect(tester.takeException(), isNull);
       },
@@ -399,7 +400,7 @@ void main() {
           reason:
               'Converting a scrolled face to pinned coordinates must not jump',
         );
-        await tester.pumpAndSettle();
+        await pumpCardTransitions(tester);
         expect(tester.getTopLeft(face(last)).dy, closeTo(pinned, .1));
         await tapFace(tester, last);
         expect(opened?.id, last);
@@ -425,7 +426,7 @@ void main() {
           )
           .controller!;
       scroll.jumpTo(scroll.position.maxScrollExtent);
-      await tester.pumpAndSettle();
+      await pumpCardTransitions(tester);
       await capture('bottom');
       await tapFace(tester, 'many-${count - 1}');
       await tester.pump();
@@ -435,7 +436,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
         await capture('lift_180ms');
       }
-      await tester.pumpAndSettle();
+      await pumpCardTransitions(tester);
       await capture('selected');
       expect(tester.takeException(), isNull);
     });
@@ -454,7 +455,7 @@ void main() {
     reveal.value = 'icici';
     await tester.pump();
     expect(tester.getTopLeft(face('icici')).dy, closeTo(before, .1));
-    await tester.pumpAndSettle();
+    await pumpCardTransitions(tester);
     expect(
       tester.getTopLeft(face('icici')).dy,
       lessThan(tester.getTopLeft(face('canara')).dy),
@@ -500,7 +501,7 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.pumpAndSettle();
+    await pumpCardTransitions(tester);
     expect(page.value, 1);
     expect(reveal.value, isNull);
     expect(find.byKey(const Key('return-to-card-stack')), findsOneWidget);
@@ -537,7 +538,7 @@ void main() {
         find.byType(SingleChildScrollView),
         const Offset(0, -900),
       );
-      await tester.pumpAndSettle();
+      await pumpCardTransitions(tester);
       await tester.ensureVisible(face('card11'));
       await tapFace(tester, 'card11');
       await tester.pump();
@@ -577,17 +578,17 @@ void main() {
       );
       await tester.pump();
       await tapFace(tester, 'icici');
-      await tester.pumpAndSettle();
+      await pumpCardTransitions(tester);
       expect(find.byKey(const Key('return-to-card-stack')), findsOneWidget);
       expect(find.byType(CardDetailScreen), findsNothing);
       await tapFace(tester, 'icici');
-      await tester.pumpAndSettle();
+      await pumpCardTransitions(tester);
       expect(
         tester.widget<CardDetailScreen>(find.byType(CardDetailScreen)).cardId,
         'icici',
       );
       await tester.pageBack();
-      await tester.pumpAndSettle();
+      await pumpCardTransitions(tester);
       expect(find.byType(CardDetailScreen), findsNothing);
       expect(find.byKey(const Key('return-to-card-stack')), findsOneWidget);
       expect(
@@ -622,7 +623,7 @@ void main() {
         ),
       );
       await tapFace(tester, 'icici');
-      await tester.pumpAndSettle();
+      await pumpCardTransitions(tester);
       await expectLater(
         find.byKey(const Key('stack-preview')),
         matchesGoldenFile(

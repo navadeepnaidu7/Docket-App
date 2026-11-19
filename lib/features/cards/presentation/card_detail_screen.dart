@@ -79,7 +79,7 @@ class CardDetailScreen extends ConsumerWidget {
         children: [
           AspectRatio(
             aspectRatio: WalletCardMetrics.idAspect,
-            child: WalletPaymentCard(card: current),
+            child: WalletPaymentCard(card: current, animate: true),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),

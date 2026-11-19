@@ -6,9 +6,8 @@ import 'package:docket/features/tickets/data/mock_pass_fixtures.dart';
 import 'package:docket/features/tickets/domain/ticket_models.dart';
 import 'package:docket/features/tickets/presentation/ticket_detail_screen.dart';
 
-/// Phone widths the timeline has to survive. The status pill sits on the same
-/// row as the time pill, so a long station name plus a wide pill is exactly
-/// where this layout would overflow.
+/// Phone widths the timeline has to survive. Time, station, and a short
+/// status word share one row, which is where a long station name overflows.
 const List<Size> _viewports = <Size>[
   Size(320, 720), // smallest phone still supported
   Size(360, 800), // common Android
@@ -27,7 +26,7 @@ Future<void> _pumpLiveTab(WidgetTester tester, TrainPass pass) async {
   // Segmented control: Details | Live status.
   await tester.tap(find.text('Live status'));
 
-  // The timeline pulses the "arriving" node forever, so pumpAndSettle would
+  // The timeline pulses the current node forever, so pumpAndSettle would
   // never return. Pump past the tab cross-fade by hand instead.
   for (int i = 0; i < 8; i++) {
     await tester.pump(const Duration(milliseconds: 100));

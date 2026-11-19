@@ -140,6 +140,7 @@ class _PaymentCardStackViewState extends State<PaymentCardStackView> {
                               ? cardHeight
                               : strip + 20,
                           selected: card.id == selected,
+                          active: widget.isActive && card.id == selected,
                           onSwitch: _switchCard,
                           onReturn: _returnToStack,
                           onTap: () {
@@ -178,6 +179,7 @@ class _StackFace extends StatefulWidget {
     required this.clipTop,
     required this.visibleHeight,
     required this.selected,
+    required this.active,
     required this.scroll,
     required this.onTap,
     required this.onSwitch,
@@ -191,6 +193,7 @@ class _StackFace extends StatefulWidget {
   final double clipTop;
   final double visibleHeight;
   final bool selected;
+  final bool active;
   final ScrollController scroll;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
@@ -487,9 +490,12 @@ class _StackFaceState extends State<_StackFace> with TickerProviderStateMixin {
         );
       },
       child: ExcludeSemantics(
-        child: IgnorePointer(
-          child: RepaintBoundary(
-            child: WalletPaymentCard(card: card, interactive: false),
+        child: RepaintBoundary(
+          child: WalletPaymentCard(
+            card: card,
+            interactive: false,
+            animate: widget.active,
+            motionIsPinned: true,
           ),
         ),
       ),

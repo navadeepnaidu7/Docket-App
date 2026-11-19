@@ -97,8 +97,8 @@ Either the same envelope as one list item, or the nested object only. Client acc
 | `pnr` | string | yes | |
 | `bookingId` | string | yes | |
 | `status` | string | yes | `active` \| `expired` |
-| `bookingStatus` | string | no | default Confirmed |
-| `chartStatus` | string | no | |
+| `bookingStatus` | string | yes, except calendar imports | current reservation status (`WL/12`, `Waitlisted`, `RAC`, `Confirmed`, `Cancelled`, or `Unknown`). Never assumed confirmed |
+| `chartStatus` | string | yes, except calendar imports | `Chart Prepared` only when the provider said so; otherwise `Chart not prepared` |
 | `liveStatusLabel` | string | no | live tab, free text |
 | `runState` | string | no | `scheduled` \| `onTime` \| `delayed` \| `arrived` \| `cancelled` |
 | `delayMinutes` | integer | no | minutes late; **omit when unknown** |
@@ -290,6 +290,24 @@ All three are silently ignored when malformed. Extraction is the request's real 
 rejected code leaves the pass exactly where a codeless ticket would.
 
 ---
+
+## Calendar import info (all three kinds)
+
+A pass created from, or merged with, a Google Calendar event (see
+`../docket_server/docs/calendar_import.md`) carries an extra object. Absent on ordinary uploads.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `importInfo.source` | string | always `googleCalendar` |
+| `importInfo.needsDetails` | bool | essential details were missing from the event; the pass can be completed with `POST /tickets/extract` + `attachToPassId=<id>` |
+| `importInfo.missingFields` | string[] | e.g. `pnr`, `passengers`, `seat`/`seats`, `bookingId`, `ticketCode`, `departureTime` |
+| `importInfo.sourceRemoved` | bool? | the event was deleted from the calendar; the pass is kept |
+| `importInfo.ticketAttached` | bool? | a ticket was attached to complete it |
+| `importInfo.date` | string? | `YYYY-MM-DD` for an all-day event: the date is known, the time is not |
+
+For calendar-created passes the server sends **no placeholder values**: `seats` may be empty,
+`passengers` may be empty, `bookingId` may be empty, and movie `codeType` is empty without a code.
+The client must not substitute a fake seat (`A1`) or certification for them either.
 
 ## Example: movie list item
 

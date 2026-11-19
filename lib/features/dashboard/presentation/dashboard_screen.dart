@@ -1034,7 +1034,7 @@ class _HomeTabTransition extends StatelessWidget {
                 opacity: fadeOut,
                 child: Transform.translate(
                   offset: Offset(-_slidePx * t, 0),
-                  child: ids,
+                  child: TickerMode(enabled: t < 1, child: ids),
                 ),
               ),
             ),

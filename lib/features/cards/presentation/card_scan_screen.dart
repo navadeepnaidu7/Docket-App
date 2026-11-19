@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/motion/studio_page_route.dart';
+import '../../../core/scanning/live_frame_reader.dart';
 import '../../../shared/widgets/scanner/scanner_chrome.dart';
 import '../../../shared/widgets/scanner_capture_button.dart';
 import '../application/card_scan_service.dart';
@@ -21,6 +22,11 @@ enum _ScanState { permission, scanning, processing, error }
 ///
 /// The front comes first. The back is next, with a way out when that side
 /// is blank. "Type it instead" stays on the front step.
+///
+/// Preview frames are read the whole time the camera is up. Each side's
+/// readings are pooled, and the shutter fires by itself once they agree, so
+/// the proposed fields come from many frames rather than one lucky photo.
+/// The shutter button still works for a side the frames never settle on.
 class CardScanScreen extends StatefulWidget {
   const CardScanScreen({super.key});
 
@@ -39,6 +45,16 @@ class _CardScanScreenState extends State<CardScanScreen>
   String? _backPath;
   CardScanFields _frontFields = CardScanFields.empty;
   CardScanFields _backFields = CardScanFields.empty;
+  LiveFrameReader? _reader;
+  final CardScanConsensus _frontVotes = CardScanConsensus();
+  final CardScanConsensus _backVotes = CardScanConsensus();
+  Rect _region = const Rect.fromLTRB(0, 0, 1, 1);
+  DateTime _sideStartedAt = DateTime.now();
+  bool _locked = false;
+
+  /// Time to turn the card over before the back's frames count, so the
+  /// front still in view is not read as the back.
+  static const Duration _flipGrace = Duration(milliseconds: 1400);
 
   @override
   void initState() {
@@ -50,6 +66,7 @@ class _CardScanScreenState extends State<CardScanScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_reader?.stop());
     _controller?.dispose();
     unawaited(_deleteQuiet(_frontPath));
     unawaited(_deleteQuiet(_backPath));
@@ -62,9 +79,11 @@ class _CardScanScreenState extends State<CardScanScreen>
     if (controller == null || !controller.value.isInitialized) return;
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
+      unawaited(_reader?.stop());
       controller.pausePreview();
     } else if (state == AppLifecycleState.resumed) {
       controller.resumePreview();
+      if (_state == _ScanState.scanning) unawaited(_startReading());
     }
   }
 
@@ -97,11 +116,15 @@ class _CardScanScreenState extends State<CardScanScreen>
       back,
       ResolutionPreset.high,
       enableAudio: false,
+      imageFormatGroup: liveFrameFormat,
     );
     _controller = controller;
+    _reader = LiveFrameReader(controller: controller, onFrame: _readFrame);
     try {
       await controller.initialize();
-      if (mounted) setState(() => _state = _ScanState.scanning);
+      if (!mounted) return;
+      setState(() => _state = _ScanState.scanning);
+      await _startReading();
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -110,6 +133,38 @@ class _CardScanScreenState extends State<CardScanScreen>
         });
       }
     }
+  }
+
+  CardScanConsensus get _votes =>
+      _side == _Side.front ? _frontVotes : _backVotes;
+
+  Future<void> _startReading() async {
+    _sideStartedAt = DateTime.now();
+    await _reader?.start();
+  }
+
+  Future<void> _readFrame(LiveFrame frame) async {
+    if (_state != _ScanState.scanning || _capturing) return;
+    final _Side side = _side;
+    final CardScanFields fields = await CardScanService.readFrame(
+      frame,
+      _region,
+    );
+    if (!mounted || side != _side || _capturing) return;
+    if (side == _Side.back) {
+      if (DateTime.now().difference(_sideStartedAt) < _flipGrace) return;
+      // The front's own number seen again means the card has not been
+      // turned over yet.
+      if (fields.number.isNotEmpty && fields.number == _frontFields.number) {
+        return;
+      }
+    }
+    _votes.add(fields);
+    final bool ready = side == _Side.front
+        ? _frontVotes.frontReady
+        : _backVotes.backReady;
+    if (ready != _locked) setState(() => _locked = ready);
+    if (ready) unawaited(_capture());
   }
 
   Future<void> _capture() async {
@@ -122,9 +177,12 @@ class _CardScanScreenState extends State<CardScanScreen>
     setState(() => _state = _ScanState.processing);
     String? path;
     try {
+      await _reader?.stop();
       final XFile shot = await controller.takePicture();
       path = shot.path;
-      final CardScanFields fields = await CardScanService.readFile(path);
+      final CardScanFields still = await CardScanService.readFile(path);
+      _votes.add(still, weight: 2);
+      final CardScanFields fields = preferCardFields(_votes.fields, still);
       if (!mounted) {
         await _deleteQuiet(path);
         return;
@@ -139,7 +197,9 @@ class _CardScanScreenState extends State<CardScanScreen>
         setState(() {
           _side = _Side.back;
           _state = _ScanState.scanning;
+          _locked = false;
         });
+        await _startReading();
       } else {
         final String? previous = _backPath;
         _backPath = path;
@@ -155,6 +215,7 @@ class _CardScanScreenState extends State<CardScanScreen>
         setState(() {
           _state = _ScanState.error;
           _errorMessage = 'The photo did not take. Try again.';
+          _locked = false;
         });
       }
     } finally {
@@ -163,6 +224,7 @@ class _CardScanScreenState extends State<CardScanScreen>
   }
 
   Future<void> _openReview({bool includeBack = true}) async {
+    await _reader?.stop();
     final CardScanFields merged = mergeCardScans(
       _frontFields,
       includeBack ? _backFields : CardScanFields.empty,
@@ -190,14 +252,33 @@ class _CardScanScreenState extends State<CardScanScreen>
       await _controller?.resumePreview();
     } catch (_) {}
     if (mounted && _state == _ScanState.processing) {
-      setState(() => _state = _ScanState.scanning);
+      setState(() {
+        _state = _ScanState.scanning;
+        _locked = false;
+      });
     }
+    if (mounted && _state == _ScanState.scanning) {
+      // Back from the review: read this side afresh rather than firing
+      // again on the votes that just opened it.
+      _votes.clear();
+      await _startReading();
+    }
+  }
+
+  void _toFront() {
+    _backVotes.clear();
+    _frontVotes.clear();
+    setState(() {
+      _side = _Side.front;
+      _locked = false;
+    });
+    _sideStartedAt = DateTime.now();
   }
 
   void _back() {
     if (_state == _ScanState.processing) return;
     if (_side == _Side.back) {
-      setState(() => _side = _Side.front);
+      _toFront();
       return;
     }
     Navigator.of(context).pop();
@@ -217,9 +298,7 @@ class _CardScanScreenState extends State<CardScanScreen>
       canPop: _side == _Side.front && _state != _ScanState.processing,
       onPopInvokedWithResult: (bool didPop, _) {
         if (didPop || _state == _ScanState.processing) return;
-        if (_side == _Side.back) {
-          setState(() => _side = _Side.front);
-        }
+        if (_side == _Side.back) _toFront();
       },
       child: Scaffold(
         backgroundColor: Colors.black,
@@ -241,11 +320,12 @@ class _CardScanScreenState extends State<CardScanScreen>
       );
     }
     final bool front = _side == _Side.front;
+    _region = cardGuideRegion(MediaQuery.sizeOf(context));
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
         CameraPreview(controller),
-        const CustomPaint(painter: _CardFramePainter()),
+        CustomPaint(painter: _CardFramePainter(locked: _locked)),
         SafeArea(
           child: Align(
             alignment: Alignment.topLeft,
@@ -276,8 +356,10 @@ class _CardScanScreenState extends State<CardScanScreen>
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      front
-                          ? 'Front of the card'
+                      _locked
+                          ? 'Got it. Hold still.'
+                          : front
+                          ? 'Front of the card. It reads on its own.'
                           : 'Back of the card. The number or the code is often here.',
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -401,6 +483,8 @@ class _CardScanScreenState extends State<CardScanScreen>
                 setState(() => _state = _ScanState.scanning);
                 if (_controller == null || !_controller!.value.isInitialized) {
                   unawaited(_initCamera());
+                } else {
+                  unawaited(_startReading());
                 }
               },
             ),
@@ -440,7 +524,10 @@ class _TextAction extends StatelessWidget {
 }
 
 class _CardFramePainter extends CustomPainter {
-  const _CardFramePainter();
+  const _CardFramePainter({required this.locked});
+
+  /// Turns the outline green once the frames agree.
+  final bool locked;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -462,12 +549,15 @@ class _CardFramePainter extends CustomPainter {
     canvas.drawRRect(
       frame,
       Paint()
-        ..color = Colors.white.withValues(alpha: 0.75)
+        ..color = locked
+            ? const Color(0xFF4ADE80)
+            : Colors.white.withValues(alpha: 0.75)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.5,
     );
   }
 
   @override
-  bool shouldRepaint(_CardFramePainter oldDelegate) => false;
+  bool shouldRepaint(_CardFramePainter oldDelegate) =>
+      oldDelegate.locked != locked;
 }

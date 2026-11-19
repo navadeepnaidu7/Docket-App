@@ -8,7 +8,7 @@ import '../domain/card_number.dart';
 import '../domain/card_surface.dart';
 import '../domain/payment_card.dart';
 import 'bank_mark.dart';
-import 'card_material.dart';
+import 'living_card_material.dart';
 import 'network_mark.dart';
 
 /// An identifying face. The security code lives in the information section.
@@ -19,10 +19,18 @@ class WalletPaymentCard extends StatefulWidget {
     this.onLongPress,
     this.now,
     this.interactive = true,
+    this.animate = false,
+    this.motionIsPinned = false,
     this.previewNetwork,
   });
   final PaymentCard card;
   final bool interactive;
+
+  /// The owner enables motion only for the currently visible full face.
+  final bool animate;
+
+  /// A selected deck face is pinned by its owner while the deck scrolls.
+  final bool motionIsPinned;
   final CardNetwork? previewNetwork;
   final VoidCallback? onLongPress;
   final DateTime Function()? now;
@@ -108,116 +116,113 @@ class _WalletPaymentCardState extends State<WalletPaymentCard>
       onLongPress: widget.onLongPress,
       child: WalletCardCanvas(
         designSize: WalletCardMetrics.idCanvas,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: CustomPaint(
-            painter: CardMaterial(
-              surface,
-              issuerId: card.issuerId,
-              variant: card.surfaceIndex,
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  left: 28,
-                  right: 126,
-                  top: 26,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      BankMark(card: card),
-                      Expanded(
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppFonts.ui(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -.4,
-                            height: 1.2,
-                            color: surface.ink,
-                          ),
+        child: LivingCardMaterial(
+          active: widget.animate,
+          pinned: widget.motionIsPinned,
+          surface: surface,
+          issuerId: card.issuerId,
+          variant: card.surfaceIndex,
+          child: Stack(
+            children: [
+              Positioned(
+                left: 28,
+                right: 126,
+                top: 26,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    BankMark(card: card),
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppFonts.ui(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -.4,
+                          height: 1.2,
+                          color: surface.ink,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (kind.isNotEmpty)
-                  Positioned(
-                    right: 28,
-                    top: 68,
-                    child: Text(
-                      kind,
-                      style: AppFonts.ui(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: surface.ink.withValues(alpha: .8),
                       ),
                     ),
-                  ),
+                  ],
+                ),
+              ),
+              if (kind.isNotEmpty)
                 Positioned(
                   right: 28,
-                  top: 26,
-                  width: 80,
-                  height: 36,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: NetworkMark(network: network, surface: surface),
+                  top: 68,
+                  child: Text(
+                    kind,
+                    style: AppFonts.ui(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: surface.ink,
+                    ),
                   ),
                 ),
-                Positioned(
-                  left: 28,
-                  right: 28,
-                  top: 120,
-                  height: 64,
-                  child: _NumberButton(
-                    card: card,
-                    open: _numberOpen,
-                    ink: surface.ink,
-                    onTap: widget.interactive && card.number.isNotEmpty
-                        ? _toggleNumber
-                        : null,
-                  ),
+              Positioned(
+                right: 28,
+                top: 26,
+                width: 80,
+                height: 36,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: NetworkMark(network: network, surface: surface),
                 ),
+              ),
+              Positioned(
+                left: 28,
+                right: 28,
+                top: 120,
+                height: 64,
+                child: _NumberButton(
+                  card: card,
+                  open: _numberOpen,
+                  ink: surface.ink,
+                  onTap: widget.interactive && card.number.isNotEmpty
+                      ? _toggleNumber
+                      : null,
+                ),
+              ),
 
-                Positioned(
-                  left: 28,
-                  right: 28,
-                  bottom: 28,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          card.holderName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppFonts.ui(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: surface.ink,
-                          ),
+              Positioned(
+                left: 28,
+                right: 28,
+                bottom: 28,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        card.holderName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppFonts.ui(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: surface.ink,
                         ),
                       ),
-                      if (card.expiryLabel.isNotEmpty) ...[
-                        const SizedBox(width: 24),
-                        Text(
-                          expired ? 'Expired' : card.expiryLabel,
-                          style: AppFonts.ui(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: surface.ink,
-                            fontFeatures: AppFonts.tabular,
-                          ),
+                    ),
+                    if (card.expiryLabel.isNotEmpty) ...[
+                      const SizedBox(width: 24),
+                      Text(
+                        expired ? 'Expired' : card.expiryLabel,
+                        style: AppFonts.ui(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: surface.ink,
+                          fontFeatures: AppFonts.tabular,
                         ),
-                      ],
+                      ),
                     ],
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

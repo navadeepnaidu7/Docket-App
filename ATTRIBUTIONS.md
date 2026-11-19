@@ -1,5 +1,33 @@
 # Third-party asset attributions
 
+## Additional payment-network marks — Apache 2.0
+
+Amex, Discover, UnionPay, JCB and Diners Club SVG marks come from
+[Aaron Fagan's SVG Credit Card & Payment Icons](https://github.com/aaronfagan/svg-credit-card-payment-icons),
+commit `6dd023ae32415ed7b01bf809f15a25613a52098c`.
+Transparent outer canvas is cropped through viewBox changes; path geometry is
+unchanged. American Express and Discover use a white monochrome rendering on dark faces.
+Original files, source URLs, hashes and bundled hashes are recorded in
+`tool/design_src/network_logos/`. Reproduce with `tool/bundle_network_logos.py`
+(requires svgpathtools). The Apache 2.0 licence ships as
+`assets/wallet/networks/LICENSE.txt` and appears in the in-app licences.
+Marks remain trademarks of their owners and identify card networks only.
+
+## Bank identification marks — MIT collection
+
+The 23 SVGs in `assets/wallet/banks/` come from
+[auraveni/global-bank-logos](https://github.com/auraveni/global-bank-logos),
+commit `ad33060ca976397a9fcb46dd40c2d77bce5ce7e1`.
+The collection's MIT notice ships as `assets/wallet/banks/LICENSE.txt` and
+is registered in the in-app licences. Per-file source URLs, byte sizes and
+SHA-256 hashes are in `tool/design_src/bank_logos/sources.json`.
+Federal Bank and Wells Fargo are normalized for Flutter: CSS class fills are
+inlined and style/metadata elements removed; geometry and colors are unchanged.
+The other 21 files ship verbatim. Reproduce with `tool/bundle_bank_logos.py`.
+Bank marks remain trademarks of their respective owners. They identify the
+confirmed issuer and do not imply endorsement. App composition adds a white
+background without recoloring the artwork.
+
 Docket bundles the following third-party assets under their own licences. Each
 entry states whether it ships verbatim or modified, and what was changed. This
 file satisfies the attribution requirement; the same credits are registered with

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -6,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/haptics/haptic_service.dart';
+import '../../../core/scanning/live_frame_reader.dart';
 import '../../../core/validation/document_validators.dart';
 import '../../../shared/widgets/scanner/scanner_chrome.dart';
 import '../../../shared/widgets/scanner_capture_button.dart';
@@ -13,6 +15,7 @@ import '../application/id_scanner_service.dart';
 import '../application/id_media_service.dart';
 import 'id_image_editor.dart';
 import '../domain/id_document.dart';
+import '../domain/id_scan_text.dart';
 
 enum _ScanState { permission, scanning, processing, preview, error }
 
@@ -34,6 +37,16 @@ class _IdScannerScreenState extends State<IdScannerScreen>
   String _errorMessage = '';
   String _qrCodeData = '';
   final _importSession = IdImportSession();
+
+  /// Preview frames are read while the camera is up and pooled here. The
+  /// shutter fires by itself once the number agrees across frames (or a
+  /// signed Aadhaar QR is read), and the pooled fields back up whatever the
+  /// final photo misreads.
+  LiveFrameReader? _reader;
+  late final IdScanConsensus _votes = IdScanConsensus(widget.type);
+  Rect _region = const Rect.fromLTRB(0, 0, 1, 1);
+  int _frames = 0;
+  bool _locked = false;
 
   // Preview editable controllers
   late final TextEditingController _nameCtrl;
@@ -62,6 +75,7 @@ class _IdScannerScreenState extends State<IdScannerScreen>
   void dispose() {
     _importSession.close();
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_reader?.stop());
     _controller?.dispose();
     _nameCtrl.dispose();
     _numberCtrl.dispose();
@@ -80,9 +94,11 @@ class _IdScannerScreenState extends State<IdScannerScreen>
     if (controller == null || !controller.value.isInitialized) return;
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
+      unawaited(_reader?.stop());
       controller.pausePreview();
     } else if (state == AppLifecycleState.resumed) {
       controller.resumePreview();
+      if (_state == _ScanState.scanning) unawaited(_reader?.start());
     }
   }
 
@@ -114,10 +130,14 @@ class _IdScannerScreenState extends State<IdScannerScreen>
       back,
       ResolutionPreset.high,
       enableAudio: false,
+      imageFormatGroup: liveFrameFormat,
     );
+    _reader = LiveFrameReader(controller: _controller!, onFrame: _readFrame);
     try {
       await _controller!.initialize();
-      if (mounted) setState(() => _state = _ScanState.scanning);
+      if (!mounted) return;
+      setState(() => _state = _ScanState.scanning);
+      await _reader!.start();
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -126,6 +146,35 @@ class _IdScannerScreenState extends State<IdScannerScreen>
         });
       }
     }
+  }
+
+  Future<void> _readFrame(LiveFrame frame) async {
+    if (_state != _ScanState.scanning || _isCapturing) return;
+    // QR decoding costs as much as OCR, and a QR does not change between
+    // frames, so it is tried on every third frame until one is read.
+    final readQr = !_votes.hasQrData && _frames++ % 3 == 0;
+    final reading = await IdScannerService.readFrame(
+      frame,
+      widget.type,
+      _region,
+      readQr: readQr,
+    );
+    if (!mounted || reading == null || _isCapturing) return;
+    _votes.add(reading.result);
+    _votes.addQr(reading.qrCodeData);
+    final ready = _votes.ready;
+    if (ready != _locked) setState(() => _locked = ready);
+    if (ready) unawaited(_capture());
+  }
+
+  Future<void> _resumeScanning() async {
+    _votes.clear();
+    _frames = 0;
+    setState(() {
+      _state = _ScanState.scanning;
+      _locked = false;
+    });
+    await _reader?.start();
   }
 
   Future<void> _capture() async {
@@ -138,6 +187,7 @@ class _IdScannerScreenState extends State<IdScannerScreen>
     HapticService.impact();
     setState(() => _state = _ScanState.processing);
     try {
+      await _reader?.stop();
       final xFile = await _controller!.takePicture();
       _capturedImagePath = xFile.path;
       final bytes = await normaliseIdImage(
@@ -149,15 +199,21 @@ class _IdScannerScreenState extends State<IdScannerScreen>
       );
       if (!mounted) return;
       if (edited == null) {
-        setState(() => _state = _ScanState.scanning);
+        await _resumeScanning();
         return;
       }
       final working = await _importSession.workingImage(edited);
-      final result = await IdScannerService.processImage(
+      final still = await IdScannerService.processImage(
         working.path,
         widget.type,
       );
       if (!mounted) return;
+      final live = _votes.result;
+      // Settled frame votes outrank one photo; the photo fills the rest.
+      final merged = still == null ? live : preferIdFields(live, still);
+      final result = merged.isEmpty
+          ? null
+          : IdScannerService.finish(merged, merged.qrCodeData);
       if (result != null) {
         _qrCodeData = result.qrCodeData;
         _populateControllers(result);
@@ -202,12 +258,12 @@ class _IdScannerScreenState extends State<IdScannerScreen>
     qrCodeData: _qrCodeData,
   );
 
-  void _retake() => setState(() {
-    _state = _ScanState.scanning;
+  void _retake() {
     _capturedImagePath = null;
     _errorMessage = '';
     _qrCodeData = '';
-  });
+    unawaited(_resumeScanning());
+  }
 
   String _docLabel(IdDocumentType t) =>
       t == IdDocumentType.pan ? 'PAN Card' : 'Aadhaar Card';
@@ -237,11 +293,12 @@ class _IdScannerScreenState extends State<IdScannerScreen>
         child: CircularProgressIndicator(color: Colors.white),
       );
     }
+    _region = cardGuideRegion(MediaQuery.sizeOf(context));
     return Stack(
       fit: StackFit.expand,
       children: [
         CameraPreview(_controller!),
-        const CustomPaint(painter: _CardOverlayPainter()),
+        CustomPaint(painter: _CardOverlayPainter(locked: _locked)),
         SafeArea(
           child: Align(
             alignment: Alignment.topLeft,
@@ -272,7 +329,9 @@ class _IdScannerScreenState extends State<IdScannerScreen>
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      'Align ${_docLabel(widget.type)} inside the frame',
+                      _locked
+                          ? 'Got it. Hold still.'
+                          : 'Align ${_docLabel(widget.type)} inside the frame',
                       style: const TextStyle(color: Colors.white, fontSize: 14),
                     ),
                   ),
@@ -598,7 +657,10 @@ class _IdScannerScreenState extends State<IdScannerScreen>
 // ── Overlay: landscape credit-card aspect ratio ───────────────────────────────
 
 class _CardOverlayPainter extends CustomPainter {
-  const _CardOverlayPainter();
+  const _CardOverlayPainter({required this.locked});
+
+  /// Turns the outline green once the frames agree.
+  final bool locked;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -625,12 +687,14 @@ class _CardOverlayPainter extends CustomPainter {
     canvas.drawRRect(
       frame,
       Paint()
-        ..color = Colors.white.withValues(alpha: 0.75)
+        ..color = locked
+            ? const Color(0xFF4ADE80)
+            : Colors.white.withValues(alpha: 0.75)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.5,
     );
   }
 
   @override
-  bool shouldRepaint(_CardOverlayPainter old) => false;
+  bool shouldRepaint(_CardOverlayPainter old) => old.locked != locked;
 }
