@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../core/assets/app_assets.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/line_icon.dart';
-import '../../../../core/wallet/wallet_palette.dart';
+import '../../../cards/domain/card_issuer.dart';
 import '../../../cards/domain/payment_card.dart';
 import '../../../ids/domain/id_document.dart';
 import '../../../ids/domain/id_document_catalog.dart';
@@ -10,68 +12,78 @@ import '../../../passport/domain/passport_profile.dart';
 
 /// Display metadata for one wallet document, resolved in a single place.
 ///
-/// The document *type* is the title. An earlier pass titled rows
-/// "Navadeep's Passport" and then set a chip beside it reading "Passport" —
-/// the same word twice — while IDs got the vague "Navadeep's ID" with the only
-/// real content ("PAN") pushed into the chip. Everything in a personal wallet
-/// belongs to the same person, so the possessive was noise on every row.
+/// The document *type* is the title. The holder's name leads the detail line,
+/// because a wallet routinely carries a family's documents: five rows titled
+/// "Passport" are only distinguishable by whose they are.
 class WalletRowMeta {
   const WalletRowMeta({
     required this.title,
-    required this.value,
-    required this.palette,
+    required this.holder,
+    required this.number,
   });
 
-  /// What the document is: "Passport", "PAN Card", "Aadhaar Card".
+  /// What the document is: "Passport", "PAN Card", "HDFC Bank".
   final String title;
 
-  /// The document number, or a placeholder when it is not filled in.
-  final String value;
+  /// Whose it is, or empty when the record never captured a name.
+  final String holder;
 
-  /// The card's own colours, shared with the wallet backdrop.
-  final WalletPalette palette;
+  /// The document number as stored. Rows show it only through [maskedNumber].
+  final String number;
 
   factory WalletRowMeta.of(Object item) {
     if (item is PassportProfile) {
       return WalletRowMeta(
         title: 'Passport',
-        value: item.passportNumber.trim().isEmpty
-            ? 'No number'
-            : item.passportNumber.trim(),
-        palette: WalletPalette.forItem(item),
+        holder: item.name.trim(),
+        number: item.passportNumber.trim(),
       );
     }
 
     if (item is PaymentCard) {
-      final String last = item.lastFour;
       return WalletRowMeta(
         title: item.displayBank,
-        value: last.isEmpty ? 'No number' : '•••• $last',
-        palette: WalletPalette.forItem(item),
+        holder: item.holderName.trim(),
+        number: item.lastFour,
       );
     }
 
     final IdDocument doc = item as IdDocument;
     return WalletRowMeta(
       title: IdDocumentCatalog.titleFor(doc.type),
-      value: doc.documentNumber.trim().isEmpty
-          ? 'No number'
-          : doc.documentNumber.trim(),
-      palette: WalletPalette.forItem(item),
+      holder: doc.holderName.trim(),
+      number: doc.documentNumber.trim(),
     );
   }
 
-  bool get hasValue => value != 'No number';
+  bool get hasNumber => number.isNotEmpty;
+
+  /// Last four characters, the same treatment for every kind of document.
+  ///
+  /// The list is a glanceable index, often looked at with someone beside you.
+  /// It used to print full PAN and Aadhaar numbers next to masked bank cards,
+  /// which was both inconsistent and the wrong way round for sensitivity.
+  String get maskedNumber {
+    if (number.isEmpty) return '';
+    final String tail = number.length <= 4
+        ? number
+        : number.substring(number.length - 4);
+    return '•••• $tail';
+  }
+
+  /// "Meera Kapoor  ·  •••• 888B", or whichever half exists.
+  String get detail {
+    final String masked = maskedNumber;
+    if (holder.isEmpty) return masked.isEmpty ? 'No number' : masked;
+    return masked.isEmpty ? holder : '$holder  ·  $masked';
+  }
 }
 
-/// One document as a single-line row: mini card, type, number, trailing slot.
+/// One document as a row: issuer mark, type, then whose it is and which one.
 ///
-/// Layout follows `manage_account_screen.dart`'s `_Field` — label left, value
-/// right, one line — so the app's two grouped lists read the same way.
-///
-/// Shared by Manage (trailing = drag handle) and Trash (trailing = restore +
-/// delete). Both are reached from the same view picker, so they have to agree
-/// on what a document looks like.
+/// Shared by Manage (no trailing; the row itself is the drag handle) and Trash
+/// (trailing = restore + delete). Both are reached from the same view picker,
+/// so they have to agree on what a document looks like.
 class WalletRowTile extends StatelessWidget {
   const WalletRowTile({
     super.key,
@@ -87,12 +99,15 @@ class WalletRowTile extends StatelessWidget {
   final VoidCallback? onTap;
   final bool showDivider;
 
-  /// Trash rows: the mini card fades, so the list reads as "out of the
-  /// wallet" before a word is read. The text stays full strength to scan.
+  /// Trash rows: the mark fades, so the list reads as "out of the wallet"
+  /// before a word is read. The text stays full strength to scan.
   final bool removed;
 
-  /// Aligns the divider with the title rather than the mini card.
-  static const double _dividerIndent = 60;
+  static const double _hPad = 16;
+  static const double _gap = 14;
+
+  /// Aligns the divider with the title rather than the mark.
+  static const double _dividerIndent = _hPad + WalletDocMark.size + _gap;
 
   @override
   Widget build(BuildContext context) {
@@ -108,34 +123,34 @@ class WalletRowTile extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.fromLTRB(_hPad, 12, 12, 12),
               child: Row(
                 children: <Widget>[
                   Opacity(
                     opacity: removed ? 0.42 : 1,
-                    child: WalletMiniCard(palette: meta.palette),
+                    child: WalletDocMark(item: item),
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    meta.title,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: scheme.onSurface,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: _gap),
                   Expanded(
-                    child: Text(
-                      meta.value,
-                      textAlign: TextAlign.right,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        letterSpacing: -0.2,
-                        color: meta.hasValue
-                            ? AppTokens.secondaryLabel(scheme)
-                            : AppTokens.tertiaryLabel(scheme),
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Text(
+                          meta.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppFonts.ui(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: -0.2,
+                            height: 1.25,
+                            color: AppTheme.ink(theme.brightness),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        _DetailLine(meta: meta, scheme: scheme),
+                      ],
                     ),
                   ),
                   if (trailing != null) ...<Widget>[
@@ -159,38 +174,165 @@ class WalletRowTile extends StatelessWidget {
   }
 }
 
-/// A miniature of the card itself, in that document's own palette.
-///
-/// Deliberately not a glyph on a tinted plate: the list is an index of cards,
-/// so each row is headed by a small version of the card it points at. The
-/// colours come from [WalletPalette], the same source the wallet backdrop
-/// blends, so the list and the carousel agree.
-class WalletMiniCard extends StatelessWidget {
-  const WalletMiniCard({super.key, required this.palette});
+/// Holder, then number. The name gives way first: a long name must never
+/// push the masked number, the one thing that tells two passports of the
+/// same person apart, off the end of the row.
+class _DetailLine extends StatelessWidget {
+  const _DetailLine({required this.meta, required this.scheme});
 
-  final WalletPalette palette;
-
-  static const double _width = 34;
-  static const double _height = 22;
+  final WalletRowMeta meta;
+  final ColorScheme scheme;
 
   @override
   Widget build(BuildContext context) {
+    final TextStyle style = AppFonts.ui(
+      fontSize: 13.5,
+      letterSpacing: -0.1,
+      height: 1.3,
+      color: AppTokens.secondaryLabel(scheme),
+    );
+    if (meta.holder.isEmpty || meta.maskedNumber.isEmpty) {
+      return Text(
+        meta.detail,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+      );
+    }
+    return Row(
+      children: <Widget>[
+        Flexible(
+          child: Text(
+            meta.holder,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
+        ),
+        Text('  ·  ${meta.maskedNumber}', maxLines: 1, style: style),
+      ],
+    );
+  }
+}
+
+/// The document's issuer, in its real artwork, on one neutral tile.
+///
+/// Replaces a gradient swatch that was meant to echo each card's palette but
+/// read as arbitrary colour: the PAN swatch was yellow-green on a pale-blue
+/// card. Every mark here is an asset the app already ships for the card faces
+/// (bank logos, the Aadhaar sun, the national emblem, the passport cover), so
+/// the row says who issued the document instead of decorating it. Anything
+/// without a mark gets a monogram, never an invented colour.
+class WalletDocMark extends StatelessWidget {
+  const WalletDocMark({super.key, required this.item});
+
+  final Object item;
+
+  static const double size = 40;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      width: _width,
-      height: _height,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(5),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[palette.primary, palette.secondary],
+      width: size,
+      height: size,
+      clipBehavior: Clip.antiAlias,
+      decoration: ShapeDecoration(
+        // Issuer logos are drawn for a white field, in both themes: the same
+        // rule [BankMark] follows on the card faces.
+        color: isDark ? const Color(0xFFF2F2F0) : Colors.white,
+        shape: RoundedSuperellipseBorder(
+          borderRadius: BorderRadius.circular(11),
+          side: BorderSide(color: AppTokens.hairline(scheme), width: 0.5),
         ),
-        border: Border.all(
-          color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-          width: 0.5,
+      ),
+      alignment: Alignment.center,
+      child: _mark(),
+    );
+  }
+
+  Widget _mark() {
+    final Object item = this.item;
+    if (item is PassportProfile) {
+      if (_isIndian(item.nationality)) {
+        // The cover is the one passport image people recognise at a glance.
+        return SvgPicture.asset(
+          AppAssets.passportCoverRegular,
+          height: 30,
+          fit: BoxFit.contain,
+          excludeFromSemantics: true,
+        );
+      }
+      return _Monogram(item.nationality);
+    }
+
+    if (item is PaymentCard) {
+      final CardIssuer? issuer = item.bankName.trim().isNotEmpty
+          ? issuerFromName(item.bankName)
+          : cardIssuers
+                .where((CardIssuer i) => i.id == item.issuerId)
+                .firstOrNull;
+      if (issuer == null) return _Monogram(item.displayBank);
+      return Padding(
+        padding: const EdgeInsets.all(7),
+        child: SvgPicture.asset(
+          issuer.logoAsset,
+          fit: BoxFit.contain,
+          excludeFromSemantics: true,
         ),
+      );
+    }
+
+    final IdDocument doc = item as IdDocument;
+    return switch (doc.type) {
+      IdDocumentType.aadhaar => Padding(
+        padding: const EdgeInsets.all(5),
+        child: SvgPicture.asset(
+          AppAssets.aadhaarLogo,
+          fit: BoxFit.contain,
+          excludeFromSemantics: true,
+        ),
+      ),
+      IdDocumentType.pan => Image.asset(
+        AppAssets.passportEmblemStandard,
+        height: 26,
+        fit: BoxFit.contain,
+        excludeFromSemantics: true,
+      ),
+    };
+  }
+
+  /// A passport with no nationality recorded is treated as Indian: every
+  /// passport flow in the app is built around the Indian booklet.
+  static bool _isIndian(String raw) {
+    final String v = raw.trim().toUpperCase();
+    return v.isEmpty || v == 'IND' || v == 'INDIAN' || v == 'INDIA';
+  }
+}
+
+class _Monogram extends StatelessWidget {
+  const _Monogram(this.source);
+
+  final String source;
+
+  @override
+  Widget build(BuildContext context) {
+    final String letters = source
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((String w) => w.isNotEmpty)
+        .take(2)
+        .map((String w) => w[0].toUpperCase())
+        .join();
+    return Text(
+      letters,
+      style: AppFonts.ui(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.2,
+        color: const Color(0xFF1C1C1E),
       ),
     );
   }

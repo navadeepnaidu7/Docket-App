@@ -308,7 +308,7 @@ class _SearchRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (!isPass)
-                      WalletMiniCard(palette: WalletRowMeta.of(item).palette)
+                      WalletDocMark(item: item)
                     else
                       SizedBox(
                         width: 34,

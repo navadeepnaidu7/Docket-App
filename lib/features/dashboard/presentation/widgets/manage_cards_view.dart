@@ -8,10 +8,8 @@ import '../../../../core/assets/app_assets.dart';
 import '../../../../core/haptics/haptic_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/wallet/wallet_items.dart';
-import '../../../../shared/widgets/docket_button.dart';
 import '../../../../shared/widgets/line_icon.dart';
 import '../../../../shared/widgets/wallet_empty_state.dart';
-import '../../../../shared/widgets/wallet_list_headline.dart';
 import '../../application/trash_provider.dart';
 import '../../application/wallet_order_provider.dart';
 import 'manage_order_preview.dart';
@@ -82,13 +80,7 @@ class ManageCardsView extends ConsumerWidget {
       ),
       slivers: <Widget>[
         SliverToBoxAdapter(
-          child: WalletListHeadline(
-            lead: items.length == 1
-                ? '1 document.'
-                : '${items.length} documents.',
-            prompt: 'Arrange your wallet.',
-            hint: 'Drag to reorder. Swipe left to remove.',
-          ),
+          child: _ManageCaption(count: items.length),
         ),
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -107,6 +99,7 @@ class ManageCardsView extends ConsumerWidget {
             sliver: SliverReorderableList(
               itemCount: items.length,
               proxyDecorator: _liftedRow,
+              onReorderStart: (_) => HapticService.longPress(),
               // onReorderItem, not the deprecated onReorder: it hands back a
               // newIndex already adjusted for the removal at oldIndex, so the
               // `if (oldIndex < newIndex) newIndex -= 1` correction the old
@@ -133,19 +126,10 @@ class ManageCardsView extends ConsumerWidget {
         ),
         SliverToBoxAdapter(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(20, 24, 20, bottomInset + 24),
-            // The same quiet pill the empty state uses, so Trash is one
-            // control in one place whether or not the wallet has documents.
-            child: Center(
-              child: DocketButton(
-                label: trashCount > 0 ? 'Trash · $trashCount' : 'Trash',
-                onPressed: onOpenTrash,
-                tone: DocketButtonTone.secondary,
-                expand: false,
-                compact: true,
-                leading: const LineIcon(AppAssets.iconTrash),
-              ),
-            ),
+            padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + 32),
+            // A row in the list's own language rather than a floating pill:
+            // Trash is another place documents live, not a button.
+            child: _TrashEntry(count: trashCount, onTap: onOpenTrash),
           ),
         ),
       ],
@@ -227,27 +211,127 @@ class _ManageRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-
     return Dismissible(
       key: ValueKey<String>('dismiss-${walletItemId(item)}'),
       direction: DismissDirection.endToStart,
       confirmDismiss: (_) => _confirmRemove(context),
       onDismissed: (_) => onRemove(),
       background: const _RemoveSwipeBackground(),
-      child: WalletRowTile(
-        item: item,
-        onTap: onReveal,
-        showDivider: !isLast,
-        trailing: ReorderableDragStartListener(
-          index: index,
-          child: Padding(
-            padding: const EdgeInsets.all(6),
-            child: LineIcon(
-              AppAssets.iconGrip,
-              size: 18,
-              color: AppTokens.tertiaryLabel(scheme),
+      // Hold anywhere on the row to pick it up. A grip glyph on every row
+      // repeated the same mark eighteen times down the list for a gesture
+      // the caption already names.
+      child: ReorderableDelayedDragStartListener(
+        index: index,
+        child: WalletRowTile(
+          item: item,
+          onTap: onReveal,
+          showDivider: !isLast,
+        ),
+      ),
+    );
+  }
+}
+
+/// One quiet line under the header: how many, and the two hidden gestures.
+///
+/// Replaces a 26 pt two-tone headline ("18 documents. Arrange your wallet.")
+/// that stood between the "Manage" title and the list it introduced.
+class _ManageCaption extends StatelessWidget {
+  const _ManageCaption({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final Brightness b = Theme.of(context).brightness;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 4, 24, 14),
+      child: Text.rich(
+        TextSpan(
+          children: <InlineSpan>[
+            TextSpan(
+              text: count == 1 ? '1 document' : '$count documents',
+              style: TextStyle(
+                color: AppTheme.ink(b),
+                fontWeight: FontWeight.w500,
+              ),
             ),
+            const TextSpan(text: '   Hold to reorder, swipe to remove'),
+          ],
+        ),
+        style: AppFonts.ui(
+          fontSize: 14,
+          letterSpacing: -0.1,
+          color: AppTokens.secondaryLabel(scheme),
+        ),
+      ),
+    );
+  }
+}
+
+class _TrashEntry extends StatelessWidget {
+  const _TrashEntry({required this.count, required this.onTap});
+
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme scheme = theme.colorScheme;
+    final bool isDark = theme.brightness == Brightness.dark;
+    return Material(
+      color: AppTokens.groupedFieldFill(scheme, isDark: isDark),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+        side: BorderSide(color: AppTokens.separator(scheme), width: 0.5),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          HapticService.tap();
+          onTap();
+        },
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+          child: Row(
+            children: <Widget>[
+              SizedBox(
+                width: 40,
+                child: LineIcon(
+                  AppAssets.iconTrash,
+                  size: 20,
+                  color: AppTokens.secondaryLabel(scheme),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  'Trash',
+                  style: AppFonts.ui(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: -0.2,
+                    color: AppTheme.ink(theme.brightness),
+                  ),
+                ),
+              ),
+              if (count > 0)
+                Text(
+                  '$count',
+                  style: AppFonts.ui(
+                    fontSize: 15,
+                    color: AppTokens.secondaryLabel(scheme),
+                  ),
+                ),
+              const SizedBox(width: 4),
+              Icon(
+                CupertinoIcons.chevron_forward,
+                size: 16,
+                color: AppTokens.tertiaryLabel(scheme),
+              ),
+            ],
           ),
         ),
       ),

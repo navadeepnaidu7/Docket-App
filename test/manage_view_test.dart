@@ -1,5 +1,4 @@
 import 'package:docket/core/wallet/wallet_items.dart';
-import 'package:docket/core/wallet/wallet_palette.dart';
 import 'package:docket/features/dashboard/application/wallet_loading_provider.dart';
 import 'package:docket/features/dashboard/application/wallet_order_provider.dart';
 import 'package:docket/features/dashboard/presentation/widgets/ids_tab.dart';
@@ -8,6 +7,7 @@ import 'package:docket/features/dashboard/presentation/widgets/manage_order_prev
 import 'package:docket/features/dashboard/presentation/widgets/wallet_row_tile.dart';
 import 'package:docket/features/ids/domain/id_document.dart';
 import 'package:docket/features/passport/domain/passport_profile.dart';
+import 'package:flutter/gestures.dart' show kLongPressTimeout;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -121,11 +121,15 @@ void main() {
       expect(find.text('PAN Card'), findsOneWidget);
       expect(find.text("Asha's Passport"), findsNothing);
       expect(find.text("Asha's ID"), findsNothing);
-      // The number sits on the same line, right-aligned.
-      expect(find.text('Z3456789'), findsOneWidget);
-      expect(find.text('ABCDE1234F'), findsOneWidget);
-      // One mini card per row, in that document's own palette.
-      expect(find.byType(WalletMiniCard), findsNWidgets(2));
+      // Whose it is, then the last four only. Full ID numbers never print
+      // in the index, the same masking bank cards already had.
+      expect(find.text('Asha Rao'), findsNWidgets(2));
+      expect(find.text('  ·  •••• 6789'), findsOneWidget);
+      expect(find.text('  ·  •••• 234F'), findsOneWidget);
+      expect(find.text('Z3456789'), findsNothing);
+      expect(find.text('ABCDE1234F'), findsNothing);
+      // One issuer mark per row.
+      expect(find.byType(WalletDocMark), findsNWidgets(2));
     });
 
     testWidgets('caption counts documents and does not repeat the nav title', (
@@ -134,11 +138,11 @@ void main() {
       await _pumpManage(tester, items: <Object>[_passport(), _id()]);
 
       expect(
-        find.textContaining('2 documents.', findRichText: true),
+        find.textContaining('2 documents', findRichText: true),
         findsOneWidget,
       );
       expect(
-        find.text('Drag to reorder. Swipe left to remove.'),
+        find.textContaining('Hold to reorder', findRichText: true),
         findsOneWidget,
       );
       // The old view drew its own "Wallet order" heading directly under the
@@ -300,14 +304,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Drag the first row's handle down past the second row. Incremental
-      // moves, not one jump: SliverReorderableList only re-evaluates the drop
-      // target as the pointer crosses each row.
-      final Finder handle = find.byType(ReorderableDragStartListener).first;
+      // Hold the first row, then drag it down past the second. The whole row
+      // is the handle, armed by a long press. Incremental moves, not one
+      // jump: SliverReorderableList only re-evaluates the drop target as the
+      // pointer crosses each row.
+      final Finder handle = find
+          .byType(ReorderableDelayedDragStartListener)
+          .first;
       final TestGesture gesture = await tester.startGesture(
         tester.getCenter(handle),
       );
-      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(kLongPressTimeout + const Duration(milliseconds: 100));
       for (int i = 0; i < 12; i++) {
         await gesture.moveBy(const Offset(0, 12));
         await tester.pump(const Duration(milliseconds: 16));
@@ -456,9 +463,9 @@ void main() {
   });
 
   group('Shared row metadata', () {
-    test('the type is the title, and the number is the value', () {
+    test('the type is the title, and the number is masked to four', () {
       expect(WalletRowMeta.of(_passport()).title, 'Passport');
-      expect(WalletRowMeta.of(_passport()).value, 'Z3456789');
+      expect(WalletRowMeta.of(_passport()).maskedNumber, '•••• 6789');
       expect(WalletRowMeta.of(_id()).title, 'PAN Card');
       expect(
         WalletRowMeta.of(_id(type: IdDocumentType.aadhaar)).title,
@@ -470,22 +477,21 @@ void main() {
       final IdDocument blank = IdDocument(
         id: 'x',
         type: IdDocumentType.pan,
+        holderName: '',
+        documentNumber: '',
+      );
+      expect(WalletRowMeta.of(blank).detail, 'No number');
+      expect(WalletRowMeta.of(blank).hasNumber, isFalse);
+    });
+
+    test('a named record with no number shows just the name', () {
+      final IdDocument blank = IdDocument(
+        id: 'x',
+        type: IdDocumentType.pan,
         holderName: 'Asha',
         documentNumber: '',
       );
-      expect(WalletRowMeta.of(blank).value, 'No number');
-      expect(WalletRowMeta.of(blank).hasValue, isFalse);
-    });
-
-    test('each row carries its own card palette, not one shared accent', () {
-      final WalletPalette pass = WalletRowMeta.of(_passport()).palette;
-      final WalletPalette pan = WalletRowMeta.of(_id()).palette;
-      final WalletPalette aadhaar = WalletRowMeta.of(
-        _id(type: IdDocumentType.aadhaar),
-      ).palette;
-
-      expect(pass.primary, isNot(pan.primary));
-      expect(pan.primary, isNot(aadhaar.primary));
+      expect(WalletRowMeta.of(blank).detail, 'Asha');
     });
 
     test('wallet item ids stay stable across both row surfaces', () {
