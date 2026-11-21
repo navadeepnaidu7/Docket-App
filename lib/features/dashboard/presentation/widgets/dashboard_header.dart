@@ -316,8 +316,9 @@ class _ProfileMeshButtonState extends ConsumerState<ProfileMeshButton> {
     // rectangular paint bounds of the mesh child.
     final BoxDecoration shadowDecoration = BoxDecoration(
       color: Colors.transparent,
-      shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
-      borderRadius: isCircle ? null : clipRadius,
+      // Interpolate compatible rounded rectangles; BoxShape.circle cannot be
+      // tweened with a non-null border radius during preference hydration.
+      borderRadius: clipRadius,
       boxShadow: <BoxShadow>[
         BoxShadow(
           color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.14),

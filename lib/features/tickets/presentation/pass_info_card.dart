@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/detail_info_card.dart';
 import 'pass_typography.dart';
 
 /// A titled group of label/value rows on a pass detail screen.
@@ -20,7 +20,8 @@ class PassInfoCard extends StatelessWidget {
     required this.muted,
     required this.isDark,
     required this.rows,
-    this.labelWidth = 110,
+    this.labelWidth = 120,
+    this.valueColor,
   });
 
   final String title;
@@ -30,48 +31,43 @@ class PassInfoCard extends StatelessWidget {
   final List<(String, String)> rows;
   final double labelWidth;
 
+  /// Colour for one row's value, or null for [ink]. Keyed by the row itself
+  /// because blank rows are dropped, so an index would drift.
+  final Color? Function(String label, String value)? valueColor;
+
   @override
   Widget build(BuildContext context) {
-    final Color surface =
-        isDark ? AppTheme.elevated(Brightness.dark) : Colors.white;
-    final Color border = ink.withValues(alpha: isDark ? 0.08 : 0.06);
-
     final List<(String, String)> shown = rows
         .where(((String, String) r) => r.$2.trim().isNotEmpty)
         .toList(growable: false);
     if (shown.isEmpty) return const SizedBox.shrink();
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(title, style: PassType.sectionTitle(ink)),
-          const SizedBox(height: 6),
-          ...shown.map(
-            ((String, String) r) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  SizedBox(
-                    width: labelWidth,
-                    child: Text(r.$1, style: PassType.label(muted)),
+    return DetailInfoCard(
+      title: title,
+      ink: ink,
+      isDark: isDark,
+      children: <Widget>[
+        ...shown.map(
+          ((String, String) r) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                SizedBox(
+                  width: labelWidth,
+                  child: Text(r.$1, style: PassType.label(muted)),
+                ),
+                Expanded(
+                  child: Text(
+                    r.$2,
+                    style: PassType.value(valueColor?.call(r.$1, r.$2) ?? ink),
                   ),
-                  Expanded(
-                    child: Text(r.$2, style: PassType.value(ink)),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

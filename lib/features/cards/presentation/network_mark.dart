@@ -77,7 +77,7 @@ class NetworkMark extends StatelessWidget {
         mark == CardNetwork.unionpay ||
         mark == CardNetwork.jcb ||
         mark == CardNetwork.diners) {
-      return SvgPicture.asset(
+      final logo = SvgPicture.asset(
         'assets/wallet/networks/${mark.name}.svg',
         width: 68,
         height: 30,
@@ -89,6 +89,12 @@ class NetworkMark extends StatelessWidget {
             : null,
         semanticsLabel: mark.label,
       );
+      // Under loose row constraints the SVG sizes itself from its height,
+      // making Discover's wide wordmark spill past the intended stamp width.
+      // A tight box keeps just this mark at the other networks' optical scale.
+      return mark == CardNetwork.discover
+          ? SizedBox(width: 68, height: 18, child: logo)
+          : logo;
     }
     final Color visa = surface.light ? const Color(0xFF1434CB) : Colors.white;
     final Color ruPayWord = surface.ink;

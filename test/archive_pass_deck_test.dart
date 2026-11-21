@@ -5,7 +5,6 @@ import 'package:docket/features/tickets/domain/ticket_models.dart';
 import 'package:docket/features/tickets/presentation/history/archive_pass_deck.dart';
 import 'package:docket/features/tickets/presentation/history/movie_poster_art.dart';
 import 'package:docket/features/tickets/presentation/movie/movie_ticket_face.dart';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
@@ -80,15 +79,24 @@ MoviePass _movie({required String id, required String title}) => MoviePass(
 Future<void> _pumpDeck(
   WidgetTester tester, {
   List<WalletPassItem>? items,
+  Size size = const Size(390, 780),
+  double textScale = 1,
+  Brightness brightness = Brightness.dark,
 }) async {
-  tester.view.physicalSize = const Size(390, 780);
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
   await tester.pumpWidget(
     MaterialApp(
-      theme: ThemeData(brightness: Brightness.dark),
+      theme: ThemeData(brightness: brightness),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
       home: Scaffold(
         body: SafeArea(
           child: ArchivePassDeck(
@@ -134,10 +142,11 @@ void main() {
       find.byType(ArchivePassDeck),
     );
 
+    final Rect dial = tester.getRect(find.byKey(ArchivePassDeck.dialKey));
     final TestGesture gesture = await tester.startGesture(
-      tester.getCenter(find.byKey(ArchivePassDeck.dialKey)),
+      Offset(dial.left + 24, dial.center.dy),
     );
-    await gesture.moveBy(const Offset(-160, 0));
+    await gesture.moveBy(const Offset(90, 0));
     await tester.pump();
 
     expect(state.debugPosition, greaterThan(0));
@@ -152,9 +161,9 @@ void main() {
       (dialPaint.painter! as ArchiveDialPainter).position,
       closeTo(state.debugPosition, 0.001),
     );
-    // The two readouts cross-fade before the swipe has committed.
-    expect(find.text('JAN'), findsOneWidget);
+    // The badge follows the nearest pass while the deck moves continuously.
     expect(find.text('FEB'), findsOneWidget);
+    expect(find.text('2 / 3'), findsOneWidget);
 
     await gesture.up();
     await tester.pumpAndSettle();
@@ -299,47 +308,74 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the ruler is drawn at the gearing the drag uses', (
-    WidgetTester tester,
-  ) async {
-    for (final int count in <int>[3, 10, 40]) {
-      await _pumpDeck(tester, items: _manyItems(count));
-      final ArchivePassDeckState state = tester.state<ArchivePassDeckState>(
-        find.byType(ArchivePassDeck),
-      );
-      final ArchiveDialPainter painter =
-          tester
-                  .widget<CustomPaint>(
-                    find.descendant(
-                      of: find.byKey(ArchivePassDeck.dialKey),
-                      matching: find.byType(CustomPaint),
-                    ),
-                  )
-                  .painter!
-              as ArchiveDialPainter;
+  testWidgets(
+    'tapping the ruler selects the same archive position at any depth',
+    (WidgetTester tester) async {
+      for (final int count in <int>[3, 10, 120]) {
+        await _pumpDeck(tester, items: _manyItems(count));
+        final ArchivePassDeckState state = tester.state<ArchivePassDeckState>(
+          find.byType(ArchivePassDeck),
+        );
+        final Rect dial = tester.getRect(find.byKey(ArchivePassDeck.dialKey));
+        await tester.tapAt(dial.center);
+        await tester.pumpAndSettle();
+        expect(state.debugFocused, ((count - 1) / 2).round());
+        expect(find.text('${state.debugFocused + 1} / $count'), findsOneWidget);
 
-      // A pass of finger travel must move the scale by exactly a pass of
-      // ticks, or the dial slips under the fingertip. On a deep archive one
-      // pass is narrower than the drag slop, so cross several at once.
-      final int passes = math.max(1, (40 / painter.passSpacing).ceil());
-      final Rect dial = tester.getRect(find.byKey(ArchivePassDeck.dialKey));
-      final double before = state.debugPosition;
-      final TestGesture gesture = await tester.startGesture(dial.center);
-      await gesture.moveBy(Offset(-painter.passSpacing * passes, 0));
-      await tester.pump();
-      expect(
-        state.debugPosition - before,
-        closeTo(passes, 0.01),
-        reason: 'gearing disagrees with the ruler at $count passes',
-      );
-      await gesture.up();
-      await tester.pumpAndSettle();
+        await tester.tapAt(Offset(dial.right - 24, dial.center.dy));
+        await tester.pumpAndSettle();
+        expect(state.debugFocused, count - 1);
 
-      // And the ticks stay legible whatever that gearing turns out to be.
-      expect(painter.tickSpacing, greaterThanOrEqualTo(6.0));
-      expect(painter.tickSpacing, lessThanOrEqualTo(26.0));
-    }
+        await tester.tapAt(Offset(dial.left + 24, dial.center.dy));
+        await tester.pumpAndSettle();
+        expect(state.debugFocused, 0);
+        expect(tester.takeException(), isNull);
+      }
+    },
+  );
+
+  testWidgets('a single-pass folder has no artificial travel', (tester) async {
+    await _pumpDeck(tester, items: _manyItems(1));
+    final ArchivePassDeckState state = tester.state<ArchivePassDeckState>(
+      find.byType(ArchivePassDeck),
+    );
+    await tester.drag(
+      find.byKey(ArchivePassDeck.dialKey),
+      const Offset(180, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(state.debugPosition, 0);
+    expect(find.text('1 / 1'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'date badge stays inside the ruler at both ends with large text',
+    (tester) async {
+      for (final Brightness brightness in Brightness.values) {
+        await _pumpDeck(
+          tester,
+          size: const Size(320, 568),
+          textScale: 2,
+          brightness: brightness,
+        );
+        final Rect dial = tester.getRect(find.byKey(ArchivePassDeck.dialKey));
+        for (final double x in <double>[dial.left, dial.right - 1]) {
+          await tester.tapAt(Offset(x, dial.center.dy));
+          await tester.pumpAndSettle();
+          final Rect month = tester.getRect(
+            find.text(x == dial.left ? 'JAN' : 'MAR'),
+          );
+          final Rect year = tester.getRect(
+            find.text(x == dial.left ? '2026' : '2024'),
+          );
+          expect(dial.contains(month.topLeft), isTrue);
+          expect(dial.contains(year.bottomRight), isTrue);
+          expect(tester.takeException(), isNull);
+        }
+      }
+    },
+  );
 
   testWidgets('the dial is an adjustable control for a screen reader', (
     WidgetTester tester,
@@ -390,10 +426,10 @@ void main() {
     final Finder dial = find.byKey(ArchivePassDeck.dialKey);
     final Rect dialBounds = tester.getRect(dial);
     final TestGesture gesture = await tester.startGesture(
-      Offset(dialBounds.right - 24, dialBounds.center.dy),
+      Offset(dialBounds.left + 24, dialBounds.center.dy),
     );
 
-    await gesture.moveBy(const Offset(-342, 0));
+    await gesture.moveBy(const Offset(342, 0));
     await tester.pump();
     expect(state.debugPosition, greaterThan(8.5));
 

@@ -41,6 +41,7 @@ PLAN.md
 lib/generated_plugin_registrant.dart
 
 # Local reference material and scratch output (kept on disk, never committed)
+outputs/
 terminals/
 jmrtd-src/
 jmrtd-sources.jar

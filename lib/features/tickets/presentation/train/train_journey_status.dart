@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../domain/pass_activity_date.dart';
 import '../../domain/ticket_models.dart';
+import '../../domain/train_booking_state.dart';
 
 /// How loud one piece of the status sentence is.
 enum TrainStatusTone { neutral, warning, critical }
@@ -116,9 +117,9 @@ TrainJourneyStatus resolveTrainJourneyStatus(TrainPass pass, DateTime now) {
     final TicketHalt? next = pass.nextHalt;
     final String nextTime = next == null
         ? ''
-        : trainClock24((next.actual ?? '').trim().isEmpty
-              ? next.time
-              : next.actual!);
+        : trainClock24(
+            (next.actual ?? '').trim().isEmpty ? next.time : next.actual!,
+          );
     final List<TrainStatusPart> details = <TrainStatusPart>[
       if (delay > 0)
         TrainStatusPart(
@@ -164,7 +165,10 @@ TrainJourneyStatus resolveTrainJourneyStatus(TrainPass pass, DateTime now) {
     else if (pass.runState == TrainRunState.onTime)
       const TrainStatusPart('on time'),
     if (_unconfirmed(pass.bookingStatus))
-      TrainStatusPart(pass.bookingStatus.trim(), TrainStatusTone.warning),
+      TrainStatusPart(
+        _orRaw(trainQueueLabel(pass.bookingStatus), pass.bookingStatus.trim()),
+        TrainStatusTone.warning,
+      ),
     if (_chartPrepared(pass.chartStatus))
       const TrainStatusPart('chart prepared'),
   ];
@@ -213,9 +217,11 @@ int trainArrivalDayOffset(TrainPass pass) {
   final DateTime? from = PassActivityDate.parse(pass.date);
   final DateTime? to = PassActivityDate.parse(pass.arrivalDate);
   if (from == null || to == null) return 0;
-  final int days = DateTime(to.year, to.month, to.day)
-      .difference(DateTime(from.year, from.month, from.day))
-      .inDays;
+  final int days = DateTime(
+    to.year,
+    to.month,
+    to.day,
+  ).difference(DateTime(from.year, from.month, from.day)).inDays;
   return days > 0 ? days : 0;
 }
 
@@ -334,3 +340,5 @@ bool _chartPrepared(String raw) {
 }
 
 String _orDash(String v) => v.isEmpty ? '—' : v;
+
+String _orRaw(String v, String raw) => v.isEmpty ? raw : v;

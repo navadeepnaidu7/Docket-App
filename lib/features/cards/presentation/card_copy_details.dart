@@ -6,7 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../application/screen_secure.dart';
 import '../domain/card_number.dart';
 import '../domain/payment_card.dart';
-import 'card_entry_fields.dart';
+import '../../../shared/widgets/detail_info_card.dart';
 
 /// Utilities below the issuer information, independent of the card artwork.
 class CardCopyDetails extends StatelessWidget {
@@ -14,7 +14,8 @@ class CardCopyDetails extends StatelessWidget {
   final PaymentCard card;
 
   @override
-  Widget build(BuildContext context) => CardFieldGroup(
+  Widget build(BuildContext context) => DetailInfoCard(
+    title: 'Card information',
     children: [
       _CopyField(
         key: ValueKey('${card.id}:number'),
@@ -151,36 +152,14 @@ class _CopyFieldState extends State<_CopyField> with WidgetsBindingObserver {
         : sensitive && !_revealed
         ? widget.masked!
         : widget.display ?? widget.value;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 4, 12),
-      child: Row(
+    return DetailInfoRow(
+      label: widget.label,
+      value: shown,
+      missing: !present,
+      tabular: true,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.label,
-                  style: AppFonts.ui(
-                    fontSize: 12,
-                    color: AppTokens.secondaryLabel(scheme),
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  shown,
-                  style: AppFonts.ui(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    fontFeatures: AppFonts.tabular,
-                    color: present
-                        ? scheme.onSurface
-                        : AppTokens.secondaryLabel(scheme),
-                  ),
-                ),
-              ],
-            ),
-          ),
           if (present && sensitive)
             IconButton(
               tooltip:
@@ -188,9 +167,9 @@ class _CopyFieldState extends State<_CopyField> with WidgetsBindingObserver {
               onPressed: _toggleReveal,
               icon: Icon(
                 _revealed
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                size: 20,
+                    ? Icons.visibility_off_rounded
+                    : Icons.visibility_rounded,
+                size: 22,
               ),
               color: AppTokens.secondaryLabel(scheme),
             ),
@@ -204,8 +183,8 @@ class _CopyFieldState extends State<_CopyField> with WidgetsBindingObserver {
                     : 'Copy ${widget.label.toLowerCase()}',
                 onPressed: _copy,
                 icon: Icon(
-                  _copied ? Icons.check_rounded : Icons.copy_rounded,
-                  size: 19,
+                  _copied ? Icons.check_rounded : Icons.file_copy_rounded,
+                  size: 22,
                 ),
                 color: _copied
                     ? scheme.onSurface

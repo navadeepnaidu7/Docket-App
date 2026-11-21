@@ -2,6 +2,7 @@
 
 import 'pass_code.dart';
 import 'pass_status.dart';
+import 'train_booking_state.dart';
 
 export 'pass_status.dart' show TicketStatus, PassKind, TrainRunState;
 
@@ -51,13 +52,13 @@ class TicketHalt {
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'time': time,
-        if (actual != null) 'actual': actual,
-        'station': station,
-        if (platform != null) 'platform': platform,
-        'state': state.toJson(),
-        'dateLabel': dateLabel,
-      };
+    'time': time,
+    if (actual != null) 'actual': actual,
+    'station': station,
+    if (platform != null) 'platform': platform,
+    'state': state.toJson(),
+    'dateLabel': dateLabel,
+  };
 }
 
 /// One traveller on a booking (max 6).
@@ -69,6 +70,9 @@ class TicketPassenger {
     required this.berth,
     this.age,
     this.gender,
+    this.currentStatus = '',
+    this.currentSeatDetails = '',
+    this.bookingStatus = '',
   });
 
   final String name;
@@ -78,7 +82,55 @@ class TicketPassenger {
   final int? age;
   final String? gender;
 
-  String get seatLabel => '$coach · $seat · $berth';
+  /// The railway's latest word on this passenger, e.g. "Waitlist" or "CNF".
+  /// Empty until a PNR check has answered.
+  final String currentStatus;
+
+  /// "B3-16" once a berth is allotted, "WL-1" or "RAC-12" while queued.
+  final String currentSeatDetails;
+
+  /// What was booked, e.g. "WL 7". Empty when the provider does not say.
+  final String bookingStatus;
+
+  /// "WL 7", only when it differs from where the passenger stands now. A
+  /// confirmed booking that is still confirmed has nothing to add.
+  String get bookedLabel {
+    final String booked = trainQueueLabel(bookingStatus).isNotEmpty
+        ? trainQueueLabel(bookingStatus)
+        : bookingStatus.trim();
+    if (booked.isEmpty || booked == statusLabel) return '';
+    if (TrainBookingState.classify(booked) == TrainBookingState.confirmed &&
+        bookingState == TrainBookingState.confirmed) {
+      return '';
+    }
+    return booked;
+  }
+
+  TrainBookingState get bookingState =>
+      TrainBookingState.of(<String>[currentStatus, currentSeatDetails]);
+
+  /// "WL 1", "RAC 12", "Confirmed", or empty when nothing has been reported.
+  ///
+  /// The queue position wins over the bare word: "Waitlisted" alone is the
+  /// one thing a waitlisted passenger already knows.
+  String get statusLabel {
+    final String queue = trainQueueLabel(currentSeatDetails);
+    if (queue.isNotEmpty) return queue;
+    return switch (bookingState) {
+      TrainBookingState.confirmed => 'Confirmed',
+      TrainBookingState.rac => 'RAC',
+      TrainBookingState.waitlisted => 'Waitlisted',
+      TrainBookingState.cancelled => 'Cancelled',
+      TrainBookingState.unknown => '',
+    };
+  }
+
+  /// "B3 · 16 · Side Upper", skipping whatever is blank.
+  String get seatLabel => <String>[
+    coach,
+    seat,
+    berth,
+  ].where((String part) => part.trim().isNotEmpty).join(' · ');
 
   factory TicketPassenger.fromJson(Map<String, dynamic> json) {
     return TicketPassenger(
@@ -90,17 +142,23 @@ class TicketPassenger {
           ? json['age'] as int
           : int.tryParse(json['age']?.toString() ?? ''),
       gender: json['gender']?.toString(),
+      currentStatus: json['currentStatus']?.toString() ?? '',
+      currentSeatDetails: json['currentSeatDetails']?.toString() ?? '',
+      bookingStatus: json['bookingStatus']?.toString() ?? '',
     );
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'name': name,
-        'coach': coach,
-        'seat': seat,
-        'berth': berth,
-        if (age != null) 'age': age,
-        if (gender != null) 'gender': gender,
-      };
+    'name': name,
+    'coach': coach,
+    'seat': seat,
+    'berth': berth,
+    if (age != null) 'age': age,
+    if (gender != null) 'gender': gender,
+    if (currentStatus.isNotEmpty) 'currentStatus': currentStatus,
+    if (currentSeatDetails.isNotEmpty) 'currentSeatDetails': currentSeatDetails,
+    if (bookingStatus.isNotEmpty) 'bookingStatus': bookingStatus,
+  };
 }
 
 /// Train booking pass — primary domain type for rail tickets.
@@ -197,10 +255,10 @@ class TrainPass {
 
   /// The scannable code, or null when this pass has none.
   PassCode? get passCode => PassCode.parse(
-        payload: codePayload,
-        payloadBase64: codePayloadBase64,
-        format: codeFormat,
-      );
+    payload: codePayload,
+    payloadBase64: codePayloadBase64,
+    format: codeFormat,
+  );
 
   String get trainTitle => '$trainNumber · $trainName';
 
@@ -250,8 +308,9 @@ class TrainPass {
   }
 
   String get coachesListLabel {
-    final Set<String> uniqueCoaches =
-        passengers.map((TicketPassenger p) => p.coach).toSet();
+    final Set<String> uniqueCoaches = passengers
+        .map((TicketPassenger p) => p.coach)
+        .toSet();
     return uniqueCoaches.join('/');
   }
 
@@ -271,10 +330,10 @@ class TrainPass {
   /// only useful platform is the one it is pulling into next.
   String? get platformLabel {
     final TicketHalt? origin = halts.isEmpty ? null : halts.first;
-    final bool underway =
-        origin != null && origin.state == HaltState.departed;
-    final String? raw =
-        underway ? nextHalt?.platform : (origin?.platform ?? nextHalt?.platform);
+    final bool underway = origin != null && origin.state == HaltState.departed;
+    final String? raw = underway
+        ? nextHalt?.platform
+        : (origin?.platform ?? nextHalt?.platform);
     if (raw == null) return null;
     final String trimmed = raw.trim();
     return trimmed.isEmpty ? null : trimmed;
@@ -291,17 +350,16 @@ class TrainPass {
 
   factory TrainPass.fromJson(Map<String, dynamic> json) {
     final bool imported = json['importInfo'] is Map;
-    final List<dynamic> paxRaw =
-        json['passengers'] is List ? json['passengers'] as List : const [];
-    final List<dynamic> haltRaw =
-        json['halts'] is List ? json['halts'] as List : const [];
+    final List<dynamic> paxRaw = json['passengers'] is List
+        ? json['passengers'] as List
+        : const [];
+    final List<dynamic> haltRaw = json['halts'] is List
+        ? json['halts'] as List
+        : const [];
 
     final List<TicketPassenger> passengers = paxRaw
         .whereType<Map>()
-        .map(
-          (Map m) =>
-              TicketPassenger.fromJson(Map<String, dynamic>.from(m)),
-        )
+        .map((Map m) => TicketPassenger.fromJson(Map<String, dynamic>.from(m)))
         .toList();
 
     if (passengers.isEmpty && !imported) {
@@ -334,10 +392,13 @@ class TrainPass {
       pnr: json['pnr']?.toString() ?? '',
       bookingId: json['bookingId']?.toString() ?? '',
       status: TicketStatus.fromJson(json['status']),
-      bookingStatus: json['bookingStatus']?.toString() ?? (imported ? '' : 'Confirmed'),
-      chartStatus: json['chartStatus']?.toString() ?? (imported ? '' : 'Chart Prepared'),
+      bookingStatus:
+          json['bookingStatus']?.toString() ?? (imported ? '' : 'Confirmed'),
+      chartStatus:
+          json['chartStatus']?.toString() ?? (imported ? '' : 'Chart Prepared'),
       liveStatusLabel:
-          json['liveStatusLabel']?.toString() ?? (imported ? '' : 'Running on time'),
+          json['liveStatusLabel']?.toString() ??
+          (imported ? '' : 'Running on time'),
       // Absent means "the backend did not say", which is not the same as
       // "scheduled with no delay" -- but scheduled is the only safe default,
       // and delayMinutes stays null so the band shows a countdown rather than
@@ -350,8 +411,7 @@ class TrainPass {
           : int.tryParse(json['delayMinutes']?.toString() ?? ''),
       progressFraction: (json['progressFraction'] is num)
           ? (json['progressFraction'] as num).toDouble()
-          : double.tryParse(json['progressFraction']?.toString() ?? '') ??
-              0.0,
+          : double.tryParse(json['progressFraction']?.toString() ?? '') ?? 0.0,
       halts: haltRaw
           .whereType<Map>()
           .map((Map m) => TicketHalt.fromJson(Map<String, dynamic>.from(m)))
@@ -366,39 +426,38 @@ class TrainPass {
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'id': id,
-        'operator': operator,
-        'trainNumber': trainNumber,
-        'trainName': trainName,
-        'fromCode': fromCode,
-        'fromName': fromName,
-        'toCode': toCode,
-        'toName': toName,
-        'departTime': departTime,
-        'arriveTime': arriveTime,
-        'date': date,
-        'arrivalDate': arrivalDate,
-        'duration': duration,
-        'ticketClass': ticketClass,
-        'passengers':
-            passengers.map((TicketPassenger p) => p.toJson()).toList(),
-        'pnr': pnr,
-        'bookingId': bookingId,
-        'status': status.toJson(),
-        'bookingStatus': bookingStatus,
-        'chartStatus': chartStatus,
-        'liveStatusLabel': liveStatusLabel,
-        'runState': runState.toJson(),
-        if (delayMinutes != null) 'delayMinutes': delayMinutes,
-        'progressFraction': progressFraction,
-        'halts': halts.map((TicketHalt h) => h.toJson()).toList(),
-        if (departAt != null) 'departAt': departAt,
-        if (arriveAt != null) 'arriveAt': arriveAt,
-        if (codeType != null) 'codeType': codeType,
-        if (codePayload != null) 'codePayload': codePayload,
-        if (codePayloadBase64 != null) 'codePayloadBase64': codePayloadBase64,
-        if (codeFormat != null) 'codeFormat': codeFormat,
-      };
+    'id': id,
+    'operator': operator,
+    'trainNumber': trainNumber,
+    'trainName': trainName,
+    'fromCode': fromCode,
+    'fromName': fromName,
+    'toCode': toCode,
+    'toName': toName,
+    'departTime': departTime,
+    'arriveTime': arriveTime,
+    'date': date,
+    'arrivalDate': arrivalDate,
+    'duration': duration,
+    'ticketClass': ticketClass,
+    'passengers': passengers.map((TicketPassenger p) => p.toJson()).toList(),
+    'pnr': pnr,
+    'bookingId': bookingId,
+    'status': status.toJson(),
+    'bookingStatus': bookingStatus,
+    'chartStatus': chartStatus,
+    'liveStatusLabel': liveStatusLabel,
+    'runState': runState.toJson(),
+    if (delayMinutes != null) 'delayMinutes': delayMinutes,
+    'progressFraction': progressFraction,
+    'halts': halts.map((TicketHalt h) => h.toJson()).toList(),
+    if (departAt != null) 'departAt': departAt,
+    if (arriveAt != null) 'arriveAt': arriveAt,
+    if (codeType != null) 'codeType': codeType,
+    if (codePayload != null) 'codePayload': codePayload,
+    if (codePayloadBase64 != null) 'codePayloadBase64': codePayloadBase64,
+    if (codeFormat != null) 'codeFormat': codeFormat,
+  };
 }
 
 /// Backward-compatible name used across presentation.

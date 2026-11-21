@@ -25,7 +25,7 @@ import 'movie_poster_art.dart';
 /// A tactile archive browser: one continuously moving, overlapping card deck.
 ///
 /// [_position] is measured in cards rather than pixels. Keeping the deck and
-/// dial on the same fractional value is what makes them feel like one control.
+/// scrubber on the same fractional value is what makes them feel like one control.
 class ArchivePassDeck extends StatefulWidget {
   const ArchivePassDeck({
     super.key,
@@ -61,7 +61,6 @@ class ArchivePassDeckState extends State<ArchivePassDeck>
   double _dragStartX = 0;
   double _dragStartPosition = 0;
   bool _dragging = false;
-  bool _dialScrubbing = false;
   int? _lastDetent;
   bool _atBoundary = false;
   Duration _lastDetentAt = Duration.zero;
@@ -144,16 +143,12 @@ class ArchivePassDeckState extends State<ArchivePassDeck>
     HapticService.select();
   }
 
-  int _detentsPerPass({required bool dial}) =>
-      dial ? ArchiveDialPainter.subdivisionsFor(_dialStep) : 1;
-
   /// The click for arriving at [destination], skipped when the drag already
   /// clicked past that notch on the way there. A detented control is felt as
   /// it passes the notch, not again when it stops moving, and a swipe that
   /// pulses twice a fifth of a second apart reads as a stutter.
   void _landingDetent(double destination) {
-    final int detent = (destination * _detentsPerPass(dial: _dialScrubbing))
-        .round();
+    final int detent = destination.round();
     if (detent == _lastDetent) return;
     _lastDetent = detent;
     _detent();
@@ -165,12 +160,11 @@ class ArchivePassDeckState extends State<ArchivePassDeck>
   }
 
   void _beginDrag(DragStartDetails details, {required bool dial}) {
-    _position.stop(canceled: false);
+    _position.stop();
     _dragging = true;
-    _dialScrubbing = dial;
     _dragStartX = details.globalPosition.dx;
     _dragStartPosition = _position.value;
-    _lastDetent = (_position.value * _detentsPerPass(dial: dial)).round();
+    _lastDetent = _position.value.round();
     _atBoundary = false;
     if (dial) _dialEngagement.forward();
   }
@@ -191,10 +185,7 @@ class ArchivePassDeckState extends State<ArchivePassDeck>
       _position.value = raw;
     }
 
-    // The deck clicks once per pass; the dial clicks once per drawn tick, so
-    // what the ruler shows going by is what the fingertip feels going by.
-    final int detent = (_position.value * _detentsPerPass(dial: _dialScrubbing))
-        .round();
+    final int detent = _position.value.round();
     if (detent != _lastDetent) {
       _lastDetent = detent;
       _detent();
@@ -252,52 +243,43 @@ class ArchivePassDeckState extends State<ArchivePassDeck>
 
   void _handleCardDragCancel() {
     _dragging = false;
-    _dialScrubbing = false;
     _atBoundary = false;
     _settleTo(_nearestIndex(widget.items.length));
   }
 
-  /// Pixels of finger travel per pass — the one gearing the drag, the drawn
-  /// ruler and the tap-to-jump all share.
-  ///
-  /// The archive still spreads across one comfortable sweep, so the gearing
-  /// varies with how deep the folder is; the ruler is drawn to match rather
-  /// than at a fixed spacing of its own. A scale that slides at a rate the
-  /// finger is not driving stops reading as a dial and starts reading as a
-  /// slider. Below the floor — past roughly fifty passes — the sweep gives out
-  /// before the archive does and it takes a second pull, which is the honest
-  /// price of keeping the grip.
-  double get _dialStep {
-    if (widget.items.length < 2) return math.max(_dialWidth, 1);
-    final double sweep = math.max(_dialWidth - 48, 1);
-    return math.max(
-      ArchiveDialPainter.minPassSpacing,
-      sweep / (widget.items.length - 1),
-    );
-  }
-
   void _handleDialDragStart(DragStartDetails details) {
     _beginDrag(details, dial: true);
+    _seekDial(details.localPosition.dx);
   }
 
   void _handleDialDragUpdate(DragUpdateDetails details) {
-    _updateDrag(details, step: _dialStep);
+    _seekDial(details.localPosition.dx);
+  }
+
+  void _seekDial(double x) {
+    if (widget.items.length < 2) return;
+    _position.value = ArchiveDialPainter.positionAt(
+      x,
+      _dialWidth,
+      widget.items.length,
+    );
+    final int detent = _position.value.round();
+    if (detent != _lastDetent) {
+      _lastDetent = detent;
+      _detent();
+    }
   }
 
   void _handleDialDragEnd(DragEndDetails details) {
     _dragging = false;
-    _dialScrubbing = false;
     _atBoundary = false;
-    _lastDetent = null;
     _dialEngagement.reverse();
     _settleTo(_nearestIndex(widget.items.length));
   }
 
   void _handleDialDragCancel() {
     _dragging = false;
-    _dialScrubbing = false;
     _atBoundary = false;
-    _lastDetent = null;
     _dialEngagement.reverse();
     _settleTo(_nearestIndex(widget.items.length));
   }
@@ -305,17 +287,15 @@ class ArchivePassDeckState extends State<ArchivePassDeck>
   void _handleDialTapUp(TapUpDetails details) {
     _dialEngagement.reverse();
     if (widget.items.length < 2) return;
-    final double offset = details.localPosition.dx - _dialWidth / 2;
-    final int delta = (offset / _dialStep).round();
-    if (delta == 0) {
-      HapticService.select();
-      return;
-    }
-    final int target = (_nearestIndex(widget.items.length) + delta).clamp(
-      0,
-      widget.items.length - 1,
+    _position.stop();
+    _lastDetent = _position.value.round();
+    _settleTo(
+      ArchiveDialPainter.positionAt(
+        details.localPosition.dx,
+        _dialWidth,
+        widget.items.length,
+      ).round(),
     );
-    _settleTo(target);
   }
 
   Future<void> _settleTo(int target, {double velocity = 0}) async {
@@ -401,9 +381,17 @@ class ArchivePassDeckState extends State<ArchivePassDeck>
         final double availableHeight = constraints.maxHeight;
         final double dialHeight = math.min(66, availableHeight * 0.095);
         final double dateHeight = math.min(72, availableHeight * 0.105);
+        final double textScale = math.max(
+          1,
+          MediaQuery.textScalerOf(context).scale(13) / 13,
+        );
+        final double scrubberHeight = math.max(
+          dialHeight + dateHeight + 6,
+          64 * textScale + 42,
+        );
         final double deckHeight = math.max(
           180,
-          availableHeight - dialHeight - dateHeight - 18,
+          availableHeight - scrubberHeight - 12,
         );
         final double cardAspect = widget.category == PassHistoryCategory.movie
             ? _MovieArchiveCard.aspectRatio
@@ -448,7 +436,7 @@ class ArchivePassDeckState extends State<ArchivePassDeck>
             ),
             SizedBox(
               key: ArchivePassDeck.dialKey,
-              height: dialHeight,
+              height: scrubberHeight,
               width: double.infinity,
               // Dragging the deck and scrubbing the dial are both gestures a
               // screen reader cannot perform, so the dial doubles as the
@@ -484,29 +472,30 @@ class ArchivePassDeckState extends State<ArchivePassDeck>
                   onHorizontalDragUpdate: _handleDialDragUpdate,
                   onHorizontalDragEnd: _handleDialDragEnd,
                   onHorizontalDragCancel: _handleDialDragCancel,
-                  child: RepaintBoundary(
-                    child: CustomPaint(
-                      painter: ArchiveDialPainter(
-                        itemCount: widget.items.length,
-                        passSpacing: _dialStep,
-                        progress: _position,
-                        engagement: _dialEngagement,
-                        brightness: Theme.of(context).brightness,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: <Widget>[
+                      RepaintBoundary(
+                        child: CustomPaint(
+                          painter: ArchiveDialPainter(
+                            itemCount: widget.items.length,
+                            progress: _position,
+                            engagement: _dialEngagement,
+                            brightness: Theme.of(context).brightness,
+                          ),
+                        ),
                       ),
-                    ),
+                      AnimatedBuilder(
+                        animation: _position,
+                        builder: (BuildContext context, Widget? child) =>
+                            _DateReadout(
+                              key: ArchivePassDeck.dateKey,
+                              items: widget.items,
+                              position: _position.value,
+                            ),
+                      ),
+                    ],
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            SizedBox(
-              height: dateHeight,
-              child: AnimatedBuilder(
-                animation: _position,
-                builder: (BuildContext context, Widget? child) => _DateReadout(
-                  key: ArchivePassDeck.dateKey,
-                  items: widget.items,
-                  position: _position.value,
                 ),
               ),
             ),
@@ -823,10 +812,10 @@ class _MoviePosterFallback extends StatelessWidget {
   }
 }
 
+/// A finite ruler: the marker and the touch share the same archive position.
 class ArchiveDialPainter extends CustomPainter {
   ArchiveDialPainter({
     required this.itemCount,
-    required this.passSpacing,
     required Animation<double> progress,
     required Animation<double> engagement,
     required this.brightness,
@@ -835,103 +824,72 @@ class ArchiveDialPainter extends CustomPainter {
        super(repaint: Listenable.merge(<Listenable>[progress, engagement]));
 
   final int itemCount;
-
-  /// Pixels per pass, handed down from the deck so the scale is drawn at
-  /// exactly the gearing the finger drives. The ruler stays under the
-  /// fingertip instead of sliding at a rate of its own.
-  final double passSpacing;
-
   final Animation<double> _progress;
   final Animation<double> _engagement;
   final Brightness brightness;
 
   double get position => _progress.value;
 
-  static const int _edgeExtensions = 9;
-  static const double minPassSpacing = 7;
+  static double _inset(double width) => math.min(24, width / 4);
+  static double _span(double width) => math.max(1, width - 2 * _inset(width));
+  static double trackY(double height) => height * 0.7;
 
-  /// Ticks are laid at roughly [_idealTickSpacing] apart whatever the gearing,
-  /// so the ruler stays evenly dense: a shallow folder gets more marks between
-  /// passes rather than a wider gap, and a deep one falls back to a plain
-  /// per-pass ruler rather than smearing into a band.
-  static const double _idealTickSpacing = 18;
+  static double positionAt(double x, double width, int count) => count < 2
+      ? 0
+      : ((x - _inset(width)) / _span(width)).clamp(0.0, 1.0) * (count - 1);
 
-  static int subdivisionsFor(double passSpacing) =>
-      (passSpacing / _idealTickSpacing).round().clamp(1, 12);
-
-  int get _subdivisionsPerPass => subdivisionsFor(passSpacing);
-
-  double get tickSpacing => passSpacing / _subdivisionsPerPass;
+  static double markerX(double position, double width, int count) => count < 2
+      ? width / 2
+      : _inset(width) + _span(width) * (position / (count - 1)).clamp(0.0, 1.0);
 
   @override
   void paint(Canvas canvas, Size size) {
     if (itemCount == 0) return;
-    final double centerX = size.width / 2;
-    final double halfWidth = math.max(centerX, 1);
-    final double dialPosition = position * _subdivisionsPerPass;
-    final int radius = (halfWidth / tickSpacing).ceil() + 2;
-    final int firstPassTick = 0;
-    final int lastPassTick = (itemCount - 1) * _subdivisionsPerPass;
-    final int start = math.max(-_edgeExtensions, dialPosition.floor() - radius);
-    final int end = math.min(
-      lastPassTick + _edgeExtensions,
-      dialPosition.ceil() + radius,
-    );
-    final Color neutral = brightness == Brightness.dark
-        ? const Color(0xFFE6E6EB)
-        : const Color(0xFF26262A);
+    final double inset = _inset(size.width);
+    final double span = _span(size.width);
+    final double y = trackY(size.height);
+    final double selectedX = markerX(position, size.width, itemCount);
+    final Color neutral = AppTheme.ink(brightness);
+    final int intervals = math.max(1, (span / 6).round());
+    final Paint tickPaint = Paint()
+      ..strokeWidth = 1.25
+      ..strokeCap = StrokeCap.round;
 
-    for (int tick = start; tick <= end; tick++) {
-      final double delta = tick - dialPosition;
-      final double x = centerX + delta * tickSpacing;
-      if (x < -4 || x > size.width + 4) continue;
-
-      final bool passTick =
-          tick >= firstPassTick &&
-          tick <= lastPassTick &&
-          tick % _subdivisionsPerPass == 0;
-      final double edgeProgress = ((x - centerX).abs() / halfWidth).clamp(0, 1);
-      final double edgeFade = math.pow(1 - edgeProgress, 1.7).toDouble();
-      final double centerFalloff = math.pow(1 - edgeProgress, 1.35).toDouble();
-      final double tickHeight = 6 + 11 * centerFalloff + (passTick ? 5 : 0);
-      final double alpha = (0.04 + 0.30 * edgeFade + (passTick ? 0.12 : 0))
-          .clamp(0, 0.56);
-      final Paint paint = Paint()
-        ..color = neutral.withValues(alpha: alpha)
-        ..strokeWidth = passTick ? 1.65 : 1.05
-        ..strokeCap = StrokeCap.round;
+    // Even spacing keeps the ruler quiet in both short and deep archives.
+    // Haptics mark actual passes; decorative ticks are not extra stops.
+    for (int tick = 0; tick <= intervals; tick++) {
+      final double fraction = tick / intervals;
+      final double x = inset + span * fraction;
+      final double edge = math.min(fraction, 1 - fraction);
+      final double fade = (edge / 0.12).clamp(0.0, 1.0);
+      final bool major = tick % 5 == 0;
+      final double height = major ? 15 : 10;
+      final double proximity = (1 - (x - selectedX).abs() / 36).clamp(0.0, 1.0);
+      tickPaint.color = neutral.withValues(
+        alpha:
+            (0.12 + 0.24 * fade + 0.16 * proximity) *
+            (itemCount == 1 ? 0.55 : 1),
+      );
       canvas.drawLine(
-        Offset(x, size.height / 2 - tickHeight / 2),
-        Offset(x, size.height / 2 + tickHeight / 2),
-        paint,
+        Offset(x, y - height / 2),
+        Offset(x, y + height / 2),
+        tickPaint,
       );
     }
 
-    // The scale moves under this fixed needle, like a physical dial. At rest a
-    // pass tick aligns with it; in motion it becomes a continuous scrub point.
+    // Keep the archive's coral accent, distinct from the theme's gold accent.
     final Color accent = brightness == Brightness.dark
         ? const Color(0xFFC45C60)
         : const Color(0xFFA84D52);
     final double engaged = Curves.easeOutCubic.transform(_engagement.value);
-    final double halfNeedle = 17 + 4 * engaged;
-    if (engaged > 0) {
-      final Paint halo = Paint()
-        ..color = accent.withValues(alpha: 0.08 * engaged)
-        ..strokeWidth = 7 * engaged
-        ..strokeCap = StrokeCap.round;
-      canvas.drawLine(
-        Offset(centerX, size.height / 2 - halfNeedle),
-        Offset(centerX, size.height / 2 + halfNeedle),
-        halo,
-      );
-    }
+    final double halfNeedle = 11 + 2 * engaged;
     final Paint needle = Paint()
-      ..color = accent.withValues(alpha: 0.82 + 0.12 * engaged)
-      ..strokeWidth = 2.5 + engaged
+      ..color = accent
+      ..strokeWidth = 2.5 + 0.5 * engaged
       ..strokeCap = StrokeCap.round;
     canvas.drawLine(
-      Offset(centerX, size.height / 2 - halfNeedle),
-      Offset(centerX, size.height / 2 + halfNeedle),
+      Offset(selectedX, y - halfNeedle),
+      Offset(selectedX, y + halfNeedle),
       needle,
     );
   }
@@ -939,8 +897,9 @@ class ArchiveDialPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant ArchiveDialPainter oldDelegate) =>
       oldDelegate.itemCount != itemCount ||
-      oldDelegate.passSpacing != passSpacing ||
-      oldDelegate.brightness != brightness;
+      oldDelegate.brightness != brightness ||
+      oldDelegate._progress != _progress ||
+      oldDelegate._engagement != _engagement;
 }
 
 class _DateReadout extends StatelessWidget {
@@ -952,86 +911,94 @@ class _DateReadout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) return const SizedBox.shrink();
-
-    final int lower = position.floor().clamp(0, items.length - 1);
-    final int upper = position.ceil().clamp(0, items.length - 1);
-    final double mix = (position - position.floor()).clamp(0, 1);
-    final _MonthYear lowerDate = _MonthYear.of(items[lower]);
-    final _MonthYear upperDate = _MonthYear.of(items[upper]);
-    final int semanticIndex = position.round().clamp(0, items.length - 1);
-    final _MonthYear semanticDate = _MonthYear.of(items[semanticIndex]);
+    final int index = position.round().clamp(0, items.length - 1);
+    final _MonthYear date = _MonthYear.of(items[index]);
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final double textScale = math.max(
+      1,
+      MediaQuery.textScalerOf(context).scale(13) / 13,
+    );
 
     return Semantics(
       container: true,
       liveRegion: true,
-      label:
-          '${semanticDate.spoken}, pass ${semanticIndex + 1} of ${items.length}',
+      label: '${date.spoken}, pass ${index + 1} of ${items.length}',
       child: ExcludeSemantics(
-        child: SizedBox(
-          height: 62,
-          width: 150,
-          child: Stack(
-            alignment: Alignment.topCenter,
-            children: <Widget>[
-              if (lower == upper || lowerDate == upperDate)
-                _MonthYearLabel(value: lowerDate)
-              else ...<Widget>[
-                Opacity(
-                  opacity: 1 - mix,
-                  child: Transform.translate(
-                    offset: Offset(0, -3 * mix),
-                    child: _MonthYearLabel(value: lowerDate),
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final double width = constraints.maxWidth;
+            final double badgeWidth = math.min(width - 32, 108 * textScale);
+            final double badgeHeight = 32 * textScale;
+            final double x = ArchiveDialPainter.markerX(
+              position,
+              width,
+              items.length,
+            );
+            final double left = (x - badgeWidth / 2).clamp(
+              16.0,
+              math.max(16, width - 16 - badgeWidth),
+            );
+            final double y = ArchiveDialPainter.trackY(constraints.maxHeight);
+            return Stack(
+              children: <Widget>[
+                Positioned(
+                  left: left,
+                  width: badgeWidth,
+                  height: badgeHeight,
+                  bottom: constraints.maxHeight - y + 20,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppTheme.elevated(scheme.brightness),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                      border: Border.all(color: AppTokens.separator(scheme)),
+                    ),
+                    child: Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Text(
+                            date.month,
+                            style: AppFonts.ui(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            date.year,
+                            style: AppFonts.ui(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              fontFeatures: AppFonts.tabular,
+                              color: AppTokens.secondaryLabel(scheme),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                Opacity(
-                  opacity: mix,
-                  child: Transform.translate(
-                    offset: Offset(0, 3 * (1 - mix)),
-                    child: _MonthYearLabel(value: upperDate),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: y + 18,
+                  child: Text(
+                    '${index + 1} / ${items.length}',
+                    textAlign: TextAlign.center,
+                    style: AppFonts.ui(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      fontFeatures: AppFonts.tabular,
+                      color: AppTokens.secondaryLabel(scheme),
+                    ),
                   ),
                 ),
               ],
-            ],
-          ),
+            );
+          },
         ),
       ),
-    );
-  }
-}
-
-class _MonthYearLabel extends StatelessWidget {
-  const _MonthYearLabel({required this.value});
-
-  final _MonthYear value;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Text(
-          value.month,
-          style: GoogleFonts.inter(
-            fontSize: 24,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 0.7,
-            height: 1,
-            color: scheme.onSurface.withValues(alpha: 0.92),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          value.year,
-          style: GoogleFonts.inter(
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 0.35,
-            height: 1,
-            color: AppTokens.secondaryLabel(scheme),
-          ),
-        ),
-      ],
     );
   }
 }

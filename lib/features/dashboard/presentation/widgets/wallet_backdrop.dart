@@ -4,18 +4,21 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/wallet/wallet_backdrop_tilt.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/motion/smooth_curves.dart';
 import '../../../../core/wallet/wallet_palette.dart';
 
 class WalletBackdrop extends StatefulWidget {
   const WalletBackdrop({
     super.key,
     this.tabIndex = 0,
+    this.tabAnimation,
     required this.items,
     required this.pageNotifier,
     this.tiltNotifier,
   });
 
   final int tabIndex;
+  final Animation<double>? tabAnimation;
   final List<Object> items;
   final ValueNotifier<double> pageNotifier;
   final WalletBackdropTilt? tiltNotifier;
@@ -102,7 +105,7 @@ class _WalletBackdropState extends State<WalletBackdrop>
     );
     _colorCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: stepSwitchDuration,
       value: widget.tabIndex.toDouble().clamp(0.0, 1.0),
     );
     _ambientClock = _QuantizedClock(_ambientCtrl, _ambientCtrl.duration!);
@@ -147,10 +150,10 @@ class _WalletBackdropState extends State<WalletBackdrop>
   @override
   void didUpdateWidget(WalletBackdrop old) {
     super.didUpdateWidget(old);
-    if (old.tabIndex != widget.tabIndex) {
+    if (widget.tabAnimation == null && old.tabIndex != widget.tabIndex) {
       widget.tabIndex == 1
-          ? _colorCtrl.animateTo(1.0, curve: Curves.easeOutCubic)
-          : _colorCtrl.animateTo(0.0, curve: Curves.easeOutCubic);
+          ? _colorCtrl.animateTo(1.0, curve: strongEaseOut)
+          : _colorCtrl.animateTo(0.0, curve: strongEaseOut);
     }
   }
 
@@ -171,7 +174,7 @@ class _WalletBackdropState extends State<WalletBackdrop>
       // The quantised clocks, not the controllers they wrap.
       _ambientClock,
       _deepClock,
-      _colorCtrl,
+      widget.tabAnimation ?? _colorCtrl,
       widget.pageNotifier,
     ];
     if (widget.tiltNotifier != null) {
@@ -189,7 +192,11 @@ class _WalletBackdropState extends State<WalletBackdrop>
             builder: (context, _) {
               final bool isDark =
                   Theme.of(context).brightness == Brightness.dark;
-              final double ticketsMix = _colorCtrl.value;
+              final double ticketsMix =
+                  (widget.tabAnimation?.value ?? _colorCtrl.value).clamp(
+                    0.0,
+                    1.0,
+                  );
               final WalletPalette palette = WalletPalette.blended(
                 items: widget.items,
                 page: widget.pageNotifier.value,

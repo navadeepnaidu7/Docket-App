@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -273,6 +274,15 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      // Directional screen navigation; bottom sheets keep their own transition.
+      // Retain normal back navigation without a predictive gesture preview.
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        },
+      ),
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor: bg,

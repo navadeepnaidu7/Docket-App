@@ -12,7 +12,8 @@ import '../application/screen_secure.dart';
 import '../domain/payment_card.dart';
 import '../domain/card_number.dart';
 import '../domain/card_surface.dart';
-import 'card_entry_fields.dart';
+import '../../../shared/widgets/detail_info_card.dart';
+import '../../../shared/widgets/detail_typography.dart';
 import 'card_copy_details.dart';
 import 'network_mark.dart';
 import 'card_review_screen.dart';
@@ -63,7 +64,7 @@ class CardDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(
           'Card details',
-          style: AppFonts.ui(fontSize: 18, fontWeight: FontWeight.w600),
+          style: DetailType.screenTitle(scheme.onSurface),
         ),
         scrolledUnderElevation: 0,
         actions: [
@@ -75,7 +76,7 @@ class CardDetailScreen extends ConsumerWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
         children: [
           AspectRatio(
             aspectRatio: WalletCardMetrics.idAspect,
@@ -86,67 +87,52 @@ class CardDetailScreen extends ConsumerWidget {
             child: Text(
               'Tap the last four digits to reveal your card number.',
               textAlign: TextAlign.center,
-              style: AppFonts.ui(
-                fontSize: 12,
-                color: AppTokens.tertiaryLabel(scheme),
-              ),
+              style: DetailType.caption(AppTokens.secondaryLabel(scheme)),
             ),
           ),
-          CardFieldGroup(
+          DetailInfoCard(
+            title: 'Card details',
             children: [
-              _DetailRow(
+              DetailInfoRow(
                 label: 'Bank',
                 value: current.bankName.isEmpty
                     ? 'Not specified'
                     : current.bankName,
               ),
-              _DetailRow(
+              DetailInfoRow(
                 label: 'Network',
                 value: current.network?.label ?? 'Not recognized',
-                trailing: current.network == null
+                valueWidget: current.network == null
                     ? null
-                    : NetworkMark(network: current.network, surface: surface),
+                    : Align(
+                        alignment: Alignment.centerLeft,
+                        child: NetworkMark(
+                          network: current.network,
+                          surface: surface,
+                        ),
+                      ),
               ),
-              _DetailRow(label: 'Card type', value: kind),
+              DetailInfoRow(label: 'Card type', value: kind),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 10),
-            child: Text(
-              'Card information',
-              style: AppFonts.ui(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppTokens.secondaryLabel(scheme),
-              ),
-            ),
-          ),
+          const SizedBox(height: 12),
           CardCopyDetails(card: current),
           if (current.scans.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 10),
-              child: Text(
-                'Scanned photos',
-                style: AppFonts.ui(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: AppTokens.secondaryLabel(scheme),
-                ),
-              ),
-            ),
-            CardFieldGroup(
+            const SizedBox(height: 12),
+            DetailInfoCard(
+              title: 'Scanned photos',
               children: [
                 for (final scan in current.scans)
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    contentPadding: EdgeInsets.zero,
                     leading: Icon(
                       Icons.photo_outlined,
-                      size: 22,
+                      size: 20,
                       color: AppTokens.secondaryLabel(scheme),
                     ),
                     title: Text(
                       _sideLabel(scan.side),
-                      style: AppFonts.ui(fontSize: 15),
+                      style: DetailType.value(scheme.onSurface),
                     ),
                     trailing: Icon(
                       Icons.chevron_right_rounded,
@@ -163,48 +149,6 @@ class CardDetailScreen extends ConsumerWidget {
               ],
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value, this.trailing});
-  final String label;
-  final String value;
-  final Widget? trailing;
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: AppFonts.ui(
-                fontSize: 15,
-                color: AppTokens.secondaryLabel(scheme),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          if (trailing == null)
-            Flexible(
-              fit: FlexFit.tight,
-              child: Text(
-                value,
-                textAlign: TextAlign.right,
-                style: AppFonts.ui(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: scheme.onSurface,
-                ),
-              ),
-            ),
-          if (trailing != null) ...[const SizedBox(width: 12), trailing!],
         ],
       ),
     );

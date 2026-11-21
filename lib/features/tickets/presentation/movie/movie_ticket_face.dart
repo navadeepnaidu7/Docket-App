@@ -10,6 +10,8 @@ import '../../../../core/wallet/wallet_card_metrics.dart';
 import '../../domain/movie_pass_models.dart';
 import '../../domain/pass_code.dart';
 import '../pass_code_view.dart';
+import 'movie_artwork_backdrop.dart';
+import 'movie_blended_poster.dart';
 import 'movie_brand_style.dart';
 import 'movie_ticket_chrome.dart';
 
@@ -29,6 +31,7 @@ class MovieTicketFace extends StatelessWidget {
     required this.pass,
     required this.density,
     this.useBrandColors = false,
+    this.artworkBlend = false,
     this.widthFactor,
     this.onOpenCodes,
   });
@@ -38,6 +41,10 @@ class MovieTicketFace extends StatelessWidget {
 
   /// When true, keep brand colors even if the pass is expired (detail chrome).
   final bool useBrandColors;
+
+  /// Experimental artwork treatment for wallet and expanded views. Share keeps
+  /// the classic face because its caller leaves this disabled.
+  final bool artworkBlend;
 
   /// Optional width shrink vs parent (glance only).
   final double? widthFactor;
@@ -61,6 +68,7 @@ class MovieTicketFace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isActive = pass.status == TicketStatus.active;
+    final bool blend = artworkBlend;
     final MovieBrandStyle style = MovieBrandStyle.forPass(
       pass,
       useBrandColors: useBrandColors,
@@ -79,7 +87,7 @@ class MovieTicketFace extends StatelessWidget {
         borderRadius: BorderRadius.circular(MovieTicketMetrics.cornerR),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: style.bodyGradient.first.withValues(
+            color: (blend ? Colors.black : style.bodyGradient.first).withValues(
               alpha: isActive ? 0.40 : 0.28,
             ),
             blurRadius: 30,
@@ -98,14 +106,16 @@ class MovieTicketFace extends StatelessWidget {
           density: density,
           footerHeight: footerHeight,
           onOpenCodes: onOpenCodes,
+          artworkBlend: blend,
         ),
       ),
     );
 
-    if (factor >= 0.999) return ticket;
+    final Widget cachedTicket = blend ? RepaintBoundary(child: ticket) : ticket;
+    if (factor >= 0.999) return cachedTicket;
 
     return Align(
-      child: FractionallySizedBox(widthFactor: factor, child: ticket),
+      child: FractionallySizedBox(widthFactor: factor, child: cachedTicket),
     );
   }
 }
@@ -120,6 +130,7 @@ class _TicketBody extends StatelessWidget {
     required this.scale,
     required this.density,
     required this.footerHeight,
+    required this.artworkBlend,
     this.onOpenCodes,
   });
 
@@ -129,6 +140,7 @@ class _TicketBody extends StatelessWidget {
   final double scale;
   final MovieTicketDensity density;
   final double footerHeight;
+  final bool artworkBlend;
   final VoidCallback? onOpenCodes;
 
   bool get _detail => density == MovieTicketDensity.detail;
@@ -144,17 +156,19 @@ class _TicketBody extends StatelessWidget {
     return Stack(
       children: <Widget>[
         Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: style.bodyGradient,
-              ),
-            ),
-          ),
+          child: artworkBlend
+              ? MovieArtworkBackdrop(pass: pass)
+              : DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: style.bodyGradient,
+                    ),
+                  ),
+                ),
         ),
-        if (style.showTopHairline)
+        if (!artworkBlend && style.showTopHairline)
           Positioned(
             top: 0,
             left: 0,
@@ -164,7 +178,7 @@ class _TicketBody extends StatelessWidget {
               child: SizedBox(height: 4 * scale),
             ),
           ),
-        if (!style.showTopHairline)
+        if (!artworkBlend && !style.showTopHairline)
           Positioned(
             top: -50,
             right: -30,
@@ -197,9 +211,11 @@ class _TicketBody extends StatelessWidget {
                 key: MovieTicketFace.heroKey,
                 pass: pass,
                 detail: _detail,
+                artworkBlend: artworkBlend,
                 // Detail shows the whole one-sheet; the glance card keeps a
                 // fixed-height crop so the ticket detail below it still fits.
-                height: _detail ? null : 190.0 * scale,
+                // Leave room for a two-line title on the fixed wallet canvas.
+                height: _detail ? null : (artworkBlend ? 180.0 : 190.0) * scale,
                 aspectRatio: _detail ? MovieTicketMetrics.posterAspect : null,
               ),
             ),
@@ -405,11 +421,7 @@ class _TicketBody extends StatelessWidget {
 /// thumbnail is the genuine symbol, small: it is an affordance, not something
 /// to scan from, and the full-screen view is one tap away.
 class _TicketCodes extends StatelessWidget {
-  const _TicketCodes({
-    required this.code,
-    required this.accent,
-    this.onTap,
-  });
+  const _TicketCodes({required this.code, required this.accent, this.onTap});
 
   final PassCode code;
   final Color accent;
@@ -495,6 +507,7 @@ class _HeroBand extends StatelessWidget {
     super.key,
     required this.pass,
     required this.detail,
+    this.artworkBlend = false,
     this.height,
     this.aspectRatio,
   }) : assert(
@@ -504,6 +517,7 @@ class _HeroBand extends StatelessWidget {
 
   final MoviePass pass;
   final bool detail;
+  final bool artworkBlend;
 
   /// Fixed height — the glance card's crop.
   final double? height;
@@ -516,6 +530,16 @@ class _HeroBand extends StatelessWidget {
     // Design probe: glance shows a transparent TMDB title logo on a dark plate when
     // logoUrl is present. Detail always uses the full one-sheet poster (or gradient).
     final bool logoGlance = !detail && pass.resolvedLogoUrl != null;
+    if (artworkBlend && detail) {
+      return MovieBlendedPoster(pass: pass);
+    }
+    if (artworkBlend) {
+      return SizedBox(
+        height: height,
+        width: double.infinity,
+        child: logoGlance ? _buildLogoGlanceArt() : const SizedBox.shrink(),
+      );
+    }
     final Widget art = logoGlance ? _buildLogoGlanceArt() : _buildPosterArt();
 
     return ClipRRect(
@@ -573,20 +597,22 @@ class _HeroBand extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
-        const ColoredBox(color: Color(0xFF0B0B0E)),
-        // Soft lift so the logo does not sit on pure void.
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment.center,
-              radius: 0.95,
-              colors: <Color>[
-                const Color(0xFF1A1A22).withValues(alpha: 0.90),
-                const Color(0xFF0B0B0E),
-              ],
+        if (!artworkBlend) ...<Widget>[
+          const ColoredBox(color: Color(0xFF0B0B0E)),
+          // Soft lift so the logo does not sit on pure void.
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment.center,
+                radius: 0.95,
+                colors: <Color>[
+                  const Color(0xFF1A1A22).withValues(alpha: 0.90),
+                  const Color(0xFF0B0B0E),
+                ],
+              ),
             ),
           ),
-        ),
+        ],
         LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
             return Padding(
@@ -599,11 +625,14 @@ class _HeroBand extends StatelessWidget {
                 fit: BoxFit.contain,
                 fadeInDuration: const Duration(milliseconds: 220),
                 memCacheWidth: _decodeWidth(context, constraints.maxWidth),
-                placeholder: (BuildContext context, String url) =>
-                    const _PosterShimmer(),
+                placeholder: (BuildContext context, String url) => artworkBlend
+                    ? const SizedBox.shrink()
+                    : const _PosterShimmer(),
                 errorWidget: (BuildContext context, String url, Object error) {
                   // Logo miss → same path as a posterless glance (gradient only).
-                  return _buildGradientBackdrop();
+                  return artworkBlend
+                      ? const SizedBox.shrink()
+                      : _buildGradientBackdrop();
                 },
               ),
             );

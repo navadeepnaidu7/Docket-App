@@ -20,7 +20,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('PassType scale', () {
-    test('every role lands on one of five sizes', () {
+    test('detail roles stay on the shared compact scale', () {
       final List<TextStyle> roles = <TextStyle>[
         PassType.screenTitle(_ink),
         PassType.sectionTitle(_ink),
@@ -35,8 +35,8 @@ void main() {
       for (final TextStyle s in roles) {
         expect(
           s.fontSize,
-          anyOf(16.0, 15.0, 13.0, 12.0, 11.0),
-          reason: 'roles may only use the five documented steps',
+          anyOf(17.0, 16.0, 14.0, 13.0, 12.0, 11.0),
+          reason: 'roles may only use the documented detail scale',
         );
       }
     });

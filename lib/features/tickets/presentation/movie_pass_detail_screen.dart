@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../application/movie_artwork_blend_provider.dart';
 import '../domain/movie_pass_models.dart';
 import '../domain/pass_catalog.dart';
 import 'movie/movie_ticket_code_screen.dart';
@@ -12,7 +14,7 @@ import 'pass_typography.dart';
 import 'share/pass_share_actions.dart';
 
 /// Fullscreen e-ticket detail — shared face + booking/cinema sections.
-class MoviePassDetailScreen extends StatelessWidget {
+class MoviePassDetailScreen extends ConsumerWidget {
   const MoviePassDetailScreen({super.key, required this.pass});
 
   final MoviePass pass;
@@ -28,7 +30,7 @@ class MoviePassDetailScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
     final bool isDark = theme.brightness == Brightness.dark;
@@ -74,6 +76,7 @@ class MoviePassDetailScreen extends StatelessWidget {
                     pass: p,
                     density: MovieTicketDensity.detail,
                     useBrandColors: true,
+                    artworkBlend: ref.watch(movieArtworkBlendProvider),
                     onOpenCodes: () => _openCodes(context, p),
                   ),
                   const SizedBox(height: 18),
@@ -114,5 +117,4 @@ class MoviePassDetailScreen extends StatelessWidget {
       ),
     );
   }
-
 }

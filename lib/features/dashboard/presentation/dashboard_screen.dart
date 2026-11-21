@@ -52,6 +52,7 @@ import '../../weather/application/weather_glance_session.dart';
 import 'widgets/travel_weather_glance.dart';
 import 'widgets/easter_egg_sheet_motion.dart';
 import 'widgets/ids_tab.dart';
+import 'widgets/home_tab_transition.dart';
 import 'widgets/manage_cards_view.dart';
 import 'widgets/membership_mesh.dart';
 import 'widgets/pill_tab_bar.dart';
@@ -153,7 +154,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       value: 1,
     );
     _entryFade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
-    _tabCtrl = TabController(length: 2, vsync: this);
+    _tabCtrl = TabController(
+      length: 2,
+      vsync: this,
+      animationDuration: stepSwitchDuration,
+    );
     _tabCtrl.addListener(_onTabChanged);
     _easterEggCtrl = AnimationController.unbounded(
       vsync: this,
@@ -711,6 +716,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             valueListenable: _easterEggOffset,
                             child: WalletBackdrop(
                               tabIndex: _tabCtrl.index,
+                              tabAnimation: _tabCtrl.animation,
                               items: displayItems,
                               pageNotifier: _docPage,
                               tiltNotifier: _backdropTilt,
@@ -789,7 +795,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           case DashboardViewMode.home:
                             viewChild = KeyedSubtree(
                               key: const ValueKey('home_view'),
-                              child: _HomeTabTransition(
+                              child: HomeTabTransition(
                                 controller: _tabCtrl,
                                 ids: IdsTab(
                                   items: displayItems,
@@ -995,63 +1001,4 @@ String _profileMeshSeed({
     return card.id;
   }
   return 'docket-guest';
-}
-
-/// Crossfade + soft lateral slide between IDs and Passes, locked to the
-/// same [TabController] animation the nav pill uses.
-class _HomeTabTransition extends StatelessWidget {
-  const _HomeTabTransition({
-    required this.controller,
-    required this.ids,
-    required this.passes,
-  });
-
-  final TabController controller;
-  final Widget ids;
-  final Widget passes;
-
-  static const double _slidePx = 28;
-
-  @override
-  Widget build(BuildContext context) {
-    final Animation<double> anim = controller.animation!;
-
-    return AnimatedBuilder(
-      animation: anim,
-      builder: (BuildContext context, _) {
-        final double t = anim.value.clamp(0.0, 1.0);
-        // Ease the handoff so mid-transition feels softer than linear fade.
-        final double fadeOut = Curves.easeOutCubic.transform(1.0 - t);
-        final double fadeIn = Curves.easeOutCubic.transform(t);
-
-        return Stack(
-          fit: StackFit.expand,
-          children: <Widget>[
-            // IDs — exit left + fade
-            IgnorePointer(
-              ignoring: t > 0.5,
-              child: Opacity(
-                opacity: fadeOut,
-                child: Transform.translate(
-                  offset: Offset(-_slidePx * t, 0),
-                  child: TickerMode(enabled: t < 1, child: ids),
-                ),
-              ),
-            ),
-            // Passes — enter from right + fade
-            IgnorePointer(
-              ignoring: t < 0.5,
-              child: Opacity(
-                opacity: fadeIn,
-                child: Transform.translate(
-                  offset: Offset(_slidePx * (1.0 - t), 0),
-                  child: passes,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
 }

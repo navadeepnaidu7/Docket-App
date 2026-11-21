@@ -10,6 +10,8 @@ import 'package:pdfrx/pdfrx.dart';
 
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/detail_info_card.dart';
+import '../../../shared/widgets/detail_typography.dart';
 import '../application/attachment_providers.dart';
 import '../application/id_list_provider.dart';
 import '../domain/id_attachment.dart';
@@ -187,7 +189,11 @@ class _IdDocumentScreenState extends ConsumerState<IdDocumentScreen> {
     final index = originals.isEmpty ? 0 : _page.clamp(0, originals.length - 1);
     return Scaffold(
       appBar: AppBar(
-        title: Text(IdDocumentCatalog.titleFor(document.type)),
+        title: Text(
+          IdDocumentCatalog.titleFor(document.type),
+          style: DetailType.screenTitle(scheme.onSurface),
+        ),
+        scrolledUnderElevation: 0,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).push(
@@ -212,7 +218,7 @@ class _IdDocumentScreenState extends ConsumerState<IdDocumentScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
         children: [
           Text(
             document.holderName.isEmpty ? 'Your document' : document.holderName,
@@ -225,7 +231,7 @@ class _IdDocumentScreenState extends ConsumerState<IdDocumentScreen> {
           const SizedBox(height: 6),
           Text(
             'Stored on this device',
-            style: Theme.of(context).textTheme.bodySmall,
+            style: DetailType.caption(AppTokens.secondaryLabel(scheme)),
           ),
           const SizedBox(height: 26),
           Row(
@@ -233,7 +239,7 @@ class _IdDocumentScreenState extends ConsumerState<IdDocumentScreen> {
               Expanded(
                 child: Text(
                   'Originals',
-                  style: AppFonts.ui(fontSize: 17, fontWeight: FontWeight.w600),
+                  style: DetailType.sectionTitle(scheme.onSurface),
                 ),
               ),
               TextButton(
@@ -246,10 +252,10 @@ class _IdDocumentScreenState extends ConsumerState<IdDocumentScreen> {
             IdSection(
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(16),
                   child: Text(
                     'Keep the front, back or original PDF here. Copies stay encrypted on your device.',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: DetailType.label(AppTokens.secondaryLabel(scheme)),
                   ),
                 ),
               ],
@@ -291,7 +297,7 @@ class _IdDocumentScreenState extends ConsumerState<IdDocumentScreen> {
                 Expanded(
                   child: Text(
                     '${idOriginalLabel(originals[index], index)} · ${index + 1} of ${originals.length}',
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: DetailType.caption(AppTokens.secondaryLabel(scheme)),
                   ),
                 ),
                 TextButton(
@@ -301,69 +307,40 @@ class _IdDocumentScreenState extends ConsumerState<IdDocumentScreen> {
               ],
             ),
           ],
-          const SizedBox(height: 24),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(
-              'Details',
-              style: AppFonts.ui(fontSize: 17, fontWeight: FontWeight.w600),
-            ),
-          ),
-          IdSection(
+          const SizedBox(height: 12),
+          DetailInfoCard(
+            title: 'Details',
             children: [
               for (final entry in fields.entries)
-                InkWell(
+                DetailInfoRow(
+                  label: entry.key,
+                  value: entry.value.isEmpty ? 'Not added' : entry.value,
+                  missing: entry.value.isEmpty,
                   onTap: entry.value.isEmpty
                       ? null
                       : () => _copy(entry.key, entry.value),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                entry.key,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                entry.value.isEmpty ? 'Not added' : entry.value,
-                                style: AppFonts.ui(
-                                  fontSize: 17,
-                                  height: 1.35,
-                                  color: entry.value.isEmpty
-                                      ? scheme.onSurfaceVariant
-                                      : scheme.onSurface,
-                                ),
-                              ),
-                            ],
+                  trailing: entry.value.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: _copied == entry.key
+                              ? '${entry.key} copied'
+                              : 'Copy ${entry.key.toLowerCase()}',
+                          onPressed: () => _copy(entry.key, entry.value),
+                          icon: Icon(
+                            _copied == entry.key
+                                ? Icons.check_rounded
+                                : Icons.file_copy_rounded,
+                            size: 22,
+                            color: AppTokens.secondaryLabel(scheme),
                           ),
                         ),
-                        const SizedBox(width: 14),
-                        if (entry.value.isNotEmpty)
-                          ExcludeSemantics(
-                            child: Icon(
-                              _copied == entry.key
-                                  ? CupertinoIcons.checkmark
-                                  : CupertinoIcons.doc_on_doc,
-                              size: 18,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
                 ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             _copied == null ? 'Tap a detail to copy it.' : 'Copied $_copied',
-            style: Theme.of(context).textTheme.bodySmall,
+            style: DetailType.caption(AppTokens.secondaryLabel(scheme)),
           ),
         ],
       ),

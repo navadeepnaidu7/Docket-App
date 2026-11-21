@@ -12,10 +12,12 @@ class WalletMovieCard extends StatefulWidget {
   const WalletMovieCard({
     super.key,
     required this.pass,
+    this.artworkBlend = false,
     this.onLongPress,
   });
 
   final MoviePass pass;
+  final bool artworkBlend;
   final VoidCallback? onLongPress;
 
   @override
@@ -35,9 +37,10 @@ class _WalletMovieCardState extends State<WalletMovieCard>
       duration: const Duration(milliseconds: 120),
       reverseDuration: const Duration(milliseconds: 200),
     );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.975).animate(
-      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 1.0,
+      end: 0.975,
+    ).animate(CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut));
   }
 
   @override
@@ -90,6 +93,7 @@ class _WalletMovieCardState extends State<WalletMovieCard>
                 child: MovieTicketFace(
                   pass: widget.pass,
                   density: MovieTicketDensity.glance,
+                  artworkBlend: widget.artworkBlend,
                 ),
               ),
             ),

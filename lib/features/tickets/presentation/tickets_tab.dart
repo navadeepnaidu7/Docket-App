@@ -10,6 +10,7 @@ import '../../../shared/widgets/bounce_tap.dart';
 import '../../../shared/widgets/rolling_card_page.dart';
 import '../../../shared/widgets/stacked_card_deck.dart';
 import '../../dashboard/application/pass_deck_provider.dart';
+import '../application/movie_artwork_blend_provider.dart';
 import '../application/pass_ingest_controller.dart';
 import '../application/pass_list_provider.dart';
 import '../domain/pass_catalog.dart';
@@ -241,10 +242,13 @@ Widget _passCardFor(WalletPassItem item, {VoidCallback? onLongPress}) {
       ticket: ticket,
       onLongPress: onLongPress,
     ),
-    MoviePassItem(:final pass) => WalletMovieCard(
+    MoviePassItem(:final pass) => Consumer(
       key: ValueKey<String>(pass.id),
-      pass: pass,
-      onLongPress: onLongPress,
+      builder: (context, ref, _) => WalletMovieCard(
+        pass: pass,
+        onLongPress: onLongPress,
+        artworkBlend: ref.watch(movieArtworkBlendProvider),
+      ),
     ),
     BusPassItem(:final pass) => WalletBusCard(
       key: ValueKey<String>(pass.id),

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/haptics/haptic_service.dart';
-import '../../../core/motion/smooth_curves.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/wallet/wallet_card_metrics.dart';
 import '../../../shared/widgets/docket_button.dart';
+import '../../../shared/widgets/pill_segmented.dart';
 import '../domain/pass_catalog.dart';
 import '../domain/pnr_format.dart';
 import '../domain/ticket_models.dart';
+import '../domain/train_booking_state.dart';
 import 'pass_code_view.dart';
 import 'pass_info_card.dart';
 import 'pass_remove_flow.dart';
@@ -156,54 +157,52 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     ),
                   ],
                   const SizedBox(height: 22),
-                  _SegmentedTabs(
-                    index: _tab,
+                  PillSegmented<int>(
+                    value: _tab,
+                    segments: const <(int, String)>[
+                      (0, 'Details'),
+                      (1, 'Live status'),
+                    ],
                     onChanged: (int i) {
                       HapticService.select();
                       setState(() => _tab = i);
                     },
-                    isDark: isDark,
                   ),
                   const SizedBox(height: 16),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 340),
-                    switchInCurve: strongEaseOut,
-                    switchOutCurve: strongEaseOut,
-                    layoutBuilder: (Widget? current, List<Widget> previous) {
-                      return Stack(
-                        alignment: Alignment.topCenter,
-                        children: <Widget>[...previous, ?current],
-                      );
-                    },
-                    transitionBuilder:
-                        (Widget child, Animation<double> animation) {
-                          final Animation<Offset> slide = Tween<Offset>(
-                            begin: const Offset(0, 0.035),
-                            end: Offset.zero,
-                          ).animate(animation);
-                          return FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: slide,
-                              child: child,
+                  // The pill's thumb carries the motion; the content only
+                  // cross-fades in place while the card height eases to fit.
+                  // The old slide-up made both tabs drift through each other.
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 280),
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topCenter,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      reverseDuration: const Duration(milliseconds: 120),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      layoutBuilder: (Widget? current, List<Widget> previous) {
+                        return Stack(
+                          alignment: Alignment.topCenter,
+                          children: <Widget>[...previous, ?current],
+                        );
+                      },
+                      child: _tab == 0
+                          ? _DetailsTab(
+                              key: const ValueKey<String>('details'),
+                              ticket: t,
+                              ink: ink,
+                              muted: muted,
+                              isDark: isDark,
+                            )
+                          : _LiveStatusTab(
+                              key: const ValueKey<String>('live'),
+                              ticket: t,
+                              ink: ink,
+                              muted: muted,
+                              isDark: isDark,
                             ),
-                          );
-                        },
-                    child: _tab == 0
-                        ? _DetailsTab(
-                            key: const ValueKey<String>('details'),
-                            ticket: t,
-                            ink: ink,
-                            muted: muted,
-                            isDark: isDark,
-                          )
-                        : _LiveStatusTab(
-                            key: const ValueKey<String>('live'),
-                            ticket: t,
-                            ink: ink,
-                            muted: muted,
-                            isDark: isDark,
-                          ),
+                    ),
                   ),
                   const SizedBox(height: 24),
                   // Below the tab content, so it is the last thing on either
@@ -222,112 +221,6 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
 // ── Palette ───────────────────────────────────────────────────────────────────
 
 const Color _kMint = Color(0xFF1FBF75);
-
-// ── Segmented control ─────────────────────────────────────────────────────────
-
-class _SegmentedTabs extends StatelessWidget {
-  const _SegmentedTabs({
-    required this.index,
-    required this.onChanged,
-    required this.isDark,
-  });
-
-  final int index;
-  final ValueChanged<int> onChanged;
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color track = isDark
-        ? Colors.white.withValues(alpha: 0.08)
-        : const Color(0xFFEEF1EE);
-    final Color selected = isDark
-        ? AppTheme.elevated(Brightness.dark)
-        : Colors.white;
-    final Color ink = Theme.of(context).colorScheme.onSurface;
-
-    return Container(
-      height: 42,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: track,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: _SegButton(
-              label: 'Details',
-              selected: index == 0,
-              selectedBg: selected,
-              ink: ink,
-              onTap: () => onChanged(0),
-            ),
-          ),
-          Expanded(
-            child: _SegButton(
-              label: 'Live status',
-              selected: index == 1,
-              selectedBg: selected,
-              ink: ink,
-              onTap: () => onChanged(1),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SegButton extends StatelessWidget {
-  const _SegButton({
-    required this.label,
-    required this.selected,
-    required this.selectedBg,
-    required this.ink,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final Color selectedBg;
-  final Color ink;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? selectedBg : Colors.transparent,
-          borderRadius: BorderRadius.circular(11),
-          boxShadow: selected
-              ? <BoxShadow>[
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: AnimatedDefaultTextStyle(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          style: PassType.value(
-            selected ? ink : ink.withValues(alpha: 0.48),
-          ).copyWith(fontWeight: selected ? FontWeight.w700 : FontWeight.w500),
-          child: Text(label),
-        ),
-      ),
-    );
-  }
-}
 
 // ── Details tab ───────────────────────────────────────────────────────────────
 
@@ -349,6 +242,8 @@ class _DetailsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final MockTicket t = ticket;
     final bool onePassenger = t.passengerCount == 1;
+    final TicketPassenger primary = t.primaryPassenger;
+    final String bookingStatus = _bookingStatus(t.bookingStatus);
 
     return Column(
       key: key,
@@ -373,35 +268,89 @@ class _DetailsTab extends StatelessWidget {
           muted: muted,
           isDark: isDark,
           rows: <(String, String)>[
-            ('Status', t.bookingStatus),
+            ('Status', bookingStatus),
             ('PNR', PnrFormat.display(t.pnr)),
             ('Chart', t.chartStatus),
           ],
+          valueColor: (String label, String value) => label == 'Status'
+              ? _stateColor(TrainBookingState.classify(value))
+              : null,
         ),
         if (t.passengers.isNotEmpty) ...<Widget>[
           const SizedBox(height: 12),
+          // The default label width, the same as Journey and Booking, so every
+          // value on the screen starts on one line.
           PassInfoCard(
             title: onePassenger ? 'Passenger' : 'Passengers',
             ink: ink,
             muted: muted,
             isDark: isDark,
-            labelWidth: onePassenger ? 110 : 150,
             rows: onePassenger
                 ? <(String, String)>[
-                    ('Name', t.passengerName),
-                    ('Coach', t.coach),
-                    ('Seat', t.seat),
-                    ('Berth', t.berth),
+                    ('Name', primary.name),
+                    ('Status', primary.statusLabel),
+                    ('Booked', primary.bookedLabel),
+                    ('Coach', primary.coach),
+                    ('Seat', primary.seat),
+                    ('Berth', primary.berth),
                   ]
                 : <(String, String)>[
                     for (final TicketPassenger passenger in t.passengers)
-                      (passenger.name, passenger.seatLabel),
+                      (passenger.name, _passengerLine(passenger)),
                   ],
+            valueColor: (String label, String value) {
+              if (onePassenger) {
+                return label == 'Status'
+                    ? _stateColor(primary.bookingState)
+                    : null;
+              }
+              for (final TicketPassenger passenger in t.passengers) {
+                if (passenger.name == label) {
+                  return _stateColor(passenger.bookingState);
+                }
+              }
+              return null;
+            },
           ),
         ],
       ],
     );
   }
+
+  /// "GNWL/14" reads as "GNWL 14"; any other status is shown as sent.
+  static String _bookingStatus(String raw) {
+    final String queue = trainQueueLabel(raw);
+    return queue.isEmpty ? raw.trim() : queue;
+  }
+
+  /// One line per passenger: the queue position while waiting, the berth once
+  /// allotted, both for RAC, which shares a berth before it is confirmed.
+  static String _passengerLine(TicketPassenger p) {
+    final String seat = p.seatLabel;
+    final String booked = p.bookedLabel;
+    final String now = switch (p.bookingState) {
+      TrainBookingState.waitlisted ||
+      TrainBookingState.cancelled => p.statusLabel,
+      TrainBookingState.rac =>
+        seat.isEmpty ? p.statusLabel : '${p.statusLabel} · $seat',
+      TrainBookingState.confirmed ||
+      TrainBookingState.unknown => seat.isEmpty ? p.statusLabel : seat,
+    };
+    return booked.isEmpty ? now : '$now · booked $booked';
+  }
+
+  /// Confirmed green, RAC amber, waitlisted and cancelled red. Unknown stays
+  /// ink: no colour is better than a guessed one. Each tone is darkened on the
+  /// light surface and lifted on the dark one to stay readable as text.
+  Color? _stateColor(TrainBookingState state) => switch (state) {
+    TrainBookingState.confirmed =>
+      isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+    TrainBookingState.rac =>
+      isDark ? const Color(0xFFFACC15) : const Color(0xFFA16207),
+    TrainBookingState.waitlisted || TrainBookingState.cancelled =>
+      isDark ? const Color(0xFFF87171) : const Color(0xFFB91C1C),
+    TrainBookingState.unknown => null,
+  };
 
   /// Time alone when arrival is the same day. The date is already on the
   /// journey row, so repeating it on every same-day ticket is noise.

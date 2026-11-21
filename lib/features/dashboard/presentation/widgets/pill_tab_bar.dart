@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/haptics/haptic_service.dart';
+import '../../../../core/motion/smooth_curves.dart';
 
 import '../../application/nav_icon_style_provider.dart';
 import '../../application/nav_labels_provider.dart';
@@ -63,8 +64,14 @@ class _PillTabBarState extends ConsumerState<PillTabBar> {
         color: isDark ? const Color(0xFF141416) : Colors.white,
         borderRadius: BorderRadius.circular(99),
         border: isDark
-            ? Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5)
-            : Border.all(color: Colors.black.withValues(alpha: 0.06), width: 0.5),
+            ? Border.all(
+                color: Colors.white.withValues(alpha: 0.08),
+                width: 0.5,
+              )
+            : Border.all(
+                color: Colors.black.withValues(alpha: 0.06),
+                width: 0.5,
+              ),
         boxShadow: <BoxShadow>[
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
@@ -81,39 +88,57 @@ class _PillTabBarState extends ConsumerState<PillTabBar> {
             children: [
               TabLabel(
                 label: 'IDs',
-                iconBuilder: (context, progress, activeColor, inactiveColor, showLabels) {
-                  final ({double w, double h}) size =
-                      _idsIconSize(showLabels, idsVertical);
-                  return NavBarSvgIcon(
-                    filledAsset: idsAssets.filled,
-                    unfilledAsset: idsAssets.unfilled,
-                    activeColor: activeColor,
-                    inactiveColor: inactiveColor,
-                    width: size.w,
-                    height: size.h,
-                    progress: progress,
-                  );
-                },
+                iconBuilder:
+                    (
+                      context,
+                      progress,
+                      activeColor,
+                      inactiveColor,
+                      showLabels,
+                    ) {
+                      final ({double w, double h}) size = _idsIconSize(
+                        showLabels,
+                        idsVertical,
+                      );
+                      return NavBarSvgIcon(
+                        filledAsset: idsAssets.filled,
+                        unfilledAsset: idsAssets.unfilled,
+                        activeColor: activeColor,
+                        inactiveColor: inactiveColor,
+                        width: size.w,
+                        height: size.h,
+                        progress: progress,
+                      );
+                    },
                 index: 0,
                 controller: widget.controller,
                 t: t,
               ),
               TabLabel(
                 label: 'Passes',
-                iconBuilder: (context, progress, activeColor, inactiveColor, showLabels) {
-                  final ({double w, double h}) size =
-                      _passesIconSize(showLabels, passesVertical);
-                  return NavBarSvgIcon(
-                    filledAsset: passesAssets.filled,
-                    unfilledAsset: passesAssets.unfilled,
-                    activeColor: activeColor,
-                    inactiveColor: inactiveColor,
-                    width: size.w,
-                    height: size.h,
-                    progress: progress,
-                    offsetX: passesVertical ? 3.5 : 2.0,
-                  );
-                },
+                iconBuilder:
+                    (
+                      context,
+                      progress,
+                      activeColor,
+                      inactiveColor,
+                      showLabels,
+                    ) {
+                      final ({double w, double h}) size = _passesIconSize(
+                        showLabels,
+                        passesVertical,
+                      );
+                      return NavBarSvgIcon(
+                        filledAsset: passesAssets.filled,
+                        unfilledAsset: passesAssets.unfilled,
+                        activeColor: activeColor,
+                        inactiveColor: inactiveColor,
+                        width: size.w,
+                        height: size.h,
+                        progress: progress,
+                        offsetX: passesVertical ? 3.5 : 2.0,
+                      );
+                    },
                 index: 1,
                 controller: widget.controller,
                 t: t,
@@ -173,31 +198,44 @@ class TabLabel extends ConsumerWidget {
     Color activeColor,
     Color inactiveColor,
     bool showLabels,
-  ) iconBuilder;
+  )
+  iconBuilder;
   final int index;
   final TabController controller;
   final double t;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final double progress = index == 0
-        ? ((1 - t) * 2).clamp(0.0, 1.0)
-        : ((t - 0.5) * 2).clamp(0.0, 1.0);
+    final double progress = index == 0 ? 1 - t : t;
     final bool showLabels = ref.watch(showNavLabelsProvider);
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final Color activeIconColor = isDark ? Colors.white : const Color(0xFF1C1C1E);
+    final Color activeIconColor = isDark
+        ? Colors.white
+        : const Color(0xFF1C1C1E);
     final Color inactiveIconColor = const Color(0xFF8E8E93);
-    final Color activeTextColor = isDark ? Colors.white : const Color(0xFF1C1C1E);
+    final Color activeTextColor = isDark
+        ? Colors.white
+        : const Color(0xFF1C1C1E);
     final Color inactiveTextColor = const Color(0xFF8E8E93);
-    final Color labelColor = Color.lerp(inactiveTextColor, activeTextColor, progress)!;
+    final Color labelColor = Color.lerp(
+      inactiveTextColor,
+      activeTextColor,
+      progress,
+    )!;
 
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () {
           HapticService.select();
-          controller.animateTo(index);
+          controller.animateTo(
+            index,
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? reducedSwitchDuration
+                : stepSwitchDuration,
+            curve: strongEaseOut,
+          );
         },
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -228,7 +266,9 @@ class TabLabel extends ConsumerWidget {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 11.5,
-                            fontWeight: progress >= 0.5 ? FontWeight.w700 : FontWeight.w500,
+                            fontWeight: progress >= 0.5
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                             letterSpacing: -0.1,
                             color: labelColor,
                           ),
