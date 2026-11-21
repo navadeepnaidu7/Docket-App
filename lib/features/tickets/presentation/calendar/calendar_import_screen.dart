@@ -405,7 +405,9 @@ class _NeedsDetailsList extends ConsumerWidget {
         ref
             .watch(passListProvider)
             .valueOrNull
-            ?.where((WalletPassItem p) => p.importInfo?.canAttachTicket ?? false)
+            ?.where(
+              (WalletPassItem p) => p.importInfo?.canAttachTicket ?? false,
+            )
             .toList(growable: false) ??
         const <WalletPassItem>[];
     if (items.isEmpty) return const SizedBox.shrink();
@@ -483,6 +485,7 @@ class _NeedsDetailsList extends ConsumerWidget {
       PassKind.train => PassInputCategory.train,
       PassKind.movie => PassInputCategory.movie,
       PassKind.bus => PassInputCategory.bus,
+      PassKind.flight => PassInputCategory.flight,
     };
     try {
       await ref

@@ -195,6 +195,21 @@ Unknown `brand` → client maps to **`universal`**.
 Do **not** send **brand** logo assets (BookMyShow, District, …); brand styling is client-side.
 `logoUrl` is a different thing — it is the *film's* title treatment, covered below.
 
+### Airline logos
+
+```
+GET /img/airline/{IATA}.svg
+```
+
+- **Public**, like posters. `IATA` is the two-character designator in upper case (`EK`,
+  `6E`); anything else, or an airline with no logo, is `404` and the face prints the name.
+- One-colour SVG silhouettes embedded in the server binary (`internal/brands`), so no
+  upstream fetch. The client tints them to the pass ink.
+- `Cache-Control: public, max-age=2592000`, a content-hash `ETag` (`304` on match), and gzip
+  when the client accepts it. The app keeps a disk copy and refreshes it after max-age.
+- The client only asks for codes in its own table (`airline_brands.dart`); the server's set
+  and the app's table are kept in step by hand.
+
 ### Poster art
 
 Movie posters are resolved server-side from TMDB and served through the Docket API:

@@ -134,21 +134,21 @@ bool _looksNonTicket(String payload) {
 /// Returns null for formats that cannot be reproduced — [BarcodeFormat.unknown]
 /// most of all. A code we cannot re-render is not one we should claim to have.
 PassCodeFormat? passCodeFormatFor(BarcodeFormat format) => switch (format) {
-      BarcodeFormat.qrCode => PassCodeFormat.qr,
-      BarcodeFormat.aztec => PassCodeFormat.aztec,
-      BarcodeFormat.dataMatrix => PassCodeFormat.dataMatrix,
-      BarcodeFormat.pdf417 => PassCodeFormat.pdf417,
-      BarcodeFormat.code128 => PassCodeFormat.code128,
-      BarcodeFormat.code39 => PassCodeFormat.code39,
-      BarcodeFormat.code93 => PassCodeFormat.code93,
-      BarcodeFormat.codabar => PassCodeFormat.codabar,
-      BarcodeFormat.ean13 => PassCodeFormat.ean13,
-      BarcodeFormat.ean8 => PassCodeFormat.ean8,
-      BarcodeFormat.itf => PassCodeFormat.itf,
-      BarcodeFormat.upca => PassCodeFormat.upcA,
-      BarcodeFormat.upce => PassCodeFormat.upcE,
-      _ => null,
-    };
+  BarcodeFormat.qrCode => PassCodeFormat.qr,
+  BarcodeFormat.aztec => PassCodeFormat.aztec,
+  BarcodeFormat.dataMatrix => PassCodeFormat.dataMatrix,
+  BarcodeFormat.pdf417 => PassCodeFormat.pdf417,
+  BarcodeFormat.code128 => PassCodeFormat.code128,
+  BarcodeFormat.code39 => PassCodeFormat.code39,
+  BarcodeFormat.code93 => PassCodeFormat.code93,
+  BarcodeFormat.codabar => PassCodeFormat.codabar,
+  BarcodeFormat.ean13 => PassCodeFormat.ean13,
+  BarcodeFormat.ean8 => PassCodeFormat.ean8,
+  BarcodeFormat.itf => PassCodeFormat.itf,
+  BarcodeFormat.upca => PassCodeFormat.upcA,
+  BarcodeFormat.upce => PassCodeFormat.upcE,
+  _ => null,
+};
 
 class TicketCodeScanner {
   TicketCodeScanner();
@@ -173,8 +173,9 @@ class TicketCodeScanner {
   /// Every format, not just QR. Cinemas print Code 128 strips as often as QR
   /// and airlines use PDF417 or Aztec, so restricting this to `qrCode` would
   /// silently skip whole categories of real ticket.
-  static final BarcodeScanner _scanner =
-      BarcodeScanner(formats: <BarcodeFormat>[BarcodeFormat.all]);
+  static final BarcodeScanner _scanner = BarcodeScanner(
+    formats: <BarcodeFormat>[BarcodeFormat.all],
+  );
 
   /// Decodes the code on [file], or returns null when there is none to find.
   ///
@@ -196,8 +197,9 @@ class TicketCodeScanner {
   }
 
   Future<ScannedTicketCode?> _scanImageFile(String path) async {
-    final List<Barcode> found =
-        await _scanner.processImage(InputImage.fromFilePath(path));
+    final List<Barcode> found = await _scanner.processImage(
+      InputImage.fromFilePath(path),
+    );
     return selectTicketCode(_candidatesFrom(found));
   }
 
@@ -221,7 +223,10 @@ class TicketCodeScanner {
     }
   }
 
-  Future<ScannedTicketCode?> _scanPdfPage(PdfDocument doc, int pageNumber) async {
+  Future<ScannedTicketCode?> _scanPdfPage(
+    PdfDocument doc,
+    int pageNumber,
+  ) async {
     PdfPage? page;
     File? rendered;
     try {

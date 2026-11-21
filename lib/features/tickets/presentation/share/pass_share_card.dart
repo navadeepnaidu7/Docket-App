@@ -10,6 +10,8 @@ import '../../domain/pass_share_summary.dart';
 import '../../domain/ticket_models.dart';
 import '../bus/bus_pass_theme.dart';
 import '../bus/bus_ticket_face.dart';
+import '../flight/flight_pass_theme.dart';
+import '../flight/flight_ticket_face.dart';
 import '../movie/movie_ticket_face.dart';
 import '../train/train_pass_theme.dart';
 import '../train/train_ticket_face.dart';
@@ -54,8 +56,8 @@ class PassShareCard extends StatelessWidget {
   /// Every face is drawn at this width whatever its own canvas is, so a train
   /// and a movie shared into the same chat arrive the same size. The widest
   /// canvas wins; the narrower one scales up to meet it.
-  static double get _faceWidth => WalletCardMetrics.ticketCanvasWidth >
-          WalletCardMetrics.trainCanvasWidth
+  static double get _faceWidth =>
+      WalletCardMetrics.ticketCanvasWidth > WalletCardMetrics.trainCanvasWidth
       ? WalletCardMetrics.ticketCanvasWidth
       : WalletCardMetrics.trainCanvasWidth;
 
@@ -131,29 +133,33 @@ class PassShareCard extends StatelessWidget {
   Widget _face() {
     final (Size canvas, Widget face) = switch (item) {
       TrainPassItem(:final TrainPass ticket) => (
-          TrainPassMetrics.canvas,
-          TrainTicketFace(
-            ticket: ticket,
-            density: TrainTicketDensity.glance,
-            useBrandColors: true,
-          ),
+        TrainPassMetrics.canvas,
+        TrainTicketFace(
+          ticket: ticket,
+          density: TrainTicketDensity.glance,
+          useBrandColors: true,
         ),
+      ),
       BusPassItem(:final BusPass pass) => (
-          BusPassMetrics.canvas,
-          BusTicketFace(pass: pass, useBrandColors: true),
-        ),
+        BusPassMetrics.canvas,
+        BusTicketFace(pass: pass, useBrandColors: true),
+      ),
+      FlightPassItem(:final pass) => (
+        FlightPassMetrics.canvas,
+        FlightTicketFace(pass: pass, useBrandColors: true),
+      ),
       // Glance density is also what selects the transparent title logo over the
       // full one-sheet poster (`_HeroBand`, docs/features/movie-logo-glance.md).
       // The logo is legible at this size and keeps the exported PNG a fraction
       // of what a 2:3 poster would cost.
       MoviePassItem(:final MoviePass pass) => (
-          WalletCardMetrics.ticketCanvas,
-          MovieTicketFace(
-            pass: pass,
-            density: MovieTicketDensity.glance,
-            useBrandColors: true,
-          ),
+        WalletCardMetrics.ticketCanvas,
+        MovieTicketFace(
+          pass: pass,
+          density: MovieTicketDensity.glance,
+          useBrandColors: true,
         ),
+      ),
     };
 
     return SizedBox(

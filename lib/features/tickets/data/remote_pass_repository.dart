@@ -11,9 +11,9 @@ class RemotePassRepository implements PassRepository {
 
   @override
   Future<List<WalletPassItem>> fetchPasses({TicketStatus? status}) {
-    return _api.fetchPasses(status: status).then(
-          (PassListResponse res) => res.items,
-        );
+    return _api
+        .fetchPasses(status: status)
+        .then((PassListResponse res) => res.items);
   }
 
   @override

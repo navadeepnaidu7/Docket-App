@@ -111,15 +111,16 @@ class PassShareService {
       await WidgetsBinding.instance.endOfFrame;
       await WidgetsBinding.instance.endOfFrame;
 
-      final RenderObject? object =
-          boundaryKey.currentContext?.findRenderObject();
+      final RenderObject? object = boundaryKey.currentContext
+          ?.findRenderObject();
       if (object is! RenderRepaintBoundary) return null;
 
       final double pixelRatio = _pixelRatioFor(object.size.height);
       final ui.Image image = await object.toImage(pixelRatio: pixelRatio);
       try {
-        final ByteData? data =
-            await image.toByteData(format: ui.ImageByteFormat.png);
+        final ByteData? data = await image.toByteData(
+          format: ui.ImageByteFormat.png,
+        );
         return data?.buffer.asUint8List();
       } finally {
         image.dispose();
@@ -164,8 +165,10 @@ class PassShareService {
     if (url == null) return;
 
     try {
-      await precacheImage(CachedNetworkImageProvider(url), context)
-          .timeout(_artTimeout);
+      await precacheImage(
+        CachedNetworkImageProvider(url),
+        context,
+      ).timeout(_artTimeout);
     } catch (_) {
       // Gradient fallback it is.
     }
@@ -258,17 +261,17 @@ class PassShareService {
     } on GalException catch (e) {
       return switch (e.type) {
         GalExceptionType.accessDenied => const PassShareResult(
-            PassShareStatus.denied,
-            'Docket needs photo access to save the pass.',
-          ),
+          PassShareStatus.denied,
+          'Docket needs photo access to save the pass.',
+        ),
         GalExceptionType.notEnoughSpace => const PassShareResult(
-            PassShareStatus.failed,
-            'Not enough space to save the pass.',
-          ),
+          PassShareStatus.failed,
+          'Not enough space to save the pass.',
+        ),
         _ => const PassShareResult(
-            PassShareStatus.failed,
-            'Could not save the pass.',
-          ),
+          PassShareStatus.failed,
+          'Could not save the pass.',
+        ),
       };
     } catch (_) {
       return const PassShareResult(

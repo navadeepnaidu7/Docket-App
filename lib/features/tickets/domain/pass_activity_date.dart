@@ -77,11 +77,17 @@ abstract final class PassActivityDate {
   /// Prefers the ISO field but falls through on a malformed one, so a bad
   /// `departAt` never hides a perfectly good display date.
   static DateTime? of(WalletPassItem item) => switch (item) {
-        TrainPassItem(:final ticket) =>
-          parse(ticket.departAt) ?? parse(ticket.date),
-        MoviePassItem(:final pass) => parse(pass.showAt) ?? parse(pass.showDate),
-        BusPassItem(:final pass) => parse(pass.departAt) ?? parse(pass.date),
-      };
+    TrainPassItem(:final ticket) =>
+      parse(ticket.departAt) ?? parse(ticket.date),
+    MoviePassItem(:final pass) => parse(pass.showAt) ?? parse(pass.showDate),
+    BusPassItem(:final pass) => parse(pass.departAt) ?? parse(pass.date),
+    // The airport's calendar day, not the phone's: a 00:40 departure
+    // files under the day printed on the pass.
+    FlightPassItem(:final pass) => switch (pass.departAt?.local) {
+      final DateTime l => DateTime(l.year, l.month, l.day, l.hour, l.minute),
+      null => null,
+    },
+  };
 
   /// Parses an ISO 8601 instant or a display date, or returns null.
   ///
@@ -174,7 +180,9 @@ abstract final class PassActivityDate {
   /// Month index (1-12) from a name or prefix: `Jan` and `January` both work.
   static int? _monthFromToken(String token) {
     if (token.length < 3) return null;
-    final int index = _monthPrefixes.indexOf(token.substring(0, 3).toLowerCase());
+    final int index = _monthPrefixes.indexOf(
+      token.substring(0, 3).toLowerCase(),
+    );
     return index == -1 ? null : index + 1;
   }
 

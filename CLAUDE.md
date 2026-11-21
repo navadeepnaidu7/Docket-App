@@ -193,6 +193,7 @@ with zero commits and nothing to resume from.
 | `docs/features/id-media-attachments.md` | ID attachments (#11) — storage/encryption decisions, tray geometry, lifecycle |
 | `docs/features/pass-share.md` | Pass share — off-screen PNG capture, the omit-when-absent QR rule, temp-file lifecycle |
 | `docs/features/ticket-code-extraction.md` | Gate codes — on-device ML Kit decode, symbology handling, why no code beats a fake one |
+| `docs/features/flight-pass.md` | Flight passes — wire shape, airport-local time, BCBP parsing, status honesty rule, live-status plan |
 | `PLAN.md` | Original phased build plan (historical; predates tickets/passes) |
 | `../docket_server/docs/server_state.md` | The live staging backend — base URL, what is switched on, how to authenticate |
 | `../docket_server/docs/architecture.md` | Backend design, pass taxonomy |

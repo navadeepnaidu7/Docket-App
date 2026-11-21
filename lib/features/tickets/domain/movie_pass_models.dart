@@ -249,10 +249,10 @@ class MoviePass {
 
   /// The scannable code, or null when this pass has none.
   PassCode? get passCode => PassCode.parse(
-        payload: codePayload,
-        payloadBase64: codePayloadBase64,
-        format: codeFormat,
-      );
+    payload: codePayload,
+    payloadBase64: codePayloadBase64,
+    format: codeFormat,
+  );
 
   /// Network poster URL from API (preferred).
   final String? posterUrl;

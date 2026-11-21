@@ -52,8 +52,7 @@ abstract interface class CalendarImportApi {
   Future<void> disconnectCalendar();
 }
 
-class DocketApiClient
-    implements DocketApi, TrainJourneyApi, CalendarImportApi {
+class DocketApiClient implements DocketApi, TrainJourneyApi, CalendarImportApi {
   DocketApiClient({
     required this.baseUrl,
     required this.session,
@@ -107,7 +106,9 @@ class DocketApiClient
       _jsonMap(res.body)['authorizationUrl']?.toString() ?? '',
     );
     // Only ever hand Google's own consent page to the browser.
-    if (url == null || url.scheme != 'https' || url.host != 'accounts.google.com') {
+    if (url == null ||
+        url.scheme != 'https' ||
+        url.host != 'accounts.google.com') {
       throw const CalendarImportException(
         'failed',
         'The server sent an unexpected sign-in link.',
@@ -120,7 +121,8 @@ class DocketApiClient
   Future<CalendarConnectionStatus> requestCalendarSync() async {
     final http.Response res = await _authed(
       (Map<String, String> headers) => _withTimeout(
-        () => _http.post(_uri(PassApiPaths.googleCalendarSync), headers: headers),
+        () =>
+            _http.post(_uri(PassApiPaths.googleCalendarSync), headers: headers),
       ),
     );
     _throwIfCalendarFailed(res);
@@ -169,8 +171,8 @@ class DocketApiClient
       code == 'failed' && (message == null || message.isEmpty)
           ? 'Calendar request failed. Try again.'
           : calendarReasonCopy(code) == calendarReasonCopy(null)
-              ? (message ?? calendarReasonCopy(null))
-              : calendarReasonCopy(code),
+          ? (message ?? calendarReasonCopy(null))
+          : calendarReasonCopy(code),
       retryAfterSeconds: retryAfter,
     );
   }

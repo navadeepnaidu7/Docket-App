@@ -16,6 +16,8 @@ import '../../domain/pass_catalog.dart';
 import '../../domain/pass_history_category.dart';
 import '../bus/bus_pass_detail_screen.dart';
 import '../bus/bus_ticket_face.dart';
+import '../flight/flight_pass_detail_screen.dart';
+import '../flight/flight_ticket_face.dart';
 import '../movie/movie_brand_style.dart';
 import '../movie_pass_detail_screen.dart';
 import '../ticket_detail_screen.dart';
@@ -371,6 +373,13 @@ class ArchivePassDeckState extends State<ArchivePassDeck>
             builder: (_) => BusPassDetailScreen(pass: pass),
           ),
         );
+      case FlightPassItem(:final pass):
+        root.push(
+          MaterialPageRoute<void>(
+            fullscreenDialog: true,
+            builder: (_) => FlightPassDetailScreen(pass: pass),
+          ),
+        );
     }
   }
 
@@ -688,6 +697,10 @@ class _ArchiveCardFace extends StatelessWidget {
       BusPassItem(:final pass) => WalletCardCanvas(
         designSize: WalletCardMetrics.trainCanvas,
         child: BusTicketFace(pass: pass, showShadow: false),
+      ),
+      FlightPassItem(:final pass) => WalletCardCanvas(
+        designSize: WalletCardMetrics.trainCanvas,
+        child: FlightTicketFace(pass: pass, showShadow: false),
       ),
     };
   }

@@ -38,15 +38,22 @@ abstract final class MovieTicketMetrics {
   static const double footerIdLine = 14;
 
   /// Brand-logo / e-ticket stub under the tear (shared for notch alignment).
-  static double footerBodyHeight({required bool detail, required double scale}) =>
-      (detail ? 82.0 : 64.0) * scale;
+  static double footerBodyHeight({
+    required bool detail,
+    required double scale,
+  }) => (detail ? 82.0 : 64.0) * scale;
 
   /// Tear row + stub — used for notch placement from the bottom.
-  static double footerStackHeight({required bool detail, required double scale}) =>
-      tearHeight * scale + footerBodyHeight(detail: detail, scale: scale);
+  static double footerStackHeight({
+    required bool detail,
+    required double scale,
+  }) => tearHeight * scale + footerBodyHeight(detail: detail, scale: scale);
 
   /// Distance from ticket bottom to notch center (middle of tear row).
-  static double notchFromBottom({required bool detail, required double scale}) =>
+  static double notchFromBottom({
+    required bool detail,
+    required double scale,
+  }) =>
       footerBodyHeight(detail: detail, scale: scale) + (tearHeight * scale) / 2;
 }
 
@@ -66,8 +73,10 @@ class TicketShapeClipper extends CustomClipper<Path> {
   Path getClip(Size size) {
     final double w = size.width;
     final double h = size.height;
-    final double cy =
-        (h - notchFromBottom).clamp(cornerR + notchR, h - cornerR - notchR);
+    final double cy = (h - notchFromBottom).clamp(
+      cornerR + notchR,
+      h - cornerR - notchR,
+    );
 
     return Path()
       ..moveTo(cornerR, 0)

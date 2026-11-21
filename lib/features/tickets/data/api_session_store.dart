@@ -6,10 +6,7 @@ import '../../../core/storage/secure_document_store.dart';
 
 /// Access + refresh tokens for `docket_server`. Separate from document lists.
 class ApiTokens {
-  const ApiTokens({
-    required this.accessToken,
-    required this.refreshToken,
-  });
+  const ApiTokens({required this.accessToken, required this.refreshToken});
 
   final String accessToken;
   final String refreshToken;
@@ -24,9 +21,9 @@ class ApiTokens {
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'accessToken': accessToken,
-        'refreshToken': refreshToken,
-      };
+    'accessToken': accessToken,
+    'refreshToken': refreshToken,
+  };
 }
 
 /// Membership profile from `POST /v1/auth/google` / `GET /v1/me`.
@@ -64,13 +61,13 @@ class ApiUser {
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'id': id,
-        'publicId': publicId,
-        'displayName': displayName,
-        if (email != null) 'email': email,
-        if (avatarUrl != null) 'avatarUrl': avatarUrl,
-        if (joinedAt != null) 'joinedAt': joinedAt!.toUtc().toIso8601String(),
-      };
+    'id': id,
+    'publicId': publicId,
+    'displayName': displayName,
+    if (email != null) 'email': email,
+    if (avatarUrl != null) 'avatarUrl': avatarUrl,
+    if (joinedAt != null) 'joinedAt': joinedAt!.toUtc().toIso8601String(),
+  };
 
   static String? _nonEmpty(String? value) {
     final String trimmed = value?.trim() ?? '';
@@ -89,14 +86,13 @@ class StoredApiSession {
 /// failed read is treated as signed-out rather than wiping the key.
 class ApiSessionStore {
   ApiSessionStore({FlutterSecureStorage? storage})
-      : _storage = storage ??
-            const FlutterSecureStorage(aOptions: kDocketAndroidOptions),
-        _memory = null;
+    : _storage =
+          storage ??
+          const FlutterSecureStorage(aOptions: kDocketAndroidOptions),
+      _memory = null;
 
   /// In-memory store for tests. Does not touch the device keystore.
-  ApiSessionStore.memory()
-      : _storage = null,
-        _memory = <String, String>{};
+  ApiSessionStore.memory() : _storage = null, _memory = <String, String>{};
 
   static const String _key = 'docket_api_session_v1';
 
@@ -117,9 +113,7 @@ class ApiSessionStore {
     final String? raw;
     try {
       final Map<String, String>? memory = _memory;
-      raw = memory != null
-          ? memory[_key]
-          : await _storage!.read(key: _key);
+      raw = memory != null ? memory[_key] : await _storage!.read(key: _key);
     } catch (_) {
       _unreadable = true;
       return null;

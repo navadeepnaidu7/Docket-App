@@ -117,9 +117,11 @@ class MovieBrandStyle {
     };
   }
 
-  static MovieBrandStyle forPass(MoviePass pass, {bool useBrandColors = false}) {
-    final bool active =
-        useBrandColors || pass.status == TicketStatus.active;
+  static MovieBrandStyle forPass(
+    MoviePass pass, {
+    bool useBrandColors = false,
+  }) {
+    final bool active = useBrandColors || pass.status == TicketStatus.active;
     return of(pass.brand, active: active);
   }
 }

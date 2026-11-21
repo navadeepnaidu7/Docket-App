@@ -10,6 +10,7 @@ import '../data/remote_pass_repository.dart';
 import '../domain/pass_catalog.dart';
 import '../domain/pass_repository.dart';
 import '../domain/pass_status.dart';
+import '../presentation/flight/airline_logo.dart';
 import 'api_providers.dart';
 
 /// Resolves mock vs remote from [devFlagsProvider].
@@ -73,6 +74,11 @@ class PassListNotifier extends AsyncNotifier<List<WalletPassItem>> {
   Future<List<WalletPassItem>> _load({TicketStatus? status}) async {
     final generation = _generation;
     final items = await _repo.fetchPasses(status: status);
+    // Logos already on disk land before the cards first paint.
+    await AirlineLogos.warm(<String>[
+      for (final item in items)
+        if (item is FlightPassItem) item.pass.resolvedAirlineCode,
+    ]);
     if (generation == _generation) _watchPendingJourneys(items);
     return items;
   }

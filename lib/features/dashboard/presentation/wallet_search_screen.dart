@@ -317,6 +317,7 @@ class _SearchRow extends StatelessWidget {
                           PassKind.train => Icons.train_outlined,
                           PassKind.movie => Icons.movie_outlined,
                           PassKind.bus => Icons.directions_bus_outlined,
+                          PassKind.flight => Icons.flight_outlined,
                         }, color: scheme.onSurface),
                       ),
                     const SizedBox(width: 14),

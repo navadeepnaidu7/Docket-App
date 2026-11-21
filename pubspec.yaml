@@ -73,6 +73,9 @@ dependencies:
   # cache, so every cold start would re-download; the proxy serves posters as immutable,
   # which flutter_cache_manager honours indefinitely.
   cached_network_image: ^3.4.1
+  # Airline logos are SVG bytes, not images, so they go through the cache
+  # manager directly. Already pulled in by cached_network_image.
+  flutter_cache_manager: ^3.4.1
   # Wallet + extract client. Kept as a direct dependency so RemotePassRepository
   # can talk to docket_server without a heavier client stack.
   http: ^1.2.2

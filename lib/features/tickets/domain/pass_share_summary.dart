@@ -11,6 +11,8 @@
 library;
 
 import 'bus_pass_models.dart';
+import 'flight_format.dart';
+import 'flight_pass_models.dart';
 import 'movie_pass_models.dart';
 import 'pass_catalog.dart';
 import 'ticket_models.dart';
@@ -21,6 +23,7 @@ String buildPassShareText(WalletPassItem item) {
     TrainPassItem(:final TrainPass ticket) => _trainLines(ticket),
     BusPassItem(:final BusPass pass) => _busLines(pass),
     MoviePassItem(:final MoviePass pass) => _movieLines(pass),
+    FlightPassItem(:final FlightPass pass) => _flightLines(pass),
   };
   return lines.join('\n');
 }
@@ -37,6 +40,7 @@ String? passShareCodePayload(WalletPassItem item) {
     TrainPassItem(:final TrainPass ticket) => ticket.codePayload,
     BusPassItem(:final BusPass pass) => pass.codePayload,
     MoviePassItem(:final MoviePass pass) => pass.codePayload,
+    FlightPassItem(:final FlightPass pass) => pass.codePayload,
   };
   return _clean(raw);
 }
@@ -47,16 +51,21 @@ String? passShareCodeCaption(WalletPassItem item) {
   return switch (item) {
     TrainPassItem(:final TrainPass ticket) => _labelled('PNR', ticket.pnr),
     BusPassItem(:final BusPass pass) => _labelled('Booking', pass.bookingId),
-    MoviePassItem(:final MoviePass pass) => _labelled('Booking', pass.bookingId),
+    MoviePassItem(:final MoviePass pass) => _labelled(
+      'Booking',
+      pass.bookingId,
+    ),
+    FlightPassItem(:final FlightPass pass) => _labelled('PNR', pass.bookingRef),
   };
 }
 
 /// Short kind label for the share card's header strip.
 String passShareKindLabel(WalletPassItem item) => switch (item) {
-      TrainPassItem() => 'Train ticket',
-      BusPassItem() => 'Bus ticket',
-      MoviePassItem() => 'Movie ticket',
-    };
+  TrainPassItem() => 'Train ticket',
+  BusPassItem() => 'Bus ticket',
+  MoviePassItem() => 'Movie ticket',
+  FlightPassItem() => 'Boarding pass',
+};
 
 /// File name for the exported PNG.
 ///
@@ -67,6 +76,7 @@ String passShareFileName(WalletPassItem item) {
     TrainPassItem() => 'train',
     BusPassItem() => 'bus',
     MoviePassItem() => 'movie',
+    FlightPassItem() => 'flight',
   };
   final String slug = item.id
       .toLowerCase()
@@ -78,6 +88,32 @@ String passShareFileName(WalletPassItem item) {
 
 // ── Per kind ─────────────────────────────────────────────────────────────────
 
+List<String> _flightLines(FlightPass f) {
+  final List<String> out = <String>[];
+  _add(out, null, _joinDot(f.airline, f.flightNumber));
+  _add(out, null, _route(f.origin.displayCity, f.destination.displayCity));
+  _add(
+    out,
+    'Depart',
+    _joinDot(FlightFormat.date(f.departAt), FlightFormat.time(f.departAt)),
+  );
+  _add(
+    out,
+    'Arrive',
+    _joinDot(FlightFormat.date(f.arriveAt), FlightFormat.time(f.arriveAt)),
+  );
+  _add(out, 'Terminal', f.resolvedDepartTerminal);
+  _add(out, 'Gate', f.resolvedGate);
+  _add(out, 'Seat', f.seat);
+  _add(
+    out,
+    f.passengers.length == 1 ? 'Passenger' : 'Passengers',
+    f.passengers.map((FlightPassenger p) => p.name).join(', '),
+  );
+  _add(out, 'PNR', f.bookingRef);
+  return out;
+}
+
 List<String> _trainLines(TrainPass t) {
   final List<String> out = <String>[];
   _add(out, null, t.trainTitle);
@@ -87,8 +123,11 @@ List<String> _trainLines(TrainPass t) {
   _add(out, 'Class', t.ticketClass);
   _add(out, 'Coach', t.coachesListLabel);
   _add(out, t.passengerCount == 1 ? 'Seat' : 'Seats', t.seatsListLabel);
-  _add(out, t.passengerCount == 1 ? 'Passenger' : 'Passengers',
-      t.passengers.map((TicketPassenger p) => p.name).join(', '));
+  _add(
+    out,
+    t.passengerCount == 1 ? 'Passenger' : 'Passengers',
+    t.passengers.map((TicketPassenger p) => p.name).join(', '),
+  );
   _add(out, 'PNR', t.pnr);
   _add(out, 'Booking ID', t.bookingId);
   return _fallback(out, 'Train ticket');
@@ -100,18 +139,28 @@ List<String> _busLines(BusPass b) {
   _add(out, null, _route(b.resolvedFromCity, b.resolvedToCity));
   _add(out, 'Depart', _joinDot(b.date, b.departTime));
   _add(out, 'Arrive', _joinDot(b.arrivalDate, b.arriveTime));
-  _add(out, 'Boarding',
-      b.boardingPoint.trim().isNotEmpty ? b.boardingPoint : b.boardingLocation);
+  _add(
+    out,
+    'Boarding',
+    b.boardingPoint.trim().isNotEmpty ? b.boardingPoint : b.boardingLocation,
+  );
   _add(out, 'Drop', b.dropLocation);
   _add(out, 'Bay', b.platform);
-  _add(out, 'Seats', b.seatDetails.trim().isNotEmpty
-      ? b.seatDetails
-      : b.passengers
-          .map((BusPassenger p) => p.seat)
-          .where((String s) => s.trim().isNotEmpty)
-          .join(', '));
-  _add(out, b.passengers.length == 1 ? 'Passenger' : 'Passengers',
-      b.passengers.map((BusPassenger p) => p.name).join(', '));
+  _add(
+    out,
+    'Seats',
+    b.seatDetails.trim().isNotEmpty
+        ? b.seatDetails
+        : b.passengers
+              .map((BusPassenger p) => p.seat)
+              .where((String s) => s.trim().isNotEmpty)
+              .join(', '),
+  );
+  _add(
+    out,
+    b.passengers.length == 1 ? 'Passenger' : 'Passengers',
+    b.passengers.map((BusPassenger p) => p.name).join(', '),
+  );
   _add(out, 'Fare', b.fare);
   _add(out, 'Booking ID', b.bookingId);
   return _fallback(out, 'Bus ticket');
@@ -152,10 +201,10 @@ String _route(String from, String to) {
 
 /// Joins the non-blank parts with the app's separator dot.
 String _joinDot(String a, String b) {
-  final List<String> parts = <String>[a, b]
-      .map((String s) => s.trim())
-      .where((String s) => s.isNotEmpty)
-      .toList();
+  final List<String> parts = <String>[
+    a,
+    b,
+  ].map((String s) => s.trim()).where((String s) => s.isNotEmpty).toList();
   return parts.join(' · ');
 }
 

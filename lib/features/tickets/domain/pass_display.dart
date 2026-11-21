@@ -1,3 +1,5 @@
+import 'flight_format.dart';
+import 'flight_pass_models.dart';
 import 'pass_activity_date.dart';
 import 'pass_catalog.dart';
 import 'pass_status.dart';
@@ -6,6 +8,10 @@ String passTitle(WalletPassItem item) => switch (item) {
   TrainPassItem(:final ticket) => _nonempty(ticket.trainTitle, 'Train ticket'),
   MoviePassItem(:final pass) => _nonempty(pass.movieTitle, 'Movie ticket'),
   BusPassItem(:final pass) => _nonempty(pass.operator, 'Bus ticket'),
+  FlightPassItem(:final pass) => _nonempty(
+    _join([pass.airline, pass.flightNumber]),
+    'Flight',
+  ),
 };
 
 String passWhenLabel(WalletPassItem item) {
@@ -13,6 +19,10 @@ String passWhenLabel(WalletPassItem item) {
     TrainPassItem(:final ticket) => (ticket.date, ticket.departTime),
     MoviePassItem(:final pass) => (pass.showDate, pass.showTime),
     BusPassItem(:final pass) => (pass.date, pass.departTime),
+    FlightPassItem(:final pass) => (
+      FlightFormat.date(pass.departAt),
+      FlightFormat.time(pass.departAt),
+    ),
   };
   final start = passStartTime(item);
   return _join([
@@ -35,6 +45,10 @@ String passPlaceLabel(WalletPassItem item) => switch (item) {
     pass.resolvedFromCity,
     pass.resolvedToCity,
   ], ' → '),
+  FlightPassItem(:final pass) => _join([
+    pass.origin.displayCity,
+    pass.destination.displayCity,
+  ], ' → '),
 };
 
 String _nonempty(String value, String fallback) =>
@@ -47,10 +61,15 @@ String _join(List<String> values, [String separator = ' · ']) => values
 /// Only claims an upcoming time when both a date and a time are available.
 /// Date-only values must not silently become a midnight departure.
 DateTime? passStartTime(WalletPassItem item) {
+  // Flights carry a zoned instant, so no display-string fallback is needed.
+  if (item case FlightPassItem(:final pass)) {
+    return pass.departAt?.instant.toLocal();
+  }
   final (String?, String) raw = switch (item) {
     TrainPassItem(:final ticket) => (ticket.departAt, ticket.departTime),
     MoviePassItem(:final pass) => (pass.showAt, pass.showTime),
     BusPassItem(:final pass) => (pass.departAt, pass.departTime),
+    FlightPassItem() => (null, ''),
   };
   if (raw.$1 != null && RegExp(r'[Tt ]\d{2}:\d{2}').hasMatch(raw.$1!)) {
     final parsed = PassActivityDate.parse(raw.$1);
@@ -80,6 +99,12 @@ WalletPassItem? nextUpcomingPass(List<WalletPassItem> items, DateTime now) {
     if (item case TrainPassItem(:final ticket)) {
       if (ticket.runState == TrainRunState.cancelled ||
           ticket.runState == TrainRunState.arrived) {
+        continue;
+      }
+    }
+    if (item case FlightPassItem(:final pass)) {
+      final FlightLiveState? state = pass.live?.state;
+      if (state == FlightLiveState.cancelled || (state?.hasDeparted ?? false)) {
         continue;
       }
     }

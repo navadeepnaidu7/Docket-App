@@ -140,6 +140,7 @@ MorphStep _methodStep(
     title: switch (category) {
       PassInputCategory.train => 'Add a train pass',
       PassInputCategory.bus => 'Add a bus pass',
+      PassInputCategory.flight => 'Add a boarding pass',
       PassInputCategory.movie => 'Add a movie pass',
     },
     subtitle: train

@@ -11,11 +11,7 @@ import 'bus/bus_ticket_face.dart';
 const double _glanceWidthFactor = 0.94;
 
 class WalletBusCard extends StatefulWidget {
-  const WalletBusCard({
-    super.key,
-    required this.pass,
-    this.onLongPress,
-  });
+  const WalletBusCard({super.key, required this.pass, this.onLongPress});
 
   final BusPass pass;
   final VoidCallback? onLongPress;
@@ -37,9 +33,10 @@ class _WalletBusCardState extends State<WalletBusCard>
       duration: const Duration(milliseconds: 120),
       reverseDuration: const Duration(milliseconds: 200),
     );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.975).animate(
-      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 1.0,
+      end: 0.975,
+    ).animate(CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut));
   }
 
   @override

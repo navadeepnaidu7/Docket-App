@@ -19,6 +19,7 @@ import 'add/pass_ingest_outcome.dart';
 import 'add/pass_ingest_particle_card.dart';
 import 'pass_remove_flow.dart';
 import 'wallet_bus_card.dart';
+import 'wallet_flight_card.dart';
 import 'wallet_movie_card.dart';
 import 'wallet_ticket_card.dart';
 import '../../../shared/widgets/wallet_empty_state.dart';
@@ -251,6 +252,11 @@ Widget _passCardFor(WalletPassItem item, {VoidCallback? onLongPress}) {
       ),
     ),
     BusPassItem(:final pass) => WalletBusCard(
+      key: ValueKey<String>(pass.id),
+      pass: pass,
+      onLongPress: onLongPress,
+    ),
+    FlightPassItem(:final pass) => WalletFlightCard(
       key: ValueKey<String>(pass.id),
       pass: pass,
       onLongPress: onLongPress,

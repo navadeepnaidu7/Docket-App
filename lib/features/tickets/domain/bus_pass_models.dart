@@ -11,8 +11,10 @@ enum BusPassBrand {
   universal;
 
   static BusPassBrand fromJson(Object? raw) {
-    final String n =
-        (raw?.toString() ?? '').toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '');
+    final String n = (raw?.toString() ?? '').toLowerCase().replaceAll(
+      RegExp(r'[\s_\-]'),
+      '',
+    );
     return switch (n) {
       'redbus' => BusPassBrand.redBus,
       _ => BusPassBrand.universal,
@@ -26,8 +28,7 @@ enum BusPassBrand {
   /// squashed string: operators are written "redBus", "Red Bus", "RedBus Trips"
   /// and an exact match would miss all but the first.
   static BusPassBrand fromOperator(String operator) {
-    final String n =
-        operator.toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '');
+    final String n = operator.toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '');
     if (n.contains('redbus')) return BusPassBrand.redBus;
     return BusPassBrand.universal;
   }
@@ -37,10 +38,7 @@ enum BusPassBrand {
 
 /// One traveller on a bus booking.
 class BusPassenger {
-  const BusPassenger({
-    required this.name,
-    this.seat = '',
-  });
+  const BusPassenger({required this.name, this.seat = ''});
 
   final String name;
   final String seat;
@@ -53,9 +51,9 @@ class BusPassenger {
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'name': name,
-        if (seat.isNotEmpty) 'seat': seat,
-      };
+    'name': name,
+    if (seat.isNotEmpty) 'seat': seat,
+  };
 }
 
 /// Bus booking pass — first-cut wallet type for extracted coach tickets.
@@ -138,10 +136,10 @@ class BusPass {
 
   /// The scannable code, or null when this pass has none.
   PassCode? get passCode => PassCode.parse(
-        payload: codePayload,
-        payloadBase64: codePayloadBase64,
-        format: codeFormat,
-      );
+    payload: codePayload,
+    payloadBase64: codePayloadBase64,
+    format: codeFormat,
+  );
 
   /// The brand to dress this pass in — explicit when given, inferred from the
   /// operator name otherwise.
@@ -149,8 +147,9 @@ class BusPass {
       brand ?? BusPassBrand.fromOperator(operator);
 
   /// City for the origin, falling back to the leading segment of the stop.
-  String get resolvedFromCity =>
-      fromCity.trim().isNotEmpty ? fromCity.trim() : _leadSegment(boardingLocation);
+  String get resolvedFromCity => fromCity.trim().isNotEmpty
+      ? fromCity.trim()
+      : _leadSegment(boardingLocation);
 
   /// City for the destination, same fallback.
   String get resolvedToCity =>
@@ -166,8 +165,9 @@ class BusPass {
   }
 
   factory BusPass.fromJson(Map<String, dynamic> json) {
-    final List<dynamic> paxRaw =
-        json['passengers'] is List ? json['passengers'] as List : const [];
+    final List<dynamic> paxRaw = json['passengers'] is List
+        ? json['passengers'] as List
+        : const [];
     return BusPass(
       id: json['id']?.toString() ?? '',
       operator: json['operator']?.toString() ?? '',
@@ -186,7 +186,9 @@ class BusPass {
       bookingId: json['bookingId']?.toString() ?? '',
       departAt: json['departAt']?.toString(),
       arriveAt: json['arriveAt']?.toString(),
-      brand: json['brand'] == null ? null : BusPassBrand.fromJson(json['brand']),
+      brand: json['brand'] == null
+          ? null
+          : BusPassBrand.fromJson(json['brand']),
       fromCity: json['fromCity']?.toString() ?? '',
       toCity: json['toCity']?.toString() ?? '',
       boardingPoint: json['boardingPoint']?.toString() ?? '',
@@ -199,32 +201,31 @@ class BusPass {
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'id': id,
-        'operator': operator,
-        'boardingLocation': boardingLocation,
-        'dropLocation': dropLocation,
-        'departTime': departTime,
-        'arriveTime': arriveTime,
-        'date': date,
-        'arrivalDate': arrivalDate,
-        'status': status.toJson(),
-        if (seatDetails.isNotEmpty) 'seatDetails': seatDetails,
-        if (passengers.isNotEmpty)
-          'passengers':
-              passengers.map((BusPassenger p) => p.toJson()).toList(),
-        if (bookingId.isNotEmpty) 'bookingId': bookingId,
-        if (departAt != null) 'departAt': departAt,
-        if (arriveAt != null) 'arriveAt': arriveAt,
-        if (brand != null) 'brand': brand!.toJson(),
-        if (fromCity.isNotEmpty) 'fromCity': fromCity,
-        if (toCity.isNotEmpty) 'toCity': toCity,
-        if (boardingPoint.isNotEmpty) 'boardingPoint': boardingPoint,
-        if (platform.isNotEmpty) 'platform': platform,
-        if (fare.isNotEmpty) 'fare': fare,
-        if (codePayload != null) 'codePayload': codePayload,
-        if (codePayloadBase64 != null) 'codePayloadBase64': codePayloadBase64,
-        if (codeFormat != null) 'codeFormat': codeFormat,
-      };
+    'id': id,
+    'operator': operator,
+    'boardingLocation': boardingLocation,
+    'dropLocation': dropLocation,
+    'departTime': departTime,
+    'arriveTime': arriveTime,
+    'date': date,
+    'arrivalDate': arrivalDate,
+    'status': status.toJson(),
+    if (seatDetails.isNotEmpty) 'seatDetails': seatDetails,
+    if (passengers.isNotEmpty)
+      'passengers': passengers.map((BusPassenger p) => p.toJson()).toList(),
+    if (bookingId.isNotEmpty) 'bookingId': bookingId,
+    if (departAt != null) 'departAt': departAt,
+    if (arriveAt != null) 'arriveAt': arriveAt,
+    if (brand != null) 'brand': brand!.toJson(),
+    if (fromCity.isNotEmpty) 'fromCity': fromCity,
+    if (toCity.isNotEmpty) 'toCity': toCity,
+    if (boardingPoint.isNotEmpty) 'boardingPoint': boardingPoint,
+    if (platform.isNotEmpty) 'platform': platform,
+    if (fare.isNotEmpty) 'fare': fare,
+    if (codePayload != null) 'codePayload': codePayload,
+    if (codePayloadBase64 != null) 'codePayloadBase64': codePayloadBase64,
+    if (codeFormat != null) 'codeFormat': codeFormat,
+  };
 }
 
 /// Leading comma-separated segment of a free-text stop, which is where

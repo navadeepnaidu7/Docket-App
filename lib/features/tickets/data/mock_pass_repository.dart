@@ -1,6 +1,7 @@
 import '../domain/pass_catalog.dart';
 import '../domain/pass_repository.dart';
 import '../domain/pass_status.dart';
+import 'mock_flight_fixtures.dart';
 import 'mock_pass_fixtures.dart';
 
 /// Local fixtures — same cards as the previous hardcoded Passes tab.
@@ -8,12 +9,14 @@ class MockPassRepository implements PassRepository {
   MockPassRepository({
     List<WalletPassItem>? seed,
     this.artificialDelay = const Duration(milliseconds: 280),
-  }) : _items = seed ??
-            buildWalletPassCatalog(
-              trains: mockTrainPasses,
-              movies: mockMoviePasses,
-              buses: mockBusPasses,
-            );
+  }) : _items =
+           seed ??
+           buildWalletPassCatalog(
+             trains: mockTrainPasses,
+             movies: mockMoviePasses,
+             buses: mockBusPasses,
+             flights: mockFlightPasses,
+           );
 
   final List<WalletPassItem> _items;
   final Duration artificialDelay;
