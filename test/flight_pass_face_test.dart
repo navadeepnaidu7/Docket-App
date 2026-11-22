@@ -106,6 +106,20 @@ void main() {
     expect(middle, inExclusiveRange(from.top, from.bottom));
   });
 
+  testWidgets('a long gate narrows its flaps and keeps clear of the seat', (
+    WidgetTester t,
+  ) async {
+    final FlightPass pass = FlightPass.fromJson(<String, dynamic>{
+      ...mockFlightPasses[1].toJson(),
+      'gate': 'B12A7',
+    });
+    await t.pumpWidget(host(FlightTicketFace(pass: pass)));
+    expect(t.takeException(), isNull);
+    final Rect gate = t.getRect(find.byKey(FlightTicketFace.gateKey));
+    final Rect seat = t.getRect(find.text('Seat'));
+    expect(gate.right, lessThan(seat.left));
+  });
+
   testWidgets('the airline logo replaces the name once it loads', (
     WidgetTester t,
   ) async {
@@ -132,7 +146,18 @@ void main() {
     WidgetTester t,
   ) async {
     await t.pumpWidget(host(FlightTicketFace(pass: mockFlightPasses.first)));
-    expect(find.text('17'), findsOneWidget, reason: 'live gate wins');
+    expect(
+      find.descendant(
+        of: find.byKey(FlightTicketFace.gateKey),
+        matching: find.byType(Text),
+      ),
+      findsNWidgets(2),
+    );
+    expect(
+      find.bySemanticsLabel('Gate 17'),
+      findsOneWidget,
+      reason: 'live gate wins',
+    );
     expect(find.textContaining('Delayed'), findsOneWidget);
   });
 

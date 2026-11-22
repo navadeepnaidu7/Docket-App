@@ -44,6 +44,8 @@ class FlightTicketFace extends StatelessWidget {
   static const Key arcKey = Key('flight_pass.arc');
   @visibleForTesting
   static const Key durationKey = Key('flight_pass.duration');
+  @visibleForTesting
+  static const Key gateKey = Key('flight_pass.gate');
 
   @override
   Widget build(BuildContext context) {
@@ -331,16 +333,37 @@ class FlightTicketFace extends StatelessWidget {
               height: 3,
               child: CustomPaint(painter: _DotRulePainter(c.faint)),
             ),
-            ..._stubColumn(
-              label: 'Gate',
-              value: _orDash(p.resolvedGate),
-              left: inset,
-              style: c,
-            ),
+            if (p.resolvedGate.trim().isEmpty)
+              ..._stubColumn(
+                label: 'Gate',
+                value: _absent,
+                left: inset,
+                style: c,
+              )
+            else ...<Widget>[
+              _Baselined(
+                baseline: FlightPassMetrics.stubLabelBaseline,
+                left: inset,
+                child: Text('Gate', style: FlightPassType.label(c.muted)),
+              ),
+              Positioned(
+                left: inset,
+                top:
+                    FlightPassMetrics.flapCentreY -
+                    FlightPassMetrics.flapHeight / 2,
+                child: _GateFlaps(
+                  p.resolvedGate.trim(),
+                  c,
+                  key: FlightTicketFace.gateKey,
+                ),
+              ),
+            ],
             ..._stubColumn(
               label: 'Seat',
               value: _orDash(_seat(p)),
               left: FlightPassMetrics.seatLeft,
+              width: FlightPassMetrics.seatWidth,
+              align: TextAlign.center,
               style: c,
             ),
             ..._stubColumn(
@@ -380,26 +403,117 @@ class FlightTicketFace extends StatelessWidget {
     required FlightBrandStyle style,
     double? left,
     double? right,
+    double? width,
+    TextAlign? align,
   }) {
     return <Widget>[
       _Baselined(
         baseline: FlightPassMetrics.stubLabelBaseline,
         left: left,
         right: right,
-        child: Text(label, style: FlightPassType.label(style.muted)),
+        width: width,
+        child: Text(
+          label,
+          textAlign: align,
+          style: FlightPassType.label(style.muted),
+        ),
       ),
       _Baselined(
         baseline: FlightPassMetrics.stubValueBaseline,
         left: left,
         right: right,
+        width: width,
         child: Text(
           value,
           maxLines: 1,
           softWrap: false,
+          overflow: TextOverflow.fade,
+          textAlign: align,
           style: FlightPassType.stub(style.ink),
         ),
       ),
     ];
+  }
+}
+
+/// The gate on departure-board flaps: one tile per character, a hinge across
+/// the middle. Tiles narrow for a long gate rather than crowd the seat.
+class _GateFlaps extends StatelessWidget {
+  const _GateFlaps(this.gate, this.style, {super.key});
+
+  final String gate;
+  final FlightBrandStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    const double h = FlightPassMetrics.flapHeight;
+    const double gap = FlightPassMetrics.flapGap;
+    final int n = gate.length;
+    final double w = math.min(
+      FlightPassMetrics.flapWidth,
+      (FlightPassMetrics.gateMaxWidth - gap * (n - 1)) / n,
+    );
+    final TextStyle glyph = FlightPassType.flap(style.ink);
+    // Optical centre: the capitals sit on the tile's middle.
+    const double glyphBaseline = h / 2 + FlightPassType.flapSize * 0.71 / 2;
+    return Semantics(
+      label: 'Gate $gate',
+      excludeSemantics: true,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          for (int i = 0; i < n; i++) ...<Widget>[
+            if (i > 0) const SizedBox(width: gap),
+            SizedBox(
+              width: w,
+              height: h,
+              child: Stack(
+                children: <Widget>[
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: style.ink.withValues(alpha: 0.13),
+                        borderRadius: BorderRadius.circular(
+                          FlightPassMetrics.flapRadius,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: Baseline(
+                      baseline: glyphBaseline,
+                      baselineType: TextBaseline.alphabetic,
+                      // Baseline loosens its constraints; the width keeps
+                      // the glyph centred.
+                      child: SizedBox(
+                        width: w,
+                        child: Text(
+                          gate[i],
+                          maxLines: 1,
+                          softWrap: false,
+                          textAlign: TextAlign.center,
+                          style: glyph,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // The hinge: a hairline of the card's own surface.
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: h / 2 - 0.75,
+                    height: 1.5,
+                    child: ColoredBox(
+                      color: style.surface.withValues(alpha: 0.55),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

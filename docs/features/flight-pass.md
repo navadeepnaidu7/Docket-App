@@ -252,9 +252,9 @@ Motion and artwork direction: `flight-pass-design.md`, prototype `flight-pass-mo
  Boards in 40 min                                 status sentence
  Gate B12 · Boarding 05:30
 ◖·································◗  tear
- Gate     Seat     Group    Class
- B12      12A      3        Economy
- Passengers                     [aircraft]
+ Gate            Seat            Boards
+ [B][1][2]       12A              05:30          gate on flaps; seat centred
+ Passengers
  Navadeep and 1 other
 ```
 
@@ -268,7 +268,11 @@ Motion and artwork direction: `flight-pass-design.md`, prototype `flight-pass-mo
 - The stub stays clean: no aircraft art on the face. The aircraft lives on the Updates and
   Details tabs, in its real livery.
 - The route rule fills with ink as the flight progresses; the plane glyph rides the fill.
-- Gate shows the **live** gate when there is one, and nothing (not "TBA") when there is not.
+- Gate shows the **live** gate when there is one, and a dash (not "TBA") when there is not.
+  A known gate is drawn on departure-board flaps, one tile per character with a hinge
+  across the middle; a long gate narrows its tiles rather than crowd the seat. The stub
+  reads left, centre, right: gate from the inset, seat centred on the card, boarding time
+  to the right edge.
 
 ### Status sentence — `resolveFlightStatus(pass, now)`, pure, unit-tested
 

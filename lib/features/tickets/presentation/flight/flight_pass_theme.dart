@@ -79,8 +79,23 @@ abstract final class FlightPassMetrics {
   static const double passengerLabelBaseline = stubValueBaseline + 32;
   static const double passengerBaseline = passengerLabelBaseline + 24;
 
-  /// Left edges of the second stub column; the third ends at [contentRight].
-  static const double seatLeft = inset + 112;
+  /// The stub reads gate, seat, boarding: the first column starts at
+  /// [inset], the second is centred on the card, the third ends at
+  /// [contentRight].
+  static const double seatWidth = 120;
+  static const double seatLeft = (width - seatWidth) / 2;
+
+  /// The gate as departure-board flaps, one per character, centred on the
+  /// cap height of the seat and boarding time beside it.
+  static const double flapWidth = 27;
+  static const double flapHeight = 40;
+  static const double flapGap = 3;
+  static const double flapRadius = 4;
+  static const double flapCentreY =
+      stubValueBaseline - FlightPassType.stubSize * 0.71 / 2;
+
+  /// Room for the flaps before they would crowd the seat column.
+  static const double gateMaxWidth = seatLeft - inset - 4;
 
   static const double notchFromBottom = height - tearY;
 
@@ -196,12 +211,24 @@ abstract final class FlightPassType {
     fontFeatures: _tabular,
   );
 
+  static const double stubSize = 30;
+  static const double flapSize = 26;
+
   /// Gate, seat and boarding time — what a traveller looks for at the airport.
   static TextStyle stub(Color c) => GoogleFonts.geist(
     color: c,
-    fontSize: 30,
+    fontSize: stubSize,
     fontWeight: FontWeight.w600,
     letterSpacing: -0.6,
+    height: 1.0,
+    fontFeatures: _tabular,
+  );
+
+  /// One character on a gate flap.
+  static TextStyle flap(Color c) => GoogleFonts.geist(
+    color: c,
+    fontSize: flapSize,
+    fontWeight: FontWeight.w600,
     height: 1.0,
     fontFeatures: _tabular,
   );
