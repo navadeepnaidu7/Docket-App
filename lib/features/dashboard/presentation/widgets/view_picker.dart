@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../../../core/haptics/haptic_service.dart';
@@ -155,87 +154,82 @@ class _ViewPickerExpandedState extends State<ViewPickerExpanded>
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(_cornerRadius),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: frostedFill,
-                  borderRadius: BorderRadius.circular(_cornerRadius),
-                  border: Border.all(color: borderColor, width: 0.5),
-                ),
-                child: SizedBox(
-                  width: _menuWidth,
-                  height: menuHeight,
-                  child: Stack(
-                    children: <Widget>[
-                      AnimatedPositioned(
-                        duration: const Duration(milliseconds: 280),
-                        curve: Curves.easeInOutCubic,
-                        top: _menuPadding + selectedIndex * _rowHeight,
-                        left: _menuPadding,
-                        right: _menuPadding,
-                        height: _rowHeight,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: selectionFill,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: frostedFill,
+                borderRadius: BorderRadius.circular(_cornerRadius),
+                border: Border.all(color: borderColor, width: 0.5),
+              ),
+              child: SizedBox(
+                width: _menuWidth,
+                height: menuHeight,
+                child: Stack(
+                  children: <Widget>[
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeInOutCubic,
+                      top: _menuPadding + selectedIndex * _rowHeight,
+                      left: _menuPadding,
+                      right: _menuPadding,
+                      height: _rowHeight,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: selectionFill,
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: _menuPadding,
-                        ),
-                        child: Column(
-                          children: modes.map((mode) {
-                            final bool isActive = widget.currentMode == mode;
-                            final String title;
-                            switch (mode) {
-                              case DashboardViewMode.home:
-                                title = 'Home';
-                                break;
-                              case DashboardViewMode.manage:
-                                title = 'Manage';
-                                break;
-                              case DashboardViewMode.trash:
-                                title = 'Trash';
-                                break;
-                            }
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: _menuPadding,
+                      ),
+                      child: Column(
+                        children: modes.map((mode) {
+                          final bool isActive = widget.currentMode == mode;
+                          final String title;
+                          switch (mode) {
+                            case DashboardViewMode.home:
+                              title = 'Home';
+                              break;
+                            case DashboardViewMode.manage:
+                              title = 'Manage';
+                              break;
+                            case DashboardViewMode.trash:
+                              title = 'Trash';
+                              break;
+                          }
 
-                            return GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () {
-                                HapticService.select();
-                                widget.onSelectMode(mode);
-                              },
-                              child: SizedBox(
-                                height: _rowHeight,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                  ),
-                                  child: Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: AnimatedDefaultTextStyle(
-                                      duration: const Duration(
-                                        milliseconds: 200,
-                                      ),
-                                      curve: Curves.easeOutCubic,
-                                      style: dashboardNavTitleStyle(
-                                        ink,
-                                        selected: isActive,
-                                      ),
-                                      child: Text(title),
+                          return GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              HapticService.select();
+                              widget.onSelectMode(mode);
+                            },
+                            child: SizedBox(
+                              height: _rowHeight,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                ),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: AnimatedDefaultTextStyle(
+                                    duration: const Duration(milliseconds: 200),
+                                    curve: Curves.easeOutCubic,
+                                    style: dashboardNavTitleStyle(
+                                      ink,
+                                      selected: isActive,
                                     ),
+                                    child: Text(title),
                                   ),
                                 ),
                               ),
-                            );
-                          }).toList(),
-                        ),
+                            ),
+                          );
+                        }).toList(),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),

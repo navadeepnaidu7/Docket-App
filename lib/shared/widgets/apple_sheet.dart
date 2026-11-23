@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -40,71 +39,68 @@ class AppleSheet extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppTheme.radiusSheet),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(AppTheme.radiusSheet),
-              border: Border.all(color: borderColor, width: 0.5),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
-                  blurRadius: 32,
-                  spreadRadius: -4,
-                  offset: const Offset(0, -10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(AppTheme.radiusSheet),
+            border: Border.all(color: borderColor, width: 0.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
+                blurRadius: 32,
+                spreadRadius: -4,
+                offset: const Offset(0, -10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 12),
+              if (showDragHandle)
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: handleColor,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
                 ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 12),
-                if (showDragHandle)
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: handleColor,
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                    ),
-                  ),
-                if (title != null) ...[
-                  const SizedBox(height: 20),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text(
-                      title!,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        color: titleColor,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-                if (subtitle != null) ...[
-                  const SizedBox(height: 4),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text(
-                      subtitle!,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: subtitleColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 16),
+              if (title != null) ...[
+                const SizedBox(height: 20),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                  child: child,
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    title!,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: titleColor,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               ],
-            ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    subtitle!,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: subtitleColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                child: child,
+              ),
+            ],
           ),
         ),
       ),
