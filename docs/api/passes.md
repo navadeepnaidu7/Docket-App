@@ -301,8 +301,35 @@ fields are mutually exclusive; when both somehow arrive, the client prefers `cod
 | `codePayloadBase64` | string | no | decoded bytes, max 4096 bytes, matrix symbologies only |
 | `codeFormat` | string | no | one of the values above; unknown values drop the whole code |
 
-All three are silently ignored when malformed. Extraction is the request's real job, and a
+| `codes` | JSON string | no | every code found, `[{format, payload, payloadBase64}]`, first = the fields above; max 8. Sent only when there is more than one (boarding passes for several flights) |
+
+All of these are silently ignored when malformed. Extraction is the request's real job, and a
 rejected code leaves the pass exactly where a codeless ticket would.
+
+A flight upload can produce several passes (one per flight on the document). The response is
+the first, plus `legIds` listing all of them; the client refreshes the list to show the rest.
+
+---
+
+## Flight object
+
+Field list and semantics: `docs/features/flight-pass.md` (wire shape table). Server mapping:
+`docket_server/internal/service/flight_mapper.go`. Times are RFC3339 **in the airport's own
+offset**; `origin` / `destination` carry `{code, city, airport, terminal, lat, lon}`.
+
+### Trip
+
+Flights that share a booking reference, or came from one upload, each carry the whole trip:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `trip.id` | string | opaque, same on every leg |
+| `trip.index` | int | this pass's position in `legs` |
+| `trip.legs[]` | array | every leg in departure order: `{id, flightNumber, airlineCode, from, to, departAt, arriveAt?}` |
+
+Absent for a flight on its own. Only `GET /v1/passes` links legs; `GET /v1/passes/{id}` maps one
+ticket and has no `trip`. Connection, layover and return are the client's reading of the legs
+(`domain/flight_trip.dart`).
 
 ---
 

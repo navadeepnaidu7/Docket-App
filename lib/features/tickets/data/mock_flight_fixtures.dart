@@ -32,10 +32,11 @@ String _localIn(Duration from, Duration offset) {
 const Duration _cet = Duration(hours: 1);
 const Duration _gst = Duration(hours: 4);
 
-/// Demo boarding passes.
-final List<FlightPass> mockFlightPasses = <FlightPass>[
+/// Demo boarding passes. Two of them are trips: IndiGo to Srinagar through
+/// Delhi (a connection), and Lufthansa to Frankfurt and back (a return).
+final List<FlightPass> mockFlightPasses = _linkTrips(<Map<String, dynamic>>[
   // Delayed 25 min with a gate change: the Updates feed's showcase.
-  FlightPass.fromJson(<String, dynamic>{
+  <String, dynamic>{
     'id': 'mock_f1',
     'airline': 'IndiGo',
     'airlineCode': '6E',
@@ -112,10 +113,10 @@ final List<FlightPass> mockFlightPasses = <FlightPass>[
     'codePayload':
         'M1NAIDU/NAVADEEP      EX7KQ2M BLRDEL6E 2134 325Y014C0042 100',
     'codeFormat': 'pdf417',
-  }),
+  },
 
   // Timetable only: no feed yet, so the face counts down and claims nothing.
-  FlightPass.fromJson(<String, dynamic>{
+  <String, dynamic>{
     'id': 'mock_f2',
     'airline': 'Air India',
     'airlineCode': 'AI',
@@ -145,10 +146,10 @@ final List<FlightPass> mockFlightPasses = <FlightPass>[
     'codePayload':
         'M1NAIDU/NAVADEEP      EQ4ZP8L DELBOMAI 0803 328C003A0011 100',
     'codeFormat': 'aztec',
-  }),
+  },
 
   // In the air, running ten minutes behind.
-  FlightPass.fromJson(<String, dynamic>{
+  <String, dynamic>{
     'id': 'mock_f3',
     'airline': 'Akasa Air',
     'airlineCode': 'QP',
@@ -214,10 +215,10 @@ final List<FlightPass> mockFlightPasses = <FlightPass>[
         'type': 'descending',
       },
     ],
-  }),
+  },
 
   // A foreign carrier next week: timetable only, overnight with a +1.
-  FlightPass.fromJson(<String, dynamic>{
+  <String, dynamic>{
     'id': 'mock_f4',
     'airline': 'Lufthansa',
     'airlineCode': 'LH',
@@ -248,10 +249,10 @@ final List<FlightPass> mockFlightPasses = <FlightPass>[
     'passengers': <Map<String, dynamic>>[
       <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '31K'},
     ],
-  }),
+  },
 
   // Past flights: the archive's Flights folder and the spent palette.
-  FlightPass.fromJson(<String, dynamic>{
+  <String, dynamic>{
     'id': 'mock_f5',
     'airline': 'Emirates',
     'airlineCode': 'EK',
@@ -278,8 +279,8 @@ final List<FlightPass> mockFlightPasses = <FlightPass>[
     'passengers': <Map<String, dynamic>>[
       <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '42A'},
     ],
-  }),
-  FlightPass.fromJson(<String, dynamic>{
+  },
+  <String, dynamic>{
     'id': 'mock_f6',
     'airline': 'Vueling',
     'airlineCode': 'VY',
@@ -308,5 +309,110 @@ final List<FlightPass> mockFlightPasses = <FlightPass>[
     'passengers': <Map<String, dynamic>>[
       <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '3A'},
     ],
-  }),
-];
+  },
+
+  // The connection out of Delhi after mock_f1: same booking, 1h 45m on the
+  // ground.
+  <String, dynamic>{
+    'id': 'mock_f7',
+    'airline': 'IndiGo',
+    'airlineCode': '6E',
+    'flightNumber': '6E 6042',
+    'bookingRef': 'X7KQ2M',
+    'origin': <String, dynamic>{
+      'code': 'DEL',
+      'city': 'New Delhi',
+      'airport': 'Indira Gandhi International',
+      'terminal': '1',
+    },
+    'destination': <String, dynamic>{
+      'code': 'SXR',
+      'city': 'Srinagar',
+      'airport': 'Sheikh ul-Alam International',
+    },
+    'departAt': _istIn(const Duration(hours: 7, minutes: 15)),
+    'arriveAt': _istIn(const Duration(hours: 8, minutes: 50)),
+    'boardingAt': _istIn(const Duration(hours: 6, minutes: 35)),
+    'seat': '9A',
+    'cabin': 'Economy',
+    'status': 'active',
+    'passengers': <Map<String, dynamic>>[
+      <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '9A'},
+      <String, dynamic>{'name': 'Ananya Rao', 'seat': '9B'},
+    ],
+  },
+
+  // The way out for mock_f4, flown last week: mock_f4 is its return.
+  <String, dynamic>{
+    'id': 'mock_f8',
+    'airline': 'Lufthansa',
+    'airlineCode': 'LH',
+    'flightNumber': 'LH 755',
+    'bookingRef': 'R2HW9C',
+    'origin': <String, dynamic>{
+      'code': 'BLR',
+      'city': 'Bengaluru',
+      'airport': 'Kempegowda International',
+      'terminal': '2',
+    },
+    'destination': <String, dynamic>{
+      'code': 'FRA',
+      'city': 'Frankfurt',
+      'airport': 'Frankfurt am Main',
+      'terminal': '1',
+    },
+    'departAt': _istIn(const Duration(days: -9, hours: -20)),
+    'arriveAt': _localIn(
+      const Duration(days: -9, hours: -10, minutes: -15),
+      _cet,
+    ),
+    'gate': '24',
+    'seat': '33H',
+    'cabin': 'Economy',
+    'status': 'expired',
+    'passengers': <Map<String, dynamic>>[
+      <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '33H'},
+    ],
+  },
+]);
+
+/// Adds a `trip` to every fixture sharing a booking reference with another,
+/// the way `GET /v1/passes` does on the server (`linkFlightTrips`), then
+/// parses them. Fixture order is kept; only the trip lists legs by departure.
+List<FlightPass> _linkTrips(List<Map<String, dynamic>> raw) {
+  final Map<String, List<Map<String, dynamic>>> byRef =
+      <String, List<Map<String, dynamic>>>{};
+  for (final Map<String, dynamic> f in raw) {
+    final String ref = f['bookingRef']?.toString() ?? '';
+    if (ref.isEmpty) continue;
+    byRef.putIfAbsent(ref, () => <Map<String, dynamic>>[]).add(f);
+  }
+  for (final List<Map<String, dynamic>> group in byRef.values) {
+    if (group.length < 2) continue;
+    group.sort(
+      (Map<String, dynamic> a, Map<String, dynamic> b) => DateTime.parse(
+        a['departAt'] as String,
+      ).compareTo(DateTime.parse(b['departAt'] as String)),
+    );
+    final List<Map<String, dynamic>> legs = <Map<String, dynamic>>[
+      for (final Map<String, dynamic> f in group)
+        <String, dynamic>{
+          'id': f['id'],
+          'flightNumber': f['flightNumber'],
+          'airlineCode': f['airlineCode'],
+          'from': (f['origin'] as Map<String, dynamic>)['code'],
+          'to': (f['destination'] as Map<String, dynamic>)['code'],
+          'departAt': f['departAt'],
+          'arriveAt': f['arriveAt'],
+        },
+    ];
+    for (int i = 0; i < group.length; i++) {
+      group[i]['trip'] = <String, dynamic>{
+        'id': group.first['bookingRef'],
+        'index': i,
+        'legs': legs,
+      };
+    }
+  }
+  return raw.map(FlightPass.fromJson).toList(growable: false);
+}

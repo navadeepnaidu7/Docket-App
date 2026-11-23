@@ -93,14 +93,13 @@ MorphStep passesRootStep(BuildContext context, WidgetRef ref) {
               _methodStep(context, ref, PassInputCategory.bus),
             ),
           ),
-          // Flights, Events and More have no PassInputCategory and no server
-          // route. They are shown so the grid reads as the finished shape,
-          // but a tap would post an unclassifiable upload.
-          const SquircleTile(
+          SquircleTile(
             label: 'Flights',
-            art: PassAddArt(PassAddIcon.flight),
+            art: const PassAddArt(PassAddIcon.flight),
             artIsTile: true,
-            soon: true,
+            onTap: () => controller.push(
+              _methodStep(context, ref, PassInputCategory.flight),
+            ),
           ),
           SquircleTile(
             label: 'Movies',
@@ -110,6 +109,9 @@ MorphStep passesRootStep(BuildContext context, WidgetRef ref) {
               _methodStep(context, ref, PassInputCategory.movie),
             ),
           ),
+          // Events and More have no PassInputCategory and no server route.
+          // They are shown so the grid reads as the finished shape, but a tap
+          // would post an unclassifiable upload.
           const SquircleTile(
             label: 'Events',
             art: PassAddArt(PassAddIcon.event),
@@ -140,12 +142,17 @@ MorphStep _methodStep(
     title: switch (category) {
       PassInputCategory.train => 'Add a train pass',
       PassInputCategory.bus => 'Add a bus pass',
-      PassInputCategory.flight => 'Add a boarding pass',
+      PassInputCategory.flight => 'Add a flight',
       PassInputCategory.movie => 'Add a movie pass',
     },
-    subtitle: train
-        ? 'IRCTC PNR, or a photo / PDF of the ticket'
-        : 'Photo or PDF — we read the details on the server',
+    subtitle: switch (category) {
+      PassInputCategory.train => 'IRCTC PNR, or a photo / PDF of the ticket',
+      // Both work: an e-ticket at booking, then the boarding pass at
+      // check-in, which lands on the flight already in the wallet.
+      PassInputCategory.flight =>
+        'Boarding pass or e-ticket, as a photo or PDF',
+      _ => 'Photo or PDF — we read the details on the server',
+    },
     builder: (BuildContext sheetContext, MorphSheetController controller) {
       void choose(PassInputSource source) {
         controller.close();

@@ -48,6 +48,7 @@ class _FakeApi implements DocketApi {
     required String mimeType,
     required String categoryHint,
     ScannedTicketCode? code,
+    List<ScannedTicketCode> moreCodes = const <ScannedTicketCode>[],
     String? attachToPassId,
   }) async => item.id;
 

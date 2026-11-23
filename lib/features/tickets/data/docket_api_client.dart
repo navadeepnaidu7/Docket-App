@@ -25,6 +25,8 @@ abstract class DocketApi {
     required String mimeType,
     required String categoryHint,
     ScannedTicketCode? code,
+    // Boarding passes after [code]: one per further flight on the document.
+    List<ScannedTicketCode> moreCodes = const <ScannedTicketCode>[],
     // Completes a calendar-imported pass that lacked details, in place.
     String? attachToPassId,
   });
@@ -263,6 +265,7 @@ class DocketApiClient implements DocketApi, TrainJourneyApi, CalendarImportApi {
     required String mimeType,
     required String categoryHint,
     ScannedTicketCode? code,
+    List<ScannedTicketCode> moreCodes = const <ScannedTicketCode>[],
     String? attachToPassId,
   }) async {
     final http.Response res = await _authed((
@@ -286,6 +289,21 @@ class DocketApiClient implements DocketApi, TrainJourneyApi, CalendarImportApi {
         if (payloadBase64 != null) {
           req.fields['codePayloadBase64'] = payloadBase64;
         }
+      }
+      // Every code, the first included, so the server can give each flight
+      // of an itinerary its own boarding pass. Older servers ignore it.
+      if (code != null && moreCodes.isNotEmpty) {
+        req.fields['codes'] = jsonEncode(<Map<String, String>>[
+          for (final ScannedTicketCode c in <ScannedTicketCode>[
+            code,
+            ...moreCodes,
+          ])
+            <String, String>{
+              'format': c.format.wire,
+              if (c.payload != null) 'payload': c.payload!,
+              if (c.payloadBase64 != null) 'payloadBase64': c.payloadBase64!,
+            },
+        ]);
       }
       req.files.add(
         http.MultipartFile.fromBytes(

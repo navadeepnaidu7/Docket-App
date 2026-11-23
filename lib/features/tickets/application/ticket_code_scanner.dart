@@ -22,6 +22,7 @@ import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart
 import 'package:path_provider/path_provider.dart';
 import 'package:pdfx/pdfx.dart';
 
+import '../domain/bcbp.dart';
 import '../domain/pass_code.dart';
 
 /// A decoded code, in the shape the extract upload sends it.
@@ -121,6 +122,34 @@ ScannedTicketCode? selectTicketCode(List<TicketCodeCandidate> candidates) {
   );
 }
 
+/// Every boarding pass barcode among [pages], in document order, without
+/// repeats. Pure and exported for tests.
+///
+/// A boarding pass PDF for a return trip or a connection prints one barcode
+/// per flight, and each belongs on its own pass, so for these the scanner
+/// keeps them all rather than choosing one. Only BCBP strings qualify: they
+/// are recognisably a gate code, where any other second symbol is as likely a
+/// marketing QR as a ticket.
+List<ScannedTicketCode> boardingPassCodes(
+  List<List<TicketCodeCandidate>> pages,
+) {
+  final List<ScannedTicketCode> out = <ScannedTicketCode>[];
+  final Set<String> seen = <String>{};
+  for (final List<TicketCodeCandidate> page in pages) {
+    final List<TicketCodeCandidate> ordered = List<TicketCodeCandidate>.of(page)
+      ..sort(
+        (TicketCodeCandidate a, TicketCodeCandidate b) =>
+            b.area.compareTo(a.area),
+      );
+    for (final TicketCodeCandidate c in ordered) {
+      final String text = (c.text ?? '').trim();
+      if (text.isEmpty || parseBcbp(text) == null || !seen.add(text)) continue;
+      out.add(ScannedTicketCode(format: c.format, payload: text));
+    }
+  }
+  return out;
+}
+
 bool _looksNonTicket(String payload) {
   final String lower = payload.toLowerCase();
   for (final String hint in _kNonTicketPayloadHints) {
@@ -160,6 +189,10 @@ class TicketCodeScanner {
   /// a render that delays the upload for nothing.
   static const int _maxPdfPages = 3;
 
+  /// Pages read once a page has turned out to hold a boarding pass: one per
+  /// flight, and the longest itineraries run to four or more.
+  static const int _maxBoardingPassPages = 6;
+
   /// Long edge, in pixels, to rasterise a PDF page to.
   ///
   /// A PDF page is 72 dpi at its own point size, where a dense QR's modules
@@ -185,45 +218,75 @@ class TicketCodeScanner {
     required File file,
     required String mimeType,
   }) async {
+    final List<ScannedTicketCode> codes = await scanAll(
+      file: file,
+      mimeType: mimeType,
+    );
+    return codes.isEmpty ? null : codes.first;
+  }
+
+  /// Every code worth uploading, the gate code first. More than one only for
+  /// boarding passes; see [boardingPassCodes]. Never throws.
+  Future<List<ScannedTicketCode>> scanAll({
+    required File file,
+    required String mimeType,
+  }) async {
     try {
-      if (mimeType == 'application/pdf') return await _scanPdf(file);
-      return await _scanImageFile(file.path);
+      final List<List<TicketCodeCandidate>> pages =
+          mimeType == 'application/pdf'
+          ? await _scanPdf(file)
+          : <List<TicketCodeCandidate>>[await _candidatesIn(file.path)];
+      final List<ScannedTicketCode> boarding = boardingPassCodes(pages);
+      if (boarding.isNotEmpty) return boarding;
+      for (final List<TicketCodeCandidate> page in pages) {
+        final ScannedTicketCode? code = selectTicketCode(page);
+        if (code != null) return <ScannedTicketCode>[code];
+      }
+      return const <ScannedTicketCode>[];
     } catch (e) {
       // Deliberately no payload in the log line: this repo never logs booking
       // data, and the payload is exactly that.
       debugPrint('[TicketCodeScanner] scan failed: ${e.runtimeType}');
-      return null;
+      return const <ScannedTicketCode>[];
     }
   }
 
-  Future<ScannedTicketCode?> _scanImageFile(String path) async {
+  Future<List<TicketCodeCandidate>> _candidatesIn(String path) async {
     final List<Barcode> found = await _scanner.processImage(
       InputImage.fromFilePath(path),
     );
-    return selectTicketCode(_candidatesFrom(found));
+    return _candidatesFrom(found);
   }
 
-  /// Rasterises the first few pages and scans each until one yields a code.
+  /// Rasterises the first few pages and reads each one's symbols, stopping at
+  /// the first page with a code unless that page is a boarding pass, when the
+  /// rest of the itinerary may follow on the next pages.
   ///
   /// Every page render lands in a temp file that is deleted before the next
   /// one: this is a booking document, and it has no business outliving the
   /// scan on disk.
-  Future<ScannedTicketCode?> _scanPdf(File file) async {
+  Future<List<List<TicketCodeCandidate>>> _scanPdf(File file) async {
     PdfDocument? doc;
+    final List<List<TicketCodeCandidate>> pages = <List<TicketCodeCandidate>>[];
     try {
       doc = await PdfDocument.openFile(file.path);
-      final int pages = math.min(doc.pagesCount, _maxPdfPages);
-      for (int i = 1; i <= pages; i++) {
-        final ScannedTicketCode? code = await _scanPdfPage(doc, i);
-        if (code != null) return code;
+      bool boarding = false;
+      for (int i = 1; i <= doc.pagesCount; i++) {
+        if (i > (boarding ? _maxBoardingPassPages : _maxPdfPages)) break;
+        final List<TicketCodeCandidate> page = await _scanPdfPage(doc, i);
+        pages.add(page);
+        boarding =
+            boarding ||
+            boardingPassCodes(<List<TicketCodeCandidate>>[page]).isNotEmpty;
+        if (!boarding && selectTicketCode(page) != null) break;
       }
-      return null;
+      return pages;
     } finally {
       await doc?.close();
     }
   }
 
-  Future<ScannedTicketCode?> _scanPdfPage(
+  Future<List<TicketCodeCandidate>> _scanPdfPage(
     PdfDocument doc,
     int pageNumber,
   ) async {
@@ -245,7 +308,9 @@ class TicketCodeScanner {
         format: PdfPageImageFormat.png,
       );
       final Uint8List? bytes = image?.bytes;
-      if (bytes == null || bytes.isEmpty) return null;
+      if (bytes == null || bytes.isEmpty) {
+        return const <TicketCodeCandidate>[];
+      }
 
       final Directory dir = await getTemporaryDirectory();
       rendered = File(
@@ -253,7 +318,7 @@ class TicketCodeScanner {
         'docket_code_scan_${DateTime.now().microsecondsSinceEpoch}_$pageNumber.png',
       );
       await rendered.writeAsBytes(bytes, flush: true);
-      return await _scanImageFile(rendered.path);
+      return await _candidatesIn(rendered.path);
     } finally {
       await page?.close();
       if (rendered != null) {

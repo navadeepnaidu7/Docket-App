@@ -1,14 +1,14 @@
 # Ticket code extraction
 
 Status: implemented in the app and sibling server; source reviewed 23 November 2026,
-This is the maintained code-handling contract for the committed implementation.
+including the active flight work. This is the maintained code-handling contract.
 
 ## Owners
 
 - `lib/features/tickets/application/ticket_code_scanner.dart`: ML Kit decode, PDF rasterization,
-  non-ticket filtering, `selectTicketCode` and `scan`.
+  non-ticket filtering, `selectTicketCode`, `boardingPassCodes`, `scanAll` and compatibility `scan`.
 - `application/pass_ingest_service.dart`: scan before extraction upload.
-- `data/docket_api_client.dart`: text/binary payload and original format.
+- `data/docket_api_client.dart`: text/binary payload, original format and extra boarding codes.
 - `domain/pass_code.dart`: shared code model/validation; `presentation/pass_code_view.dart`:
   rendering for code screens and shared PNGs.
 - `../docket_server`: extraction persistence and pass mapping; wire details in
@@ -51,10 +51,12 @@ The non-flight selection function:
 4. Returns a usable candidate from the first page with one; a general multi-booking
    selection UI is not implemented.
 
-The committed scanner selects one code per upload. Preserving every distinct BCBP payload,
-mapping multiple legs and showing grouped trips are separate flight-import work, not changes
-in this maintenance commit. Consult [flight passes](flight-pass.md) before extending that path.
-Do not assume one selected code imports every booking or covers every passenger.
+Flight boarding passes are an explicit exception. `scanAll` retains distinct, parseable
+BCBP payloads across PDF pages, ordered by page and symbol area. Ingest sends the first
+code and `moreCodes` for the rest; the backend maps legs and grouped-trip details as described
+in [flight passes](flight-pass.md). Compatibility `scan` returns the first result.
+Do not generalize this into a guarantee that every multi-person/non-BCBP document imports
+all its bookings or that one code covers every passenger.
 
 ## Rendering and absence
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/flight_format.dart';
 import '../../domain/flight_pass_models.dart';
+import '../../domain/flight_trip.dart';
 import '../movie/movie_ticket_chrome.dart';
 import 'airline_logo.dart';
 import 'flight_aircraft_painter.dart';
@@ -46,6 +47,8 @@ class FlightTicketFace extends StatelessWidget {
   static const Key durationKey = Key('flight_pass.duration');
   @visibleForTesting
   static const Key gateKey = Key('flight_pass.gate');
+  @visibleForTesting
+  static const Key tripKey = Key('flight_pass.trip');
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +70,13 @@ class FlightTicketFace extends StatelessWidget {
     );
     final String depTerminal = p.resolvedDepartTerminal;
     final String arrTerminal = p.resolvedArriveTerminal;
+    final FlightTrip? trip = p.trip;
+    final FlightTripPlace? place = trip == null ? null : placeInTrip(trip);
+    // The onward flight fills the detail line only while it is still to
+    // come, and never displaces something the status had to say.
+    final String detail = status.detail.isNotEmpty || status.progress >= 1
+        ? status.detail
+        : place?.onwardLine ?? '';
 
     return Container(
       width: FlightPassMetrics.width,
@@ -133,15 +143,26 @@ class FlightTicketFace extends StatelessWidget {
                     maxLines: 1,
                     style: FlightPassType.small(c.muted),
                   ),
-                  if (p.bookingRef.trim().isNotEmpty) ...<Widget>[
-                    const SizedBox(width: 14),
-                    Flexible(
-                      child: Text(
-                        'PNR ${p.bookingRef.trim()}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: FlightPassType.small(c.muted),
-                      ),
+                  if (p.bookingRef.trim().isNotEmpty) const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      p.bookingRef.trim().isEmpty
+                          ? ''
+                          : 'PNR ${p.bookingRef.trim()}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: FlightPassType.small(c.muted),
+                    ),
+                  ),
+                  if (place != null && place.tag.isNotEmpty) ...<Widget>[
+                    const SizedBox(width: 12),
+                    Text(
+                      place.tag,
+                      key: FlightTicketFace.tripKey,
+                      maxLines: 1,
+                      style: FlightPassType.small(
+                        c.ink,
+                      ).copyWith(fontWeight: FontWeight.w600),
                     ),
                   ],
                 ],
@@ -285,7 +306,7 @@ class FlightTicketFace extends StatelessWidget {
 
             // ── Status ──
             _Baselined(
-              baseline: status.detail.isEmpty
+              baseline: detail.isEmpty
                   ? (FlightPassMetrics.leadBaseline +
                             FlightPassMetrics.detailBaseline) /
                         2
@@ -312,13 +333,13 @@ class FlightTicketFace extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (status.detail.isNotEmpty)
+            if (detail.isNotEmpty)
               _Baselined(
                 baseline: FlightPassMetrics.detailBaseline,
                 left: inset,
                 width: width,
                 child: Text(
-                  status.detail,
+                  detail,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: FlightPassType.detail(c.muted),

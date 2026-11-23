@@ -4,10 +4,10 @@ Adds `flight` as a fourth wallet pass kind: a boarding-pass face in the train/bu
 Details tab like the bus and train screens, and an **Updates** tab, a Flighty-style feed of
 real status changes (gate, delay, boarding, departed, landed, baggage belt).
 
-Status, 21 Nov 2026: **app side built against mock fixtures, not yet checked on a device.**
-Phases 1 (app half), 2 and 4 are in; the server mapper (phase 1) and live status (phase 3) are
-not started. The add menu's Flights tile stays "soon" until the server lists flight passes,
-since an upload would otherwise extract and then never appear in the wallet.
+Status, 23 Nov 2026: **phases 1, 2, 4 and 5 built; live status (phase 3) not started.** The
+server mapper, itinerary extraction, airport time zones, barcode-first ingest and trips are on
+`docket_server` branch `feat/flight-passes` (not yet deployed); the Flights add tile is on.
+Uploading a real ticket needs that branch deployed. See phase 5 below.
 
 ### What is built
 
@@ -44,8 +44,8 @@ area, not height, so a square emblem and a long wordmark look equally heavy.
 merged); a server without the endpoint answers 404 and every face shows the name in type. Review sheet: `tool/airline_logo_sheet_test.dart`; sources and how to add an airline:
 `docket_server/internal/brands/airlines/SOURCES.md`.
 
-Not yet wired: BCBP into the extract upload (the parser exists; `ticket_code_scanner` does not
-call it yet).
+BCBP is wired into the upload (phase 5): `ticket_code_scanner` keeps every boarding pass
+barcode across a PDF's pages and the server parses them.
 
 ## What already exists
 
@@ -305,6 +305,36 @@ Face, code row (bus/movie pattern, omitted with no code), then `PillSegmented`:
 
 Not built, unless a provider gives the data: inbound aircraft, maps, seat maps.
 
+## Phase 5 — real tickets: ingest, time zones, trips (23 Nov 2026)
+
+Server design and the field-by-field "who wins" table: `docket_server/docs/flight_ingest.md`.
+In short:
+
+- **Barcode first.** The scanner sends every BCBP code it finds (`codes`, a JSON array, beside
+  the legacy single-code fields). The server parses them and they override the model for
+  PNR, airports, flight number, date, seat, sequence and cabin. A boarding pass whose flights
+  are all already on the wallet is merged in with **no model call and no quota**: the
+  e-ticket-at-booking, boarding-pass-at-check-in flow.
+- **Times.** The model returns the printed wall clock with no offset; the server attaches the
+  airport's IANA zone from an embedded table of 7,918 IATA airports (also city, name, lat/lon
+  for the route map). Overnight arrivals and boarding times are sanity-checked against the
+  departure.
+- **Several flights per upload.** The model returns every flight on the document; each is
+  its own pass. Re-uploading updates in place.
+- **Trips.** `GET /v1/passes` adds `trip: {id, index, legs: [...]}` to flights that share a
+  booking reference or an upload. The app reads it with `domain/flight_trip.dart`
+  (`flightTripJourneys`, `placeInTrip`): a same-airport change within 24 hours is a
+  connection; a later journey ending where the trip began is the return. The face tags the
+  leg on the flight-number row ("Leg 1 of 2", "Return", "Outbound · 2 of 2") and, when the
+  status has nothing else to say, names the onward flight ("Then 6E 6042 to SXR · 1h 45m in
+  DEL"). The Details tab opens with **Your trip**: every leg, connection times, and a tap to
+  open the other passes.
+- Fixtures: `mock_f1` + `mock_f7` connect in Delhi; `mock_f8` (past) + `mock_f4` are a
+  Lufthansa return. Tests: `test/flight_trip_test.dart`.
+
+Not done: self-transfers booked separately (different PNRs, separate uploads) are not linked;
+an e-ticket with no barcode is only as good as the model's read of the flight number.
+
 ## Order and ownership
 
 1. Phase 1 app domain + fixtures + server mapper. Shippable alone with a plain face.
@@ -321,4 +351,4 @@ silent-failure code and stay hand-written. Widget bodies and tests can go to `ag
 
 - ~~Status provider~~: free ADS-B, see phase 3. Check OpenSky reachability from Railway.
 - ~~Brand list for v1~~: 85 airlines in `airline_brands.dart`, logos served by the backend.
-- Multi-leg bookings: one pass per leg (BCBP already encodes legs separately). Proposed: yes.
+- ~~Multi-leg bookings~~: one pass per leg, linked by `trip`. Built in phase 5.

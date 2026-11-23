@@ -6,6 +6,7 @@ import '../../../../core/wallet/wallet_card_metrics.dart';
 import '../../../../shared/widgets/pill_segmented.dart';
 import '../../domain/flight_format.dart';
 import '../../domain/flight_pass_models.dart';
+import '../../domain/flight_trip.dart';
 import '../../domain/pass_catalog.dart';
 import '../../domain/pass_code.dart';
 import '../pass_code_view.dart';
@@ -15,6 +16,7 @@ import '../pass_typography.dart';
 import '../share/pass_share_actions.dart';
 import 'flight_ticket_code_screen.dart';
 import 'flight_ticket_face.dart';
+import 'flight_trip_card.dart';
 import 'flight_updates_tab.dart';
 
 /// Fullscreen boarding pass — the face, the code row, then Details | Updates.
@@ -196,6 +198,10 @@ class _DetailsTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        if (p.trip case final FlightTrip trip) ...<Widget>[
+          FlightTripCard(trip: trip),
+          const SizedBox(height: 12),
+        ],
         PassInfoCard(
           title: 'Flight',
           ink: ink,

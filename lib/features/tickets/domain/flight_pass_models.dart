@@ -1,5 +1,6 @@
 import 'airline_brands.dart';
 import 'flight_geo.dart';
+import 'flight_trip.dart';
 import 'pass_code.dart';
 import 'pass_status.dart';
 
@@ -21,6 +22,9 @@ class AirportTime {
 
   /// Wall-clock fields at the airport. Display only.
   DateTime get local => instant.add(offset);
+
+  /// RFC3339 with the airport's offset, the form the server sends.
+  String toRfc3339() => _rfc3339(this);
 
   static final RegExp _offset = RegExp(r'([+-])(\d{2}):?(\d{2})$');
 
@@ -353,6 +357,7 @@ class FlightPass {
     this.codePayload,
     this.codePayloadBase64,
     this.codeFormat,
+    this.trip,
   });
 
   final String id;
@@ -393,6 +398,10 @@ class FlightPass {
   final String? codePayload;
   final String? codePayloadBase64;
   final String? codeFormat;
+
+  /// The other flights booked with this one, when there are any: a
+  /// connection, the way back. Null for a flight on its own.
+  final FlightTrip? trip;
 
   PassCode? get passCode => PassCode.parse(
     payload: codePayload,
@@ -474,6 +483,7 @@ class FlightPass {
       codePayload: json['codePayload']?.toString(),
       codePayloadBase64: json['codePayloadBase64']?.toString(),
       codeFormat: json['codeFormat']?.toString(),
+      trip: FlightTrip.tryFromJson(json['trip']),
     );
   }
 
@@ -502,6 +512,7 @@ class FlightPass {
     if (codePayload != null) 'codePayload': codePayload,
     if (codePayloadBase64 != null) 'codePayloadBase64': codePayloadBase64,
     if (codeFormat != null) 'codeFormat': codeFormat,
+    if (trip != null) 'trip': trip!.toJson(),
   };
 }
 
