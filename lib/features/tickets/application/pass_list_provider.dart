@@ -3,14 +3,14 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/dev/dev_flags_provider.dart';
-import '../../dashboard/application/auth_session_provider.dart';
+import '../../auth/application/auth_session_provider.dart';
 import '../data/docket_api_client.dart';
 import '../data/mock_pass_repository.dart';
 import '../data/remote_pass_repository.dart';
 import '../domain/pass_catalog.dart';
 import '../domain/pass_repository.dart';
 import '../domain/pass_status.dart';
-import '../presentation/flight/airline_logo.dart';
+import '../data/airline_logo_cache.dart';
 import 'api_providers.dart';
 
 /// Resolves mock vs remote from [devFlagsProvider].

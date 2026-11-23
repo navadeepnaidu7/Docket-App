@@ -12,7 +12,7 @@ import '../../cards/application/card_list_provider.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../application/account_profile_provider.dart';
-import '../application/auth_session_provider.dart';
+import '../../auth/application/auth_session_provider.dart';
 import '../application/profile_avatar_shape_provider.dart';
 import '../domain/account_profile.dart';
 import 'widgets/membership_mesh.dart';

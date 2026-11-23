@@ -9,7 +9,7 @@ import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../tickets/application/pass_list_provider.dart';
 import '../../tickets/domain/pass_catalog.dart';
-import '../application/auth_session_provider.dart';
+import '../../auth/application/auth_session_provider.dart';
 import 'settings_screen.dart';
 import 'widgets/account_summary.dart';
 import 'widgets/account_greeting.dart';

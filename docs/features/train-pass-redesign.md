@@ -1,11 +1,14 @@
-# Train pass redesign
+# Train pass
 
 Replaces the blush "paper facsimile" train face (Instrument Serif codes, booking chip, two-column
 data grid, cross-fading status band) with a solid graphite card built on type and spacing alone.
 Direction agreed against HTML mocks in session, 28 Oct 2026.
 
-Status: **in progress**. Applies to the wallet glance card, the detail screen hero, the archive
-deck and the shared PNG — they all render `TrainTicketFace`.
+Status: implemented (face, status resolver, Live Status tab). Applies to the wallet glance card,
+the detail screen hero, the archive deck and the shared PNG; they all render `TrainTicketFace`.
+Owners: `lib/features/tickets/presentation/train/`, `ticket_detail_screen.dart`
+(`_LiveStatusTab`). This doc also carries the Live Status tab contract (formerly
+`running-status-redesign.md`).
 
 ## Direction
 
@@ -47,8 +50,8 @@ so both pass types share one width.
 ```
 
 - Horizontal inset 26 on both sides; every right-hand column ends on the same edge.
-- Everything is placed by **baseline**, not by top, so the fallback face google_fonts shows
-  before Geist arrives cannot shift the layout.
+- Everything is placed by **baseline**, not by top, so a fallback face (in tests, or if a
+  bundled font failed) cannot shift the layout.
 - The stub holds equal space above the first label's cap line and below the last value's
   baseline, so the grid sits optically centred between the tear and the bottom edge.
 
@@ -105,10 +108,10 @@ only depth on the face; the shadow lives outside it.
 | same day | Departs in **2h 10m** | status parts |
 | next calendar day | Departs **tomorrow** | status parts |
 | later | Departs in **4 days** | status parts |
+| unknown departure | Departs at **16:55** | status parts |
 
 Waits of a day or more format as `1d 15h`. A "departed" origin halt only counts as underway
 when the clock is within an hour of departure, so a mis-dated feed cannot print "Arrives in 72h".
-| unknown departure | Departs at **16:55** | status parts |
 
 Status parts, comma-joined in this order: running late (warning) or on time (only when the
 backend says `onTime`), booking status when it is not confirmed (warning), chart prepared.
@@ -138,6 +141,44 @@ already prints the code below the face.
 | `test/train_pass_face_test.dart` | rewritten for the new layout |
 | `test/train_status_band_test.dart` | deleted |
 
-## Not yet
+## Live Status tab
 
-- Detail screen body (summary sentence + grouped lists) — the mock was liked, built separately.
+The detail screen's Live Status tab (`_LiveStatusTab`) shows the journey as a timeline. The
+Details tab, the dark journey summary card at the top of the tab, and the pass models are out
+of its scope: presentation only, no new fields.
+
+| Piece | Treatment |
+|---|---|
+| Spine | 5 px rounded bar; solid ink travelled, faint track ahead |
+| Node | hollow ring (9 px radius, 3 px stroke) filled with the surface |
+| Time | small grey pill above the station |
+| Station | `DetailType.itemTitle`, on the shared ramp (`detail-typography.md`) |
+| Sub-line | platform / date, chevron when there is more |
+| Status | right-aligned pill: green on time, amber late, grey departed |
+
+A first cut set stations at 21 px with a 6 px spine; it read like a poster next to the movie
+and bus passes. Keep every size on the shared ramp.
+
+**Honest status.** Claim "On time" only when the backend said so: `TrainRunState.onTime` is
+required, and the absence of a delay is not evidence. Per halt, `resolveHaltStatus`:
+
+| Precedence | Condition | Pill |
+|---|---|---|
+| 1 | `runState == cancelled` | "Cancelled", warning, for every halt |
+| 2 | completed journey + `arriving` | "Departed", neutral |
+| 3 | completed journey + `upcoming` | none |
+| 4 | `departed` | "Departed", neutral |
+| 5 | `arriving` (active journey) | "Arriving", live |
+| 6 | `upcoming` + `isDelayed` | "<n> min late", warning |
+| 7 | `upcoming` + `runState == onTime` | "On time", positive |
+| 8 | `upcoming`, nothing known | none |
+
+A halt whose `actual` differs from `time` shows the scheduled time struck through and the
+actual beside it in the status tone. Null `actual` means "no revision", not "on time".
+
+Not built because there is no data or feature behind them (do not fake them with dead UI):
+line badges, "View map", "Alerts", and a city/station split (`TicketHalt.station` is one
+string). Both themes: travelled spine uses `onSurface`, ring fill the card surface, pill tones
+per brightness.
+
+Pending PNR enrichment (details still being fetched) is described in `pass-input.md`.

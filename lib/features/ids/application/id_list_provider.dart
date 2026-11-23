@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/secure_document_store.dart';
 import '../../../core/storage/document_record_decoder.dart';
-import '../../dashboard/application/wallet_loading_provider.dart';
+import '../../../core/wallet/wallet_loading_provider.dart';
 import '../domain/attachment_limits.dart';
 import '../domain/id_attachment.dart';
 import '../domain/id_document.dart';

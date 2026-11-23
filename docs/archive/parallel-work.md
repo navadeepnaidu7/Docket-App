@@ -1,4 +1,7 @@
-# Parallel work: status
+# Parallel work: status (historical)
+
+> **Archived record, not current guidance.** Closed 7 Aug 2026. For working alongside other
+> sessions today, follow `CLAUDE.md` / `AGENTS.md`. The working rules below are kept for reuse.
 
 **Status: CLOSED** (as of 7 Aug 2026). Both parallel features shipped and
 merged into `master`. This file is kept as history of the branch contract so

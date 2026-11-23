@@ -10,7 +10,7 @@ import '../../tickets/application/pass_list_provider.dart';
 import '../../tickets/domain/pass_catalog.dart';
 import '../../tickets/domain/pass_status.dart';
 import '../../tickets/presentation/open_pass.dart';
-import '../application/wallet_loading_provider.dart';
+import '../../../core/wallet/wallet_loading_provider.dart';
 import '../domain/wallet_search.dart';
 import 'widgets/wallet_row_tile.dart';
 

@@ -1,43 +1,50 @@
-# Pass input layer
+# Pass input
 
-Wire the Passes-tab `+` so a user can add a ticket. This replaces
-`TicketsComingSoonSheet`.
+How a pass gets into the wallet from the Passes-tab `+`. Menu layout is in
+`add-menu-redesign.md`; import progress, failure recovery and search are in
+`alpha-usability-polish.md`; Google Calendar import is in `calendar-import.md`; flights are in
+`flight-pass.md`.
 
-## What this is
+Status: implemented for train, bus and movie. Owners:
+`lib/features/tickets/presentation/add/add_pass_flow.dart`,
+`lib/features/tickets/application/pass_ingest_controller.dart`, `pass_ingest_service.dart`,
+`pass_list_provider.dart`, `lib/features/tickets/data/docket_api_client.dart`,
+`remote_pass_repository.dart`. Contract: `../api/passes.md`.
 
-- **Train** — three ways in: 10-digit PNR (`POST /tickets`), photo, or PDF
-  (`POST /tickets/extract` with `category=train`).
-- **Bus** — photo or PDF (`category=bus`). No PNR path; the server has none.
-- **Movie** — photo or PDF (`category=movie`), same extract endpoint. Included
-  because the wallet already renders movie passes.
+## Paths in
 
-Images and PDFs are the same bytes the server already accepts. The client does
-not parse tickets.
+- **Train**: 10-digit PNR (`POST /tickets`), photo, or PDF (`POST /tickets/extract`,
+  `category=train`).
+- **Bus**: photo or PDF (`category=bus`). The server has no bus PNR path.
+- **Movie**: photo or PDF (`category=movie`).
 
-## Auth (this slice)
+The client does not parse tickets; it uploads the same bytes the server accepts. The one
+exception is the gate code, decoded on device before upload (`ticket-code-extraction.md`).
 
-Full Google Sign-In is still out of scope. Extract and PNR require a Bearer
-token, so debug builds can exchange a **dev Google id token**
-(`--dart-define=DEV_AUTH_ID_TOKEN=…` or Settings → Developer) against
-`POST /v1/auth/google`. That is the existing `AUTH_DEV_BYPASS_TOKEN` path on
-the server. Tokens live in secure storage under `docket_api_session_v1`, not
-in document lists.
+## Auth
 
-Submit is refused while mock fixtures are driving the tab (`isMockPassesActive`).
-A file saved on the server would not appear in a mock list.
+Full Google Sign-In is still open. Extract and PNR need a Bearer token, so debug builds
+exchange a dev Google id token (`--dart-define=DEV_AUTH_ID_TOKEN=...` or Settings ->
+Developer) at `POST /v1/auth/google` (the server's `AUTH_DEV_BYPASS_TOKEN` path). Tokens live in
+secure storage under `docket_api_session_v1`, never in document lists. A 401 triggers one
+refresh. With no session and no dev token the repository is empty, not mock.
 
-## After a successful extract
+Submit is refused while mock fixtures drive the tab (`isMockPassesActive`): a ticket saved on
+the server would never appear in a mock list.
 
-The extract handler returns a ticket blob, not the wallet envelope. The client
-takes the ticket `id`, then `GET /v1/passes/:id`, and refreshes the list.
+## After a submit
 
-## Bus on the wallet
+- Extract returns a ticket blob, not the wallet envelope. The client takes its `id`, fetches
+  `GET /v1/passes/:id`, and refreshes the list.
+- A new PNR is saved before the server's worker finishes enrichment, so a train can arrive
+  "awaiting journey". The wallet must say details are still being fetched, never present an
+  empty confirmed ticket. `PassListNotifier` re-fetches remote lists that contain such a pass:
+  up to six attempts at 3 s, 6 s, 9 s ... and keeps the saved wallet visible if the provider is
+  temporarily down. The server also does a bounded foreground lookup.
+- Upstream note (27 Oct 2026): fresh-PNR lookups hit provider HTTP/2 resets and then timeouts
+  even with forced HTTP/1.1. A successful end-to-end lookup of a fresh valid PNR is still
+  unverified.
 
-`GET /v1/passes` used to drop `bus` rows. The mapper now emits
-`{ kind: "bus", bus: {…} }` and the app has a `BusPassItem` so an uploaded
-bus ticket is visible. The bus card is a first cut, not a Figma lockup.
+## Not in scope here
 
-## Not in this slice
-
-Google Sign-In, flight input, mock-mode local inventing of tickets, Play
-packaging.
+Google Sign-In, Play packaging, and inventing tickets locally in mock mode.

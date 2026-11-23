@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:docket/core/dev/dev_flags.dart';
 import 'package:docket/core/dev/dev_flags_provider.dart';
-import 'package:docket/features/dashboard/application/auth_session_provider.dart';
+import 'package:docket/features/auth/application/auth_session_provider.dart';
 import 'package:docket/features/tickets/application/pass_ingest_controller.dart';
 import 'package:docket/features/tickets/application/pass_ingest_service.dart';
 import 'package:docket/features/tickets/application/ticket_code_scanner.dart';

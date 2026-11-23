@@ -53,7 +53,7 @@ Outer radius stays **40** so the flip matches the data page.
 | `PASSPORT` | Inter | 20 | 700 | 470 |
 | Chip | custom paint | 42 × 26 | — | 516 |
 
-Noto Sans Devanagari is warmed in `main()` next to Geist / Instrument Serif so
+Noto Sans Devanagari is bundled (`assets/fonts/`) alongside Geist / Instrument Serif so
 offline start does not flash tofu then reflow.
 
 ## Data page (back)

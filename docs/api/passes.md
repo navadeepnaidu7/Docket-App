@@ -187,7 +187,7 @@ they existed.
 | `codeFormat` | string | no | symbology of `codePayload`; absent means `qr` |
 | `codePayloadBase64` | string | no | raw bytes instead of `codePayload`, matrix symbologies only |
 | `posterUrl` | string | no | Absolute Docket image-proxy URL. **May be absent** — see Poster art |
-| `logoUrl` | string | no | Absolute Docket image-proxy URL for the film's **title logo**. **May be absent** — see Title logo. *Not emitted yet* |
+| `logoUrl` | string | no | Absolute Docket image-proxy URL for the film's **title logo**. **May be absent** — see Title logo. |
 | `posterHint` | string | no | UI fallback gradient family |
 
 Unknown `brand` → client maps to **`universal`**.
@@ -240,10 +240,10 @@ normal and render the `posterHint` gradient — never substitute a placeholder f
 on the small wallet glance card, where a cropped poster is unreadable, and keeps the full
 poster for the opened detail view. See `docs/features/movie-logo-glance.md`.
 
-**Not emitted yet** — the field is reserved and the client already reads it, but the server has
-no logo resolution. Until it lands, glance cards fall back to the poster. Wiring it up means
-picking from TMDB `logos` (prefer `iso_639_1` matching the ticket language, fall back to `en`),
-persisting `logo_path`, and emitting an absolute URL through the same image proxy.
+The server emits `logoUrl` when a resolved `logo_path` is available; the pass mapper
+uses the same image-proxy URL builder as posters. Missing/unmatched title art is normal,
+and the glance card keeps its fallback. This describes the mapper contract, not a
+guarantee that every saved ticket has completed enrichment.
 
 It must be **proxied**, not a raw `image.tmdb.org` URL, for the ISP reason above, and it is
 optional on the same terms as `posterUrl`: absent is normal, and the client falls back rather

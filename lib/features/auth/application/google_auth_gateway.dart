@@ -62,10 +62,8 @@ class PluginGoogleAuthGateway implements GoogleAuthGateway {
       );
     }
     try {
-      final GoogleSignInAccount account =
-          await GoogleSignIn.instance.authenticate(
-        scopeHint: const <String>['email', 'profile'],
-      );
+      final GoogleSignInAccount account = await GoogleSignIn.instance
+          .authenticate(scopeHint: const <String>['email', 'profile']);
       final String? idToken = account.authentication.idToken;
       if (idToken == null || idToken.isEmpty) {
         throw const GoogleAuthFailure(

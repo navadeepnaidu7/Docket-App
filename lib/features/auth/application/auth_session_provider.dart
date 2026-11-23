@@ -126,22 +126,19 @@ class AuthSession {
 
   @override
   int get hashCode => Object.hash(
-        isSignedIn,
-        id,
-        publicId,
-        displayName,
-        email,
-        avatarUrl,
-        joinedAt,
-        photoBase64,
-      );
+    isSignedIn,
+    id,
+    publicId,
+    displayName,
+    email,
+    avatarUrl,
+    joinedAt,
+    photoBase64,
+  );
 }
 
 class AuthControllerState {
-  const AuthControllerState({
-    required this.session,
-    this.busy = false,
-  });
+  const AuthControllerState({required this.session, this.busy = false});
 
   static const AuthControllerState signedOut = AuthControllerState(
     session: AuthSession.signedOut,
@@ -150,10 +147,7 @@ class AuthControllerState {
   final AuthSession session;
   final bool busy;
 
-  AuthControllerState copyWith({
-    AuthSession? session,
-    bool? busy,
-  }) {
+  AuthControllerState copyWith({AuthSession? session, bool? busy}) {
     return AuthControllerState(
       session: session ?? this.session,
       busy: busy ?? this.busy,
@@ -163,16 +157,17 @@ class AuthControllerState {
 
 final authControllerProvider =
     StateNotifierProvider<AuthController, AuthControllerState>((Ref ref) {
-  return AuthController(ref);
-});
+      return AuthController(ref);
+    });
 
 /// Effective account session for Settings / membership card.
 ///
 /// A live Google session wins. The Developer mock is only a preview when
 /// nobody is actually signed in.
 final authSessionProvider = Provider<AuthSession>((Ref ref) {
-  final AuthSession real =
-      ref.watch(authControllerProvider.select((AuthControllerState s) => s.session));
+  final AuthSession real = ref.watch(
+    authControllerProvider.select((AuthControllerState s) => s.session),
+  );
   if (real.isSignedIn) return real;
   final bool mockSignedIn = ref.watch(devFlagsProvider).mockSignedIn;
   if (mockSignedIn && DevConfig.allowRuntimeOverrides) {
@@ -228,17 +223,16 @@ class AuthController extends StateNotifier<AuthControllerState> {
           'Set an API URL under Settings → Developer first.',
         );
       }
-      final String? idToken =
-          await _ref.read(googleAuthGatewayProvider).signIn();
+      final String? idToken = await _ref
+          .read(googleAuthGatewayProvider)
+          .signIn();
       if (idToken == null) {
         if (mounted) state = state.copyWith(busy: false);
         return false;
       }
       final ApiUser user = await api.loginWithGoogle(idToken);
       if (!mounted) return false;
-      state = AuthControllerState(
-        session: AuthSession.fromUser(user),
-      );
+      state = AuthControllerState(session: AuthSession.fromUser(user));
       return true;
     } on GoogleAuthFailure {
       if (mounted) state = state.copyWith(busy: false);

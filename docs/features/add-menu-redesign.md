@@ -1,9 +1,13 @@
-# Add menu redesign — squircle tiles + morphing sheet
+# Add menu — squircle tiles + morphing sheet
 
 Issue: [#31 — Navigation Enhancement: Redesigned + add layout](https://github.com/navadeepnaidu7/Docket-App/issues/31)
-Branch: `feature/add-menu-redesign` (off `master`)
-Status: **built** — `flutter analyze` clean for these files, 404 tests pass.
-On-device behaviour is still unverified (see Verification).
+Status: **implemented** and merged. Owners: `lib/shared/widgets/morph_sheet.dart`,
+`lib/shared/widgets/squircle_tile.dart`, `lib/features/dashboard/presentation/widgets/add_menu.dart`
+(Documents tree), `lib/features/tickets/presentation/add/add_pass_flow.dart` and
+`pass_add_art.dart` (Passes tree). The morph's feel at 60/120 Hz is still unverified on a device.
+
+The "What is wrong today" section below is the pre-redesign baseline, kept because it
+explains the one-sheet rule.
 
 ## What is wrong today
 
@@ -64,9 +68,11 @@ Documents (tab 0, "IDs")                Passes (tab 1)
 Grid shape: Documents = 2 columns (tall tiles, two-line subtitle). Passes =
 3 columns, 1:1 tiles. Method steps (PNR / Photo / PDF) = 3 columns, 1:1.
 
-Only `train`, `bus` and `movie` exist in `PassInputCategory` and on the server.
-**Flights, Events and More render dimmed with a "Soon" badge and do not accept
-taps** — the same treatment `AddIdSheet` already gives Driving Licence and Voter
+At the time of the redesign only `train`, `bus` and `movie` existed in `PassInputCategory`
+and on the server, and Cards was added to Documents later (`payment-cards.md`). Flights is
+being enabled by the flight-pass work (`flight-pass.md`); check `add_pass_flow.dart` for which
+tiles are live. **Tiles without an input path render dimmed with a "Soon" badge and do not
+accept taps** — the same treatment `AddIdSheet` already gives Driving Licence and Voter
 ID, so there are no dead-end taps into an endpoint that would mis-classify.
 
 Terminal steps close the sheet, then run the existing handlers unchanged
@@ -199,9 +205,8 @@ first paint, deliberately not in `main()`, which is already on a font budget.
 
 Widget: `lib/features/passport/presentation/widgets/passport_cover_art.dart` —
 `PassportCoverArt({required PassportCoverVariant variant, required double height})`,
-drawing the PNG with a soft drop shadow and a slight rotation, matching the
-mockup's floating-book look. Dark mode keeps the navy cover as-is (it reads on
-both grounds) and only the tile behind it changes.
+drawing the SVG upright with a soft drop shadow. Dark mode keeps the navy cover as-is
+(it reads on both grounds) and only the tile behind it changes.
 
 ## Tiles
 
@@ -215,10 +220,9 @@ both grounds) and only the tile behind it changes.
   new dependency is not worth the delta at this size. `AppTheme.radiusCard` (20)
   reads too tight against the mockup's proportions, so this remains a parameterized
   local value rather than a shared token.
-- Icon: thin line glyphs at 34 px, `scheme.onSurface` — Lucide SVG assets
-  (`train-front.svg`, `bus.svg`, `plane.svg`, `ticket.svg`, `calendar-days.svg`,
-  `ellipsis.svg`) rendered via `SvgPicture.asset` rather than Material icons, for
-  consistent weight and silhouette across the grid.
+- Art: Documents tiles draw cover/card artwork. Passes and method tiles use
+  `PassAddArt` with `artIsTile: true` (see "Passes icons" below); the original 34 px Lucide
+  line glyphs were replaced.
 - Label sits **below** the tile: 13 px, `w700`, centred, up to two lines.
   Subtitle (Documents grid only) in `AppTokens.secondaryLabel(scheme)`.
 - `soon: true` -> 0.48 opacity, "Soon" pill reusing the `_IdOption` badge styling,
@@ -296,7 +300,23 @@ The plan earmarked phases 3 and 4 for `agy`. They were written directly instead 
 each landed under ~160 lines, below the threshold where a delegation brief costs
 less than just writing the code.
 
-## Verification
+## Passes icons
+
+The Passes `+` grid and the train method step (PNR / Photo / PDF) use iOS app-icon framing:
+continuous-corner squares (`ClipRSuperellipse`), subtle vertical gradients and one optically
+sized symbol. Light mode: coloured tiles with light symbols (a graphite camera on silver).
+Dark mode: charcoal tiles with coloured symbols. `PassAddArt` picks palette and symbol from
+`PassAddIcon`; most symbols are the MIT `cupertino_icons`; the bus is an original front-facing
+vector on a 24-unit grid. Drawn directly, so no raster assets load. `SquircleTile.artIsTile`
+lets the art fill the tile with no second background; labels, semantics, touch feedback and
+"Soon" states stay with the tile.
+
+The earlier 3D bitmap experiment is kept only as a design archive in
+`tool/design_src/pass_add_icons/` (with `prompts.json`) and `assets/passes/add/`; it is not in
+the asset bundle. Previews: `flutter test --no-pub tool/pass_add_icons_preview_test.dart
+--update-goldens` (output in `build/pass-add-preview/`). Hardware rendering not checked.
+
+## Verification (at merge)
 
 Done — none of these widgets had any test before this change.
 
@@ -319,8 +339,8 @@ Full suite: **404 passing**. `flutter analyze`: 5 infos, all pre-existing in
 `settings_screen.dart`, `manage_cards_view.dart` and `chip_payload.dart` — none
 in the new or changed files.
 
-Note the goldens render text as fallback boxes: `google_fonts` cannot fetch Inter
-in the test sandbox. They verify layout, geometry and colour, not typography.
+Goldens now load the bundled fonts and icon assets (`startup.md`), so they cover real
+typography as well as layout and colour.
 
 Still unverified, and must be said so in the PR:
 

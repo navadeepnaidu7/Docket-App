@@ -4,7 +4,11 @@ Companion to `flight-pass.md`. The data plan lives there; this is how the flight
 Interactive prototype: `flight-pass-motion.html` (open in a browser; `#t=452` opens paused at
 a minute of the IST day, 280-580).
 
-Status, 21 Nov 2026: direction proposed with a working prototype, not yet agreed.
+Status: Updates tab revision 2 and the route map are built in Flutter
+(`flight_updates_tab.dart`, `flight_route_map.dart`, `flight_map_land.dart`), as are the
+departure-board gate flaps on the face. Check source before assuming any other signature moment
+exists; lock-screen surfaces, airport glyphs and the chime are still proposals.
+Data, wire shape and honesty rules are owned by `flight-pass.md`, which wins on conflict.
 
 ## The idea
 

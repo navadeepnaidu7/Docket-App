@@ -1,57 +1,87 @@
-# Movie logo glance
+# Movie pass artwork
 
-How movie passes split their art between the two surfaces they appear on.
+How a movie pass uses its poster and title logo on each surface, the opt-in artwork blend,
+and the rules that keep missing artwork honest. Replaces the separate artwork-blend,
+transition-performance and archive-poster notes.
 
-## Design
+Status: implemented. Owners: `lib/features/tickets/presentation/movie/`
+(`movie_ticket_face.dart` `_HeroBand`, `movie_blended_poster.dart`,
+`movie_blurred_artwork.dart`), `lib/features/tickets/application/movie_artwork_blend_provider.dart`,
+`lib/features/tickets/presentation/history/archive_pass_deck.dart` (`_MovieArchiveCard`).
+Wire fields: `../api/passes.md` (`posterUrl`, `logoUrl`, `posterHint`).
+
+## Surfaces
 
 | Surface | Art |
-|---------|-----|
-| **Wallet glance card** | Transparent TMDB **title logo** (PNG) centered on a **dark** plate |
-| **Opened detail** | Full-length **poster** one-sheet (2:3) |
+|---|---|
+| Wallet glance card | Transparent TMDB **title logo** centred on a dark plate, `BoxFit.contain` |
+| Opened detail | Full 2:3 **poster** one-sheet |
+| Archive deck | Poster with the film's title band; brand chrome forced on (see below) |
+| Shared PNG | The glance face, so the title logo (`pass-share.md`) |
 
-The glance card is small and heavily cropped, so a poster reduces to an unreadable slice of
-artwork. The title logo is designed to be legible at that size and identifies the film
-immediately. The detail view has room for the full one-sheet, so it keeps the poster.
+The glance card is small and heavily cropped; a poster reduces to an unreadable slice, while
+the title logo is designed to read at that size.
 
-This is the committed treatment for movie passes, on mock fixtures and on real data alike.
+## Missing artwork is a normal state
 
-## Client
+`posterUrl` and `logoUrl` are both nullable: TMDB may have no match, or the async lookup may
+not have finished. No logo falls back to the poster; neither falls back to the `posterHint`
+gradient, which `MoviePosterArt` paints first and never removes. In the archive, the film's
+title is drawn over that gradient because an unnamed gradient is unidentifiable at deck size.
+**Never substitute another film's artwork.**
 
-| Piece | Role |
-|-------|------|
-| `MoviePass.logoUrl` / `resolvedLogoUrl` | Optional field; JSON key `logoUrl` |
-| `_HeroBand` in `movie_ticket_face.dart` | Glance + logo → dark plate + `BoxFit.contain`; detail → poster |
-| Mock fixtures | Carry poster + logo URLs so the treatment is visible without a backend |
+Archived passes are expired, and the expired `MovieBrandStyle` palette is grey for every
+brand, so archive cards force brand chrome (`useBrandColors: true`) to keep BookMyShow red and
+District purple distinguishable.
 
-Both fields are **nullable**, and that is a normal state — TMDB may have no logo for a film, or
-the async lookup may not have finished. With no logo the glance card falls back to the poster,
-and with neither it falls back to the `posterHint` gradient. Never substitute another film's
-artwork.
+## Artwork blend experiment
 
-## Server work still to do
+Settings -> Experimental -> **Movie artwork blend**; off by default, persisted as
+`experimental_movie_artwork_blend`. An immediate toggle wins over preference hydration.
+Off restores the original rendering exactly. Applies to the vertical roll, the stacked deck
+and the expanded detail; the shared PNG keeps the standard face.
 
-The API does not emit `logoUrl` yet, so today only mock fixtures exercise the logo path;
-remote passes fall back to the poster. To wire it up in `docket_server`:
+- Wallet: the correct poster, softly blurred and scrimmed, becomes the card's upper surface;
+  the title logo stays sharp with no dark plate. Expired artwork is desaturated. The hero
+  reserves slightly less height so two-line titles fit the 382 x 620 canvas; default geometry
+  is unchanged.
+- Detail (`MovieBlendedPoster`): keep the ~90%-width inset poster at full 2:3, never cropped
+  or stretched. No hard frame: alpha masks feather the perimeter (28 dp sides/top, 42 dp
+  bottom start point) into an aligned ~25 dp blurred copy, then the card. Clipped to the ticket
+  silhouette; the halo paints below metadata and never covers title, date, seats or code.
+- **Partner footer is untouched**: existing SVGs, sizing, alignment, stub height and District
+  glow. A smaller text signature was rejected by the owner. Tests pin the footer invariants.
+- Real-code rendering and the no-code state are unchanged.
 
-1. Pick from TMDB images `logos`, preferring `iso_639_1` matching the ticket language, falling
-   back to `en`
-2. Persist `logo_path` (or resolve on read)
-3. Emit an absolute `logoUrl` through the Docket image proxy — either the existing
-   `/img/poster/{size}/{file}` route or a dedicated `/img/logo/...` if separate cache keys are
-   wanted
+### Performance rules
 
-Contract field is documented in [`../api/passes.md`](../api/passes.md).
+- Never put full-size `ImageFiltered` blur layers on screen. `MovieBlurredArtwork` prepares a
+  blurred raster of at most 128 x 256 px, keyed by source, size, fit, radius and overscan, with
+  three blur radii of transparent padding so the halo overflow stays soft. Flutter's bounded
+  `ImageCache` owns its lifetime; there is no separate bitmap cache.
+- Decode caps: 360 px for the background, 780 px for the sharp poster. Cached network sources
+  (`cached_network_image`) as everywhere else.
+- Blended faces sit behind a repaint boundary so route motion reuses their paint.
 
-## Known issue: fixture URLs bypass the proxy
+Measured on the Motorola Edge 30, debug build, 21 Nov 2026 (four Dune open/close cycles, first
+excluded): median presented-frame interval 25.17 -> 16.79 ms opening, 16.80 -> 8.39 ms closing;
+`SurfaceFrame::Encode` p95 34.92 -> 8.46 ms opening. Long opening intervals remain in debug and
+were traced to building/layout of the new route, not the removed filters. These are debug
+diagnostics, not release benchmarks; do not describe every stutter as eliminated.
 
-The mock fixtures currently point at `https://image.tmdb.org/t/p/...` **directly**, rather than
-going through the Docket image proxy that `MOCK_POSTER_ORIGIN` normally gates. That is why the
-art renders with no backend running.
+## Known issue: fixtures bypass the proxy
 
-`image.tmdb.org` is blocked by many Indian ISPs, so on those networks the fixture art silently
-fails to load and the cards fall back to the gradient. Routing fixtures back through the proxy
-is the fix, and it lands naturally with the server work above.
+`mock_pass_fixtures.dart` points at `https://image.tmdb.org/t/p/...` directly rather than the
+Docket image proxy, so mock art renders with no backend. `image.tmdb.org` is blocked by many
+Indian ISPs; there the fixtures silently fall back to the gradient, which looks like a design
+bug. Routing fixtures through the proxy is the fix. Archived fixtures carry no `logoUrl` on
+purpose: an expired pass never renders a glance card.
 
-## Not covered yet
+## Server
 
-- History folder thumbs still use poster / gradient only
+`../docket_server/internal/service/pass_mapper.go` emits `logoUrl` through the image proxy
+when TMDB enrichment found a logo. Remote passes without one degrade to the poster.
+
+## Not covered
+
+Tablet-adaptive density; broader scrolling and release-mode performance of the blend.

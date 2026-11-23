@@ -2,7 +2,7 @@
 
 Written against: `452f2f331c7c8c433c1840a35f5a1727a2a7b8de`, branch `visual-refresh`, including existing uncommitted changes inspected on 2026-10-27.
 
-Status: selected for implementation; product source unchanged by this plan.
+Status: selected, **not yet implemented** (rechecked 2026-11-23: both hardcoded `ink` values are still present, `ids_tab.dart` has moved to line 540). Re-verify line numbers before applying.
 
 ## Evidence chain
 

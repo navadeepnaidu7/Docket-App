@@ -1,5 +1,5 @@
 import 'package:docket/core/wallet/wallet_items.dart';
-import 'package:docket/features/dashboard/application/wallet_loading_provider.dart';
+import 'package:docket/core/wallet/wallet_loading_provider.dart';
 import 'package:docket/features/dashboard/application/wallet_order_provider.dart';
 import 'package:docket/features/dashboard/presentation/widgets/ids_tab.dart';
 import 'package:docket/features/dashboard/presentation/widgets/manage_cards_view.dart';

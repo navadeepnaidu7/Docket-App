@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:docket/core/dev/dev_flags.dart';
 import 'package:docket/core/dev/dev_flags_provider.dart';
-import 'package:docket/features/dashboard/application/auth_session_provider.dart';
-import 'package:docket/features/dashboard/application/google_auth_gateway.dart';
+import 'package:docket/features/auth/application/auth_session_provider.dart';
+import 'package:docket/features/auth/application/google_auth_gateway.dart';
 import 'package:docket/features/tickets/application/api_providers.dart';
 import 'package:docket/features/tickets/data/api_session_store.dart';
 import 'package:docket/features/tickets/data/docket_api_client.dart';

@@ -1,112 +1,90 @@
-# Archive pass deck
+# Archive
 
-Opening a folder in the Passes-tab **Archive** used to push a scrolling
-`CustomScrollView` of date-sectioned rows (or, for movies, a poster grid).
-`HistoryCategoryScreen` now pushes `ArchivePassDeck` instead: one overlapping
-deck of full pass faces, a ruler dial under it, and the month/year of whatever
-sits under the needle.
+The Passes-tab **Archive**: a category grid at the root, and inside each category one
+overlapping deck of full pass faces over a finite scrubber. Replaces the separate
+archive-folders and archive-scrubber notes and the retired movie poster grid.
 
-Not to be confused with `pass-deck.md`, which is the *live* Passes tab's
-experimental horizontal carousel. Different screen, different file, no shared
-code.
+Not to be confused with `pass-deck.md`, the *live* Passes tab's experimental horizontal
+carousel. Different screen, no shared code.
 
-## Position is measured in passes, not pixels
+Status: implemented and checked on a phone via hot reload (20 Nov 2026); a separately
+installed final APK was not checked. Owners: `lib/features/tickets/presentation/history/`
+(`passes_archive_screen.dart`, `history_folder_tile.dart`, `history_category_screen.dart`,
+`archive_pass_deck.dart`). Tests: `archive_pass_deck_test.dart`, `archive_layout_test.dart`,
+`pass_history_folders_test.dart`.
 
-`AnimationController.unbounded` holds a fractional pass index, and the deck,
-the dial and the date readout all render from that one value. Nothing can
-disagree about where the archive is, mid-drag or mid-spring.
+## Category grid (root)
 
-Everything else is derived per frame: card transform from `index - position`,
-ruler offset from `position * passSpacing`, the two date labels cross-faded on
-the fractional part.
+- `HistoryFolderTile`: a bundled photo cover (1.55:1) above a neutral caption panel of at
+  least 76 dp. Category name left (Geist 17 semibold); the real count right (28 semibold) with
+  `pass`/`passes` (11) beneath. One accessible label carries name and count.
+- Two columns, 16 dp gutter, 20 dp row spacing; large text grows the caption and drops to one
+  column. Empty categories stay hidden; folder order and counts come from the folder provider.
+- `AppTheme.elevated`, existing ink/secondary-label tokens, card radius, a fine edge and a faint
+  light-mode contact shadow. Press: `BounceTap` at 0.972 with one selection haptic; reduced
+  motion keeps scale 1. Slight runtime dark-mode veil on the photos.
+- Covers are category artwork, not previews of a booking: `assets/archive/covers/`
+  (trains, movies, buses; crops 76% / 55% / 64% down). Pexels License; photographers, URLs and
+  SHA-256 hashes in `tool/design_src/archive_covers/sources.json`, credits in the in-app
+  Licences page. Decode near display size.
 
-## One gearing, shared by the drag, the ruler and the tap
+| Category | Photograph | Photographer |
+|---|---|---|
+| Trains | [Running Indian Train](https://www.pexels.com/photo/running-indian-train-20309650/) | GOWTHAM AGM |
+| Movies | [Number in a Red Seat](https://www.pexels.com/photo/number-in-a-red-seat-11718584/) | Linda Gschwentner |
+| Buses | [Photo of a Coach on a Road in Perspective](https://www.pexels.com/photo/photo-of-a-coach-on-a-road-in-perspective-16962781/) | 虎 曼 |
 
-`_dialStep` is the pixels of finger travel per pass, and it is the **only**
-number in play: the drag divides by it, the painter draws its ticks at it, and
-tap-to-jump converts a tap offset with it.
+## The deck
 
-That sounds obvious and it was not the first design. The dial originally drew
-its scale at a fixed 54px per pass while the drag geared to
-`(width - 48) / (count - 1)`, so on a three-pass folder the ruler crawled at a
-third of the fingertip and on a ten-pass folder it ran ahead of it. Both still
-"worked" — the needle landed on the right pass — but a scale sliding at a rate
-the finger is not driving reads as slipping, which is exactly the thing that
-separates a dial from a slider.
+`HistoryCategoryScreen` pushes `ArchivePassDeck` for every category, movies included (the
+old year-sectioned poster grid is gone; movie art rules are in `movie-logo-glance.md`). It
+re-derives from `passListProvider`, so removing the last pass shows the empty state.
 
-So the archive still spreads over one comfortable sweep and the ruler is drawn
-to match, rather than the other way round:
+### One position value
 
-```
-_dialStep = max(minPassSpacing, (dialWidth - 48) / (count - 1))
-```
+`AnimationController.unbounded` holds a fractional pass index. Deck transforms, the scrubber
+marker and the date readout all render from it, so nothing disagrees mid-drag or mid-spring.
 
-Tick density then follows the gearing instead of being fixed:
-`subdivisionsFor()` puts a tick roughly every 18dp whatever `_dialStep` turns
-out to be. A shallow folder gets more marks *between* passes rather than a
-wider gap; a deep one falls back to a plain per-pass ruler rather than smearing
-into a grey band.
+### One pass per gesture
 
-Below the `minPassSpacing` floor of 7dp — past roughly fifty passes — the sweep
-gives out before the archive does and it takes a second pull. That is the price
-of keeping the grip, and it is the right side of the trade: a 3dp-per-pass dial
-is unusable whether or not it fits.
+Release velocity decides only **whether** a drag that stopped short of halfway still commits
+to the next pass; it is not projected forward. An ordinary phone flick is 2000-4000 px/s,
+which would cross 3-5 passes and lose the user's place. A long drag still travels as far as the
+finger. Crossing the archive is the scrubber's job. Interrupted snaps cancel their completion
+future, so an old snap cannot reset a newer selection.
 
-## Detents
+### Scrubber
 
-`_detent()` fires a selection haptic on every notch crossed: once per pass on
-the deck, once per **drawn tick** on the dial, so what the ruler shows going by
-is what the fingertip feels going by. A fast scrub crosses ticks quicker than
-the actuator can resolve them, so detents are rate-limited to one per 28ms —
-without that a long scrub is a buzz, not a ruler.
+- A finite ruler spanning the archive: first pass at the left inset, last at the right. Card
+  swipes move its marker; taps and drags on it select the matching position directly, settling
+  to the nearest pass on release, so one sweep reaches the end of any archive.
+- Fine rounded ticks with faded edges and the coral marker. The selected month/year sits in a
+  compact badge above it, clamped inside the viewport; a quiet ordinal ("5 of 9") below gives
+  context for repeated dates. A one-pass folder centres the marker with no travel.
+- Uses existing `AppFonts` and theme surface/label tokens.
 
-`_landingDetent()` clicks on arrival only when the drag did not already click
-past that notch. A detented control is felt as it passes the notch, not again
-when it stops moving; two pulses a fifth of a second apart read as a stutter.
+### Haptics
 
-Running off either end fires a heavier `HapticService.impact()` once, so the
-rubber band has a floor you can feel.
+`_detent()` fires a selection haptic per notch crossed, rate-limited to one per 28 ms so a
+fast scrub is a ruler, not a buzz. The landing detent clicks only if the drag did not already
+click past that notch. Running off either end fires one heavier impact.
 
-## The deck moves one pass per gesture
+### Taps and removal
 
-Release velocity decides **whether** a drag that stopped short of halfway still
-commits to the next pass. It does not decide how far you travel.
+Every card the viewport shows takes a tap and settles onto it; wrapping neighbours in
+`IgnorePointer` ate taps on a card half in view that looked like a button. Removal (long
+press, `pass-delete.md`) is gated on `interactive`, i.e. the focused card only: a long press
+on a half-covered card is more likely a mis-grab than an intent to delete.
 
-The first version projected velocity forward (`position + v * 0.42`) and let a
-flick cross several passes. On a real phone an ordinary flick clears
-2000-4000px/s, which is 3-5 passes at a 288px card step — you lose your place
-faster than you save time, and you cannot flick "gently" enough to move one.
+### Accessibility
 
-A long *drag* still travels exactly as far as the finger does; only the
-velocity projection is gone. Crossing an archive is the dial's job, and that
-division is now honest rather than nominal.
-
-## Tap targets
-
-Every card the viewport shows takes a tap and settles the deck onto it.
-Wrapping non-focused cards in `IgnorePointer` — the obvious way to keep the
-remove flow on the front card — also silently ate taps on the neighbour that is
-sitting half in view looking exactly like a button. Removal is gated on
-`interactive` at the callback instead: a long press on a half-covered card is
-far more likely a mis-grab than an intent to delete.
-
-## Accessibility
-
-The two ways to move through the archive, dragging the deck and scrubbing the
-dial, are both gestures a screen reader cannot perform, and every card but the
-focused one is `hidden`. So the dial carries `Semantics(slider: true)` with
-increase/decrease actions and a "3 of 17" value — it is the adjustable control
-that moves the archive, and without it the whole folder is one unreachable
-card. `_focused` is a separate `ValueNotifier` so that node rebuilds once per
-pass rather than once per frame of a scrub.
+Dragging and scrubbing are gestures a screen reader cannot perform, and non-focused cards are
+`hidden`. The scrubber therefore carries `Semantics(slider: true)` with increase/decrease
+actions and an "N of M" value; without it the folder is one unreachable card. The focused
+index is a separate `ValueNotifier` so the node rebuilds once per pass, not per frame.
 
 ## Known gaps
 
-- The folder tile still flies `Hero(tag: 'history-category-<name>')`, but the
-  landing pad went away with `_CategoryIntro`. One-sided Heroes do not throw;
-  the flight just silently does not happen. Either give the deck a mark to land
-  on or drop the tag.
-- The pass count is only in the semantics label — nothing on screen says how
-  deep the folder is.
-- `_MovieArchiveCard`'s 76dp title band and `_DateReadout`'s 62dp column are
-  fixed, so past roughly 1.4x text scale they clip rather than grow.
+- `_MovieArchiveCard`'s 76 dp title band and `_DateReadout`'s fixed column clip past roughly
+  1.4x text scale rather than grow.
+- Hardware check of the final installed APK in both themes.

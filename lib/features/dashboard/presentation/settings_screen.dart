@@ -2,65 +2,50 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/assets/app_assets.dart';
 import '../../../core/dev/dev_config.dart';
-import '../../../core/dev/sky_preview.dart';
-import 'package:flutter/foundation.dart';
-import '../../../core/dev/dev_flags.dart';
-import '../../../core/dev/dev_flags_provider.dart';
-import '../../../core/dev/dummy_wallet_seed.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/haptics/haptics_provider.dart';
-import '../../../core/theme/theme_provider.dart';
-import '../../../core/theme/theme_time_picker.dart';
-import '../../cards/application/card_list_provider.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/shining_action_label.dart';
 import '../../cards/application/payment_card_stack_provider.dart';
 import '../../ids/application/id_list_provider.dart';
 import '../../ids/domain/id_document.dart';
 import '../../passport/application/passport_list_provider.dart';
 import '../../passport/domain/passport_profile.dart';
 import '../../tickets/application/movie_artwork_blend_provider.dart';
-import '../../tickets/application/pass_list_provider.dart';
 import '../../tickets/presentation/calendar/calendar_import_screen.dart';
-import '../application/auth_session_provider.dart';
-import '../application/google_auth_gateway.dart';
+import '../../auth/application/auth_session_provider.dart';
 import '../application/card_shine_border_provider.dart';
+import '../application/nav_labels_provider.dart';
+import '../application/pass_deck_provider.dart';
 import '../application/profile_avatar_shape_provider.dart';
 import '../application/search_button_provider.dart';
-import '../application/pass_deck_provider.dart';
 import '../application/wallet_filter_provider.dart';
 import 'manage_account_screen.dart';
+import 'settings/about_screens.dart';
+import 'settings/appearance_settings.dart';
+import 'settings/developer_settings_section.dart';
+import 'settings/membership_card.dart';
+import 'settings/settings_rows.dart';
 import 'user_card_detail_screen.dart';
-import 'widgets/membership_mesh.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../shared/widgets/pill_segmented.dart';
-import '../../../shared/widgets/shining_action_label.dart';
-import '../application/nav_labels_provider.dart';
 
-/// Apple Card–like hero dimensions (scrolls with the settings list).
-const double kSettingsHeroHeight = 226.0;
-const double kSettingsHeroRadius = 22.0;
-
-/// Credits shown under Settings → About (edit freely).
-const String kDeveloperDisplayName = 'Navadeep Naidu';
-const String kDeveloperEmail = 'hello@docket.app';
-const String kDeveloperGithubUrl = 'https://github.com/navadeepnaidu7';
-const String kDeveloperWebsiteUrl = 'https://navadeepnaidu.com';
-const String kDeveloperBlogUrl = 'https://blog.navadeepnaidu.com';
-const String kDeveloperXUrl = 'https://x.com/navadeep_naidu7';
-
-/// App version label — the part of `pubspec.yaml` `version:` before the `+`.
-///
-/// Duplicated rather than read at runtime because nothing here depends on
-/// `package_info_plus`. `test/app_version_test.dart` fails if this drifts from
-/// the pubspec, which is the only thing keeping the two honest.
-const String kAppVersion = '0.1.0-alpha';
+// Public Settings API that callers and tests import from this file.
+export 'settings/about_screens.dart'
+    show
+        AboutDeveloperScreen,
+        AboutDocketScreen,
+        kAppVersion,
+        kDeveloperBlogUrl,
+        kDeveloperDisplayName,
+        kDeveloperEmail,
+        kDeveloperGithubUrl,
+        kDeveloperWebsiteUrl,
+        kDeveloperXUrl;
+export 'settings/membership_card.dart'
+    show WalletMembershipCard, kSettingsHeroHeight, kSettingsHeroRadius;
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -147,13 +132,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   physics: const BouncingScrollPhysics(
                     parent: AlwaysScrollableScrollPhysics(),
                   ),
-                  cacheExtent: 480,
+                  scrollCacheExtent: const ScrollCacheExtent.pixels(480),
                   // Avoid keep-alive overhead for a short settings list.
                   addAutomaticKeepAlives: false,
                   addRepaintBoundaries: true,
                   children: [
                     RepaintBoundary(
-                      child: _AnimatedPressScale(
+                      child: SettingsPressScale(
                         onTap: () {
                           HapticService.select();
                           Navigator.of(context).push(
@@ -193,15 +178,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                     ),
                     const SizedBox(height: 18),
-                    _SettingsSection(
+                    SettingsSection(
                       title: 'Appearance',
                       surface: surface,
                       borderColor: borderColor,
                       isDark: isDark,
                       children: [
-                        const _ThemeAppearanceBlock(),
-                        const _SettingsDivider(),
-                        _SettingsToggleRow(
+                        const ThemeAppearanceBlock(),
+                        const SettingsDivider(),
+                        SettingsToggleRow(
                           icon: Icons.vibration_rounded,
                           iconColor: const Color(0xFFE07A2F),
                           title: 'Haptics',
@@ -214,8 +199,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ref.read(hapticsEnabledProvider.notifier).toggle();
                           },
                         ),
-                        const _SettingsDivider(),
-                        _ProfileAvatarShapeRow(
+                        const SettingsDivider(),
+                        ProfileAvatarShapeRow(
                           shape: ref.watch(profileAvatarShapeProvider),
                           onTap: () {
                             HapticService.select();
@@ -227,13 +212,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    _SettingsSection(
+                    SettingsSection(
                       title: 'Navigation',
                       surface: surface,
                       borderColor: borderColor,
                       isDark: isDark,
                       children: [
-                        _SettingsToggleRow(
+                        SettingsToggleRow(
                           icon: CupertinoIcons.textformat_abc,
                           iconColor: const Color(0xFF2F6FED),
                           title: 'Labels',
@@ -243,8 +228,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ref.read(showNavLabelsProvider.notifier).toggle();
                           },
                         ),
-                        const _SettingsDivider(),
-                        _SettingsToggleRow(
+                        const SettingsDivider(),
+                        SettingsToggleRow(
                           icon: Icons.search_rounded,
                           iconColor: const Color(0xFF0FA968),
                           title: 'Search button',
@@ -260,13 +245,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    _SettingsSection(
+                    SettingsSection(
                       title: 'Experimental',
                       surface: surface,
                       borderColor: borderColor,
                       isDark: isDark,
                       children: [
-                        _SettingsToggleRow(
+                        SettingsToggleRow(
                           icon: Icons.account_balance_wallet_outlined,
                           iconColor: const Color(0xFF2F6FED),
                           title: 'Stack payment cards',
@@ -280,8 +265,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 .setEnabled(enabled);
                           },
                         ),
-                        const _SettingsDivider(),
-                        _SettingsToggleRow(
+                        const SettingsDivider(),
+                        SettingsToggleRow(
                           icon: Icons.auto_awesome_rounded,
                           iconColor: const Color(0xFF5E5CE6),
                           title: 'Card shine border',
@@ -293,8 +278,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ref.read(cardShineBorderProvider.notifier).toggle();
                           },
                         ),
-                        const _SettingsDivider(),
-                        _SettingsToggleRow(
+                        const SettingsDivider(),
+                        SettingsToggleRow(
                           icon: Icons.filter_list_rounded,
                           iconColor: const Color(0xFF2F6FED),
                           title: 'Card category filter',
@@ -308,8 +293,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 .toggle();
                           },
                         ),
-                        const _SettingsDivider(),
-                        _SettingsToggleRow(
+                        const SettingsDivider(),
+                        SettingsToggleRow(
                           icon: Icons.style_rounded,
                           iconColor: const Color(0xFF0FA968),
                           title: 'Stacked pass deck',
@@ -322,8 +307,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ref.read(passDeckModeProvider.notifier).toggle();
                           },
                         ),
-                        const _SettingsDivider(),
-                        _SettingsToggleRow(
+                        const SettingsDivider(),
+                        SettingsToggleRow(
                           icon: Icons.movie_outlined,
                           iconColor: const Color(0xFF5E5CE6),
                           title: 'Movie artwork blend',
@@ -340,13 +325,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     if (session.isSignedIn) ...[
                       const SizedBox(height: 20),
-                      _SettingsSection(
+                      SettingsSection(
                         title: 'Account',
                         surface: surface,
                         borderColor: borderColor,
                         isDark: isDark,
                         children: [
-                          _SettingsLinkRow(
+                          SettingsLinkRow(
                             icon: Icons.manage_accounts_rounded,
                             iconColor: const Color(0xFF2F6FED),
                             title: 'Manage account',
@@ -360,8 +345,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               );
                             },
                           ),
-                          const _SettingsDivider(),
-                          _SettingsLinkRow(
+                          const SettingsDivider(),
+                          SettingsLinkRow(
                             icon: Icons.event_available_rounded,
                             iconColor: const Color(0xFF0FA968),
                             title: 'Google Calendar',
@@ -375,8 +360,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               );
                             },
                           ),
-                          const _SettingsDivider(),
-                          _SettingsLinkRow(
+                          const SettingsDivider(),
+                          SettingsLinkRow(
                             icon: Icons.logout_rounded,
                             iconColor: const Color(0xFFFF3B30),
                             title: 'Sign out',
@@ -386,13 +371,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                     ],
                     const SizedBox(height: 20),
-                    _SettingsSection(
+                    SettingsSection(
                       title: 'About',
                       surface: surface,
                       borderColor: borderColor,
                       isDark: isDark,
                       children: [
-                        _SettingsLinkRow(
+                        SettingsLinkRow(
                           icon: Icons.info_outline_rounded,
                           iconColor: const Color(0xFF8E8E93),
                           title: 'About Docket',
@@ -404,8 +389,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             );
                           },
                         ),
-                        const _SettingsDivider(),
-                        _SettingsLinkRow(
+                        const SettingsDivider(),
+                        SettingsLinkRow(
                           icon: Icons.person_outline_rounded,
                           iconColor: const Color(0xFF8E8E93),
                           title: 'About developer',
@@ -418,27 +403,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             );
                           },
                         ),
-                        const _SettingsDivider(),
-                        _SettingsLinkRow(
+                        const SettingsDivider(),
+                        SettingsLinkRow(
                           icon: Icons.mail_outline_rounded,
                           iconColor: const Color(0xFF8E8E93),
                           title: 'Mail to developer',
                           subtitle: kDeveloperEmail,
-                          onTap: () => _mailToDeveloper(context),
+                          onTap: () => mailToDeveloper(context),
                         ),
-                        const _SettingsDivider(),
-                        _SettingsLinkRow(
+                        const SettingsDivider(),
+                        SettingsLinkRow(
                           icon: Icons.cloud_outlined,
                           iconColor: const Color(0xFF8E8E93),
                           title: 'Weather credits',
                           subtitle: 'Open-Meteo \u00b7 CC BY 4.0',
-                          onTap: () => _showWeatherCredits(context),
+                          onTap: () => showWeatherCredits(context),
                         ),
                       ],
                     ),
                     if (DevConfig.showDevMenu) ...[
                       const SizedBox(height: 20),
-                      _DeveloperSection(
+                      DeveloperSettingsSection(
                         surface: surface,
                         borderColor: borderColor,
                         isDark: isDark,
@@ -454,91 +439,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
     );
   }
-}
-
-Future<void> _showWeatherCredits(BuildContext context) =>
-    showCupertinoModalPopup<void>(
-      context: context,
-      builder: (sheetContext) => CupertinoActionSheet(
-        title: const Text('Weather credits'),
-        message: const Text(
-          'Weather data by Open-Meteo, shared under CC BY 4.0. '
-          'Docket rounds temperatures and illustrates weather conditions.',
-        ),
-        actions: [
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.of(sheetContext).pop();
-              _openDeveloperLink(context, 'https://open-meteo.com/');
-            },
-            child: const Text('Open-Meteo'),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.of(sheetContext).pop();
-              _openDeveloperLink(
-                context,
-                'https://creativecommons.org/licenses/by/4.0/',
-              );
-            },
-            child: const Text('CC BY 4.0 licence'),
-          ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.of(sheetContext).pop(),
-          child: const Text('Done'),
-        ),
-      ),
-    );
-
-Future<void> _mailToDeveloper(BuildContext context) async {
-  HapticService.tap();
-  final Uri uri = Uri(
-    scheme: 'mailto',
-    path: kDeveloperEmail,
-    queryParameters: <String, String>{'subject': 'Docket feedback'},
-  );
-
-  try {
-    final bool launched = await launchUrl(uri);
-    if (launched || !context.mounted) return;
-  } catch (_) {
-    // Fall through to clipboard fallback.
-  }
-
-  if (!context.mounted) return;
-  await Clipboard.setData(const ClipboardData(text: kDeveloperEmail));
-  if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text('Email copied — no mail app available'),
-      behavior: SnackBarBehavior.floating,
-    ),
-  );
-}
-
-Future<void> _openDeveloperLink(BuildContext context, String url) async {
-  HapticService.tap();
-  final Uri uri = Uri.parse(url);
-  try {
-    final bool launched = await launchUrl(
-      uri,
-      mode: LaunchMode.externalApplication,
-    );
-    if (launched || !context.mounted) return;
-  } catch (_) {
-    // Fall through to clipboard fallback.
-  }
-
-  if (!context.mounted) return;
-  await Clipboard.setData(ClipboardData(text: url));
-  if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text('Link copied — couldn’t open the browser'),
-      behavior: SnackBarBehavior.floating,
-    ),
-  );
 }
 
 Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
@@ -562,1380 +462,6 @@ Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
   );
   if (confirmed != true) return;
   await ref.read(authControllerProvider.notifier).signOut();
-}
-
-Future<void> _handleGoogleSignInTap(BuildContext context, WidgetRef ref) async {
-  HapticService.confirm();
-  try {
-    await ref.read(authControllerProvider.notifier).signInWithGoogle();
-  } on GoogleAuthFailure catch (e) {
-    if (!context.mounted) return;
-    await _showAuthMessage(
-      context,
-      title: 'Could not sign in',
-      message: e.message,
-    );
-  } catch (_) {
-    if (!context.mounted) return;
-    await _showAuthMessage(
-      context,
-      title: 'Could not sign in',
-      message: 'Try again in a moment.',
-    );
-  }
-}
-
-Future<void> _showAuthMessage(
-  BuildContext context, {
-  required String title,
-  required String message,
-}) {
-  return showDialog<void>(
-    context: context,
-    builder: (BuildContext dialogContext) {
-      final ThemeData theme = Theme.of(dialogContext);
-      return AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(
-              'Got it',
-              style: TextStyle(color: theme.colorScheme.primary),
-            ),
-          ),
-        ],
-      );
-    },
-  );
-}
-
-// ── Apple Card–inspired wallet membership surface ────────────────────────────
-// Wash palette + painter live in membership_mesh.dart (shared with profile).
-
-class WalletMembershipCard extends ConsumerStatefulWidget {
-  const WalletMembershipCard({
-    super.key,
-    required this.passports,
-    required this.idDocs,
-    required this.isDark,
-    this.enableMotion = true,
-  });
-
-  final List<PassportProfile> passports;
-  final List<IdDocument> idDocs;
-  final bool isDark;
-
-  /// When false (e.g. parent list is scrolling), freeze the fluid wash.
-  final bool enableMotion;
-
-  /// Requests Roboto Mono so `main()`'s `pendingFonts()` wait covers it.
-  ///
-  /// The membership number is the only Roboto Mono in the app, and this card
-  /// only appears once Settings or the card detail is opened — so without this
-  /// the family was fetched on that first open, hitching the screen and then
-  /// reflowing the number out of a fallback face. The return value is
-  /// deliberately discarded: asking is what starts the load.
-  static void warmUp() {
-    GoogleFonts.robotoMono(fontWeight: FontWeight.w700);
-  }
-
-  @override
-  ConsumerState<WalletMembershipCard> createState() =>
-      _WalletMembershipCardState();
-}
-
-class _WalletMembershipCardState extends ConsumerState<WalletMembershipCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _motion;
-  final ValueNotifier<double> _phase = ValueNotifier<double>(0);
-  Animation<double>? _routeAnimation;
-  Animation<double>? _secondaryAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _motion = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 18),
-    )..addListener(_onMotionTick);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final ModalRoute<dynamic>? route = ModalRoute.of(context);
-
-    final Animation<double>? nextPrimary = route?.animation;
-    if (!identical(nextPrimary, _routeAnimation)) {
-      _routeAnimation?.removeStatusListener(_onRouteChanged);
-      _routeAnimation = nextPrimary;
-      _routeAnimation?.addStatusListener(_onRouteChanged);
-    }
-
-    final Animation<double>? nextSecondary = route?.secondaryAnimation;
-    if (!identical(nextSecondary, _secondaryAnimation)) {
-      _secondaryAnimation?.removeListener(_onSecondaryTick);
-      _secondaryAnimation = nextSecondary;
-      _secondaryAnimation?.addListener(_onSecondaryTick);
-    }
-
-    _syncMotion();
-  }
-
-  @override
-  void didUpdateWidget(covariant WalletMembershipCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.enableMotion != widget.enableMotion) {
-      _syncMotion();
-    }
-  }
-
-  void _onRouteChanged(AnimationStatus status) => _syncMotion();
-
-  void _onSecondaryTick() => _syncMotion();
-
-  void _onMotionTick() {
-    // ~12 unique frames per controller cycle — not 60/120.
-    final double next = (_motion.value * 12).floorToDouble() / 12.0;
-    if (next != _phase.value) {
-      _phase.value = next;
-    }
-  }
-
-  void _syncMotion() {
-    if (!mounted) return;
-    final ModalRoute<dynamic>? route = ModalRoute.of(context);
-    final bool routeVisible =
-        route == null ||
-        (route.isCurrent && (route.secondaryAnimation?.value ?? 0) == 0);
-    final bool shouldRun =
-        widget.enableMotion &&
-        routeVisible &&
-        TickerMode.valuesOf(context).enabled;
-    if (shouldRun) {
-      if (!_motion.isAnimating) _motion.repeat();
-    } else if (_motion.isAnimating) {
-      _motion.stop();
-    }
-  }
-
-  @override
-  void dispose() {
-    _routeAnimation?.removeStatusListener(_onRouteChanged);
-    _secondaryAnimation?.removeListener(_onSecondaryTick);
-    _motion
-      ..removeListener(_onMotionTick)
-      ..dispose();
-    _phase.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final DevFlags devFlags = ref.watch(devFlagsProvider);
-    final AuthSession session = ref.watch(authSessionProvider);
-    final PassportProfile? primaryPassport = widget.passports.isNotEmpty
-        ? widget.passports.first
-        : null;
-    final IdDocument? primaryId = widget.idDocs.isNotEmpty
-        ? widget.idDocs.first
-        : null;
-
-    final String name = _resolveName(session, primaryPassport, primaryId);
-    final List<Color> washes = walletWashColors(
-      passports: widget.passports,
-      idDocs: widget.idDocs,
-      cards: ref.watch(cardListProvider),
-      scheme: devFlags.cardFluidScheme,
-    );
-
-    // Crisp Light Titanium Apple Card styling (dark charcoal text for maximum contrast on white titanium)
-    const Color ink = Color(0xFF1C1C1E);
-    const Color inkMuted = Color(0xFF636366);
-    final Color border = Colors.black.withValues(alpha: 0.08);
-    final bool hasDocs =
-        widget.passports.isNotEmpty || widget.idDocs.isNotEmpty;
-    final bool signedIn = session.isSignedIn;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(kSettingsHeroRadius),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: widget.isDark ? 0.12 : 0.055),
-            blurRadius: 28,
-            offset: const Offset(0, 10),
-            spreadRadius: -4,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: widget.isDark ? 0.06 : 0.025),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(kSettingsHeroRadius),
-        child: Stack(
-          fit: StackFit.expand,
-          children: <Widget>[
-            // Animated wash layer only — face text stays static.
-            RepaintBoundary(
-              child: ValueListenableBuilder<double>(
-                valueListenable: _phase,
-                builder: (BuildContext context, double phase, _) {
-                  return MembershipMeshBackground(
-                    washes: washes,
-                    phase: phase,
-                    empty: !hasDocs,
-                  );
-                },
-              ),
-            ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(kSettingsHeroRadius),
-                border: Border.all(color: border, width: 0.5),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    signedIn && session.joinedLabel.isNotEmpty
-                        ? session.joinedLabel
-                        : 'Docket',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppFonts.ui(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.1,
-                      color: inkMuted,
-                    ),
-                  ),
-                  const Spacer(),
-                  if (signedIn)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppFonts.ui(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.5,
-                              height: 1.12,
-                              color: ink,
-                            ),
-                          ),
-                        ),
-                        if (session.membershipNumber.isNotEmpty) ...<Widget>[
-                          const SizedBox(width: 16),
-                          Text(
-                            session.membershipNumber,
-                            style: GoogleFonts.robotoMono(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: inkMuted,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ],
-                    )
-                  else
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: <Widget>[
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            // Own detector so this does not open card detail.
-                            child: _GoogleSignInOnCardButton(
-                              busy: ref.watch(
-                                authControllerProvider.select(
-                                  (AuthControllerState s) => s.busy,
-                                ),
-                              ),
-                              onTap: () => _handleGoogleSignInTap(context, ref),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _resolveName(
-    AuthSession session,
-    PassportProfile? passport,
-    IdDocument? id,
-  ) {
-    final String? accountName = session.displayName?.trim();
-    if (accountName != null && accountName.isNotEmpty) {
-      return accountName;
-    }
-    if (passport != null && passport.name.trim().isNotEmpty) {
-      return passport.name.trim();
-    }
-    if (id != null && id.holderName.trim().isNotEmpty) {
-      return id.holderName.trim();
-    }
-    return 'Your wallet';
-  }
-}
-
-/// Official Google button sized for the membership card face.
-class _GoogleSignInOnCardButton extends StatelessWidget {
-  const _GoogleSignInOnCardButton({required this.onTap, this.busy = false});
-
-  final VoidCallback onTap;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    return _AnimatedPressScale(
-      onTap: busy ? () {} : onTap,
-      child: SizedBox(
-        height: 40,
-        child: busy
-            ? const Align(
-                alignment: Alignment.centerLeft,
-                child: SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2.4),
-                ),
-              )
-            : SvgPicture.asset(
-                AppAssets.googleSignInButton,
-                fit: BoxFit.contain,
-                alignment: Alignment.centerLeft,
-              ),
-      ),
-    );
-  }
-}
-
-/// Debug / profile only — mock vs consumer data sources.
-class _DeveloperSection extends ConsumerWidget {
-  const _DeveloperSection({
-    required this.surface,
-    required this.borderColor,
-    required this.isDark,
-  });
-
-  final Color surface;
-  final Color borderColor;
-  final bool isDark;
-
-  Future<void> _editApiBaseUrl(BuildContext context, WidgetRef ref) async {
-    final DevFlags flags = ref.read(devFlagsProvider);
-    final TextEditingController controller = TextEditingController(
-      text: flags.apiBaseUrl,
-    );
-    final String? result = await showDialog<String>(
-      context: context,
-      builder: (BuildContext ctx) {
-        return AlertDialog(
-          title: const Text('API base URL'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            keyboardType: TextInputType.url,
-            decoration: const InputDecoration(
-              hintText: 'https://api.example.com',
-              helperText: 'No trailing slash. Empty forces mock.',
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-    controller.dispose();
-    if (result == null) return;
-    HapticService.select();
-    await ref.read(devFlagsProvider.notifier).setApiBaseUrl(result);
-  }
-
-  Future<void> _editDevAuthToken(BuildContext context, WidgetRef ref) async {
-    final DevFlags flags = ref.read(devFlagsProvider);
-    final TextEditingController controller = TextEditingController(
-      text: flags.devAuthIdToken,
-    );
-    final String? result = await showDialog<String>(
-      context: context,
-      builder: (BuildContext ctx) {
-        return AlertDialog(
-          title: const Text('Dev auth token'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            obscureText: true,
-            decoration: const InputDecoration(
-              hintText: 'dev-google-token',
-              helperText: 'Sent as idToken to POST /v1/auth/google',
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-    controller.dispose();
-    if (result == null) return;
-    HapticService.select();
-    await ref.read(devFlagsProvider.notifier).setDevAuthIdToken(result);
-  }
-
-  Future<void> _selectFluidScheme(BuildContext context, WidgetRef ref) async {
-    final DevFlags flags = ref.read(devFlagsProvider);
-    final CardFluidScheme? selected = await showDialog<CardFluidScheme>(
-      context: context,
-      builder: (BuildContext ctx) {
-        return SimpleDialog(
-          title: const Text('Card Fluidic Gradient Scheme'),
-          children: CardFluidScheme.values.map((CardFluidScheme scheme) {
-            final bool isCurrent = scheme == flags.cardFluidScheme;
-            return SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, scheme),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: <Widget>[
-                    Icon(
-                      isCurrent
-                          ? Icons.radio_button_checked_rounded
-                          : Icons.radio_button_unchecked_rounded,
-                      color: isCurrent ? const Color(0xFF5E5CE6) : Colors.grey,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        scheme.label,
-                        style: TextStyle(
-                          fontWeight: isCurrent
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
-        );
-      },
-    );
-    if (selected != null) {
-      HapticService.select();
-      await ref.read(devFlagsProvider.notifier).setCardFluidScheme(selected);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final DevFlags flags = ref.watch(devFlagsProvider);
-    final String urlLabel = flags.apiBaseUrl.isEmpty
-        ? 'Not set'
-        : flags.apiBaseUrl;
-
-    return _SettingsSection(
-      title: 'Developer',
-      surface: surface,
-      borderColor: borderColor,
-      isDark: isDark,
-      children: <Widget>[
-        if (kDebugMode) ...[
-          _SettingsLinkRow(
-            icon: Icons.auto_awesome_outlined,
-            iconColor: const Color(0xFF5E5CE6),
-            title: 'Weather glance preview',
-            subtitle: ref.watch(weatherGlancePreviewProvider).label,
-            onTap: () async {
-              final preview = await showDialog<WeatherGlancePreview>(
-                context: context,
-                builder: (context) => SimpleDialog(
-                  title: const Text('Weather glance preview'),
-                  children: [
-                    for (final preview in WeatherGlancePreview.values)
-                      SimpleDialogOption(
-                        onPressed: () => Navigator.pop(context, preview),
-                        child: Text(preview.label),
-                      ),
-                  ],
-                ),
-              );
-              if (preview != null && context.mounted) {
-                ref.read(weatherGlancePreviewProvider.notifier).state = preview;
-              }
-            },
-          ),
-          const _SettingsDivider(),
-          _SettingsLinkRow(
-            icon: Icons.cloud_outlined,
-            iconColor: const Color(0xFF2F6FED),
-            title: 'Weather scene preview',
-            subtitle: ref.watch(skyPreviewProvider).label,
-            onTap: () async {
-              final mode = await showDialog<SkyPreviewMode>(
-                context: context,
-                builder: (context) => SimpleDialog(
-                  title: const Text('Weather scene preview'),
-                  children: [
-                    for (final mode in SkyPreviewMode.values)
-                      SimpleDialogOption(
-                        onPressed: () => Navigator.pop(context, mode),
-                        child: Text(mode.label),
-                      ),
-                  ],
-                ),
-              );
-              if (mode != null) {
-                ref.read(skyPreviewProvider.notifier).state = mode;
-              }
-            },
-          ),
-          const _SettingsDivider(),
-        ],
-        _SettingsToggleRow(
-          icon: Icons.science_rounded,
-          iconColor: const Color(0xFFAF52DE),
-          title: 'Use mock passes',
-          subtitle: flags.isMockPassesActive
-              ? 'Fixtures · demo train & movie cards'
-              : 'Remote repository (consumer path)',
-          value: flags.useMockPasses,
-          onChanged: (bool v) async {
-            HapticService.select();
-            await ref.read(devFlagsProvider.notifier).setUseMockPasses(v);
-          },
-        ),
-        const _SettingsDivider(),
-        _SettingsToggleRow(
-          icon: Icons.account_circle_rounded,
-          iconColor: const Color(0xFF2F6FED),
-          title: 'Mock signed in',
-          subtitle: flags.mockSignedIn
-              ? 'Card shows name · Account section on'
-              : 'Card shows Google button · signed out',
-          value: flags.mockSignedIn,
-          onChanged: (bool v) async {
-            HapticService.select();
-            await ref.read(devFlagsProvider.notifier).setMockSignedIn(v);
-          },
-        ),
-        const _SettingsDivider(),
-        _SettingsLinkRow(
-          icon: Icons.palette_rounded,
-          iconColor: const Color(0xFF5E5CE6),
-          title: 'Card fluid gradient scheme',
-          subtitle: flags.cardFluidScheme.label,
-          onTap: () => _selectFluidScheme(context, ref),
-        ),
-        const _SettingsDivider(),
-        _SettingsLinkRow(
-          icon: Icons.link_rounded,
-          iconColor: const Color(0xFF2F6FED),
-          title: 'API base URL',
-          subtitle: urlLabel,
-          onTap: () => _editApiBaseUrl(context, ref),
-        ),
-        const _SettingsDivider(),
-        _SettingsLinkRow(
-          icon: Icons.key_rounded,
-          iconColor: const Color(0xFFAF52DE),
-          title: 'Dev auth token',
-          subtitle: flags.devAuthIdToken.isEmpty
-              ? 'Not set · needed to add passes'
-              : 'Set · used for /v1/auth/google',
-          onTap: () => _editDevAuthToken(context, ref),
-        ),
-        const _SettingsDivider(),
-        _SettingsLinkRow(
-          icon: Icons.refresh_rounded,
-          iconColor: const Color(0xFF30D158),
-          title: 'Reload passes',
-          onTap: () {
-            HapticService.select();
-            ref.read(passListProvider.notifier).refresh();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Refreshing passes…'),
-                behavior: SnackBarBehavior.floating,
-                duration: Duration(seconds: 1),
-              ),
-            );
-          },
-        ),
-        const _SettingsDivider(),
-        _SettingsLinkRow(
-          icon: Icons.badge_outlined,
-          iconColor: const Color(0xFF0A84FF),
-          title: 'Load dummy IDs',
-          subtitle: '5 passports + 5 Aadhaar/PAN variants',
-          onTap: () {
-            HapticService.select();
-            final int added = DummyWalletSeed.load(ref);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  added == 0
-                      ? 'Dummy cards already loaded'
-                      : 'Loaded $added dummy cards',
-                ),
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          },
-        ),
-        const _SettingsDivider(),
-        _SettingsLinkRow(
-          icon: Icons.playlist_remove_rounded,
-          iconColor: const Color(0xFFFF453A),
-          title: 'Remove dummy IDs',
-          subtitle: 'Only cards whose id starts with dummy-',
-          onTap: () {
-            HapticService.select();
-            final int removed = DummyWalletSeed.remove(ref);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  removed == 0
-                      ? 'No dummy cards to remove'
-                      : 'Removed $removed dummy cards',
-                ),
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          },
-        ),
-        const _SettingsDivider(),
-        _SettingsLinkRow(
-          icon: Icons.restart_alt_rounded,
-          iconColor: const Color(0xFF8E8E93),
-          title: 'Reset dev flags',
-          subtitle: 'Compile-time defaults',
-          onTap: () async {
-            HapticService.select();
-            await ref
-                .read(devFlagsProvider.notifier)
-                .resetToCompileTimeDefaults();
-          },
-        ),
-      ],
-    );
-  }
-}
-
-// ── Appearance: theme preference + schedule ────────────────────────────────
-
-class _ThemeAppearanceBlock extends ConsumerWidget {
-  const _ThemeAppearanceBlock();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final ThemeControllerState themeState = ref.watch(themeControllerProvider);
-    final ThemeSettings settings = themeState.settings;
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color ink = Theme.of(context).colorScheme.onSurface;
-    // Stronger secondary labels in dark mode so the block reads clearly.
-    final Color muted = ink.withValues(alpha: isDark ? 0.62 : 0.55);
-    final Color titleColor = isDark ? const Color(0xFFF2F2F7) : ink;
-
-    final String? statusSubtitle = _themeStatusSubtitle(themeState);
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  const _SettingsRowIcon(
-                    icon: Icons.brightness_6_rounded,
-                    color: Color(0xFF6E40C9),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Theme',
-                      style: AppFonts.ui(
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.2,
-                        color: titleColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (statusSubtitle != null) ...[
-                const SizedBox(height: 6),
-                Padding(
-                  padding: const EdgeInsets.only(left: 36),
-                  child: Text(
-                    statusSubtitle,
-                    style: AppFonts.ui(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w400,
-                      height: 1.25,
-                      color: muted,
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 14),
-              _ThemeSegmentedControl(
-                value: settings.preference,
-                onChanged: (AppThemePreference next) {
-                  HapticService.select();
-                  ref
-                      .read(themeControllerProvider.notifier)
-                      .setPreference(next);
-                },
-              ),
-            ],
-          ),
-        ),
-        if (settings.preference == AppThemePreference.schedule) ...[
-          const _SettingsDivider(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Schedule',
-                  style: AppFonts.ui(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.1,
-                    color: muted,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                _ScheduleKindSegmented(
-                  value: settings.scheduleKind,
-                  onChanged: (ScheduleKind kind) {
-                    HapticService.select();
-                    ref
-                        .read(themeControllerProvider.notifier)
-                        .setScheduleKind(kind);
-                  },
-                ),
-              ],
-            ),
-          ),
-          if (settings.scheduleKind == ScheduleKind.custom) ...[
-            const _SettingsDivider(),
-            _ThemeTimeRow(
-              title: 'Light from',
-              minutes: settings.lightStartMinutes,
-              onTap: () async {
-                final int? picked = await showThemeTimePicker(
-                  context: context,
-                  title: 'Light from',
-                  initialMinutes: settings.lightStartMinutes,
-                );
-                if (picked == null) return;
-                HapticService.select();
-                await ref
-                    .read(themeControllerProvider.notifier)
-                    .setLightStartMinutes(picked);
-              },
-            ),
-            const _SettingsDivider(),
-            _ThemeTimeRow(
-              title: 'Dark from',
-              minutes: settings.lightEndMinutes,
-              onTap: () async {
-                final int? picked = await showThemeTimePicker(
-                  context: context,
-                  title: 'Dark from',
-                  initialMinutes: settings.lightEndMinutes,
-                );
-                if (picked == null) return;
-                HapticService.select();
-                await ref
-                    .read(themeControllerProvider.notifier)
-                    .setLightEndMinutes(picked);
-              },
-            ),
-          ],
-        ],
-      ],
-    );
-  }
-}
-
-String? _themeStatusSubtitle(ThemeControllerState state) {
-  final ThemeSettings s = state.settings;
-  if (s.preference == AppThemePreference.light) return 'Always light';
-  if (s.preference == AppThemePreference.dark) return 'Always dark';
-  if (s.preference == AppThemePreference.system) {
-    final Brightness platform =
-        WidgetsBinding.instance.platformDispatcher.platformBrightness;
-    final String side = platform == Brightness.dark ? 'Dark' : 'Light';
-    return 'Matches device · $side now';
-  }
-
-  final int start = s.effectiveLightStartMinutes;
-  final int end = s.effectiveLightEndMinutes;
-  final String range =
-      '${formatMinutesOfDay(start)} – ${formatMinutesOfDay(end)}';
-
-  if (s.scheduleKind == ScheduleKind.custom) {
-    return 'Light $range';
-  }
-
-  // Sunrise–sunset uses fixed local day window (device clock).
-  if (state.resolvedMode == ThemeMode.light) {
-    return 'Light until ${formatMinutesOfDay(end)} · $range';
-  }
-  return 'Dark until ${formatMinutesOfDay(start)} · $range';
-}
-
-class _ThemeSegmentedControl extends StatelessWidget {
-  const _ThemeSegmentedControl({required this.value, required this.onChanged});
-
-  final AppThemePreference value;
-  final ValueChanged<AppThemePreference> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return PillSegmented<AppThemePreference>(
-      value: value,
-      segments: const <(AppThemePreference, String)>[
-        (AppThemePreference.light, 'Light'),
-        (AppThemePreference.dark, 'Dark'),
-        (AppThemePreference.system, 'Device'),
-        (AppThemePreference.schedule, 'Schedule'),
-      ],
-      onChanged: onChanged,
-    );
-  }
-}
-
-class _ScheduleKindSegmented extends StatelessWidget {
-  const _ScheduleKindSegmented({required this.value, required this.onChanged});
-
-  final ScheduleKind value;
-  final ValueChanged<ScheduleKind> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return PillSegmented<ScheduleKind>(
-      value: value,
-      segments: const <(ScheduleKind, String)>[
-        (ScheduleKind.sunriseSunset, 'Sunrise–sunset'),
-        (ScheduleKind.custom, 'Custom'),
-      ],
-      onChanged: onChanged,
-    );
-  }
-}
-
-class _ThemeTimeRow extends StatelessWidget {
-  const _ThemeTimeRow({
-    required this.title,
-    required this.minutes,
-    required this.onTap,
-  });
-
-  final String title;
-  final int minutes;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color ink = Theme.of(context).colorScheme.onSurface;
-    final Color titleColor = isDark ? const Color(0xFFF2F2F7) : ink;
-    final Color muted = ink.withValues(alpha: isDark ? 0.62 : 0.55);
-
-    return _AnimatedPressScale(
-      onTap: onTap,
-      child: SizedBox(
-        height: 54,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  title,
-                  style: AppFonts.ui(
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: -0.2,
-                    color: titleColor,
-                  ),
-                ),
-              ),
-              Text(
-                formatMinutesOfDay(minutes),
-                style: AppFonts.ui(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w500,
-                  color: muted,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: muted.withValues(alpha: isDark ? 0.55 : 0.45),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingsSection extends StatelessWidget {
-  const _SettingsSection({
-    required this.title,
-    required this.surface,
-    required this.borderColor,
-    required this.isDark,
-    required this.children,
-  });
-
-  final String title;
-  final Color surface;
-  final Color borderColor;
-  final bool isDark;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color ink = Theme.of(context).colorScheme.onSurface;
-    final Color muted = ink.withValues(alpha: isDark ? 0.42 : 0.50);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.only(left: 6, bottom: 8),
-          child: Text(
-            title,
-            style: AppFonts.ui(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.1,
-              color: muted,
-            ),
-          ),
-        ),
-        _SettingsCard(
-          surface: surface,
-          borderColor: borderColor,
-          isDark: isDark,
-          children: children,
-        ),
-      ],
-    );
-  }
-}
-
-class _SettingsCard extends StatelessWidget {
-  const _SettingsCard({
-    required this.surface,
-    required this.borderColor,
-    required this.isDark,
-    this.padding,
-    this.child,
-    this.children,
-  });
-
-  final Color surface;
-  final Color borderColor;
-  final bool isDark;
-  final EdgeInsetsGeometry? padding;
-  final Widget? child;
-  final List<Widget>? children;
-
-  @override
-  Widget build(BuildContext context) {
-    final Widget content =
-        child ??
-        (children != null
-            ? Column(mainAxisSize: MainAxisSize.min, children: children!)
-            : const SizedBox.shrink());
-
-    return DecoratedBox(
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(22.0)),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22.0),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: surface,
-            border: Border.all(color: borderColor, width: 0.5),
-            borderRadius: BorderRadius.circular(22.0),
-          ),
-          child: padding != null
-              ? Padding(padding: padding!, child: content)
-              : content,
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingsDivider extends StatelessWidget {
-  const _SettingsDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    final Color dividerColor = Theme.of(context).colorScheme.onSurface
-        .withValues(
-          alpha: Theme.of(context).brightness == Brightness.dark ? 0.08 : 0.06,
-        );
-
-    // Align under text after bare icon (14 pad + 24 icon + 12 gap).
-    return Padding(
-      padding: const EdgeInsets.only(left: 50),
-      child: Divider(height: 1, thickness: 0.5, color: dividerColor),
-    );
-  }
-}
-
-class _SettingsRowIcon extends StatelessWidget {
-  const _SettingsRowIcon({
-    required this.icon,
-    // Kept for call-site compatibility; all row icons use a neutral tint.
-    required this.color,
-  });
-
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    // Same default ink for every row in both modes (no accent colors).
-    final Color iconTint = isDark
-        ? const Color(0xFFE5E5EA)
-        : const Color(0xFF3A3A3C);
-
-    // Bare glyph only — no squircle / plate behind the icon.
-    return SizedBox(
-      width: 24,
-      height: 24,
-      child: Icon(icon, size: 22, color: iconTint),
-    );
-  }
-}
-
-class _SettingsToggleRow extends StatelessWidget {
-  const _SettingsToggleRow({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.value,
-    required this.onChanged,
-    this.subtitle,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String? subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color ink = Theme.of(context).colorScheme.onSurface;
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color muted = ink.withValues(alpha: isDark ? 0.45 : 0.55);
-
-    return SizedBox(
-      height: subtitle == null ? 58 : 66,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Row(
-          children: <Widget>[
-            _SettingsRowIcon(icon: icon, color: iconColor),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    title,
-                    style: AppFonts.ui(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -0.2,
-                      color: ink,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppFonts.ui(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        height: 1.2,
-                        color: muted,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            Transform.scale(
-              scale: 0.82,
-              child: CupertinoSwitch(
-                value: value,
-                // System green — avoids electric-blue chrome in dark mode.
-                activeTrackColor: const Color(0xFF34C759),
-                onChanged: onChanged,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AnimatedPressScale extends StatefulWidget {
-  const _AnimatedPressScale({required this.child, this.onTap});
-
-  final Widget child;
-  final VoidCallback? onTap;
-
-  @override
-  State<_AnimatedPressScale> createState() => _AnimatedPressScaleState();
-}
-
-class _AnimatedPressScaleState extends State<_AnimatedPressScale> {
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) => setState(() => _isPressed = false),
-      onTapCancel: () => setState(() => _isPressed = false),
-      onTap: widget.onTap,
-      child: AnimatedScale(
-        scale: _isPressed ? 0.975 : 1.0,
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOutCubic,
-        child: widget.child,
-      ),
-    );
-  }
-}
-
-/// Cycles profile mesh shape: Rounded (squircle) ↔ Circle.
-class _ProfileAvatarShapeRow extends StatelessWidget {
-  const _ProfileAvatarShapeRow({required this.shape, required this.onTap});
-
-  final ProfileAvatarShape shape;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color ink = Theme.of(context).colorScheme.onSurface;
-    final Color muted = ink.withValues(alpha: isDark ? 0.45 : 0.55);
-
-    return _AnimatedPressScale(
-      onTap: onTap,
-      child: SizedBox(
-        height: 58,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Row(
-            children: <Widget>[
-              _SettingsRowIcon(
-                icon: shape == ProfileAvatarShape.circle
-                    ? Icons.circle_outlined
-                    : Icons.rounded_corner_rounded,
-                color: const Color(0xFFAF52DE),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      'Profile icon shape',
-                      style: AppFonts.ui(
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: -0.2,
-                        color: ink,
-                      ),
-                    ),
-                    Text(
-                      'Top bar account control',
-                      style: AppFonts.ui(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w400,
-                        color: muted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                shape.label,
-                style: AppFonts.ui(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: muted,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: muted.withValues(alpha: 0.40),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingsLinkRow extends StatelessWidget {
-  const _SettingsLinkRow({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.onTap,
-    this.subtitle,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String? subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color ink = Theme.of(context).colorScheme.onSurface;
-    final Color muted = ink.withValues(alpha: isDark ? 0.45 : 0.55);
-
-    return _AnimatedPressScale(
-      onTap: () {
-        HapticService.tap();
-        onTap();
-      },
-      child: SizedBox(
-        height: subtitle == null ? 58 : 66,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Row(
-            children: <Widget>[
-              _SettingsRowIcon(icon: icon, color: iconColor),
-              const SizedBox(width: 12),
-              Expanded(
-                child: subtitle == null
-                    ? Text(
-                        title,
-                        style: AppFonts.ui(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: -0.2,
-                          color: ink,
-                        ),
-                      )
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            title,
-                            style: AppFonts.ui(
-                              fontSize: 15.5,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: -0.2,
-                              color: ink,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            subtitle!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppFonts.ui(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w400,
-                              color: muted,
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 18,
-                color: muted.withValues(alpha: 0.40),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// Big translucent wordmark at the foot of Settings.
@@ -1980,213 +506,6 @@ class _DocketSettingsWatermark extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.4,
                 color: versionWash,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class AboutDocketScreen extends StatelessWidget {
-  const AboutDocketScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final bool isDark = theme.brightness == Brightness.dark;
-    final Color ink = theme.colorScheme.onSurface;
-    final Color muted = ink.withValues(alpha: isDark ? 0.45 : 0.55);
-    final Color surface = isDark
-        ? const Color(0xFF16161A)
-        : theme.colorScheme.surface;
-    final Color borderColor = ink.withValues(alpha: isDark ? 0.08 : 0.06);
-    final Color bg = isDark
-        ? const Color(0xFF0A0A0D)
-        : theme.scaffoldBackgroundColor;
-
-    return Scaffold(
-      backgroundColor: bg,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 16, 0),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                children: [
-                  Text(
-                    'Docket',
-                    style: AppFonts.ui(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.5,
-                      color: ink,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Version $kAppVersion',
-                    style: theme.textTheme.bodyMedium?.copyWith(color: muted),
-                  ),
-                  const SizedBox(height: 20),
-                  _SettingsCard(
-                    surface: surface,
-                    borderColor: borderColor,
-                    isDark: isDark,
-                    padding: const EdgeInsets.all(20),
-                    child: Text(
-                      'A local-first wallet for passports, IDs, and passes.\n\n'
-                      'Built with Flutter and Riverpod.\n\n'
-                      'ID card icon by haritselarif on the Noun Project (CC BY 3.0).',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: muted,
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Center(
-                    child: Text(
-                      '© 2026 Docket',
-                      style: theme.textTheme.labelSmall?.copyWith(color: muted),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class AboutDeveloperScreen extends StatelessWidget {
-  const AboutDeveloperScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final bool isDark = theme.brightness == Brightness.dark;
-    final Color ink = theme.colorScheme.onSurface;
-    final Color muted = ink.withValues(alpha: isDark ? 0.45 : 0.55);
-    final Color surface = isDark
-        ? const Color(0xFF16161A)
-        : theme.colorScheme.surface;
-    final Color borderColor = ink.withValues(alpha: isDark ? 0.08 : 0.06);
-    final Color bg = isDark
-        ? const Color(0xFF0A0A0D)
-        : theme.scaffoldBackgroundColor;
-
-    return Scaffold(
-      backgroundColor: bg,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 16, 0),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                children: <Widget>[
-                  Text(
-                    'Developer',
-                    style: AppFonts.ui(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.5,
-                      color: ink,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    kDeveloperDisplayName,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: muted),
-                  ),
-                  const SizedBox(height: 20),
-                  _SettingsCard(
-                    surface: surface,
-                    borderColor: borderColor,
-                    isDark: isDark,
-                    padding: const EdgeInsets.all(20),
-                    child: Text(
-                      'Hi — I\'m $kDeveloperDisplayName, the developer behind Docket.\n\n'
-                      'Docket is a personal project focused on a polished, '
-                      'local-first digital wallet experience for documents and '
-                      'passes. Feedback and ideas are always welcome.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: muted,
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _SettingsCard(
-                    surface: surface,
-                    borderColor: borderColor,
-                    isDark: isDark,
-                    children: <Widget>[
-                      _SettingsLinkRow(
-                        icon: Icons.language_rounded,
-                        iconColor: const Color(0xFF2F6FED),
-                        title: 'Website',
-                        subtitle: 'navadeepnaidu.com',
-                        onTap: () =>
-                            _openDeveloperLink(context, kDeveloperWebsiteUrl),
-                      ),
-                      const _SettingsDivider(),
-                      _SettingsLinkRow(
-                        icon: Icons.article_outlined,
-                        iconColor: const Color(0xFFE07A2F),
-                        title: 'Blog',
-                        subtitle: 'blog.navadeepnaidu.com',
-                        onTap: () =>
-                            _openDeveloperLink(context, kDeveloperBlogUrl),
-                      ),
-                      const _SettingsDivider(),
-                      _SettingsLinkRow(
-                        icon: Icons.code_rounded,
-                        iconColor: const Color(0xFF6E7681),
-                        title: 'GitHub',
-                        subtitle: 'github.com/navadeepnaidu7',
-                        onTap: () =>
-                            _openDeveloperLink(context, kDeveloperGithubUrl),
-                      ),
-                      const _SettingsDivider(),
-                      _SettingsLinkRow(
-                        icon: Icons.alternate_email_rounded,
-                        iconColor: const Color(0xFF1DA1F2),
-                        title: 'X',
-                        subtitle: '@navadeep_naidu7',
-                        onTap: () =>
-                            _openDeveloperLink(context, kDeveloperXUrl),
-                      ),
-                      const _SettingsDivider(),
-                      _SettingsLinkRow(
-                        icon: Icons.mail_outline_rounded,
-                        iconColor: const Color(0xFF8E8E93),
-                        title: 'Mail to developer',
-                        subtitle: kDeveloperEmail,
-                        onTap: () => _mailToDeveloper(context),
-                      ),
-                    ],
-                  ),
-                ],
               ),
             ),
           ],

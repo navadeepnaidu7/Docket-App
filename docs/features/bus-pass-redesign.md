@@ -4,8 +4,14 @@ Replaces the brand-header-over-paper bus face (gradient header, coach photograph
 field grid) with the train pass's system on an operator-coloured surface, plus one bus mark:
 a flat coach watermark. Direction agreed against HTML mocks in session, 19 Nov 2026.
 
-Status: **built, not yet checked on a device**. Applies to the wallet glance card, the detail screen, the archive deck
-and the shared PNG — they all render `BusTicketFace`.
+Status: **built, not yet checked on a device**. Applies to the wallet glance card, the detail
+screen, the archive deck and the shared PNG; they all render `BusTicketFace`. Owners:
+`lib/features/tickets/presentation/bus/`.
+
+The earlier photographic coach artwork (redBus PNG and an unbranded ivory-and-teal coach
+generated for the universal style, Oct 2026) is retired with its assets; the flat
+`bus_coach_painter.dart` watermark replaces it. Kept from that pass: no generic boarding
+advisory on the face, and long operator names must never run behind the coach.
 
 ## Direction
 

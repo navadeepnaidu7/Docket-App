@@ -1,6 +1,6 @@
 import 'package:docket/core/dev/dev_flags.dart';
 import 'package:docket/core/dev/dev_flags_provider.dart';
-import 'package:docket/features/dashboard/application/auth_session_provider.dart';
+import 'package:docket/features/auth/application/auth_session_provider.dart';
 import 'package:docket/features/tickets/application/api_providers.dart';
 import 'package:docket/features/tickets/application/pass_list_provider.dart';
 import 'package:docket/features/tickets/domain/pass_catalog.dart';

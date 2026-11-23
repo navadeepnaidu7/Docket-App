@@ -8,7 +8,7 @@ import 'package:docket/features/cards/domain/payment_card.dart';
 import 'package:docket/features/cards/domain/card_issuer.dart';
 import 'package:docket/features/cards/presentation/payment_card_stack_view.dart';
 import 'package:docket/features/cards/presentation/card_detail_screen.dart';
-import 'package:docket/features/dashboard/application/wallet_loading_provider.dart';
+import 'package:docket/core/wallet/wallet_loading_provider.dart';
 import 'package:docket/features/dashboard/presentation/widgets/ids_tab.dart';
 import 'package:docket/features/ids/domain/id_document.dart';
 import 'package:flutter/material.dart';
