@@ -20,7 +20,7 @@ since an upload would otherwise extract and then never appear in the wallet.
 | `presentation/flight/flight_ticket_face.dart` + theme, brand style, aircraft painter | the face |
 | `presentation/flight/flight_pass_detail_screen.dart` | Details / Updates |
 | `presentation/flight/flight_ticket_code_screen.dart`, `wallet_flight_card.dart` | bus-pattern twins |
-| `data/mock_flight_fixtures.dart` | delayed + gate change, timetable only, in the air; dated off the current instant |
+| `data/mock_flight_fixtures.dart` | delayed + gate change, timetable only, in the air, a foreign overnight (LH), two past (EK, VY); dated off the current instant |
 | every `WalletPassItem` / `PassKind` switch | flight arms |
 | `test/flight_pass_test.dart`, `test/flight_pass_face_test.dart` | 28 tests |
 | `tool/flight_pass_preview_test.dart` | renders faces and screens to `build/flight-preview/` |
@@ -40,8 +40,8 @@ bundled: the server serves them at `GET /img/airline/{IATA}.svg` (embedded in th
 plus an in-memory copy. `PassListNotifier` warms disk copies before the first paint; a logo
 not yet on the device shows the airline name in type and cross-fades in. Logos are sized by
 area, not height, so a square emblem and a long wordmark look equally heavy.
-**The endpoint is not deployed yet**: until the server ships, every face shows the name in
-type. Review sheet: `tool/airline_logo_sheet_test.dart`; sources and how to add an airline:
+**Deployed to staging on 23 Nov 2026** from `feat/airline-logos` (docket-server PR #7, not yet
+merged); a server without the endpoint answers 404 and every face shows the name in type. Review sheet: `tool/airline_logo_sheet_test.dart`; sources and how to add an airline:
 `docket_server/internal/brands/airlines/SOURCES.md`.
 
 Not yet wired: BCBP into the extract upload (the parser exists; `ticket_code_scanner` does not
@@ -94,8 +94,9 @@ the face even if the phone is in London. The model keeps the offset from the RFC
 - `FlightPassItem` in `pass_catalog.dart`; then fix every switch the compiler flags
   (share summary, activity date, history folder, weather glance, open_pass, tickets tab…).
 - `PassKind.flight`, `PassHistoryCategory.flight` mapped 1:1.
-- Fixtures: an upcoming domestic, a delayed one with a gate change, one in the air, one
-  landed, one expired. Active fixtures date themselves relative to launch, like the trains.
+- Fixtures: a delayed domestic with a gate change, a timetable-only one, one in the air, a
+  foreign overnight with a +1 (Lufthansa), and two past flights (Emirates, Vueling) so the
+  archive has a Flights folder. All date themselves relative to launch, like the trains.
 
 ### Server
 

@@ -126,9 +126,13 @@ void main() {
     const String svg =
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 20">'
         '<rect width="80" height="20" fill="#000"/></svg>';
+    AirlineLogos.debugReset();
     AirlineLogos.debugLoader = (String code) async =>
         code == 'EK' ? Uint8List.fromList(utf8.encode(svg)) : null;
-    addTearDown(() => AirlineLogos.debugLoader = null);
+    addTearDown(() {
+      AirlineLogos.debugLoader = null;
+      AirlineLogos.debugReset();
+    });
     final FlightPass emirates = FlightPass.fromJson(<String, dynamic>{
       ...mockFlightPasses[1].toJson(),
       'airline': 'Emirates',

@@ -23,6 +23,15 @@ abstract final class AirlineLogos {
   /// Replaces the network in tests and previews.
   static Future<Uint8List?> Function(String code)? debugLoader;
 
+  /// Forgets every logo held in memory, so a test's [debugLoader] is asked
+  /// afresh rather than an earlier test's answer being reused.
+  @visibleForTesting
+  static void debugReset() {
+    _settled.clear();
+    _pending.clear();
+    _failedAt.clear();
+  }
+
   static final CacheManager _disk = CacheManager(
     Config(
       'airlineLogos',

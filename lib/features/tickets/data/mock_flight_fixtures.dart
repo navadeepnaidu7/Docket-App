@@ -16,12 +16,21 @@ DateTime _instant(Duration from) {
 String _utc(Duration from) => _instant(from).toIso8601String();
 
 /// RFC3339 at an Indian airport, [from] now.
-String _istIn(Duration from) {
-  final DateTime l = _instant(from).add(_ist);
+String _istIn(Duration from) => _localIn(from, _ist);
+
+/// RFC3339 at an airport [offset] from UTC, [from] now.
+String _localIn(Duration from, Duration offset) {
+  final DateTime l = _instant(from).add(offset);
   String two(int v) => v.toString().padLeft(2, '0');
+  final String sign = offset.isNegative ? '-' : '+';
+  final Duration o = offset.abs();
   return '${l.year}-${two(l.month)}-${two(l.day)}'
-      'T${two(l.hour)}:${two(l.minute)}:00+05:30';
+      'T${two(l.hour)}:${two(l.minute)}:00'
+      '$sign${two(o.inHours)}:${two(o.inMinutes % 60)}';
 }
+
+const Duration _cet = Duration(hours: 1);
+const Duration _gst = Duration(hours: 4);
 
 /// Demo boarding passes.
 final List<FlightPass> mockFlightPasses = <FlightPass>[
@@ -204,6 +213,100 @@ final List<FlightPass> mockFlightPasses = <FlightPass>[
         'at': _utc(const Duration(minutes: -4)),
         'type': 'descending',
       },
+    ],
+  }),
+
+  // A foreign carrier next week: timetable only, overnight with a +1.
+  FlightPass.fromJson(<String, dynamic>{
+    'id': 'mock_f4',
+    'airline': 'Lufthansa',
+    'airlineCode': 'LH',
+    'flightNumber': 'LH 754',
+    'bookingRef': 'R2HW9C',
+    'origin': <String, dynamic>{
+      'code': 'FRA',
+      'city': 'Frankfurt',
+      'airport': 'Frankfurt am Main',
+      'terminal': '1',
+    },
+    'destination': <String, dynamic>{
+      'code': 'BLR',
+      'city': 'Bengaluru',
+      'airport': 'Kempegowda International',
+      'terminal': '2',
+    },
+    'departAt': _localIn(const Duration(days: 6, hours: 2), _cet),
+    'arriveAt': _istIn(const Duration(days: 6, hours: 12, minutes: 5)),
+    'boardingAt': _localIn(
+      const Duration(days: 6, hours: 1, minutes: 20),
+      _cet,
+    ),
+    'gate': 'Z25',
+    'seat': '31K',
+    'cabin': 'Economy',
+    'status': 'active',
+    'passengers': <Map<String, dynamic>>[
+      <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '31K'},
+    ],
+  }),
+
+  // Past flights: the archive's Flights folder and the spent palette.
+  FlightPass.fromJson(<String, dynamic>{
+    'id': 'mock_f5',
+    'airline': 'Emirates',
+    'airlineCode': 'EK',
+    'flightNumber': 'EK 500',
+    'bookingRef': 'K8DM4S',
+    'origin': <String, dynamic>{
+      'code': 'DXB',
+      'city': 'Dubai',
+      'airport': 'Dubai International',
+      'terminal': '3',
+    },
+    'destination': <String, dynamic>{
+      'code': 'BOM',
+      'city': 'Mumbai',
+      'airport': 'Chhatrapati Shivaji Maharaj International',
+      'terminal': '2',
+    },
+    'departAt': _localIn(const Duration(days: -12, hours: -6), _gst),
+    'arriveAt': _istIn(const Duration(days: -12, hours: -3)),
+    'gate': 'B14',
+    'seat': '42A',
+    'cabin': 'Economy',
+    'status': 'expired',
+    'passengers': <Map<String, dynamic>>[
+      <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '42A'},
+    ],
+  }),
+  FlightPass.fromJson(<String, dynamic>{
+    'id': 'mock_f6',
+    'airline': 'Vueling',
+    'airlineCode': 'VY',
+    'flightNumber': 'VY 6104',
+    'bookingRef': 'T5NB2Q',
+    'origin': <String, dynamic>{
+      'code': 'BCN',
+      'city': 'Barcelona',
+      'airport': 'Josep Tarradellas Barcelona-El Prat',
+      'terminal': '1',
+    },
+    'destination': <String, dynamic>{
+      'code': 'FCO',
+      'city': 'Rome',
+      'airport': 'Leonardo da Vinci-Fiumicino',
+      'terminal': '1',
+    },
+    'departAt': _localIn(const Duration(days: -48, hours: -5), _cet),
+    'arriveAt': _localIn(
+      const Duration(days: -48, hours: -3, minutes: -15),
+      _cet,
+    ),
+    'gate': 'D41',
+    'seat': '3A',
+    'status': 'expired',
+    'passengers': <Map<String, dynamic>>[
+      <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '3A'},
     ],
   }),
 ];
