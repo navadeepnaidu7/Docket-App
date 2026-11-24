@@ -684,23 +684,33 @@ class _ArchiveCardFace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Archive keeps the original artwork palette without changing pass status.
     return switch (item) {
       TrainPassItem(:final ticket) => WalletCardCanvas(
         designSize: WalletCardMetrics.trainCanvas,
         child: TrainTicketFace(
           ticket: ticket,
           density: TrainTicketDensity.glance,
+          useBrandColors: true,
           showShadow: false,
         ),
       ),
       MoviePassItem(:final pass) => _MovieArchiveCard(pass: pass),
       BusPassItem(:final pass) => WalletCardCanvas(
         designSize: WalletCardMetrics.trainCanvas,
-        child: BusTicketFace(pass: pass, showShadow: false),
+        child: BusTicketFace(
+          pass: pass,
+          useBrandColors: true,
+          showShadow: false,
+        ),
       ),
       FlightPassItem(:final pass) => WalletCardCanvas(
         designSize: WalletCardMetrics.trainCanvas,
-        child: FlightTicketFace(pass: pass, showShadow: false),
+        child: FlightTicketFace(
+          pass: pass,
+          useBrandColors: true,
+          showShadow: false,
+        ),
       ),
     };
   }

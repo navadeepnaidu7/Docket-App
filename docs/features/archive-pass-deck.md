@@ -40,6 +40,11 @@ installed final APK was not checked. Owners: `lib/features/tickets/presentation/
 old year-sectioned poster grid is gone; movie art rules are in `movie-logo-glance.md`). It
 re-derives from `passListProvider`, so removing the last pass shows the empty state.
 
+Archived train, bus and flight faces explicitly use their original brand colors,
+matching the movie archive card. Expiry still controls the pass's status and archive
+membership; it does not fade its artwork. The deck's positional opacity and dimming
+continue to distinguish neighbouring cards from the focused pass.
+
 ### One position value
 
 `AnimationController.unbounded` holds a fractional pass index. Deck transforms, the scrubber
