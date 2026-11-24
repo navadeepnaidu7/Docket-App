@@ -54,27 +54,7 @@ and the expanded detail; the shared PNG keeps the standard face.
   glow. A smaller text signature was rejected by the owner. Tests pin the footer invariants.
 - Real-code rendering and the no-code state are unchanged.
 
-### Adaptive wallet artwork contrast (implementation in progress)
-
-The blended wallet hero must choose its treatment from the actual poster and
-visible title-logo pixels. One fixed scrim cannot handle pale posters, dark logos,
-mixed-color lettering and transparent padding reliably. Analyze bounded thumbnails
-once per effective artwork key, ignoring transparent pixels and accounting for
-partially transparent logo pixels. Choose a soft local dark or light adjustment
-without recoloring the logo or introducing a rectangular backing panel. If the
-available artwork cannot produce a readable logo, use the movie title in the
-existing typography on a controlled gradient. Missing, failed or still-loading
-artwork must have a readable state immediately.
-
-The implementation must bound and deduplicate its analysis/cache, dispose owned
-image handles, and reject stale async results after a pass/source change. It must
-not scan pixels or decode artwork during scroll/animation frames. The full sharp
-detail poster, existing feathered edges, partner footer, classic blend-off face,
-shared PNG and code behavior keep their existing contracts. Acceptance includes
-synthetic bright/dark/busy posters, light/dark/colored/mixed/transparent logos,
-loading/failure transitions and actual rendered wallet faces.
-
-### Rendering and caching
+### Performance rules
 
 - Never put full-size `ImageFiltered` blur layers on screen. `MovieBlurredArtwork` prepares a
   blurred raster of at most 128 x 256 px, keyed by source, size, fit, radius and overscan, with

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/movie_pass_models.dart';
-import 'adaptive_movie_hero.dart';
 import 'movie_blurred_artwork.dart';
 
 /// Soft artwork across the wallet face. Only the poster is blurred; the title,
@@ -15,7 +14,6 @@ class MovieArtworkBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     final String? asset = pass.resolvedPosterAsset;
     final String? url = pass.resolvedPosterUrl;
-    final contrast = MovieArtworkContrastScope.maybeOf(context);
     final Widget art = Stack(
       fit: StackFit.expand,
       children: <Widget>[
@@ -50,31 +48,6 @@ class MovieArtworkBackdrop extends StatelessWidget {
             ),
           ),
         ),
-        if (contrast != null && contrast.result.opacity > 0)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: contrast.heroBottom + 8,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(
-                      contrast.result.veilColor,
-                    ).withValues(alpha: contrast.result.opacity),
-                    Color(
-                      contrast.result.veilColor,
-                    ).withValues(alpha: contrast.result.opacity),
-                    Color(contrast.result.veilColor).withValues(alpha: 0),
-                  ],
-                  stops: const [0, .8, 1],
-                ),
-              ),
-            ),
-          ),
       ],
     );
 

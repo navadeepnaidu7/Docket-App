@@ -9,41 +9,21 @@ import 'package:flutter/material.dart';
 import '../../domain/movie_pass_models.dart';
 
 /// Resolves one owned image handle. Callers dispose it after preparing artwork.
-Future<ImageInfo> resolveMovieArtwork(
-  ImageProvider source, {
-  Duration? timeout,
-}) {
+Future<ImageInfo> resolveMovieArtwork(ImageProvider source) {
   final stream = source.resolve(ImageConfiguration.empty);
   final completer = Completer<ImageInfo>();
-  Timer? timer;
   late ImageStreamListener listener;
   listener = ImageStreamListener(
     (info, synchronousCall) {
       stream.removeListener(listener);
-      timer?.cancel();
-      if (completer.isCompleted) {
-        info.dispose();
-      } else {
-        completer.complete(info);
-      }
+      completer.complete(info);
     },
     onError: (Object error, StackTrace? stack) {
       stream.removeListener(listener);
-      timer?.cancel();
-      if (!completer.isCompleted) completer.completeError(error, stack);
+      completer.completeError(error, stack);
     },
   );
   stream.addListener(listener);
-  if (timeout != null && !completer.isCompleted) {
-    timer = Timer(timeout, () {
-      stream.removeListener(listener);
-      if (!completer.isCompleted) {
-        completer.completeError(
-          TimeoutException('Artwork preparation timed out', timeout),
-        );
-      }
-    });
-  }
   return completer.future;
 }
 
