@@ -10,6 +10,7 @@ import '../../../../core/wallet/wallet_card_metrics.dart';
 import '../../domain/movie_pass_models.dart';
 import '../pass_code_row.dart';
 import 'movie_artwork_backdrop.dart';
+import 'adaptive_movie_hero.dart';
 import 'movie_blended_poster.dart';
 import 'movie_brand_style.dart';
 import 'movie_ticket_chrome.dart';
@@ -80,6 +81,16 @@ class MovieTicketFace extends StatelessWidget {
     final double notchFromBottom =
         footerHeight + (MovieTicketMetrics.tearHeight * scale) / 2;
     final double factor = widthFactor ?? (_isGlance ? 0.94 : 1.0);
+    final Widget body = _TicketBody(
+      pass: pass,
+      style: style,
+      isActive: isActive,
+      scale: scale,
+      density: density,
+      footerHeight: footerHeight,
+      onOpenCodes: onOpenCodes,
+      artworkBlend: blend,
+    );
 
     final Widget ticket = Container(
       decoration: BoxDecoration(
@@ -97,16 +108,13 @@ class MovieTicketFace extends StatelessWidget {
       ),
       child: ClipPath(
         clipper: TicketShapeClipper(notchFromBottom: notchFromBottom),
-        child: _TicketBody(
-          pass: pass,
-          style: style,
-          isActive: isActive,
-          scale: scale,
-          density: density,
-          footerHeight: footerHeight,
-          onOpenCodes: onOpenCodes,
-          artworkBlend: blend,
-        ),
+        child: blend && _isGlance
+            ? MovieArtworkContrastScope(
+                pass: pass,
+                heroBottom: (180 + (style.showTopHairline ? 14 : 12)) * scale,
+                child: body,
+              )
+            : body,
       ),
     );
 
@@ -446,11 +454,7 @@ class _HeroBand extends StatelessWidget {
       return MovieBlendedPoster(pass: pass);
     }
     if (artworkBlend) {
-      return SizedBox(
-        height: height,
-        width: double.infinity,
-        child: logoGlance ? _buildLogoGlanceArt() : const SizedBox.shrink(),
-      );
+      return AdaptiveMovieHero(pass: pass, height: height);
     }
     final Widget art = logoGlance ? _buildLogoGlanceArt() : _buildPosterArt();
 
