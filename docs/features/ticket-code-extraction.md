@@ -60,6 +60,28 @@ all its bookings or that one code covers every passenger.
 
 ## Rendering and absence
 
+### Unified scan UI (24 November 2026)
+
+Train, movie, bus and flight codes use one fullscreen `PassCodeScreen`, with
+the same close action, typography, responsive code plate and labelled reference.
+Category adapters supply the title/route, timing, reference label and optional
+absence message; they do not own separate layouts. Trains use this route too,
+replacing their former bottom sheet. Short screens and enlarged text can scroll;
+the plate fits the available width without changing the symbol's proportions.
+
+`PassCodeRow` owns the detail-screen scan affordance. Its default surface sits
+under train/bus/flight faces; its embedded variant fits the existing movie face.
+All omit the affordance when the pass has no genuine code. Category artwork,
+journey fields and live-status behavior remain owned by their existing widgets.
+This consolidation does not add brightness control or new passenger-code selection.
+
+Related detail chrome now shares `PassDetailHeader` across all four categories
+and `PassDetailTabContent` for train/flight transitions. Header titles, copy
+targets and tab contents remain category-owned. Further reuse candidates are
+bus/flight passenger seat rows and optional theme defaults in `PassInfoCard`.
+Keep train booking-state rows and airport-local date calculations separate;
+similar-looking fields do not imply the same domain rules.
+
 A code appears only when the pass carries genuine usable data, in its original symbology.
 No payload means no code-like artwork, fake grid or fallback made from a PNR/booking ID.
 Code screens can explain absence and display a human reference; that reference must not
