@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:docket/features/tickets/presentation/movie/movie_blurred_artwork.dart';
+import 'package:docket/features/tickets/presentation/movie/movie_feathered_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,6 +28,51 @@ Future<(ImageInfo, ImageStreamCompleter?)> _resolve(
 }
 
 void main() {
+  testWidgets(
+    'feathered poster keeps sharp pixels and intersects soft edge alpha once',
+    (tester) async {
+      await tester.runAsync(() async {
+        final recorder = ui.PictureRecorder();
+        Canvas(recorder).drawColor(Colors.blue, BlendMode.src);
+        final picture = recorder.endRecording();
+        final sourceImage = await picture.toImage(32, 48);
+        picture.dispose();
+        final source = _PendingImage(
+          Future.value(ImageInfo(image: sourceImage)),
+        );
+        MovieFeatheredImage image() => MovieFeatheredImage(
+          source: source,
+          colors: const [Colors.red, Colors.red],
+          width: 64,
+          height: 96,
+          sideFraction: .1,
+          topFraction: .1,
+          bottomFraction: .2,
+        );
+        final first = await _resolve(image());
+        final second = await _resolve(image());
+        expect(identical(first.$2, second.$2), isTrue);
+        final pixels = (await first.$1.image.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        ))!;
+        int channel(int x, int y, int c) =>
+            pixels.getUint8((y * 64 + x) * 4 + c);
+        expect(channel(32, 48, 3), 255);
+        expect(channel(32, 48, 2), closeTo((Colors.blue.b * 255).round(), 2));
+        expect(channel(32, 48, 1), closeTo((Colors.blue.g * 255).round(), 2));
+        expect(channel(32, 48, 0), closeTo((Colors.blue.r * 255).round(), 2));
+        expect(channel(0, 0, 3), lessThan(5));
+        expect(channel(32, 1, 3), inExclusiveRange(0, 128));
+        expect(channel(32, 89, 3), lessThan(channel(32, 6, 3)));
+        await image().evict();
+        first.$1.dispose();
+        expect(second.$1.image.width, 64);
+        second.$1.dispose();
+        await source.evict();
+      });
+    },
+  );
+
   testWidgets(
     'prepared blur is reused, bounded and survives cache eviction while displayed',
     (tester) async {

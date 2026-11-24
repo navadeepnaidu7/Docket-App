@@ -11,6 +11,7 @@ import 'package:docket/features/tickets/presentation/movie/movie_artwork_backdro
 import 'package:docket/features/tickets/presentation/movie/movie_brand_style.dart';
 import 'package:docket/features/tickets/presentation/movie/movie_blended_poster.dart';
 import 'package:docket/features/tickets/presentation/movie/movie_blurred_artwork.dart';
+import 'package:docket/features/tickets/presentation/movie/movie_feathered_image.dart';
 import 'package:docket/features/tickets/presentation/movie/movie_ticket_face.dart';
 import 'package:docket/features/tickets/presentation/movie_pass_detail_screen.dart';
 import 'package:docket/features/tickets/presentation/pass_code_view.dart';
@@ -28,9 +29,11 @@ MoviePass _pass({
   String? poster,
   String? logo,
   String? posterAsset,
+  String? logoAsset,
   String title = 'Test Film',
   String? codePayload,
 }) => MoviePass.fromJson(<String, dynamic>{
+  'logoAsset': logoAsset,
   'id': 'blend-test',
   'brand': brand.name,
   'movieTitle': title,
@@ -210,22 +213,97 @@ void main() {
         blend: true,
         density: MovieTicketDensity.detail,
       );
-      final images = tester.widgetList<CachedNetworkImage>(
-        find.byType(CachedNetworkImage),
-      );
+      final images = tester
+          .widgetList<Image>(find.byType(Image))
+          .where(
+            (image) =>
+                image.image is MovieFeatheredImage &&
+                (image.image as MovieFeatheredImage).source != null,
+          );
       expect(images, hasLength(1));
       expect(find.byType(MovieBlurredArtwork), findsNWidgets(2));
       expect(find.byType(ImageFiltered), findsNothing);
-      expect(images.every((image) => image.imageUrl == poster), isTrue);
-      final sharp = images.singleWhere((image) => image.fit == BoxFit.contain);
-      expect(sharp.memCacheWidth, lessThanOrEqualTo(780));
+      expect(find.byType(ShaderMask), findsNothing);
+      final sharp = images.single.image as MovieFeatheredImage;
+      expect(sharp.width, lessThanOrEqualTo(780));
       expect(
-        find.ancestor(
-          of: find.byWidget(sharp),
-          matching: find.byType(ImageFiltered),
-        ),
-        findsNothing,
+        ((sharp.source as ResizeImage).imageProvider
+                as CachedNetworkImageProvider)
+            .url,
+        poster,
       );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'a bundled title treatment takes priority over its network logo',
+    (tester) async {
+      const asset = 'assets/passes/fixtures/dune_part_three_logo.png';
+      await _pumpFace(
+        tester,
+        _pass(logoAsset: asset, logo: 'https://example.invalid/old-film.png'),
+        blend: true,
+      );
+      expect(find.byType(CachedNetworkImage), findsNothing);
+      final titles = tester
+          .widgetList<Image>(find.byType(Image))
+          .where(
+            (image) =>
+                image.image is ResizeImage &&
+                (image.image as ResizeImage).imageProvider is AssetImage &&
+                ((image.image as ResizeImage).imageProvider as AssetImage)
+                        .assetName ==
+                    asset,
+          );
+      expect(titles, hasLength(1));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'idle warm-up reuses the exact expanded sharp and halo cache keys',
+    (tester) async {
+      final pass = _pass(posterAsset: 'assets/archive/covers/movies.jpg');
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      late BuildContext context;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (value) {
+              context = value;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+      await tester.runAsync(() => MovieBlendedPoster.warmUp(pass, context));
+      await tester.pump();
+      await _pumpFace(
+        tester,
+        pass,
+        width: 358,
+        blend: true,
+        density: MovieTicketDensity.detail,
+      );
+      // 390 - 32 list padding - 28 hero padding = 330, exactly as in detail.
+      final poster = find.byType(MovieBlendedPoster);
+      final images = tester.widgetList<Image>(
+        find.descendant(of: poster, matching: find.byType(Image)),
+      );
+      // Only the halo and sharp image stay mounted. Keeping a second masked
+      // gradient underneath the loaded poster doubles edge alpha into a rim.
+      expect(images, hasLength(2));
+      for (final image in images) {
+        final key = await image.image.obtainKey(ImageConfiguration.empty);
+        expect(
+          PaintingBinding.instance.imageCache.statusForKey(key).keepAlive,
+          isTrue,
+          reason: 'The expanded layer must reuse the image prepared at idle',
+        );
+      }
       expect(tester.takeException(), isNull);
     },
   );

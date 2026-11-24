@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/haptics/haptic_service.dart';
@@ -5,6 +7,7 @@ import '../../../core/sound/sound_service.dart';
 import '../../../core/wallet/wallet_card_metrics.dart';
 import '../domain/movie_pass_models.dart';
 import 'movie/movie_ticket_face.dart';
+import 'movie/movie_blended_poster.dart';
 import 'movie_pass_detail_screen.dart';
 
 /// Movie pass glance card — press shell around [MovieTicketFace].
@@ -28,6 +31,38 @@ class _WalletMovieCardState extends State<WalletMovieCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pressCtrl;
   late final Animation<double> _scaleAnim;
+  (MoviePass, Size, double, EdgeInsets)? _warmedFor;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _warmDetailArtwork();
+  }
+
+  @override
+  void didUpdateWidget(covariant WalletMovieCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _warmDetailArtwork();
+  }
+
+  void _warmDetailArtwork() {
+    if (!widget.artworkBlend) {
+      _warmedFor = null;
+      return;
+    }
+    final key = (
+      widget.pass,
+      MediaQuery.sizeOf(context),
+      MediaQuery.devicePixelRatioOf(context),
+      MediaQuery.paddingOf(context),
+    );
+    if (key == _warmedFor) return;
+    _warmedFor = key;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _warmedFor != key) return;
+      unawaited(MovieBlendedPoster.warmUp(widget.pass, context));
+    });
+  }
 
   @override
   void initState() {

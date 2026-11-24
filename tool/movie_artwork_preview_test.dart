@@ -1,5 +1,5 @@
 // flutter test --no-pub tool/movie_artwork_preview_test.dart --update-goldens
-// Uses the conversation's downloaded fixture artwork, without network or phone.
+// Uses downloaded fixture artwork from build/movie-transition/, without a phone.
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -35,6 +35,11 @@ void main() {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(430, 720);
     addTearDown(tester.view.reset);
+    final passes = [
+      mockMoviePasses.singleWhere((pass) => pass.id == 'movie_bms_1'),
+      mockMoviePasses.singleWhere((pass) => pass.id == 'movie_dist_doomsday'),
+    ];
+    const films = ['dune', 'avengers'];
     await tester.runAsync(() async {
       AppTheme.lightTheme;
       AppTheme.darkTheme;
@@ -50,25 +55,27 @@ void main() {
       }
       await GoogleFonts.pendingFonts();
       for (var i = 0; i < 2; i++) {
-        final pass = mockMoviePasses[i];
-        final film = i == 0 ? 'dune' : 'odyssey';
+        final pass = passes[i];
+        final film = films[i];
         await _seed(
           pass.resolvedPosterUrl!,
-          'outputs/pass-blend-preview/$film-poster.jpg',
+          'build/movie-transition/$film-poster.jpg',
           360,
         );
-        for (final width in [354, 426]) {
+        for (final width in [354, 370, 426]) {
           await _seed(
             pass.resolvedPosterUrl!,
-            'outputs/pass-blend-preview/$film-poster.jpg',
+            'build/movie-transition/$film-poster.jpg',
             width,
           );
         }
-        await _seed(
-          pass.resolvedLogoUrl!,
-          'outputs/pass-blend-preview/$film-logo.png',
-          387,
-        );
+        if (pass.resolvedLogoAsset == null) {
+          await _seed(
+            pass.resolvedLogoUrl!,
+            'build/movie-transition/$film-logo.png',
+            387,
+          );
+        }
       }
     });
     for (var i = 0; i < 2; i++) {
@@ -82,10 +89,7 @@ void main() {
                 child: SizedBox(
                   width: 382,
                   height: 620,
-                  child: WalletMovieCard(
-                    pass: mockMoviePasses[i],
-                    artworkBlend: blend,
-                  ),
+                  child: WalletMovieCard(pass: passes[i], artworkBlend: blend),
                 ),
               ),
             ),
@@ -99,7 +103,7 @@ void main() {
         await expectLater(
           find.byType(MaterialApp),
           matchesGoldenFile(
-            '../build/movie-artwork-preview/${i == 0 ? 'dune' : 'odyssey'}_${blend ? 'blend' : 'classic'}.png',
+            '../build/movie-artwork-preview/${films[i]}_${blend ? 'blend' : 'classic'}.png',
           ),
         );
       }
@@ -115,7 +119,7 @@ void main() {
               body: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
                 child: MovieTicketFace(
-                  pass: mockMoviePasses[i],
+                  pass: passes[i],
                   density: MovieTicketDensity.detail,
                   useBrandColors: true,
                   artworkBlend: blend,
@@ -133,7 +137,7 @@ void main() {
         await expectLater(
           find.byType(MaterialApp),
           matchesGoldenFile(
-            '../build/movie-artwork-preview/${i == 0 ? 'dune' : 'odyssey'}_detail_${blend ? 'blend' : 'classic'}.png',
+            '../build/movie-artwork-preview/${films[i]}_detail_${blend ? 'blend' : 'classic'}.png',
           ),
         );
       }

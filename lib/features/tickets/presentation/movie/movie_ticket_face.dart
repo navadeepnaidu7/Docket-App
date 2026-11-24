@@ -201,9 +201,9 @@ class _TicketBody extends StatelessWidget {
           children: <Widget>[
             Padding(
               padding: EdgeInsets.fromLTRB(
-                14 * scale,
+                MovieTicketMetrics.heroHorizontalPadding * scale,
                 (style.showTopHairline ? 14 : 12) * scale,
-                14 * scale,
+                MovieTicketMetrics.heroHorizontalPadding * scale,
                 0,
               ),
               child: _HeroBand(
@@ -439,7 +439,9 @@ class _HeroBand extends StatelessWidget {
   Widget build(BuildContext context) {
     // Design probe: glance shows a transparent TMDB title logo on a dark plate when
     // logoUrl is present. Detail always uses the full one-sheet poster (or gradient).
-    final bool logoGlance = !detail && pass.resolvedLogoUrl != null;
+    final bool logoGlance =
+        !detail &&
+        (pass.resolvedLogoAsset != null || pass.resolvedLogoUrl != null);
     if (artworkBlend && detail) {
       return MovieBlendedPoster(pass: pass);
     }
@@ -503,7 +505,7 @@ class _HeroBand extends StatelessWidget {
 
   /// Glance-only: dark field + contained transparent logo.
   Widget _buildLogoGlanceArt() {
-    final String logoUrl = pass.resolvedLogoUrl!;
+    final String? logoAsset = pass.resolvedLogoAsset;
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
@@ -530,21 +532,34 @@ class _HeroBand extends StatelessWidget {
                 horizontal: constraints.maxWidth * 0.10,
                 vertical: constraints.maxHeight * 0.16,
               ),
-              child: CachedNetworkImage(
-                imageUrl: logoUrl,
-                fit: BoxFit.contain,
-                fadeInDuration: const Duration(milliseconds: 220),
-                memCacheWidth: _decodeWidth(context, constraints.maxWidth),
-                placeholder: (BuildContext context, String url) => artworkBlend
-                    ? const SizedBox.shrink()
-                    : const _PosterShimmer(),
-                errorWidget: (BuildContext context, String url, Object error) {
-                  // Logo miss → same path as a posterless glance (gradient only).
-                  return artworkBlend
-                      ? const SizedBox.shrink()
-                      : _buildGradientBackdrop();
-                },
-              ),
+              child: logoAsset != null
+                  ? Image.asset(
+                      logoAsset,
+                      fit: BoxFit.contain,
+                      cacheWidth: _decodeWidth(context, constraints.maxWidth),
+                      errorBuilder: (context, error, stack) =>
+                          const SizedBox.shrink(),
+                    )
+                  : CachedNetworkImage(
+                      imageUrl: pass.resolvedLogoUrl!,
+                      fit: BoxFit.contain,
+                      fadeInDuration: const Duration(milliseconds: 220),
+                      memCacheWidth: _decodeWidth(
+                        context,
+                        constraints.maxWidth,
+                      ),
+                      placeholder: (BuildContext context, String url) =>
+                          artworkBlend
+                          ? const SizedBox.shrink()
+                          : const _PosterShimmer(),
+                      errorWidget:
+                          (BuildContext context, String url, Object error) {
+                            // Logo miss → same path as a posterless glance (gradient only).
+                            return artworkBlend
+                                ? const SizedBox.shrink()
+                                : _buildGradientBackdrop();
+                          },
+                    ),
             );
           },
         ),

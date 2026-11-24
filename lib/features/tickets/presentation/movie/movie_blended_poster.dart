@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/movie_pass_models.dart';
 import 'movie_blurred_artwork.dart';
+import 'movie_feathered_image.dart';
 import 'movie_ticket_chrome.dart';
 
 /// The full one-sheet, with only its perimeter fading into an aligned halo.
@@ -17,14 +18,71 @@ class MovieBlendedPoster extends StatelessWidget {
   static const double edgeFeather = 28;
   static const double bottomFeather = 42;
 
+  static int decodeWidth(double width, double devicePixelRatio) =>
+      math.min((width * devicePixelRatio).ceil(), 780);
+
+  /// Prepare only the expanded poster and halo, without mounting a hidden route
+  /// or waiting on a download when the user taps. ImageCache bounds their life.
+  static Future<void> warmUp(MoviePass pass, BuildContext context) async {
+    final width =
+        MediaQuery.sizeOf(context).width -
+        MediaQuery.paddingOf(context).horizontal -
+        2 * MovieTicketMetrics.detailHorizontalPadding -
+        2 * MovieTicketMetrics.heroHorizontalPadding;
+    if (width <= 0) return;
+    final asset = pass.resolvedPosterAsset;
+    final url = pass.resolvedPosterUrl;
+    if (asset == null && url == null) return;
+    final sharp = imageFor(pass, width, MediaQuery.devicePixelRatioOf(context));
+    final halo = MovieBlurredArtwork.imageFor(
+      pass: pass,
+      size: Size(width + 56, width / MovieTicketMetrics.posterAspect + 80),
+      sigma: 25,
+      fit: BoxFit.fill,
+    )!;
+    await Future.wait([
+      precacheImage(sharp, context, onError: (error, stack) {}),
+      precacheImage(sharp.fallback, context, onError: (error, stack) {}),
+      precacheImage(halo, context, onError: (error, stack) {}),
+    ]);
+  }
+
+  static MovieFeatheredImage imageFor(
+    MoviePass pass,
+    double width,
+    double dpr,
+  ) {
+    final asset = pass.resolvedPosterAsset;
+    final url = pass.resolvedPosterUrl;
+    final pixels = decodeWidth(width, dpr);
+    final height = width / MovieTicketMetrics.posterAspect;
+    return MovieFeatheredImage(
+      source: asset == null && url == null
+          ? null
+          : ResizeImage.resizeIfNeeded(
+              pixels,
+              null,
+              asset != null
+                  ? AssetImage(asset)
+                  : CachedNetworkImageProvider(url!),
+            ),
+      colors: pass.posterHint.gradient,
+      width: pixels,
+      height: (pixels / MovieTicketMetrics.posterAspect).round(),
+      sideFraction: (edgeFeather / width).clamp(0, .45),
+      topFraction: (edgeFeather / height).clamp(0, .45),
+      bottomFraction: (bottomFeather / height).clamp(0, .45),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final int decodeWidth = math.min(
-          (constraints.maxWidth * MediaQuery.devicePixelRatioOf(context))
-              .ceil(),
-          780,
+        final poster = imageFor(
+          pass,
+          constraints.maxWidth,
+          MediaQuery.devicePixelRatioOf(context),
         );
         return RepaintBoundary(
           child: AspectRatio(
@@ -32,7 +90,7 @@ class MovieBlendedPoster extends StatelessWidget {
             child: Stack(
               clipBehavior: Clip.none,
               fit: StackFit.expand,
-              children: <Widget>[
+              children: [
                 Positioned(
                   top: -25,
                   left: -28,
@@ -46,43 +104,37 @@ class MovieBlendedPoster extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Alpha masks intersect: a narrow soft edge on every side,
-                // with a longer bottom fade into the ticket information.
-                ShaderMask(
-                  blendMode: BlendMode.dstIn,
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: _maskColors,
-                    stops: <double>[
-                      0,
-                      (edgeFeather / bounds.width).clamp(0, 0.45),
-                      1 - (edgeFeather / bounds.width).clamp(0, 0.45),
-                      1,
-                    ],
-                  ).createShader(bounds),
-                  child: ShaderMask(
-                    blendMode: BlendMode.dstIn,
-                    shaderCallback: (bounds) => LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: _maskColors,
-                      stops: <double>[
-                        0,
-                        (edgeFeather / bounds.height).clamp(0, 0.45),
-                        1 - (bottomFeather / bounds.height).clamp(0, 0.45),
-                        1,
-                      ],
-                    ).createShader(bounds),
-                    child: Semantics(
-                      image: true,
-                      label: '${pass.movieTitle} poster',
-                      child: ExcludeSemantics(
-                        child: _PosterLayer(
-                          pass: pass,
-                          decodeWidth: decodeWidth,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
+                Semantics(
+                  image: true,
+                  label: '${pass.movieTitle} poster',
+                  child: ExcludeSemantics(
+                    child: poster.source == null
+                        ? Image(image: poster.fallback, fit: BoxFit.contain)
+                        : Image(
+                            key: ValueKey(poster.source),
+                            image: poster,
+                            fit: BoxFit.contain,
+                            frameBuilder: (context, child, frame, synchronous) {
+                              if (synchronous) return child;
+                              return AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 220),
+                                child: frame == null
+                                    ? Image(
+                                        key: const ValueKey('poster-fallback'),
+                                        image: poster.fallback,
+                                        fit: BoxFit.contain,
+                                      )
+                                    : KeyedSubtree(
+                                        key: const ValueKey('poster-loaded'),
+                                        child: child,
+                                      ),
+                              );
+                            },
+                            errorBuilder: (context, error, stack) => Image(
+                              image: poster.fallback,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -90,64 +142,6 @@ class MovieBlendedPoster extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-
-  static const List<Color> _maskColors = <Color>[
-    Colors.transparent,
-    Colors.white,
-    Colors.white,
-    Colors.transparent,
-  ];
-}
-
-/// Both layers use the same artwork and keep a stable fallback during loading,
-/// failure, or a missing TMDB match. The sharp layer never crops the one-sheet.
-class _PosterLayer extends StatelessWidget {
-  const _PosterLayer({
-    required this.pass,
-    required this.decodeWidth,
-    required this.fit,
-  });
-
-  final MoviePass pass;
-  final int decodeWidth;
-  final BoxFit fit;
-
-  @override
-  Widget build(BuildContext context) {
-    final String? asset = pass.resolvedPosterAsset;
-    final String? url = pass.resolvedPosterUrl;
-    return Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: pass.posterHint.gradient,
-            ),
-          ),
-        ),
-        if (asset != null)
-          Image.asset(
-            asset,
-            fit: fit,
-            cacheWidth: decodeWidth,
-            errorBuilder: (context, error, stackTrace) =>
-                const SizedBox.shrink(),
-          )
-        else if (url != null)
-          CachedNetworkImage(
-            imageUrl: url,
-            fit: fit,
-            memCacheWidth: decodeWidth,
-            fadeInDuration: const Duration(milliseconds: 220),
-            placeholder: (context, url) => const SizedBox.shrink(),
-            errorWidget: (context, url, error) => const SizedBox.shrink(),
-          ),
-      ],
     );
   }
 }

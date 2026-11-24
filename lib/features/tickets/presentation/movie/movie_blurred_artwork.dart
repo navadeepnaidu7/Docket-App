@@ -8,6 +8,25 @@ import 'package:flutter/material.dart';
 
 import '../../domain/movie_pass_models.dart';
 
+/// Resolves one owned image handle. Callers dispose it after preparing artwork.
+Future<ImageInfo> resolveMovieArtwork(ImageProvider source) {
+  final stream = source.resolve(ImageConfiguration.empty);
+  final completer = Completer<ImageInfo>();
+  late ImageStreamListener listener;
+  listener = ImageStreamListener(
+    (info, synchronousCall) {
+      stream.removeListener(listener);
+      completer.complete(info);
+    },
+    onError: (Object error, StackTrace? stack) {
+      stream.removeListener(listener);
+      completer.completeError(error, stack);
+    },
+  );
+  stream.addListener(listener);
+  return completer.future;
+}
+
 /// Prepares a small blurred raster once instead of applying a large image filter
 /// on every route-animation frame. Flutter's ImageCache owns the derived images.
 class MovieBlurredArtwork extends StatelessWidget {
@@ -24,16 +43,40 @@ class MovieBlurredArtwork extends StatelessWidget {
   final BoxFit fit;
   final double overscan;
 
+  /// The same cache key is used by the on-screen layer and idle preparation.
+  static MovieBlurredImage? imageFor({
+    required MoviePass pass,
+    required Size size,
+    required double sigma,
+    required BoxFit fit,
+    double overscan = 1,
+  }) {
+    final asset = pass.resolvedPosterAsset;
+    final url = pass.resolvedPosterUrl;
+    if ((asset == null && url == null) || !size.isFinite || size.isEmpty) {
+      return null;
+    }
+    final expanded = Size(size.width + sigma * 6, size.height + sigma * 6);
+    final scale = math.min(128 / expanded.width, 256 / expanded.height);
+    return MovieBlurredImage(
+      source: ResizeImage.resizeIfNeeded(
+        360,
+        null,
+        asset != null ? AssetImage(asset) : CachedNetworkImageProvider(url!),
+      ),
+      width: (expanded.width * scale).ceil().clamp(1, 128),
+      height: (expanded.height * scale).ceil().clamp(1, 256),
+      sigma: sigma * scale,
+      fit: fit,
+      overscan: overscan,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final String? asset = pass.resolvedPosterAsset;
     final String? url = pass.resolvedPosterUrl;
     if (asset == null && url == null) return const SizedBox.shrink();
-    final ImageProvider source = ResizeImage.resizeIfNeeded(
-      360,
-      null,
-      asset != null ? AssetImage(asset) : CachedNetworkImageProvider(url!),
-    );
     return LayoutBuilder(
       builder: (context, constraints) {
         final Size size = constraints.biggest;
@@ -44,24 +87,19 @@ class MovieBlurredArtwork extends StatelessWidget {
           size.width + sigma * 6,
           size.height + sigma * 6,
         );
-        final double scale = math.min(
-          128 / expanded.width,
-          256 / expanded.height,
-        );
         return OverflowBox(
           minWidth: expanded.width,
           maxWidth: expanded.width,
           minHeight: expanded.height,
           maxHeight: expanded.height,
           child: Image(
-            image: MovieBlurredImage(
-              source: source,
-              width: (expanded.width * scale).ceil().clamp(1, 128),
-              height: (expanded.height * scale).ceil().clamp(1, 256),
-              sigma: sigma * scale,
+            image: imageFor(
+              pass: pass,
+              size: size,
+              sigma: sigma,
               fit: fit,
               overscan: overscan,
-            ),
+            )!,
             fit: BoxFit.fill,
             filterQuality: FilterQuality.low,
             excludeFromSemantics: true,
@@ -105,21 +143,7 @@ class MovieBlurredImage extends ImageProvider<MovieBlurredImage> {
   ) => OneFrameImageStreamCompleter(key._render());
 
   Future<ImageInfo> _render() async {
-    final ImageStream stream = source.resolve(ImageConfiguration.empty);
-    final completer = Completer<ImageInfo>();
-    late final ImageStreamListener listener;
-    listener = ImageStreamListener(
-      (info, synchronousCall) {
-        stream.removeListener(listener);
-        completer.complete(info);
-      },
-      onError: (Object error, StackTrace? stack) {
-        stream.removeListener(listener);
-        completer.completeError(error, stack);
-      },
-    );
-    stream.addListener(listener);
-    final ImageInfo info = await completer.future;
+    final ImageInfo info = await resolveMovieArtwork(source);
     try {
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder);

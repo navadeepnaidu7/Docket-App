@@ -30,6 +30,8 @@ abstract final class MovieTicketMetrics {
   /// the ticket's actual information off a card that has to read at a glance,
   /// so it keeps a fixed-height crop.
   static const double posterAspect = 2 / 3;
+  static const double detailHorizontalPadding = 16;
+  static const double heroHorizontalPadding = 14;
 
   static const double tearHeight = 20;
   static const double footerPadTop = 8;

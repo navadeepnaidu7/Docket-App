@@ -9,6 +9,7 @@ import 'movie/movie_ticket_code_screen.dart';
 import 'pass_code_screen.dart';
 import 'pass_info_card.dart';
 import 'movie/movie_ticket_face.dart';
+import 'movie/movie_ticket_chrome.dart';
 import 'pass_detail_header.dart';
 import 'share/pass_share_actions.dart';
 
@@ -45,7 +46,12 @@ class MoviePassDetailScreen extends ConsumerWidget {
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+                padding: const EdgeInsets.fromLTRB(
+                  MovieTicketMetrics.detailHorizontalPadding,
+                  4,
+                  MovieTicketMetrics.detailHorizontalPadding,
+                  28,
+                ),
                 physics: const BouncingScrollPhysics(),
                 children: <Widget>[
                   MovieTicketFace(

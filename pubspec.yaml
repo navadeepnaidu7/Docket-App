@@ -163,6 +163,9 @@ flutter:
     - assets/passes/zomato.svg
     - assets/passes/district-logo.svg
     - assets/passes/history_clock.svg
+    - assets/passes/fixtures/dune_part_three_logo.png
+    - assets/passes/fixtures/dune_part_three_poster.jpg
+    - assets/passes/fixtures/avengers_doomsday_poster.jpg
     # Lucide line icons (ISC) — see ATTRIBUTIONS.md. Directory entry: this set
     # grows as pass categories are added.
     - assets/passes/icons/
