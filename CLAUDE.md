@@ -20,7 +20,7 @@ flutter analyze --no-pub lib test tool
 flutter test --no-pub test/auth_session_test.dart  # choose the affected suites
 flutter test --no-pub                         # full suite; duration varies
 python tool/check_docs.py
-flutter build apk --release
+flutter build apk --release --split-per-abi  # install app-arm64-v8a-release.apk
 ```
 
 Dart constraint: `^3.11.5`; Android minimum SDK: 26. Android is the versioned platform.

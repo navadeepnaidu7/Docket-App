@@ -68,28 +68,24 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-
-            // Drop the x86_64 slice — emulators and a few Chromebooks, ~33 MB of
-            // engine + ML Kit native code that no shipped device uses.
-            //
-            // This MUST live on the build type, not defaultConfig, and MUST clear
-            // first. FlutterPlugin.kt does `buildType.ndk.abiFilters.clear()` then
-            // re-adds DEFAULT_PLATFORMS (arm32, arm64, *x86_64*) at apply() time;
-            // AGP then unions that with defaultConfig, so a defaultConfig-only
-            // filter is silently a no-op. Our android {} block is evaluated after
-            // apply(), so clearing here is what actually sticks.
-            //
-            // Release only: debug keeps x86_64 so emulators still work.
-            ndk {
-                abiFilters.clear()
-                abiFilters += listOf("armeabi-v7a", "arm64-v8a")
-            }
         }
     }
 }
 
 flutter {
     source = "../.."
+}
+
+// Drop the x86_64 slice from release builds: emulators and a few Chromebooks,
+// about 46 MB of engine, ML Kit and PDF native code no shipped device uses.
+// Not ndk.abiFilters: the Flutter Gradle plugin rewrites those from
+// --target-platform, and they conflict with --split-per-abi. Excluding at
+// packaging time holds for every release variant. Debug keeps x86_64 so
+// emulators still work.
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        variant.packaging.jniLibs.excludes.add("lib/x86_64/**")
+    }
 }
 
 // Swap ML Kit face detection and barcode scanning from the bundled model
