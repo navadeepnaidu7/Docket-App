@@ -4,10 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/dev/dev_config.dart';
 import '../../../core/dev/dev_flags_provider.dart';
 import '../../tickets/application/api_providers.dart';
+import '../../tickets/application/pass_list_provider.dart';
+import '../../tickets/application/pending_pass_queue.dart';
 import '../../tickets/data/api_session_store.dart';
 import '../../tickets/data/docket_api_client.dart';
 import '../../tickets/domain/pass_ingest.dart';
 import 'google_auth_gateway.dart';
+import '../../notifications/application/notification_service.dart';
+import 'account_cleanup.dart';
 
 /// Account session for Settings / membership card.
 @immutable
@@ -138,7 +142,11 @@ class AuthSession {
 }
 
 class AuthControllerState {
-  const AuthControllerState({required this.session, this.busy = false});
+  const AuthControllerState({
+    required this.session,
+    this.busy = false,
+    this.realAccount = false,
+  });
 
   static const AuthControllerState signedOut = AuthControllerState(
     session: AuthSession.signedOut,
@@ -146,11 +154,17 @@ class AuthControllerState {
 
   final AuthSession session;
   final bool busy;
+  final bool realAccount;
 
-  AuthControllerState copyWith({AuthSession? session, bool? busy}) {
+  AuthControllerState copyWith({
+    AuthSession? session,
+    bool? busy,
+    bool? realAccount,
+  }) {
     return AuthControllerState(
       session: session ?? this.session,
       busy: busy ?? this.busy,
+      realAccount: realAccount ?? this.realAccount,
     );
   }
 }
@@ -182,23 +196,32 @@ class AuthController extends StateNotifier<AuthControllerState> {
   }
 
   final Ref _ref;
+  int _accountEpoch = 0;
 
   Future<void> _hydrate() async {
+    final epoch = _accountEpoch;
     final ApiSessionStore store = _ref.read(apiSessionStoreProvider);
     final StoredApiSession? stored = await store.readSession();
-    if (!mounted) return;
+    if (!mounted || epoch != _accountEpoch) return;
     if (stored == null || stored.tokens.isEmpty) return;
     final ApiUser? cached = stored.user;
     if (cached != null && !cached.isEmpty) {
-      state = state.copyWith(session: AuthSession.fromUser(cached));
+      state = state.copyWith(
+        session: AuthSession.fromUser(cached),
+        realAccount: !stored.developerSession,
+      );
     }
     final DocketApiClient? api = _ref.read(docketApiClientProvider);
     if (api == null) return;
     try {
       final ApiUser user = await api.fetchMe();
-      if (!mounted) return;
-      state = state.copyWith(session: AuthSession.fromUser(user));
+      if (!mounted || epoch != _accountEpoch) return;
+      state = state.copyWith(
+        session: AuthSession.fromUser(user),
+        realAccount: !stored.developerSession,
+      );
     } on PassIngestException catch (e) {
+      if (!mounted || epoch != _accountEpoch) return;
       if (e.code == PassIngestCode.needsAuth) {
         await store.clear();
         if (!mounted) return;
@@ -212,6 +235,7 @@ class AuthController extends StateNotifier<AuthControllerState> {
   /// Returns `true` on success, `false` if the user cancelled.
   Future<bool> signInWithGoogle() async {
     if (state.busy) return false;
+    _accountEpoch++;
     state = state.copyWith(busy: true);
     if (!_ref.read(googleSignInConfiguredProvider)) {
       return _signInWithDevBypass();
@@ -232,7 +256,10 @@ class AuthController extends StateNotifier<AuthControllerState> {
       }
       final ApiUser user = await api.loginWithGoogle(idToken);
       if (!mounted) return false;
-      state = AuthControllerState(session: AuthSession.fromUser(user));
+      state = AuthControllerState(
+        session: AuthSession.fromUser(user),
+        realAccount: true,
+      );
       return true;
     } on GoogleAuthFailure {
       if (mounted) state = state.copyWith(busy: false);
@@ -269,7 +296,10 @@ class AuthController extends StateNotifier<AuthControllerState> {
       );
     }
     try {
-      final ApiUser user = await api.loginWithGoogle(token);
+      final ApiUser user = await api.loginWithGoogle(
+        token,
+        developerSession: true,
+      );
       if (!mounted) return false;
       state = AuthControllerState(session: AuthSession.fromUser(user));
       return true;
@@ -284,17 +314,67 @@ class AuthController extends StateNotifier<AuthControllerState> {
 
   Future<void> signOut() async {
     if (state.busy) return;
+    _accountEpoch++;
     state = state.copyWith(busy: true);
-    final DocketApiClient? api = _ref.read(docketApiClientProvider);
-    try {
-      await api?.logout();
-    } catch (_) {}
-    try {
-      await _ref.read(googleAuthGatewayProvider).signOut();
-    } catch (_) {}
-    await _ref.read(devFlagsProvider.notifier).setMockSignedIn(false);
+    await _cleanup(deleted: false);
     if (!mounted) return;
     state = AuthControllerState.signedOut;
+  }
+
+  Future<void> deleteAccount() async {
+    if (state.busy || !state.realAccount || !state.session.isSignedIn) return;
+    _accountEpoch++;
+    state = state.copyWith(busy: true);
+    try {
+      final api = _ref.read(docketApiClientProvider);
+      if (api == null) throw StateError('Account service unavailable');
+      // No local mutation before the server explicitly confirms deletion.
+      await api.deleteAccount();
+    } catch (_) {
+      if (mounted) state = state.copyWith(busy: false);
+      throw const GoogleAuthFailure(
+        'Could not delete your account. Nothing was removed from this phone. Check your connection and try again.',
+      );
+    }
+    await _cleanup(deleted: true);
+    if (mounted) state = AuthControllerState.signedOut;
+  }
+
+  Future<void> _cleanup({required bool deleted}) async {
+    final api = _ref.read(docketApiClientProvider);
+    final store = _ref.read(apiSessionStoreProvider);
+    final notifications = _ref.read(notificationServiceProvider);
+    final account = state.session.id;
+    final offline = _ref.read(passOfflineStoreProvider);
+    final pending = _ref.read(pendingPassQueueProvider.notifier);
+    final google = _ref.read(googleAuthGatewayProvider);
+    final flags = _ref.read(devFlagsProvider.notifier);
+    await cleanupAccount(
+      unregisterPush: () =>
+          notifications.leaveAccount(account, api, deleted: deleted),
+      clearSession: () async {
+        if (!deleted && api != null) {
+          try {
+            await api.logout();
+            return;
+          } catch (_) {}
+        }
+        await store.clear();
+      },
+      clearOfflinePasses: offline.clearAll,
+      clearPendingPasses: pending.clearAll,
+      clearIdentity: () async {
+        await flags.setMockSignedIn(false);
+        if (mounted) {
+          state = const AuthControllerState(
+            session: AuthSession.signedOut,
+            busy: true,
+          );
+        }
+      },
+      cancelServerReminders: notifications.cancelServerReminders,
+      googleSignOut: google.signOut,
+    );
   }
 }
 

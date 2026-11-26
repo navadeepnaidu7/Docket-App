@@ -175,9 +175,11 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final bool signedIn =
-          await container.read(authControllerProvider.notifier).signInWithGoogle();
+      final bool signedIn = await container
+          .read(authControllerProvider.notifier)
+          .signInWithGoogle();
       expect(signedIn, isTrue);
+      expect(container.read(authControllerProvider).realAccount, isTrue);
       expect(container.read(authSessionProvider).displayName, 'Sam');
       expect(container.read(authSessionProvider).membershipNumber, '#88');
 
@@ -215,8 +217,9 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final bool signedIn =
-          await container.read(authControllerProvider.notifier).signInWithGoogle();
+      final bool signedIn = await container
+          .read(authControllerProvider.notifier)
+          .signInWithGoogle();
       expect(signedIn, isFalse);
       expect(container.read(authSessionProvider).isSignedIn, isFalse);
     });
@@ -247,9 +250,7 @@ void main() {
               'tokenType': 'Bearer',
             }),
             200,
-            headers: const <String, String>{
-              'content-type': 'application/json',
-            },
+            headers: const <String, String>{'content-type': 'application/json'},
           );
         }),
       );
@@ -273,8 +274,9 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final bool signedIn =
-          await container.read(authControllerProvider.notifier).signInWithGoogle();
+      final bool signedIn = await container
+          .read(authControllerProvider.notifier)
+          .signInWithGoogle();
       expect(signedIn, isTrue);
       expect(container.read(authSessionProvider).displayName, 'Dev User');
       expect(container.read(authSessionProvider).membershipNumber, '#4267');

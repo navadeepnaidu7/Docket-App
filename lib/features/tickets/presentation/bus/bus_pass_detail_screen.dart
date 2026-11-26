@@ -114,7 +114,7 @@ class BusPassDetailScreen extends StatelessWidget {
                       ink: ink,
                       muted: muted,
                       isDark: isDark,
-                      labelWidth: 150,
+                      stacked: true,
                       rows: <(String, String)>[
                         for (final BusPassenger p in pass.passengers)
                           (p.name, p.seat.isEmpty ? '—' : 'Seat ${p.seat}'),

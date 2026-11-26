@@ -69,6 +69,86 @@ class DocketApiClient implements DocketApi, TrainJourneyApi, CalendarImportApi {
 
   static const Duration _httpTimeout = Duration(seconds: 30);
 
+  Future<void> registerDevice({
+    required String token,
+    required String timezone,
+  }) async {
+    await _notificationRequest('POST', '/v1/devices', {
+      'token': token,
+      'platform': 'android',
+      'deviceLabel': 'Docket Android',
+      'timezone': timezone,
+    });
+  }
+
+  Future<void> unregisterDevice(String token) async {
+    await _notificationRequest('DELETE', '/v1/devices', {'token': token});
+  }
+
+  Future<Map<String, dynamic>> fetchNotificationPreferences() async => _jsonMap(
+    (await _notificationRequest('GET', '/v1/me/notification-preferences')).body,
+  );
+
+  Future<void> putNotificationPreferences(
+    Map<String, dynamic> preferences,
+  ) async {
+    await _notificationRequest(
+      'PUT',
+      '/v1/me/notification-preferences',
+      preferences,
+    );
+  }
+
+  /// Local cleanup belongs to AuthController and runs only after a confirmed 204.
+  Future<void> deleteAccount() async {
+    final before = await session.readSession();
+    try {
+      final response = await _notificationRequest('DELETE', '/v1/me', {
+        'confirm': 'DELETE',
+      });
+      if (response.statusCode != 204) {
+        throw const PassIngestException(
+          PassIngestCode.failed,
+          'Could not delete your account. Try again.',
+        );
+      }
+    } catch (_) {
+      // Authentication retry may clear expired credentials. Deletion failure
+      // must preserve the phone's session and identity as well as its passes.
+      if (before != null) {
+        await session.write(
+          before.tokens,
+          user: before.user,
+          developerSession: before.developerSession,
+        );
+      }
+      rethrow;
+    }
+  }
+
+  Future<http.Response> _notificationRequest(
+    String method,
+    String path, [
+    Map<String, dynamic>? body,
+  ]) async {
+    final response = await _authed(
+      (headers) => _withTimeout(() {
+        final h = {...headers, 'Content-Type': 'application/json'};
+        return switch (method) {
+          'GET' => _http.get(_uri(path), headers: h),
+          'POST' => _http.post(_uri(path), headers: h, body: jsonEncode(body)),
+          'PUT' => _http.put(_uri(path), headers: h, body: jsonEncode(body)),
+          _ => _http.delete(_uri(path), headers: h, body: jsonEncode(body)),
+        };
+      }),
+    );
+    _throwIfFailed(
+      response,
+      fallback: 'Could not complete the account request. Try again.',
+    );
+    return response;
+  }
+
   @override
   Future<void> refreshTrainJourney(String id) async {
     final response = await _authed(
@@ -381,9 +461,16 @@ class DocketApiClient implements DocketApi, TrainJourneyApi, CalendarImportApi {
   }
 
   /// Exchange a Google ID token for a Docket session.
-  Future<ApiUser> loginWithGoogle(String idToken) async {
+  Future<ApiUser> loginWithGoogle(
+    String idToken, {
+    bool developerSession = false,
+  }) async {
     final _AuthPayload payload = await _postGoogle(idToken);
-    await session.write(payload.tokens, user: payload.user);
+    await session.write(
+      payload.tokens,
+      user: payload.user,
+      developerSession: developerSession,
+    );
     return payload.user;
   }
 
@@ -430,7 +517,11 @@ class DocketApiClient implements DocketApi, TrainJourneyApi, CalendarImportApi {
 
   Future<ApiTokens> _exchange(String idToken) async {
     final _AuthPayload payload = await _postGoogle(idToken);
-    await session.write(payload.tokens, user: payload.user);
+    await session.write(
+      payload.tokens,
+      user: payload.user,
+      developerSession: true,
+    );
     return payload.tokens;
   }
 

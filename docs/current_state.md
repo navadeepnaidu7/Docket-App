@@ -1,6 +1,6 @@
 # Current state
 
-Source reviewed: **23 November 2026**, maintenance-only commit snapshot. This is a capability
+Source reviewed: **23 November 2026**, including the working tree. This is a capability
 snapshot, not a release certification. Use the [README task map](../README.md#task-map)
 to locate code and tests; do not load every feature plan as startup context.
 
@@ -44,12 +44,14 @@ to locate code and tests; do not load every feature plan as startup context.
 Record the command, date and scope. Source presence, automated tests and device checks
 are separate evidence; a proposal or old passing count is not a current baseline.
 
-- **23 November 2026, maintenance-only snapshot:**
-  - `dart analyze --format machine lib test tool`: **no diagnostics**, exit 0.
-  - `flutter test --no-pub --reporter expanded`: **937 passed**, 04:21 elapsed.
+- **23 November 2026, after maintenance (working tree):**
+  - `flutter analyze --no-pub`: **no issues**, 92.1 seconds.
+  - `dart analyze --format machine lib test tool`: **no diagnostics**, exit 0; includes opt-in tools.
+  - `flutter test --no-pub --reporter expanded`: **953 passed**, 3m46s.
   - `python tool/check_docs.py`: repository-local Markdown link targets exist.
-- Three stale golden baselines were reviewed and refreshed for the committed UI. Separate
-  uncommitted flight-import, theme and motion edits were excluded. No device checks ran.
+- Four stale golden baselines were reviewed against the current theme, flight-import tile,
+  passport-cover and Discover-logo rendering and updated. Existing flight/motion edits were
+  retained. These results cover this working tree; no device checks ran in the maintenance pass.
 - Still require device/release checks: NFC after R8, install over pre-migration builds,
   attachment trash/restore, first-use ML Kit behavior, real Google sign-in/Calendar
   configuration, and iOS permission/share/viewer paths. See the relevant contract for

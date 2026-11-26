@@ -19,6 +19,15 @@ is still a stub that throws `UnimplementedError`. See [`../current_state.md`](..
 | `DELETE` | `/v1/passes/{id}` | Remove a pass the caller owns — **live** |
 | `GET` | `/v1/passes/{id}/live` | Train live status only (`?force=1` to bypass cache) — **live** |
 | `GET` | `/v1/passes/{id}/code` | *(not implemented)* gate code payload / image URL |
+| `POST` | `/v1/devices` | Upsert an Android FCM token with device label and IANA timezone |
+| `DELETE` | `/v1/devices` | Unregister `{ token }` before clearing the session |
+| `GET` | `/v1/me/notification-preferences` | Read signed-in notification preferences |
+| `PUT` | `/v1/me/notification-preferences` | Replace booking/live/quiet-hour preferences and timezone |
+| `DELETE` | `/v1/me` | Permanently delete the account with `{ confirm: "DELETE" }`; success requires 204 |
+
+Notification payloads, lifecycle and deletion behavior are defined in
+[Notifications](../features/notifications.md#appserver-contract). Trip reminder
+lead times and the permission-sheet dismissal are phone-only settings.
 
 ### Query params (`GET /v1/passes`)
 

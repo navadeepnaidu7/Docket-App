@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../domain/pass_code.dart';
-import 'pass_code_view.dart';
 import 'pass_typography.dart';
 
 /// Shared scan affordance. Only construct for a genuine code.
@@ -77,7 +76,17 @@ class PassCodeRow extends StatelessWidget {
                             ),
                           ],
                   ),
-                  child: Center(child: PassCodeView(code: code, width: 72)),
+                  // A static glyph, not the payload: rendering a dense code at
+                  // thumbnail size is costly and unreadable. Full screen shows it.
+                  child: Center(
+                    child: Icon(
+                      code.format == PassCodeFormat.qr
+                          ? Icons.qr_code_2_rounded
+                          : Icons.view_week_rounded,
+                      size: 64,
+                      color: Colors.black87,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(

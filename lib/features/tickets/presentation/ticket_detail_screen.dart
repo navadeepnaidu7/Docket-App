@@ -197,13 +197,14 @@ class _DetailsTab extends StatelessWidget {
         ),
         if (t.passengers.isNotEmpty) ...<Widget>[
           const SizedBox(height: 12),
-          // The default label width, the same as Journey and Booking, so every
-          // value on the screen starts on one line.
+          // One passenger keeps the field grid shared with Journey and Booking;
+          // several are listed by name, each with their berth beneath.
           PassInfoCard(
             title: onePassenger ? 'Passenger' : 'Passengers',
             ink: ink,
             muted: muted,
             isDark: isDark,
+            stacked: !onePassenger,
             rows: onePassenger
                 ? <(String, String)>[
                     ('Name', primary.name),

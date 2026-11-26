@@ -30,6 +30,8 @@ import 'settings/appearance_settings.dart';
 import 'settings/developer_settings_section.dart';
 import 'settings/membership_card.dart';
 import 'settings/settings_rows.dart';
+import 'settings/notification_settings.dart';
+import 'settings/delete_account_sheet.dart';
 import 'user_card_detail_screen.dart';
 
 // Public Settings API that callers and tests import from this file.
@@ -323,6 +325,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 20),
+                    NotificationSettingsSection(
+                      surface: surface,
+                      borderColor: borderColor,
+                      isDark: isDark,
+                    ),
                     if (session.isSignedIn) ...[
                       const SizedBox(height: 20),
                       SettingsSection(
@@ -367,6 +375,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             title: 'Sign out',
                             onTap: () => _confirmSignOut(context, ref),
                           ),
+                          const DeleteAccountAction(),
                         ],
                       ),
                     ],

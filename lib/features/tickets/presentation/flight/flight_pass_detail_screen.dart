@@ -219,7 +219,7 @@ class _DetailsTab extends StatelessWidget {
             ink: ink,
             muted: muted,
             isDark: isDark,
-            labelWidth: 150,
+            stacked: true,
             rows: <(String, String)>[
               for (final FlightPassenger x in p.passengers)
                 (x.name, x.seat.isEmpty ? '—' : 'Seat ${x.seat}'),

@@ -76,10 +76,15 @@ class ApiUser {
 }
 
 class StoredApiSession {
-  const StoredApiSession({required this.tokens, this.user});
+  const StoredApiSession({
+    required this.tokens,
+    this.user,
+    this.developerSession = false,
+  });
 
   final ApiTokens tokens;
   final ApiUser? user;
+  final bool developerSession;
 }
 
 /// Persists API tokens. Same Android options as [SecureDocumentStore]; a
@@ -131,19 +136,29 @@ class ApiSessionStore {
         user = ApiUser.fromJson(Map<String, dynamic>.from(userRaw));
         if (user.isEmpty) user = null;
       }
-      return StoredApiSession(tokens: tokens, user: user);
+      return StoredApiSession(
+        tokens: tokens,
+        user: user,
+        developerSession: map['developerSession'] == true,
+      );
     } catch (_) {
       return null;
     }
   }
 
-  Future<void> write(ApiTokens tokens, {ApiUser? user}) async {
+  Future<void> write(
+    ApiTokens tokens, {
+    ApiUser? user,
+    bool? developerSession,
+  }) async {
     if (_unreadable) {
       throw StateError('API session key is unreadable; refusing to overwrite');
     }
     final ApiUser? nextUser = user ?? (await readSession())?.user;
     final Map<String, dynamic> payload = <String, dynamic>{
       ...tokens.toJson(),
+      'developerSession':
+          developerSession ?? (await readSession())?.developerSession ?? false,
       if (nextUser != null) 'user': nextUser.toJson(),
     };
     final String encoded = jsonEncode(payload);

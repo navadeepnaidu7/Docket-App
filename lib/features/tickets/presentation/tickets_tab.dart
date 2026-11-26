@@ -18,6 +18,7 @@ import 'add/add_pass_flow.dart';
 import 'add/pass_ingest_outcome.dart';
 import 'add/pass_ingest_particle_card.dart';
 import 'pass_remove_flow.dart';
+import 'pass_sync_banner.dart';
 import 'wallet_bus_card.dart';
 import 'wallet_flight_card.dart';
 import 'wallet_movie_card.dart';
@@ -116,6 +117,7 @@ class _TicketsTabState extends ConsumerState<TicketsTab> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
+        const PassSyncBanner(),
         Expanded(
           child: Stack(
             fit: StackFit.expand,
