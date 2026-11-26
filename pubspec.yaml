@@ -159,10 +159,8 @@ flutter:
     - assets/fonts/NotoSansDevanagari-OFL.txt
     - assets/fonts/Geist-OFL.txt
     - assets/fonts/InstrumentSerif-OFL.txt
-    - assets/branding/docket_logo.svg
-    - assets/branding/docket_logo_circle.svg
-    - assets/branding/docket_logo_square.svg
-    - assets/branding/docket_logo_squircle.svg
+    - assets/branding/docket_icon.png
+    - assets/branding/docket_mark.svg
     - assets/passes/bookmyshow.svg
     - assets/passes/bookmyshow-logo-vector.svg
     - assets/passes/zomato.svg

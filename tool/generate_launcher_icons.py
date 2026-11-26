@@ -1,226 +1,165 @@
-"""Generate Docket Android launcher icons from the brand monogram.
+"""Generate the Docket app icon (v5) for Android and the bundled branding.
 
-Matches the shape variants in tool/design_src/ (design masters, not bundled
-into the APK — only assets/branding/docket_logo.svg ships):
+Renders tool/design_src/docket_icon/layers.html with headless Chrome or Edge
+(transparent background, 2x) and writes:
 
-- circle:  docket_logo_circle.svg  (inset monogram for round masks)
-- square:  docket_logo_square.svg
-- squircle:docket_logo_squircle.svg
+- android/app/src/main/res/mipmap-*/ic_launcher_{foreground,background}.png:
+  the adaptive layers, 108dp at each density. The launcher applies its own mask
+  (circle, squircle, rounded square, teardrop, cookie). The door and lock stay
+  inside the 66dp safe zone, so no mask clips them.
+- android/app/src/main/res/mipmap-*/ic_launcher{,_round}.png: legacy icons.
+- android/app/src/main/ic_launcher-playstore.png: 512px Play listing icon.
+- assets/branding/docket_icon.png: 512px full-square icon bundled in the app.
+- tool/icon_masters/: 1024px masters of each layer and the composite.
 
-Android 8+ adaptive icons: launcher applies circle/squircle/square mask.
-We put the *circle* monogram on the adaptive foreground so circular
-launchers match the circle SVG. roundIcon uses the full circle SVG.
+The monochrome (themed icon) layer and the notification icon are hand-written
+vector drawables and are not touched here. Set CHROME to the browser binary if
+it is not installed in a standard location.
 
-Android-only — iOS icons are left untouched.
+Android-only: iOS icons are left untouched.
 """
 
 from __future__ import annotations
 
+import os
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageDraw
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "tool" / "design_src" / "docket_icon" / "layers.html"
 RES = ROOT / "android" / "app" / "src" / "main" / "res"
-BRANDING_OUT = ROOT / "tool" / "icon_masters"
+PLAY = ROOT / "android" / "app" / "src" / "main" / "ic_launcher-playstore.png"
+BRANDING = ROOT / "assets" / "branding" / "docket_icon.png"
+MASTERS = ROOT / "tool" / "icon_masters"
 
-BG = (15, 23, 42, 255)  # #0F172A
-WHITE = (255, 255, 255, 255)
-TRANSPARENT = (0, 0, 0, 0)
+DENSITIES = {"mdpi": 1, "hdpi": 1.5, "xhdpi": 2, "xxhdpi": 3, "xxxhdpi": 4}
 
-# Monogram geometry from branding SVGs (viewBox 512).
-# circle path:  M136 120 H250 C344 120 392 170 392 256 C392 342 344 392 250 392 H136 Z
-#               hole cx=315 cy=256 r=27
-# square path:  M120 104 H250 C355 104 408 160 408 256 C408 352 355 408 250 408 H120 Z
-#               hole cx=324 cy=256 r=29
-MONOGRAM = {
-    "circle": {
-        "start": (136, 120),
-        "stem_bottom": (136, 392),
-        "top_right_ctrl": ((344, 120), (392, 170), (392, 256)),
-        "bot_right_ctrl": ((392, 342), (344, 392), (250, 392)),
-        "mid_top": (250, 120),
-        "hole": (315, 256, 27),
-    },
-    "square": {
-        "start": (120, 104),
-        "stem_bottom": (120, 408),
-        "top_right_ctrl": ((355, 104), (408, 160), (408, 256)),
-        "bot_right_ctrl": ((408, 352), (355, 408), (250, 408)),
-        "mid_top": (250, 104),
-        "hole": (324, 256, 29),
-    },
-}
-# squircle uses the same monogram as square (only outer radius differs)
-MONOGRAM["squircle"] = MONOGRAM["square"]
-MONOGRAM["full"] = MONOGRAM["square"]
+BROWSERS = [
+    os.environ.get("CHROME", ""),
+    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    shutil.which("google-chrome") or "",
+    shutil.which("chromium") or "",
+]
 
 
-def _cubic(p0, p1, p2, p3, n: int = 64):
-    out = []
-    for i in range(1, n + 1):
-        t = i / n
-        u = 1 - t
-        x = (
-            u**3 * p0[0]
-            + 3 * u**2 * t * p1[0]
-            + 3 * u * t**2 * p2[0]
-            + t**3 * p3[0]
-        )
-        y = (
-            u**3 * p0[1]
-            + 3 * u**2 * t * p1[1]
-            + 3 * u * t**2 * p2[1]
-            + t**3 * p3[1]
-        )
-        out.append((x, y))
-    return out
+def _browser() -> str:
+    for path in BROWSERS:
+        if path and Path(path).exists():
+            return path
+    raise SystemExit("No Chrome or Edge found; set CHROME to the browser binary.")
 
 
-def monogram_points(size: float, variant: str = "circle") -> list[tuple[float, float]]:
-    m = MONOGRAM[variant]
-    s = size / 512.0
-    mid = m["mid_top"]
-    c1, c2, c3 = m["top_right_ctrl"]
-    b1, b2, b3 = m["bot_right_ctrl"]
-    # path: M stem_bottom → start → mid_top → curve to (392/408,256) → curve to mid bottom → close
-    stem_bottom = m["stem_bottom"]
-    start = m["start"]
-    pts: list[tuple[float, float]] = [stem_bottom, start, mid]
-    pts += _cubic(mid, c1, c2, c3)
-    pts += _cubic(c3, b1, b2, b3)
-    return [(x * s, y * s) for x, y in pts]
+def render(layer: str, css_px: int, out_dir: Path) -> Image.Image:
+    """Render one layer (bgonly, fgonly, all) at 2x the given CSS size.
 
-
-def hole_params(size: float, variant: str = "circle") -> tuple[float, float, float]:
-    cx, cy, r = MONOGRAM[variant]["hole"]
-    s = size / 512.0
-    return cx * s, cy * s, r * s
-
-
-def draw_monogram(
-    draw: ImageDraw.ImageDraw,
-    size: int,
-    variant: str,
-    *,
-    fill=WHITE,
-    hole_fill=BG,
-) -> None:
-    draw.polygon(monogram_points(size, variant), fill=fill)
-    cx, cy, r = hole_params(size, variant)
-    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=hole_fill)
-
-
-def _downscale(img: Image.Image, size: int) -> Image.Image:
-    if img.size[0] == size:
-        return img
-    return img.resize((size, size), Image.Resampling.LANCZOS)
-
-
-def make_full_icon(size: int, shape: str = "circle") -> Image.Image:
-    """Rasterize a shaped icon. Renders 4x then downscales for smooth edges."""
-    scale = 4 if size < 512 else 1
-    canvas = size * scale
-    img = Image.new("RGBA", (canvas, canvas), TRANSPARENT)
-    draw = ImageDraw.Draw(img)
-
-    # Prefer circle monogram (docket_logo_circle.svg) — inset for round masks.
-    # Square monogram only when baking square/squircle outer shapes.
-    if shape == "circle":
-        draw.ellipse([0, 0, canvas - 1, canvas - 1], fill=BG)
-        variant = "circle"
-    elif shape == "squircle":
-        r = max(1, int(canvas * 112 / 512))
-        draw.rounded_rectangle([0, 0, canvas - 1, canvas - 1], radius=r, fill=BG)
-        variant = "square"
-    elif shape == "square":
-        r = max(1, int(canvas * 64 / 512))
-        draw.rounded_rectangle([0, 0, canvas - 1, canvas - 1], radius=r, fill=BG)
-        variant = "square"
-    else:
-        # full-bleed adaptive/legacy base: circle monogram on solid navy
-        draw.rectangle([0, 0, canvas - 1, canvas - 1], fill=BG)
-        variant = "circle"
-
-    draw_monogram(draw, canvas, variant, hole_fill=BG)
-    return _downscale(img, size)
-
-
-def make_adaptive_foreground(size: int) -> Image.Image:
-    """Circle monogram on transparent — matches docket_logo_circle.svg.
-
-    Adaptive background is solid navy; launcher mask supplies the outer shape.
+    The master is sized in vw for viewing; headless Chrome's viewport is not
+    exactly --window-size, so a copy pinned to px is rendered instead. A vw
+    render scales the foreground against the background and drifts the door.
     """
-    scale = 4 if size < 512 else 1
-    canvas = size * scale
-    img = Image.new("RGBA", (canvas, canvas), TRANSPARENT)
-    draw = ImageDraw.Draw(img)
-    draw.polygon(monogram_points(canvas, "circle"), fill=WHITE)
+    page = out_dir / f"layers_{css_px}.html"
+    page.write_text(SRC.read_text(encoding="utf-8").replace("100vw", f"{css_px}px"), encoding="utf-8")
+    out = out_dir / f"{layer}_{css_px}.png"
+    subprocess.run(
+        [
+            _browser(),
+            "--headless=new",
+            "--disable-gpu",
+            "--hide-scrollbars",
+            "--default-background-color=00000000",
+            "--force-device-scale-factor=2",
+            f"--window-size={css_px},{css_px}",
+            f"--screenshot={out}",
+            f"{page.as_uri()}#{layer}",
+        ],
+        check=True,
+        capture_output=True,
+        timeout=120,
+    )
+    return Image.open(out).convert("RGBA")
 
-    # Punch the counter hole (transparent) so adaptive bg shows through.
-    hole = Image.new("L", (canvas, canvas), 0)
-    hd = ImageDraw.Draw(hole)
-    cx, cy, r = hole_params(canvas, "circle")
-    hd.ellipse([cx - r, cy - r, cx + r, cy + r], fill=255)
-    r_ch, g_ch, b_ch, a_ch = img.split()
-    a_ch = ImageChops.subtract(a_ch, hole)
-    img = Image.merge("RGBA", (r_ch, g_ch, b_ch, a_ch))
-    return _downscale(img, size)
+
+def check_door(fg: Image.Image) -> None:
+    """Fail if the door is not where the 1024 grid puts it on the 108dp canvas.
+
+    The door spans x 262-786 and y 232-792 on the 1024 icon grid, which sits in
+    the 72dp visible area offset 18dp: the safe-zone guarantee depends on it.
+    """
+    w = fg.size[0]
+    px = fg.load()
+    pts = [
+        (x, y)
+        for y in range(0, w, 2)
+        for x in range(0, w, 2)
+        if px[x, y][3] > 250 and min(px[x, y][:3]) > 225
+    ]
+    xs = [p[0] / w for p in pts]
+    ys = [p[1] / w for p in pts]
+    got = (min(xs), max(xs), min(ys), max(ys))
+    want = tuple((18 + 72 * v / 1024) / 108 for v in (262, 786, 232, 792))
+    if any(abs(g - e) > 0.01 for g, e in zip(got, want)):
+        raise SystemExit(f"Door drifted: got {got}, expected {want}")
 
 
-def write_png(img: Image.Image, path: Path) -> None:
+def resize(img: Image.Image, size: int) -> Image.Image:
+    # Premultiplied resize so the transparent foreground keeps clean edges.
+    return img.convert("RGBa").resize((size, size), Image.LANCZOS).convert("RGBA")
+
+
+def visible(composite: Image.Image) -> Image.Image:
+    """Crop the 72dp area every launcher mask shows from the 108dp canvas."""
+    s = composite.size[0]
+    return composite.crop((s // 6, s // 6, s - s // 6, s - s // 6))
+
+
+def masked(img: Image.Image, kind: str) -> Image.Image:
+    s = img.size[0] * 4
+    big = img.resize((s, s), Image.LANCZOS)
+    mask = Image.new("L", (s, s), 0)
+    draw = ImageDraw.Draw(mask)
+    if kind == "round":
+        draw.ellipse([0, 0, s - 1, s - 1], fill=255)
+    else:
+        draw.rounded_rectangle([0, 0, s - 1, s - 1], radius=int(s * 0.22), fill=255)
+    big.putalpha(mask)
+    return big
+
+
+def save(img: Image.Image, path: Path, *, rgb: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    img.save(path, format="PNG")
+    (img.convert("RGB") if rgb else img).save(path, format="PNG", optimize=True)
     print(f"  {path.relative_to(ROOT)} ({path.stat().st_size} bytes)")
 
 
-def generate_android() -> None:
-    print("Android icons (circle monogram from docket_logo_circle.svg):")
-    fg_sizes = {
-        "mipmap-mdpi": 108,
-        "mipmap-hdpi": 162,
-        "mipmap-xhdpi": 216,
-        "mipmap-xxhdpi": 324,
-        "mipmap-xxxhdpi": 432,
-    }
-    legacy_sizes = {
-        "mipmap-mdpi": 48,
-        "mipmap-hdpi": 72,
-        "mipmap-xhdpi": 96,
-        "mipmap-xxhdpi": 144,
-        "mipmap-xxxhdpi": 192,
-    }
-
-    for folder, sz in fg_sizes.items():
-        write_png(
-            make_adaptive_foreground(sz),
-            RES / folder / "ic_launcher_foreground.png",
-        )
-
-    for folder, sz in legacy_sizes.items():
-        # Legacy: full-bleed navy + circle monogram (works under any system mask).
-        write_png(make_full_icon(sz, "full"), RES / folder / "ic_launcher.png")
-        # roundIcon: exact circle SVG (navy disc + circle monogram).
-        write_png(make_full_icon(sz, "circle"), RES / folder / "ic_launcher_round.png")
-
-
-def generate_masters() -> None:
-    print("Master brand PNGs:")
-    BRANDING_OUT.mkdir(parents=True, exist_ok=True)
-    for shape in ("full", "square", "squircle", "circle"):
-        write_png(
-            make_full_icon(1024, shape),
-            BRANDING_OUT / f"icon_{shape}_1024.png",
-        )
-    write_png(
-        make_adaptive_foreground(1024),
-        BRANDING_OUT / "icon_foreground_1024.png",
-    )
-
-
 def main() -> None:
-    generate_masters()
-    generate_android()
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_dir = Path(tmp)
+        fg = render("fgonly", 432, tmp_dir)
+        check_door(fg)
+        bg = render("bgonly", 432, tmp_dir)
+        icon = visible(render("all", 432, tmp_dir))
+
+        print("Android adaptive layers and legacy icons:")
+        for folder, scale in DENSITIES.items():
+            out = RES / f"mipmap-{folder}"
+            save(resize(fg, int(108 * scale)), out / "ic_launcher_foreground.png")
+            save(resize(bg, int(108 * scale)), out / "ic_launcher_background.png", rgb=True)
+            save(resize(masked(icon, "square"), int(48 * scale)), out / "ic_launcher.png")
+            save(resize(masked(icon, "round"), int(48 * scale)), out / "ic_launcher_round.png")
+
+        print("Play listing and bundled branding:")
+        save(resize(icon, 512), PLAY, rgb=True)
+        save(resize(icon, 512), BRANDING, rgb=True)
+
+        print("1024px masters:")
+        save(render("fgonly", 512, tmp_dir), MASTERS / "docket_icon_foreground_1024.png")
+        save(render("bgonly", 512, tmp_dir), MASTERS / "docket_icon_background_1024.png", rgb=True)
+        save(resize(visible(render("all", 768, tmp_dir)), 1024), MASTERS / "docket_icon_1024.png", rgb=True)
     print("Done (Android only).")
 
 

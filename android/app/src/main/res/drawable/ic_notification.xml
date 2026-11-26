@@ -1,4 +1,9 @@
+<!-- Status-bar icon: the Docket door with its lock as a hole, white on transparent. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-    <path android:fillColor="#FFFFFFFF" android:pathData="M5,3h9l5,5v13H5zM7,5v14h10V9h-4V5z" android:fillType="evenOdd" />
+    <group android:translateX="-6.714" android:translateY="-6.286"
+        android:scaleX="0.035714" android:scaleY="0.035714">
+        <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+            android:pathData="M262,300C262,262 292,232 330,232H500C680,232 786,340 786,512C786,684 680,792 500,792H330C292,792 262,762 262,724Z M554,512a70,70 0,1 0,140 0a70,70 0,1 0,-140 0Z" />
+    </group>
 </vector>
