@@ -27,7 +27,7 @@ A genuine account session wins over the mock account preview.
 |---|---|---|
 | `USE_MOCK_PASSES` | `true` | Initial debug/profile fixture source |
 | `API_BASE_URL` | `https://api-production-5f3a7.up.railway.app` | Backend origin; do not include a trailing slash |
-| `GOOGLE_SERVER_CLIENT_ID` | empty | Web OAuth client ID used as Google token audience / Android server client ID |
+| `GOOGLE_SERVER_CLIENT_ID` | `docket-wallet` Web client | Web OAuth client ID used as Google token audience / Android server client ID |
 | `GOOGLE_IOS_CLIENT_ID` | empty | iOS OAuth client ID, when targeting iOS |
 | `DEV_AUTH_ID_TOKEN` | empty | Local/staging developer bypass token; never embed production credentials |
 | `FORCE_DEV_MENU` | `false` | Explicitly allow Developer controls outside debug/profile |
@@ -43,7 +43,7 @@ flutter run
 flutter run --dart-define=USE_MOCK_PASSES=false --dart-define=API_BASE_URL=http://10.0.2.2:8080
 
 # Real account picker against the configured backend
-flutter run --dart-define=USE_MOCK_PASSES=false --dart-define=GOOGLE_SERVER_CLIENT_ID=YOUR_WEB_CLIENT_ID
+flutter run --dart-define=USE_MOCK_PASSES=false
 ```
 
 For real Google sign-in, register the Android package and signing certificate with
@@ -52,7 +52,10 @@ Google and configure the backend to accept the same audience. The gateway initia
 `POST /v1/auth/google`; the app securely stores session tokens and refreshes on `401`.
 The account controller restores cached identity and validates it through `/v1/me`.
 
-When no Web client ID is configured, debug/profile uses the Developer bypass token if
+The default client ID belongs to the `docket-wallet` Google Cloud project, whose Android
+clients are registered for `com.navadeep.docket` with the debug and release keys. Pass
+`--dart-define=GOOGLE_SERVER_CLIENT_ID=` (empty) to disable it. When no Web client ID is
+configured, debug/profile uses the Developer bypass token if
 present, or enables the mock account preview. Normal release reports missing Google
 configuration; it does not enable the preview/bypass path.
 

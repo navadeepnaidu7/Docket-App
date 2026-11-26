@@ -1,4 +1,4 @@
-package com.example.docket
+package com.navadeep.docket
 
 import android.graphics.Bitmap
 import android.content.Intent
@@ -43,6 +43,14 @@ class MainActivity : FlutterActivity(), NfcAdapter.ReaderCallback {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.docket/notifications")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "openSettings") {
+                    startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName))
+                    result.success(null)
+                } else result.notImplemented()
+            }
         idShareReceiver = IdShareReceiver(this,
             MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.docket/id_import"))
         idShareReceiver?.receive(intent)

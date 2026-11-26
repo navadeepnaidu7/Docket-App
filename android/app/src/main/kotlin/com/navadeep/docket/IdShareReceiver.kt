@@ -1,4 +1,4 @@
-package com.example.docket
+package com.navadeep.docket
 
 import android.content.Intent
 import android.content.ClipData

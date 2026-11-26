@@ -1,4 +1,4 @@
-package com.example.docket
+package com.navadeep.docket
 
 import androidx.core.content.FileProvider
 

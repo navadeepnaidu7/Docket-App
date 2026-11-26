@@ -56,7 +56,7 @@ These came out of the startup work and are load-bearing; do not weaken them for 
 Use **profile or release** APKs for any acceptance number. Debug mode is several times
 slower and reproduces "slow startup" complaints on its own.
 
-Cold launch: `adb shell am start -S -W -n com.example.docket/.MainActivity` (`TotalTime` is
+Cold launch: `adb shell am start -S -W -n com.navadeep.docket/.MainActivity` (`TotalTime` is
 launch to first displayed frame). Never uninstall or clear data to get a cleaner number.
 
 Latest measurements, Motorola Edge 30, 23 Nov 2026 (existing app data, process-cold,
