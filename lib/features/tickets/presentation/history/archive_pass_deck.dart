@@ -16,6 +16,8 @@ import '../../domain/pass_catalog.dart';
 import '../../domain/pass_history_category.dart';
 import '../bus/bus_pass_detail_screen.dart';
 import '../bus/bus_ticket_face.dart';
+import '../flight/flight_pass_detail_screen.dart';
+import '../flight/flight_ticket_face.dart';
 import '../movie/movie_brand_style.dart';
 import '../movie_pass_detail_screen.dart';
 import '../ticket_detail_screen.dart';
@@ -371,6 +373,13 @@ class ArchivePassDeckState extends State<ArchivePassDeck>
             builder: (_) => BusPassDetailScreen(pass: pass),
           ),
         );
+      case FlightPassItem(:final pass):
+        root.push(
+          MaterialPageRoute<void>(
+            fullscreenDialog: true,
+            builder: (_) => FlightPassDetailScreen(pass: pass),
+          ),
+        );
     }
   }
 
@@ -642,21 +651,15 @@ class _PositionedArchiveCard extends StatelessWidget {
               behavior: HitTestBehavior.opaque,
               onTap: onTap,
               onLongPress: interactive ? onLongPress : null,
-              child: Stack(
-                fit: StackFit.passthrough,
-                children: <Widget>[
-                  child,
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(28),
-                        child: ColoredBox(
-                          color: Colors.black.withValues(alpha: dim),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              // Dim only the card's painted pixels. A rectangle over the slot
+              // shaded the empty space above and below shorter faces.
+              // Always present so a focus change never remounts the face.
+              child: ColorFiltered(
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withValues(alpha: dim),
+                  BlendMode.srcATop,
+                ),
+                child: child,
               ),
             ),
           ),
@@ -675,19 +678,33 @@ class _ArchiveCardFace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Archive keeps the original artwork palette without changing pass status.
     return switch (item) {
       TrainPassItem(:final ticket) => WalletCardCanvas(
         designSize: WalletCardMetrics.trainCanvas,
         child: TrainTicketFace(
           ticket: ticket,
           density: TrainTicketDensity.glance,
+          useBrandColors: true,
           showShadow: false,
         ),
       ),
       MoviePassItem(:final pass) => _MovieArchiveCard(pass: pass),
       BusPassItem(:final pass) => WalletCardCanvas(
         designSize: WalletCardMetrics.trainCanvas,
-        child: BusTicketFace(pass: pass, showShadow: false),
+        child: BusTicketFace(
+          pass: pass,
+          useBrandColors: true,
+          showShadow: false,
+        ),
+      ),
+      FlightPassItem(:final pass) => WalletCardCanvas(
+        designSize: WalletCardMetrics.trainCanvas,
+        child: FlightTicketFace(
+          pass: pass,
+          useBrandColors: true,
+          showShadow: false,
+        ),
       ),
     };
   }

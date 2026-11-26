@@ -39,7 +39,20 @@ void main() {
       .map((opacity) => opacity.opacity)
       .toList();
 
-  testWidgets('handoff uses complementary weights and reverses continuously', (
+  test('fade-through: never both tabs translucent, ends fully on one', () {
+    for (int i = 0; i <= 100; i++) {
+      final double t = i / 100;
+      final double ids = fadeThroughOpacity(t, isPasses: false);
+      final double passes = fadeThroughOpacity(t, isPasses: true);
+      bool partial(double o) => o > 0 && o < 1;
+      expect(partial(ids) && partial(passes), isFalse, reason: 't=$t');
+      expect(ids == 0 || passes == 0, isTrue, reason: 't=$t');
+    }
+    expect(fadeThroughOpacity(0, isPasses: false), 1);
+    expect(fadeThroughOpacity(1, isPasses: true), 1);
+  });
+
+  testWidgets('handoff fades through and reverses continuously', (
     tester,
   ) async {
     final controller = await open(tester);
@@ -47,9 +60,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 40));
     final before = weights(tester);
-    expect(before[0], greaterThan(0));
-    expect(before[1], greaterThan(0));
-    expect(before[0] + before[1], closeTo(1, 0.0001));
+    expect(before.where((w) => w > 0 && w < 1).length, lessThanOrEqualTo(1));
     controller.animateTo(0, curve: strongEaseOut);
     await tester.pump();
     expect(weights(tester), before);
@@ -125,7 +136,10 @@ void main() {
     for (final transform in transforms) {
       expect(transform.transform.getTranslation().x, 0);
     }
-    expect(weights(tester).reduce((a, b) => a + b), closeTo(1, 0.0001));
+    expect(
+      weights(tester).where((w) => w > 0 && w < 1).length,
+      lessThanOrEqualTo(1),
+    );
     await tester.pump(reducedSwitchDuration);
     expect(weights(tester), [0, 1]);
     await tester.pumpWidget(const SizedBox());
@@ -173,6 +187,57 @@ void main() {
       page.dispose();
     },
   );
+
+  _idleBackdropTests();
+}
+
+void _idleBackdropTests() {
+  testWidgets('an idle backdrop does not ask for a frame every vsync', (
+    tester,
+  ) async {
+    final page = ValueNotifier<double>(0);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WalletBackdrop(items: const [], pageNotifier: page),
+      ),
+    );
+    // Past the deferred start, so the ambient drift is running.
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    // A looping AnimationController would have scheduled the next frame
+    // already; the drift only asks when it moves, 20 times a second.
+    expect(tester.binding.hasScheduledFrame, isFalse);
+    double drift() => tester
+        .widgetList<CustomPaint>(find.byType(CustomPaint))
+        .map((paint) => paint.painter)
+        .whereType<AppleCardGradientPainter>()
+        .single
+        .ambientProgress;
+    final double before = drift();
+    // Still drifting: the next timer step repaints.
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(drift(), greaterThan(before));
+    await tester.pumpWidget(const SizedBox());
+    page.dispose();
+  });
+
+  testWidgets('a muted backdrop stops drifting', (tester) async {
+    final page = ValueNotifier<double>(0);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TickerMode(
+          enabled: false,
+          child: WalletBackdrop(items: const [], pageNotifier: page),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(tester.binding.hasScheduledFrame, isFalse);
+    await tester.pumpWidget(const SizedBox());
+    page.dispose();
+  });
 }
 
 class _Counter extends StatefulWidget {

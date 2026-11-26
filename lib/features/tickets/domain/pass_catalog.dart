@@ -1,5 +1,6 @@
 import 'bus_pass_models.dart';
 import 'calendar_import.dart';
+import 'flight_pass_models.dart';
 import 'movie_pass_models.dart';
 import 'pass_code.dart';
 import 'ticket_models.dart';
@@ -28,8 +29,9 @@ sealed class WalletPassItem {
 Map<String, dynamic> _nestedWithImport(
   Map<String, dynamic> pass,
   PassImportInfo? info,
-) =>
-    info == null ? pass : <String, dynamic>{...pass, 'importInfo': info.toJson()};
+) => info == null
+    ? pass
+    : <String, dynamic>{...pass, 'importInfo': info.toJson()};
 
 final class TrainPassItem extends WalletPassItem {
   const TrainPassItem(this.ticket, {this.importInfo});
@@ -52,9 +54,9 @@ final class TrainPassItem extends WalletPassItem {
 
   @override
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'kind': kind.toJson(),
-        'train': _nestedWithImport(ticket.toJson(), importInfo),
-      };
+    'kind': kind.toJson(),
+    'train': _nestedWithImport(ticket.toJson(), importInfo),
+  };
 
   factory TrainPassItem.fromJson(Map<String, dynamic> json) {
     final Object? nested = json['train'] ?? json;
@@ -89,9 +91,9 @@ final class MoviePassItem extends WalletPassItem {
 
   @override
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'kind': kind.toJson(),
-        'movie': _nestedWithImport(pass.toJson(), importInfo),
-      };
+    'kind': kind.toJson(),
+    'movie': _nestedWithImport(pass.toJson(), importInfo),
+  };
 
   factory MoviePassItem.fromJson(Map<String, dynamic> json) {
     final Object? nested = json['movie'] ?? json;
@@ -126,9 +128,9 @@ final class BusPassItem extends WalletPassItem {
 
   @override
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'kind': kind.toJson(),
-        'bus': _nestedWithImport(pass.toJson(), importInfo),
-      };
+    'kind': kind.toJson(),
+    'bus': _nestedWithImport(pass.toJson(), importInfo),
+  };
 
   factory BusPassItem.fromJson(Map<String, dynamic> json) {
     final Object? nested = json['bus'] ?? json;
@@ -142,29 +144,65 @@ final class BusPassItem extends WalletPassItem {
   }
 }
 
-/// Parses a single list item: `{ "kind": "train"|"movie"|"bus", ... }`.
+final class FlightPassItem extends WalletPassItem {
+  const FlightPassItem(this.pass, {this.importInfo});
+  final FlightPass pass;
+
+  @override
+  final PassImportInfo? importInfo;
+
+  @override
+  String get id => pass.id;
+
+  @override
+  TicketStatus get status => pass.status;
+
+  @override
+  PassKind get kind => PassKind.flight;
+
+  @override
+  PassCode? get passCode => pass.passCode;
+
+  @override
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'kind': kind.toJson(),
+    'flight': _nestedWithImport(pass.toJson(), importInfo),
+  };
+
+  factory FlightPassItem.fromJson(Map<String, dynamic> json) {
+    final Object? nested = json['flight'] ?? json;
+    final Map<String, dynamic> map = nested is Map
+        ? Map<String, dynamic>.from(nested)
+        : json;
+    return FlightPassItem(
+      FlightPass.fromJson(map),
+      importInfo: PassImportInfo.fromJson(map['importInfo']),
+    );
+  }
+}
+
+/// Parses a single list item: `{ "kind": "train"|"movie"|"bus"|"flight", ... }`.
 WalletPassItem walletPassItemFromJson(Map<String, dynamic> json) {
   final PassKind kind = PassKind.fromJson(json['kind']);
   return switch (kind) {
     PassKind.train => TrainPassItem.fromJson(json),
     PassKind.movie => MoviePassItem.fromJson(json),
     PassKind.bus => BusPassItem.fromJson(json),
+    PassKind.flight => FlightPassItem.fromJson(json),
   };
 }
 
 /// List envelope matching `GET /v1/passes`.
 class PassListResponse {
-  const PassListResponse({
-    required this.items,
-    this.updatedAt,
-  });
+  const PassListResponse({required this.items, this.updatedAt});
 
   final List<WalletPassItem> items;
   final String? updatedAt;
 
   factory PassListResponse.fromJson(Map<String, dynamic> json) {
-    final List<dynamic> raw =
-        json['items'] is List ? json['items'] as List : const [];
+    final List<dynamic> raw = json['items'] is List
+        ? json['items'] as List
+        : const [];
     final List<WalletPassItem> items = <WalletPassItem>[];
     for (final dynamic e in raw) {
       if (e is! Map) continue;
@@ -181,9 +219,9 @@ class PassListResponse {
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'items': items.map((WalletPassItem i) => i.toJson()).toList(),
-        if (updatedAt != null) 'updatedAt': updatedAt,
-      };
+    'items': items.map((WalletPassItem i) => i.toJson()).toList(),
+    if (updatedAt != null) 'updatedAt': updatedAt,
+  };
 }
 
 /// Active first (movies then trains then buses), then expired — demo ordering.
@@ -191,6 +229,7 @@ List<WalletPassItem> buildWalletPassCatalog({
   required List<TrainPass> trains,
   required List<MoviePass> movies,
   List<BusPass> buses = const <BusPass>[],
+  List<FlightPass> flights = const <FlightPass>[],
 }) {
   final List<WalletPassItem> active = <WalletPassItem>[
     ...movies
@@ -202,6 +241,9 @@ List<WalletPassItem> buildWalletPassCatalog({
     ...buses
         .where((BusPass b) => b.status == TicketStatus.active)
         .map(BusPassItem.new),
+    ...flights
+        .where((FlightPass f) => f.status == TicketStatus.active)
+        .map(FlightPassItem.new),
   ];
   final List<WalletPassItem> expired = <WalletPassItem>[
     ...movies
@@ -213,6 +255,9 @@ List<WalletPassItem> buildWalletPassCatalog({
     ...buses
         .where((BusPass b) => b.status == TicketStatus.expired)
         .map(BusPassItem.new),
+    ...flights
+        .where((FlightPass f) => f.status == TicketStatus.expired)
+        .map(FlightPassItem.new),
   ];
   return <WalletPassItem>[...active, ...expired];
 }

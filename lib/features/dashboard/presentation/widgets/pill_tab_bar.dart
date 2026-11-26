@@ -224,60 +224,72 @@ class TabLabel extends ConsumerWidget {
       progress,
     )!;
 
+    void select() {
+      HapticService.select();
+      controller.animateTo(
+        index,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? reducedSwitchDuration
+            : stepSwitchDuration,
+        curve: strongEaseOut,
+      );
+    }
+
+    // What a platform tab bar tells a screen reader: the tab's name even when
+    // labels are hidden, that it is one of a set, and which one is selected.
     return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          HapticService.select();
-          controller.animateTo(
-            index,
-            duration: MediaQuery.disableAnimationsOf(context)
-                ? reducedSwitchDuration
-                : stepSwitchDuration,
-            curve: strongEaseOut,
-          );
-        },
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOutCubic,
-              child: iconBuilder(
-                context,
-                progress,
-                activeIconColor,
-                inactiveIconColor,
-                showLabels,
+      child: Semantics(
+        button: true,
+        inMutuallyExclusiveGroup: true,
+        selected: controller.index == index,
+        label: label,
+        onTap: select,
+        excludeSemantics: true,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: select,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOutCubic,
+                child: iconBuilder(
+                  context,
+                  progress,
+                  activeIconColor,
+                  inactiveIconColor,
+                  showLabels,
+                ),
               ),
-            ),
-            AnimatedOpacity(
-              duration: const Duration(milliseconds: 200),
-              opacity: showLabels ? 1.0 : 0.0,
-              curve: Curves.easeInOutCubic,
-              child: showLabels
-                  ? Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: Text(
-                          label,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: progress >= 0.5
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            letterSpacing: -0.1,
-                            color: labelColor,
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: showLabels ? 1.0 : 0.0,
+                curve: Curves.easeInOutCubic,
+                child: showLabels
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: Text(
+                            label,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: progress >= 0.5
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              letterSpacing: -0.1,
+                              color: labelColor,
+                            ),
                           ),
                         ),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
         ),
       ),
     );

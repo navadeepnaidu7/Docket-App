@@ -19,6 +19,15 @@ is still a stub that throws `UnimplementedError`. See [`../current_state.md`](..
 | `DELETE` | `/v1/passes/{id}` | Remove a pass the caller owns — **live** |
 | `GET` | `/v1/passes/{id}/live` | Train live status only (`?force=1` to bypass cache) — **live** |
 | `GET` | `/v1/passes/{id}/code` | *(not implemented)* gate code payload / image URL |
+| `POST` | `/v1/devices` | Upsert an Android FCM token with device label and IANA timezone |
+| `DELETE` | `/v1/devices` | Unregister `{ token }` before clearing the session |
+| `GET` | `/v1/me/notification-preferences` | Read signed-in notification preferences |
+| `PUT` | `/v1/me/notification-preferences` | Replace booking/live/quiet-hour preferences and timezone |
+| `DELETE` | `/v1/me` | Permanently delete the account with `{ confirm: "DELETE" }`; success requires 204 |
+
+Notification payloads, lifecycle and deletion behavior are defined in
+[Notifications](../features/notifications.md#appserver-contract). Trip reminder
+lead times and the permission-sheet dismissal are phone-only settings.
 
 ### Query params (`GET /v1/passes`)
 
@@ -187,13 +196,28 @@ they existed.
 | `codeFormat` | string | no | symbology of `codePayload`; absent means `qr` |
 | `codePayloadBase64` | string | no | raw bytes instead of `codePayload`, matrix symbologies only |
 | `posterUrl` | string | no | Absolute Docket image-proxy URL. **May be absent** — see Poster art |
-| `logoUrl` | string | no | Absolute Docket image-proxy URL for the film's **title logo**. **May be absent** — see Title logo. *Not emitted yet* |
+| `logoUrl` | string | no | Absolute Docket image-proxy URL for the film's **title logo**. **May be absent** — see Title logo. |
 | `posterHint` | string | no | UI fallback gradient family |
 
 Unknown `brand` → client maps to **`universal`**.
 
 Do **not** send **brand** logo assets (BookMyShow, District, …); brand styling is client-side.
 `logoUrl` is a different thing — it is the *film's* title treatment, covered below.
+
+### Airline logos
+
+```
+GET /img/airline/{IATA}.svg
+```
+
+- **Public**, like posters. `IATA` is the two-character designator in upper case (`EK`,
+  `6E`); anything else, or an airline with no logo, is `404` and the face prints the name.
+- One-colour SVG silhouettes embedded in the server binary (`internal/brands`), so no
+  upstream fetch. The client tints them to the pass ink.
+- `Cache-Control: public, max-age=2592000`, a content-hash `ETag` (`304` on match), and gzip
+  when the client accepts it. The app keeps a disk copy and refreshes it after max-age.
+- The client only asks for codes in its own table (`airline_brands.dart`); the server's set
+  and the app's table are kept in step by hand.
 
 ### Poster art
 
@@ -225,10 +249,10 @@ normal and render the `posterHint` gradient — never substitute a placeholder f
 on the small wallet glance card, where a cropped poster is unreadable, and keeps the full
 poster for the opened detail view. See `docs/features/movie-logo-glance.md`.
 
-**Not emitted yet** — the field is reserved and the client already reads it, but the server has
-no logo resolution. Until it lands, glance cards fall back to the poster. Wiring it up means
-picking from TMDB `logos` (prefer `iso_639_1` matching the ticket language, fall back to `en`),
-persisting `logo_path`, and emitting an absolute URL through the same image proxy.
+The server emits `logoUrl` when a resolved `logo_path` is available; the pass mapper
+uses the same image-proxy URL builder as posters. Missing/unmatched title art is normal,
+and the glance card keeps its fallback. This describes the mapper contract, not a
+guarantee that every saved ticket has completed enrichment.
 
 It must be **proxied**, not a raw `image.tmdb.org` URL, for the ISP reason above, and it is
 optional on the same terms as `posterUrl`: absent is normal, and the client falls back rather
@@ -286,8 +310,35 @@ fields are mutually exclusive; when both somehow arrive, the client prefers `cod
 | `codePayloadBase64` | string | no | decoded bytes, max 4096 bytes, matrix symbologies only |
 | `codeFormat` | string | no | one of the values above; unknown values drop the whole code |
 
-All three are silently ignored when malformed. Extraction is the request's real job, and a
+| `codes` | JSON string | no | every code found, `[{format, payload, payloadBase64}]`, first = the fields above; max 8. Sent only when there is more than one (boarding passes for several flights) |
+
+All of these are silently ignored when malformed. Extraction is the request's real job, and a
 rejected code leaves the pass exactly where a codeless ticket would.
+
+A flight upload can produce several passes (one per flight on the document). The response is
+the first, plus `legIds` listing all of them; the client refreshes the list to show the rest.
+
+---
+
+## Flight object
+
+Field list and semantics: `docs/features/flight-pass.md` (wire shape table). Server mapping:
+`docket_server/internal/service/flight_mapper.go`. Times are RFC3339 **in the airport's own
+offset**; `origin` / `destination` carry `{code, city, airport, terminal, lat, lon}`.
+
+### Trip
+
+Flights that share a booking reference, or came from one upload, each carry the whole trip:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `trip.id` | string | opaque, same on every leg |
+| `trip.index` | int | this pass's position in `legs` |
+| `trip.legs[]` | array | every leg in departure order: `{id, flightNumber, airlineCode, from, to, departAt, arriveAt?}` |
+
+Absent for a flight on its own. Only `GET /v1/passes` links legs; `GET /v1/passes/{id}` maps one
+ticket and has no `trip`. Connection, layover and return are the client's reading of the legs
+(`domain/flight_trip.dart`).
 
 ---
 

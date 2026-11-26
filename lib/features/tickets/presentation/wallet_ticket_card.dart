@@ -14,11 +14,7 @@ const double _glanceWidthFactor = 0.94;
 
 /// Train pass glance card — press shell around [TrainTicketFace].
 class WalletTicketCard extends StatefulWidget {
-  const WalletTicketCard({
-    super.key,
-    required this.ticket,
-    this.onLongPress,
-  });
+  const WalletTicketCard({super.key, required this.ticket, this.onLongPress});
 
   final MockTicket ticket;
   final VoidCallback? onLongPress;
@@ -40,9 +36,10 @@ class _WalletTicketCardState extends State<WalletTicketCard>
       duration: const Duration(milliseconds: 120),
       reverseDuration: const Duration(milliseconds: 200),
     );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.975).animate(
-      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 1.0,
+      end: 0.975,
+    ).animate(CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut));
   }
 
   @override

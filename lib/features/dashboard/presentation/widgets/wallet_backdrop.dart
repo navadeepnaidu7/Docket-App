@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/wallet/wallet_backdrop_tilt.dart';
@@ -27,64 +29,84 @@ class WalletBackdrop extends StatefulWidget {
   State<WalletBackdrop> createState() => _WalletBackdropState();
 }
 
-/// Reports a slow [AnimationController] at a fixed low rate instead of every
-/// frame.
+/// A slow looping drift that advances at a fixed low rate, on a timer.
 ///
 /// The backdrop's two ambient drifts run over 14s and 30s. At a 390px width the
-/// nearer orb covers about 20px per second, so a 60fps tick advances it a third
-/// of a pixel — across a blur hundreds of pixels wide. Every one of those
-/// ticks rebuilt the backdrop (re-running [WalletPalette.blended] and
-/// allocating a focus signature) and repainted a full-screen canvas of six
-/// overlapping viewport-scale translucent orbs plus a radial vignette, 60 or
-/// 120 times a second, for motion nobody can see at that resolution.
+/// nearer orb covers about 20px per second, so stepping it [_hz] times a second
+/// leaves at most ~1.6px of travel between steps at the fastest point of the
+/// sweep, across a blur hundreds of pixels wide that cannot show it.
 ///
-/// Quantising to [_hz] steps per second leaves at most ~1.6px of travel between
-/// steps at the fastest point of the sweep, which that blur cannot show, and
-/// cuts the full-screen rebuild-and-repaint rate by 3x on a 60Hz panel and 6x
-/// on a 120Hz one.
+/// This must not be an [AnimationController]. A running controller asks for a
+/// frame on every vsync, and every frame is composited and rasterised in full
+/// even when nothing repainted: the framework always submits a scene. With two
+/// controllers looping forever, the wallet never went idle. On a 120Hz panel it
+/// sent ~100 full frames a second at ~10ms of raster each, over the 8.3ms
+/// budget, so the GPU had no headroom left for a tab switch or a swipe. A timer
+/// asks for a frame only when the value actually moves.
 ///
-/// Only the *ambient* clocks are quantised. The page position, the card tilt
-/// and the tab tint stay on the raw signal, because those follow a finger and
-/// have to land on the frame the finger is on.
-class _QuantizedClock extends ChangeNotifier {
-  _QuantizedClock(this._source, Duration period)
-    : _steps = math.max(1, (period.inMilliseconds * _hz) ~/ 1000) {
-    _value = _quantize(_source.value);
-    _source.addListener(_onSourceTick);
-  }
+/// Only the *ambient* clocks are slowed. The page position, the card tilt and
+/// the tab tint stay on the raw signal, because those follow a finger and have
+/// to land on the frame the finger is on.
+class _DriftClock extends ChangeNotifier {
+  _DriftClock(this.period)
+    : _steps = math.max(1, (period.inMilliseconds * _hz) ~/ 1000);
 
   static const int _hz = 20;
 
-  final Animation<double> _source;
+  final Duration period;
+
+  /// Ticks per loop; the drift advances one step per tick.
   final int _steps;
-  late double _value;
+  int _step = 0;
+  Timer? _timer;
 
-  /// The source value, floored to the nearest step.
-  double get value => _value;
+  /// Progress through the loop, 0 to 1, in whole steps.
+  double get value => _step / _steps;
 
-  double _quantize(double raw) => (raw * _steps).floor() / _steps;
+  void start() {
+    _timer ??= Timer.periodic(
+      const Duration(milliseconds: 1000 ~/ _hz),
+      (_) => _tick(),
+    );
+  }
 
-  void _onSourceTick() {
-    final double next = _quantize(_source.value);
-    if (next == _value) return;
-    _value = next;
+  /// Pauses where it is; [start] resumes from the same point.
+  void stop() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  /// Stops and returns to the start of the loop.
+  void reset() {
+    stop();
+    if (_step != 0) {
+      _step = 0;
+      notifyListeners();
+    }
+  }
+
+  void _tick() {
+    _step = (_step + 1) % _steps;
     notifyListeners();
   }
 
   @override
   void dispose() {
-    _source.removeListener(_onSourceTick);
+    stop();
     super.dispose();
   }
 }
 
 class _WalletBackdropState extends State<WalletBackdrop>
     with TickerProviderStateMixin {
-  late AnimationController _ambientCtrl;
-  late AnimationController _deepCtrl;
   late AnimationController _colorCtrl;
-  late _QuantizedClock _ambientClock;
-  late _QuantizedClock _deepClock;
+  final _DriftClock _ambientClock = _DriftClock(const Duration(seconds: 14));
+  final _DriftClock _deepClock = _DriftClock(const Duration(seconds: 30));
+
+  /// Mirrors [TickerMode], which the dashboard uses to mute the backdrop while
+  /// Settings or the weather drawer covers it. Timers do not see it on their
+  /// own, so the drift listens and pauses itself.
+  ValueListenable<TickerModeData>? _tickerMode;
 
   /// True once the deferred start has fired, so a later reduced-motion toggle
   /// knows whether the drift is meant to be running.
@@ -95,29 +117,18 @@ class _WalletBackdropState extends State<WalletBackdrop>
   @override
   void initState() {
     super.initState();
-    _ambientCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 14),
-    );
-    _deepCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 30),
-    );
     _colorCtrl = AnimationController(
       vsync: this,
       duration: stepSwitchDuration,
       value: widget.tabIndex.toDouble().clamp(0.0, 1.0),
     );
-    _ambientClock = _QuantizedClock(_ambientCtrl, _ambientCtrl.duration!);
-    _deepClock = _QuantizedClock(_deepCtrl, _deepCtrl.duration!);
     // Defer looping ambient motion so the first frames stay free for layout.
-    // Controllers respect TickerMode — dashboard mutes them while Settings is open.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _driftTimer = Timer(const Duration(milliseconds: 480), () {
         if (!mounted) return;
         _driftWanted = true;
-        _startDrift();
+        _syncDrift();
       });
     });
   }
@@ -125,6 +136,12 @@ class _WalletBackdropState extends State<WalletBackdrop>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final ValueListenable<TickerModeData> tickerMode =
+        TickerMode.getValuesNotifier(context);
+    if (!identical(tickerMode, _tickerMode)) {
+      _tickerMode?.removeListener(_syncDrift);
+      _tickerMode = tickerMode..addListener(_syncDrift);
+    }
     // Reduced motion freezes the wash rather than slowing it. Both clocks stay
     // at 0, which is the composition the first frame already paints — the
     // tickers only start 480ms in — so the still image is not a new look.
@@ -132,19 +149,25 @@ class _WalletBackdropState extends State<WalletBackdrop>
     if (reduced == _reducedMotion) return;
     _reducedMotion = reduced;
     if (reduced) {
-      _ambientCtrl.stop();
-      _deepCtrl.stop();
-      _ambientCtrl.value = 0;
-      _deepCtrl.value = 0;
+      _ambientClock.reset();
+      _deepClock.reset();
     } else {
-      _startDrift();
+      _syncDrift();
     }
   }
 
-  void _startDrift() {
-    if (!_driftWanted || _reducedMotion) return;
-    if (!_ambientCtrl.isAnimating) _ambientCtrl.repeat();
-    if (!_deepCtrl.isAnimating) _deepCtrl.repeat();
+  /// Runs the drift when it is wanted, motion is allowed and the backdrop is
+  /// not muted; pauses it otherwise.
+  void _syncDrift() {
+    final bool run =
+        _driftWanted && !_reducedMotion && (_tickerMode?.value.enabled ?? true);
+    if (run) {
+      _ambientClock.start();
+      _deepClock.start();
+    } else {
+      _ambientClock.stop();
+      _deepClock.stop();
+    }
   }
 
   @override
@@ -160,10 +183,9 @@ class _WalletBackdropState extends State<WalletBackdrop>
   @override
   void dispose() {
     _driftTimer?.cancel();
+    _tickerMode?.removeListener(_syncDrift);
     _ambientClock.dispose();
     _deepClock.dispose();
-    _ambientCtrl.dispose();
-    _deepCtrl.dispose();
     _colorCtrl.dispose();
     super.dispose();
   }
@@ -171,7 +193,6 @@ class _WalletBackdropState extends State<WalletBackdrop>
   @override
   Widget build(BuildContext context) {
     final listenables = <Listenable>[
-      // The quantised clocks, not the controllers they wrap.
       _ambientClock,
       _deepClock,
       widget.tabAnimation ?? _colorCtrl,
@@ -253,8 +274,38 @@ class AppleCardGradientPainter extends CustomPainter {
   final bool isDragging;
   final String focusSignature;
 
+  /// The scene is drawn at this fraction of logical resolution and scaled up.
+  ///
+  /// It is six orbs blurred across hundreds of pixels plus a radial vignette,
+  /// with no edge sharper than the blur, so a half-resolution image scaled up
+  /// is indistinguishable from the full one. At full resolution the blurs were
+  /// the single largest raster cost in the app: on a 120Hz phone the wallet
+  /// rasterised in ~10ms a frame with them and ~4ms without, against an 8.3ms
+  /// budget, which is what made tab switches and swipes stutter.
+  static const double _sceneScale = 0.5;
+
   @override
   void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final int iw = math.max(1, (size.width * _sceneScale).ceil());
+    final int ih = math.max(1, (size.height * _sceneScale).ceil());
+    final ui.PictureRecorder recorder = ui.PictureRecorder();
+    final Canvas scene = Canvas(recorder)..scale(_sceneScale);
+    _paintScene(scene, size);
+    final ui.Picture picture = recorder.endRecording();
+    final ui.Image image = picture.toImageSync(iw, ih);
+    picture.dispose();
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, iw.toDouble(), ih.toDouble()),
+      Offset.zero & size,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
+    // The recorded frame holds its own reference.
+    image.dispose();
+  }
+
+  void _paintScene(Canvas canvas, Size size) {
     final double w = size.width;
     final double h = size.height;
 

@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Adaptive icon: the launcher (not the app) chooses circle / squircle / square.
-  Foreground is the monogram; background is solid brand navy.
+  Adaptive icon: the launcher (not the app) picks the mask - circle, squircle,
+  rounded square, teardrop, cookie. Background is the full-bleed sky; the
+  foreground door and lock stay inside the 66dp safe zone so no mask clips them.
+  Monochrome is the Android 13+ themed icon: door silhouette, lock as a hole.
 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background"/>
+    <background android:drawable="@mipmap/ic_launcher_background"/>
     <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+    <monochrome android:drawable="@drawable/ic_launcher_monochrome"/>
 </adaptive-icon>

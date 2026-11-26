@@ -7,6 +7,7 @@ import 'core/theme/theme_provider.dart';
 import 'features/onboarding/presentation/onboarding_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'features/ids/presentation/id_incoming_imports.dart';
+import 'features/notifications/presentation/notification_runtime.dart';
 
 class DocketApp extends ConsumerStatefulWidget {
   final bool hasSeenOnboarding;
@@ -166,9 +167,13 @@ class _DocketAppState extends ConsumerState<DocketApp>
                 fit: StackFit.expand,
                 children: <Widget>[
                   if (child != null)
-                    IdIncomingImports(
+                    NotificationRuntime(
                       navigatorKey: _navigatorKey,
-                      child: child,
+                      walletReady: widget.hasSeenOnboarding,
+                      child: IdIncomingImports(
+                        navigatorKey: _navigatorKey,
+                        child: child,
+                      ),
                     ),
                   if (veilOpacity > 0.004)
                     IgnorePointer(

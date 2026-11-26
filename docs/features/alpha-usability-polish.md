@@ -1,70 +1,62 @@
-# Alpha usability and visual polish
+# Wallet search and import recovery
 
-Scope: complete import recovery, searchable wallet browsing, visible attachment
-access, upcoming-pass hierarchy, explicit demo labeling, and consistent controls.
-Auth and animation tuning are excluded. Another session owns animation polish;
-do not edit its sky/weather files or shared motion primitives.
+Alpha usability contract: in-memory wallet search, persistent import outcomes, sample-data
+labelling, and the upcoming-pass selector. Absorbs the 27 Oct 2026 session-polish note.
 
-## Implementation
+Status: implemented. Owners: `WalletSearchScreen` (opened from `dashboard_screen.dart`),
+`lib/features/dashboard/application/search_button_provider.dart`,
+`lib/features/tickets/presentation/add/pass_ingest_outcome.dart`,
+`pass_ingest_particle_card.dart`, `lib/features/tickets/domain/pass_display.dart`
+(`nextUpcomingPass`, `passStartTime`). Tests: `test/upcoming_pass_test.dart` and the search and
+ingest-controller tests.
 
-- Persistent import outcomes with retry, replace input, dismiss, and view-pass
-  actions. Preserve request data until dismissed. Explain missing boarding codes.
-- One wallet browse/search route covering documents, active passes, and archive.
-  Search stays in memory and opens existing card/detail routes.
-- Visible attachment access on ID cards, and actionable empty states.
-- Upcoming pass summary, based on the actual journey/show time, with unknown
-  dates excluded. Explicit sample-data notice in all build modes.
-- Theme tokens for header/menu chrome; accessible control targets and flexible
-  list layouts. Preserve card artwork and existing motion behavior.
+## Search
 
-## Validation
+- Header search, enabled from Settings -> Navigation -> Search button; **off by default**.
+- One route covering documents, active passes and archive, with All / Documents / Passes /
+  Archive filters. Matching stays in memory (holder names, document numbers, routes, movie
+  titles, passengers, booking references); nothing is sent anywhere.
+- Documents reveal their existing wallet card; train, movie and bus results open their
+  existing detail route. The query survives opening and returning from a pass.
 
-Meaningful tests for search matching/scope, upcoming selection, persistent import
-recovery and navigation. Render small/large-text light/dark states for new UI.
-Run analyzer and relevant existing suites. Record device-only limits honestly.
+## Import outcomes
 
-## Implemented
+- Loading and success use the particle card. Loading text names real phases, with no fake
+  percentage. Success closes a ring, draws a tick, names the ticket ("Your train ticket is
+  added"), mentions a missing boarding code, then clears. An archived pass says it went to
+  Archive and clears on its own.
+- **Only a failure stays up** until the user retries, replaces the input, or dismisses it.
+  Retry reuses the original request (the file path, not the bytes). Cancelling a replacement
+  picker or PNR editor keeps the failed request; PNR edits are prefilled and an invalid edit
+  never replaces it.
+- Demo-mode errors use product wording rather than pointing testers at Developer settings.
 
-- Header search opens `WalletSearchScreen`, added from Settings -> Navigation ->
-  Search button and off by default; documents reveal their existing
-  wallet card, and train/movie/bus results open their existing detail route.
-  Results retain their query while opening and returning from pass details.
-- Import failures remain visible until acted on. Retry keeps the original
-  request. Cancelling a replacement file picker or PNR editor keeps the failed
-  request. PNR edits are prefilled; invalid edits never replace it.
-- Success stays on the particle field. A ring closes and a tick draws, then
-  it names the ticket ("Your train ticket is added") and mentions a missing
-  boarding code before it clears. An archived
-  pass says it is in Archive and clears on its own. Loading text names real
-  phases, without a fake percentage.
-- Sample pass labeling is visible outside developer builds. Demo import errors
-  use product wording rather than sending alpha testers into Developer settings.
-- Upcoming selection combines date/time fields and ignores unknown timestamps,
-  past, expired, cancelled, or arrived journeys.
-- The attachment-only sheet has Done and does not offer removal of the ID itself.
-- Shared filled/outlined buttons use the same type, shape, and 48px minimum
-  targets. Dark input hints, header/menu tokens, and profile target are aligned.
+## Labelling and selection
 
-Removed at the owner's request (2026-09-12):
+- Sample passes are labelled as samples in **all** build modes, not only developer builds.
+- `nextUpcomingPass` combines date and time fields and ignores unknown timestamps and past,
+  expired, cancelled or arrived journeys. It feeds the weather glance and account summary.
+  The "Up next" glance above the Passes deck was removed at the owner's request
+  (12 Sep 2026); so was the "Attachments - N" strip under ID cards (it read "Attachments - 0"
+  on almost every card).
 
-- The "Up next" glance above the Passes deck. `UpcomingPassGlance` is deleted;
-  `nextUpcomingPass` / `passStartTime` remain in `tickets/domain/pass_display.dart`
-  and stay covered by `test/upcoming_pass_test.dart`.
-- The "Attachments - N" strip under ID cards and in search results. Attachments
-  are still reached from the ID card's own detail route. Both surfaces read
-  "Attachments - 0" for the common case of an ID with no files, which was noise
-  on every card.
+## Controls
 
-No auth, backend, storage schema, or animation primitive changes were made for
-this work. Existing card artwork is retained. The import particle widget is the
-loading and success presentation. Only a failed import stays up until the user
-retries, replaces the file, or dismisses it.
+Shared filled/outlined buttons share type, shape and 48 px minimum targets. Header/menu chrome
+uses theme tokens. Card artwork and motion were deliberately not changed by this work.
 
-Visual review: `tool/alpha_polish_preview_test.dart` renders the actual theme and
-Inter fonts at 390×844 (1x text) and 320×640 (2x text), in light and dark modes.
-PNG output is under `build/alpha-preview`. That manual rendering tool permits
-font downloads into a build-only cache; it is not part of the normal test suite.
+## Rolled back
 
-Hardware checks still needed: native camera/file picker permissions, actual gate
-code scanning, NFC, and end-to-end imports against the configured backend. No
-mobile device was attached during this pass.
+A 27 Oct 2026 visual redesign of PNR entry, import progress, success/error screens, the add
+menu, document icons, bus artwork, theme and pass titles was reverted to the original UI at the
+user's request. Functional changes kept from it: pending train refresh (`pass-input.md`), the
+backend lookup handling, and the train archive shadow/aspect fix (the archive deck already
+overlaps and dims cards, so the train face draws no shadow there). Do not resurrect the
+reverted visuals from build backups without a new decision.
+
+## Tools and limits
+
+`tool/alpha_polish_preview_test.dart` renders the real theme at 390x844 (1x) and 320x640 (2x)
+in light and dark into `build/alpha-preview`; it is a manual tool, not part of the suite.
+Unverified on hardware: native camera/file-picker permissions, real gate-code scanning, NFC,
+and end-to-end imports against the configured backend.

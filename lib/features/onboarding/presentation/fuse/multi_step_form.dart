@@ -7,8 +7,8 @@ import '../../domain/onboarding_content.dart';
 import '../../../../core/assets/app_assets.dart';
 import '../../../../core/haptics/haptic_service.dart';
 import '../../../../core/motion/smooth_curves.dart';
-import '../../../dashboard/application/auth_session_provider.dart';
-import '../../../dashboard/application/google_auth_gateway.dart';
+import '../../../auth/application/auth_session_provider.dart';
+import '../../../auth/application/google_auth_gateway.dart';
 import 'widgets/accordion_step.dart';
 
 class MultiStepForm extends ConsumerStatefulWidget {

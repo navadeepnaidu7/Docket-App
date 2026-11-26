@@ -136,25 +136,17 @@ class PassOverflowButton extends ConsumerWidget {
                     Clipboard.setData(ClipboardData(text: value));
                     Navigator.pop(ctx);
                     HapticService.confirm();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Copied')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(const SnackBar(content: Text('Copied')));
                   },
                 ),
               ListTile(
                 leading: Icon(Icons.delete_outline_rounded, color: danger),
-                title: Text(
-                  'Remove pass',
-                  style: TextStyle(color: danger),
-                ),
+                title: Text('Remove pass', style: TextStyle(color: danger)),
                 onTap: () {
                   Navigator.pop(ctx);
-                  confirmAndRemovePass(
-                    context,
-                    ref,
-                    item,
-                    popOnSuccess: true,
-                  );
+                  confirmAndRemovePass(context, ref, item, popOnSuccess: true);
                 },
               ),
             ],

@@ -1,5 +1,20 @@
 # Third-party asset attributions
 
+## Dune: Part Three demo title artwork
+
+`assets/passes/fixtures/dune_part_three_logo.png` is the unmodified title
+treatment from the [official film site](https://www.dunemovie.com/images/tt_small.png),
+downloaded 24 November 2026 for the mock movie pass. Copyright and trademarks
+remain with Warner Bros. Entertainment Inc. and Legendary. This is promotional
+film artwork, not an open-source asset, and does not imply endorsement.
+
+The matching demo posters are bundled unchanged from TMDB at `w500`:
+
+- `dune_part_three_poster.jpg`: [Dune: Part Three, TMDB 1170608](https://www.themoviedb.org/movie/1170608/images/posters), image `4mTXkCtz75P4VjbaxRJzTVZkUxK.jpg`. Film rights remain with Warner Bros. and Legendary.
+- `avengers_doomsday_poster.jpg`: [Avengers: Doomsday, TMDB 1003596](https://www.themoviedb.org/movie/1003596/images/posters), image `s2Fkuq0tj7mjAHEdbfQkFkdbeRI.jpg`. Film rights remain with Marvel Studios / Disney.
+
+These identify mock bookings only; promotional artwork is not open-source licensed.
+
 ## Additional payment-network marks — Apache 2.0
 
 Amex, Discover, UnionPay, JCB and Diners Club SVG marks come from

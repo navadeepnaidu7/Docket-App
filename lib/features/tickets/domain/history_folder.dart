@@ -1,4 +1,6 @@
 import 'bus_pass_models.dart';
+import 'flight_format.dart';
+import 'flight_pass_models.dart';
 import 'pass_activity_date.dart';
 import 'pass_catalog.dart';
 import 'pass_history_category.dart';
@@ -34,7 +36,13 @@ abstract final class HistoryPassPresentation {
     TrainPassItem(:final ticket) => _trainTitle(ticket),
     MoviePassItem(:final pass) => pass.movieTitle,
     BusPassItem(:final pass) => _busTitle(pass),
+    FlightPassItem(:final pass) => _flightTitle(pass),
   };
+
+  static String _flightTitle(FlightPass pass) {
+    final String dest = pass.destination.displayCity.trim();
+    return dest.isEmpty ? 'Flight' : 'Flight to $dest';
+  }
 
   static String _busTitle(BusPass pass) {
     final String dest = pass.dropLocation.trim();
@@ -66,6 +74,10 @@ abstract final class HistoryPassPresentation {
       pass.showDate.trim().isEmpty ? null : pass.showDate.trim(),
     BusPassItem(:final pass) =>
       pass.date.trim().isEmpty ? null : pass.date.trim(),
+    FlightPassItem(:final pass) => switch (FlightFormat.date(pass.departAt)) {
+      '' => null,
+      final String d => d,
+    },
   };
 
   /// Date line under the title: normalised when parseable, raw otherwise.

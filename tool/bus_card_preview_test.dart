@@ -1,8 +1,7 @@
 // flutter test --no-pub tool/bus_card_preview_test.dart --update-goldens
-// Review images live in build/bus-preview rather than committed goldens.
+// Opt-in renders of the current bus face; output stays under build/bus-preview.
 import 'dart:io';
 
-import 'package:docket/core/assets/app_assets.dart';
 import 'package:docket/core/wallet/wallet_card_metrics.dart';
 import 'package:docket/features/tickets/domain/bus_pass_models.dart';
 import 'package:docket/features/tickets/domain/pass_status.dart';
@@ -14,7 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 void main() {
-  testWidgets('bus cards with artwork at wallet sizes', (tester) async {
+  testWidgets('bus faces at wallet sizes', (tester) async {
     final fontCache = Directory('build/bus-preview/fonts')
       ..createSync(recursive: true);
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -22,10 +21,10 @@ void main() {
       (_) async => fontCache.absolute.path,
     );
     await tester.runAsync(() async {
-      HttpOverrides.global = null;
+      GoogleFonts.config.allowRuntimeFetching = false;
       BusPassType.warmUp();
-      BusPassType.wordmarkLead(Colors.white);
-      BusPassType.operatorName(Colors.white);
+      BusPassType.nameLight(Colors.white);
+      BusPassType.name(Colors.white);
       await GoogleFonts.pendingFonts();
     });
     tester.view.devicePixelRatio = 1;
@@ -74,25 +73,18 @@ void main() {
                   height: width / WalletCardMetrics.ticketAspect,
                   child: WalletCardCanvas(
                     designSize: BusPassMetrics.canvas,
-                    child: BusTicketFace(pass: pass),
+                    child: BusTicketFace(
+                      pass: pass,
+                      clock: () => DateTime(2026, 8, 20, 7),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
         );
-        await tester.runAsync(() async {
-          final context = tester.element(find.byType(BusTicketFace));
-          await precacheImage(const AssetImage(AppAssets.redBusCoach), context);
-          await precacheImage(const AssetImage(AppAssets.busCoach), context);
-        });
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        final image = tester.getRect(find.byType(Image));
-        final provider = tester.getRect(find.text(operator));
-        final route = tester.getRect(find.textContaining('→'));
-        expect(image.top, greaterThan(provider.bottom));
-        expect(image.bottom, lessThan(route.top));
         await expectLater(
           find.byType(MaterialApp),
           matchesGoldenFile(

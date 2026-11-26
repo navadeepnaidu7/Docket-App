@@ -25,6 +25,8 @@ abstract class DocketApi {
     required String mimeType,
     required String categoryHint,
     ScannedTicketCode? code,
+    // Boarding passes after [code]: one per further flight on the document.
+    List<ScannedTicketCode> moreCodes = const <ScannedTicketCode>[],
     // Completes a calendar-imported pass that lacked details, in place.
     String? attachToPassId,
   });
@@ -52,8 +54,7 @@ abstract interface class CalendarImportApi {
   Future<void> disconnectCalendar();
 }
 
-class DocketApiClient
-    implements DocketApi, TrainJourneyApi, CalendarImportApi {
+class DocketApiClient implements DocketApi, TrainJourneyApi, CalendarImportApi {
   DocketApiClient({
     required this.baseUrl,
     required this.session,
@@ -67,6 +68,86 @@ class DocketApiClient
   final http.Client _http;
 
   static const Duration _httpTimeout = Duration(seconds: 30);
+
+  Future<void> registerDevice({
+    required String token,
+    required String timezone,
+  }) async {
+    await _notificationRequest('POST', '/v1/devices', {
+      'token': token,
+      'platform': 'android',
+      'deviceLabel': 'Docket Android',
+      'timezone': timezone,
+    });
+  }
+
+  Future<void> unregisterDevice(String token) async {
+    await _notificationRequest('DELETE', '/v1/devices', {'token': token});
+  }
+
+  Future<Map<String, dynamic>> fetchNotificationPreferences() async => _jsonMap(
+    (await _notificationRequest('GET', '/v1/me/notification-preferences')).body,
+  );
+
+  Future<void> putNotificationPreferences(
+    Map<String, dynamic> preferences,
+  ) async {
+    await _notificationRequest(
+      'PUT',
+      '/v1/me/notification-preferences',
+      preferences,
+    );
+  }
+
+  /// Local cleanup belongs to AuthController and runs only after a confirmed 204.
+  Future<void> deleteAccount() async {
+    final before = await session.readSession();
+    try {
+      final response = await _notificationRequest('DELETE', '/v1/me', {
+        'confirm': 'DELETE',
+      });
+      if (response.statusCode != 204) {
+        throw const PassIngestException(
+          PassIngestCode.failed,
+          'Could not delete your account. Try again.',
+        );
+      }
+    } catch (_) {
+      // Authentication retry may clear expired credentials. Deletion failure
+      // must preserve the phone's session and identity as well as its passes.
+      if (before != null) {
+        await session.write(
+          before.tokens,
+          user: before.user,
+          developerSession: before.developerSession,
+        );
+      }
+      rethrow;
+    }
+  }
+
+  Future<http.Response> _notificationRequest(
+    String method,
+    String path, [
+    Map<String, dynamic>? body,
+  ]) async {
+    final response = await _authed(
+      (headers) => _withTimeout(() {
+        final h = {...headers, 'Content-Type': 'application/json'};
+        return switch (method) {
+          'GET' => _http.get(_uri(path), headers: h),
+          'POST' => _http.post(_uri(path), headers: h, body: jsonEncode(body)),
+          'PUT' => _http.put(_uri(path), headers: h, body: jsonEncode(body)),
+          _ => _http.delete(_uri(path), headers: h, body: jsonEncode(body)),
+        };
+      }),
+    );
+    _throwIfFailed(
+      response,
+      fallback: 'Could not complete the account request. Try again.',
+    );
+    return response;
+  }
 
   @override
   Future<void> refreshTrainJourney(String id) async {
@@ -107,7 +188,9 @@ class DocketApiClient
       _jsonMap(res.body)['authorizationUrl']?.toString() ?? '',
     );
     // Only ever hand Google's own consent page to the browser.
-    if (url == null || url.scheme != 'https' || url.host != 'accounts.google.com') {
+    if (url == null ||
+        url.scheme != 'https' ||
+        url.host != 'accounts.google.com') {
       throw const CalendarImportException(
         'failed',
         'The server sent an unexpected sign-in link.',
@@ -120,7 +203,8 @@ class DocketApiClient
   Future<CalendarConnectionStatus> requestCalendarSync() async {
     final http.Response res = await _authed(
       (Map<String, String> headers) => _withTimeout(
-        () => _http.post(_uri(PassApiPaths.googleCalendarSync), headers: headers),
+        () =>
+            _http.post(_uri(PassApiPaths.googleCalendarSync), headers: headers),
       ),
     );
     _throwIfCalendarFailed(res);
@@ -169,8 +253,8 @@ class DocketApiClient
       code == 'failed' && (message == null || message.isEmpty)
           ? 'Calendar request failed. Try again.'
           : calendarReasonCopy(code) == calendarReasonCopy(null)
-              ? (message ?? calendarReasonCopy(null))
-              : calendarReasonCopy(code),
+          ? (message ?? calendarReasonCopy(null))
+          : calendarReasonCopy(code),
       retryAfterSeconds: retryAfter,
     );
   }
@@ -261,6 +345,7 @@ class DocketApiClient
     required String mimeType,
     required String categoryHint,
     ScannedTicketCode? code,
+    List<ScannedTicketCode> moreCodes = const <ScannedTicketCode>[],
     String? attachToPassId,
   }) async {
     final http.Response res = await _authed((
@@ -284,6 +369,21 @@ class DocketApiClient
         if (payloadBase64 != null) {
           req.fields['codePayloadBase64'] = payloadBase64;
         }
+      }
+      // Every code, the first included, so the server can give each flight
+      // of an itinerary its own boarding pass. Older servers ignore it.
+      if (code != null && moreCodes.isNotEmpty) {
+        req.fields['codes'] = jsonEncode(<Map<String, String>>[
+          for (final ScannedTicketCode c in <ScannedTicketCode>[
+            code,
+            ...moreCodes,
+          ])
+            <String, String>{
+              'format': c.format.wire,
+              if (c.payload != null) 'payload': c.payload!,
+              if (c.payloadBase64 != null) 'payloadBase64': c.payloadBase64!,
+            },
+        ]);
       }
       req.files.add(
         http.MultipartFile.fromBytes(
@@ -361,9 +461,16 @@ class DocketApiClient
   }
 
   /// Exchange a Google ID token for a Docket session.
-  Future<ApiUser> loginWithGoogle(String idToken) async {
+  Future<ApiUser> loginWithGoogle(
+    String idToken, {
+    bool developerSession = false,
+  }) async {
     final _AuthPayload payload = await _postGoogle(idToken);
-    await session.write(payload.tokens, user: payload.user);
+    await session.write(
+      payload.tokens,
+      user: payload.user,
+      developerSession: developerSession,
+    );
     return payload.user;
   }
 
@@ -410,7 +517,11 @@ class DocketApiClient
 
   Future<ApiTokens> _exchange(String idToken) async {
     final _AuthPayload payload = await _postGoogle(idToken);
-    await session.write(payload.tokens, user: payload.user);
+    await session.write(
+      payload.tokens,
+      user: payload.user,
+      developerSession: true,
+    );
     return payload.tokens;
   }
 

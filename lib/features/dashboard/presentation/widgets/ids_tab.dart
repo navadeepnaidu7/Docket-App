@@ -9,7 +9,7 @@ import '../../../../core/wallet/wallet_layout.dart';
 import '../../../../core/wallet/wallet_items.dart';
 import '../../application/card_shine_border_provider.dart';
 import '../../application/wallet_filter_provider.dart';
-import '../../application/wallet_loading_provider.dart';
+import '../../../../core/wallet/wallet_loading_provider.dart';
 import '../../../../shared/widgets/rolling_card_page.dart';
 import '../../../../shared/widgets/shining_action_label.dart';
 import '../../../../shared/widgets/wallet_card_shine_border.dart';

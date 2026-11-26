@@ -1,11 +1,14 @@
 # Trips — issue #38 design proposal
 
-Status: proposal for discussion; user direction is visual/text balance, integrated saved IDs, and an automatic, magical feel. Detailed implementation remains proposed.
+Status: **proposal, not built**. Nothing under `lib/features/trips/` exists. In-progress flight
+work adds server-listed flight trip legs (`flight_trip.dart`); that is a flight-pass feature,
+not this proposal.
+Direction so far: user direction is visual/text balance, integrated saved IDs, and an automatic, magical feel. Detailed implementation remains proposed.
 Issue: https://github.com/navadeepnaidu7/Docket-App/issues/38
 Reviewed: 2026-10-29; app HEAD 359b2be, server HEAD 917e463, including current local source.
 Evidence: source review, not a rendered audit of the current Flutter app. The companion HTML is a conceptual wireframe with fictional data, not a production screenshot.
 
-The initial `trips-concept.html` predates the user's visual-first clarification below; it is a structural exploration, not the current visual target.
+The initial `../archive/trips-concept.html` (archived) predates the user's visual-first clarification below; it is a structural exploration, not the current visual target.
 
 ## Product direction
 

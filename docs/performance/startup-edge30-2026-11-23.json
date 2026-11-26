@@ -1,0 +1,207 @@
+{
+  "date": "2026-11-23",
+  "device": "Motorola Edge 30",
+  "appDataCleared": false,
+  "measurement": "Android am start -S -W TotalTime, with Stopwatch milestone logs in a temporary copy of main.dart",
+  "originalInstalledDebugMs": [
+    4060,
+    3759,
+    3700
+  ],
+  "profileProbe": [
+    {
+      "run": 1,
+      "androidColdStartMs": 2310,
+      "dartMilestonesMs": {
+        "Dart main": 0,
+        "binding ready": 1,
+        "preferences ready": 197,
+        "chrome ready": 209,
+        "wallet preparation started": 209,
+        "wallet records ready; artwork started": 506,
+        "artwork ready": 540,
+        "runApp": 540,
+        "first frame rasterized": 674
+      },
+      "startupLogs": [
+        "11-23 14:53:46.705 I/flutter (30883): [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).",
+        "11-23 14:53:46.747 I/flutter (30883): [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).",
+        "11-23 14:53:47.540 I/flutter (30883): STARTUP 0ms Dart main",
+        "11-23 14:53:47.542 I/flutter (30883): STARTUP 1ms binding ready",
+        "11-23 14:53:47.737 I/flutter (30883): STARTUP 197ms preferences ready",
+        "11-23 14:53:47.750 I/flutter (30883): STARTUP 209ms chrome ready",
+        "11-23 14:53:47.750 I/flutter (30883): STARTUP 209ms wallet preparation started",
+        "11-23 14:53:48.047 I/flutter (30883): STARTUP 506ms wallet records ready; artwork started",
+        "11-23 14:53:48.080 I/flutter (30883): STARTUP 540ms artwork ready",
+        "11-23 14:53:48.080 I/flutter (30883): STARTUP 540ms runApp",
+        "11-23 14:53:48.215 I/flutter (30883): STARTUP frame build=0ms raster=64ms total=64ms",
+        "11-23 14:53:48.215 I/flutter (30883): STARTUP 674ms first frame rasterized"
+      ]
+    },
+    {
+      "run": 2,
+      "androidColdStartMs": 1744,
+      "dartMilestonesMs": {
+        "Dart main": 0,
+        "binding ready": 1,
+        "preferences ready": 194,
+        "chrome ready": 204,
+        "wallet preparation started": 205,
+        "wallet records ready; artwork started": 547,
+        "artwork ready": 579,
+        "runApp": 580,
+        "first frame rasterized": 710
+      },
+      "startupLogs": [
+        "11-23 14:53:50.650 I/flutter (31273): [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).",
+        "11-23 14:53:50.673 I/flutter (31273): [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).",
+        "11-23 14:53:50.831 I/flutter (31273): STARTUP 0ms Dart main",
+        "11-23 14:53:50.833 I/flutter (31273): STARTUP 1ms binding ready",
+        "11-23 14:53:51.025 I/flutter (31273): STARTUP 194ms preferences ready",
+        "11-23 14:53:51.036 I/flutter (31273): STARTUP 204ms chrome ready",
+        "11-23 14:53:51.036 I/flutter (31273): STARTUP 205ms wallet preparation started",
+        "11-23 14:53:51.379 I/flutter (31273): STARTUP 547ms wallet records ready; artwork started",
+        "11-23 14:53:51.411 I/flutter (31273): STARTUP 579ms artwork ready",
+        "11-23 14:53:51.411 I/flutter (31273): STARTUP 580ms runApp",
+        "11-23 14:53:51.542 I/flutter (31273): STARTUP frame build=0ms raster=57ms total=57ms",
+        "11-23 14:53:51.542 I/flutter (31273): STARTUP 710ms first frame rasterized"
+      ]
+    },
+    {
+      "run": 3,
+      "androidColdStartMs": 1618,
+      "dartMilestonesMs": {
+        "Dart main": 0,
+        "binding ready": 1,
+        "preferences ready": 159,
+        "chrome ready": 170,
+        "wallet preparation started": 170,
+        "wallet records ready; artwork started": 488,
+        "artwork ready": 515,
+        "runApp": 516,
+        "first frame rasterized": 624
+      },
+      "startupLogs": [
+        "11-23 14:53:53.190 I/flutter (31495): [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).",
+        "11-23 14:53:53.217 I/flutter (31495): [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).",
+        "11-23 14:53:53.374 I/flutter (31495): STARTUP 0ms Dart main",
+        "11-23 14:53:53.376 I/flutter (31495): STARTUP 1ms binding ready",
+        "11-23 14:53:53.534 I/flutter (31495): STARTUP 159ms preferences ready",
+        "11-23 14:53:53.544 I/flutter (31495): STARTUP 170ms chrome ready",
+        "11-23 14:53:53.544 I/flutter (31495): STARTUP 170ms wallet preparation started",
+        "11-23 14:53:53.863 I/flutter (31495): STARTUP 488ms wallet records ready; artwork started",
+        "11-23 14:53:53.890 I/flutter (31495): STARTUP 515ms artwork ready",
+        "11-23 14:53:53.890 I/flutter (31495): STARTUP 516ms runApp",
+        "11-23 14:53:53.998 I/flutter (31495): STARTUP frame build=0ms raster=45ms total=46ms",
+        "11-23 14:53:53.999 I/flutter (31495): STARTUP 624ms first frame rasterized"
+      ]
+    }
+  ],
+  "debugProbe": [
+    {
+      "run": 1,
+      "androidColdStartMs": 8305,
+      "dartMilestonesMs": {
+        "Dart main": 0,
+        "binding ready": 176,
+        "preferences ready": 228,
+        "chrome ready": 456,
+        "wallet preparation started": 458,
+        "wallet records ready; artwork started": 910,
+        "artwork ready": 1440,
+        "runApp": 1440,
+        "first frame rasterized": 3899
+      },
+      "startupLogs": [
+        "11-23 15:01:31.946 D/FlutterJNI( 1357): Beginning load of flutter...",
+        "11-23 15:01:31.982 D/FlutterJNI( 1357): flutter (null) was loaded normally!",
+        "11-23 15:01:33.545 I/flutter ( 1357): [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).",
+        "11-23 15:01:33.572 I/flutter ( 1357): [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).",
+        "11-23 15:01:34.888 I/flutter ( 1357): STARTUP 0ms Dart main",
+        "11-23 15:01:35.059 I/flutter ( 1357): STARTUP 176ms binding ready",
+        "11-23 15:01:35.110 I/flutter ( 1357): STARTUP 228ms preferences ready",
+        "11-23 15:01:35.339 I/flutter ( 1357): STARTUP 456ms chrome ready",
+        "11-23 15:01:35.341 I/flutter ( 1357): STARTUP 458ms wallet preparation started",
+        "11-23 15:01:35.792 I/flutter ( 1357): STARTUP 910ms wallet records ready; artwork started",
+        "11-23 15:01:36.322 I/flutter ( 1357): STARTUP 1440ms artwork ready",
+        "11-23 15:01:36.323 I/flutter ( 1357): STARTUP 1440ms runApp",
+        "11-23 15:01:38.780 I/flutter ( 1357): STARTUP frame build=0ms raster=53ms total=53ms",
+        "11-23 15:01:38.782 I/flutter ( 1357): STARTUP 3899ms first frame rasterized"
+      ]
+    },
+    {
+      "run": 2,
+      "androidColdStartMs": 5684,
+      "dartMilestonesMs": {
+        "Dart main": 1,
+        "binding ready": 165,
+        "preferences ready": 216,
+        "chrome ready": 434,
+        "wallet preparation started": 437,
+        "wallet records ready; artwork started": 886,
+        "artwork ready": 1398,
+        "runApp": 1398,
+        "first frame rasterized": 3854
+      },
+      "startupLogs": [
+        "11-23 15:01:40.388 D/FlutterJNI( 2033): Beginning load of flutter...",
+        "11-23 15:01:40.412 D/FlutterJNI( 2033): flutter (null) was loaded normally!",
+        "11-23 15:01:40.516 I/flutter ( 2033): [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).",
+        "11-23 15:01:40.544 I/flutter ( 2033): [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).",
+        "11-23 15:01:41.460 I/flutter ( 2033): STARTUP 1ms Dart main",
+        "11-23 15:01:41.619 I/flutter ( 2033): STARTUP 165ms binding ready",
+        "11-23 15:01:41.670 I/flutter ( 2033): STARTUP 216ms preferences ready",
+        "11-23 15:01:41.888 I/flutter ( 2033): STARTUP 434ms chrome ready",
+        "11-23 15:01:41.890 I/flutter ( 2033): STARTUP 437ms wallet preparation started",
+        "11-23 15:01:42.340 I/flutter ( 2033): STARTUP 886ms wallet records ready; artwork started",
+        "11-23 15:01:42.852 I/flutter ( 2033): STARTUP 1398ms artwork ready",
+        "11-23 15:01:42.852 I/flutter ( 2033): STARTUP 1398ms runApp",
+        "11-23 15:01:45.306 I/flutter ( 2033): STARTUP frame build=0ms raster=46ms total=46ms",
+        "11-23 15:01:45.308 I/flutter ( 2033): STARTUP 3854ms first frame rasterized"
+      ]
+    },
+    {
+      "run": 3,
+      "androidColdStartMs": 5616,
+      "dartMilestonesMs": {
+        "Dart main": 1,
+        "binding ready": 168,
+        "preferences ready": 217,
+        "chrome ready": 413,
+        "wallet preparation started": 415,
+        "wallet records ready; artwork started": 836,
+        "artwork ready": 1361,
+        "runApp": 1361,
+        "first frame rasterized": 3739
+      },
+      "startupLogs": [
+        "11-23 15:01:46.941 D/FlutterJNI( 2567): Beginning load of flutter...",
+        "11-23 15:01:46.963 D/FlutterJNI( 2567): flutter (null) was loaded normally!",
+        "11-23 15:01:47.110 I/flutter ( 2567): [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).",
+        "11-23 15:01:47.136 I/flutter ( 2567): [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(104)] Using the Impeller rendering backend (OpenGLES).",
+        "11-23 15:01:48.034 I/flutter ( 2567): STARTUP 1ms Dart main",
+        "11-23 15:01:48.194 I/flutter ( 2567): STARTUP 168ms binding ready",
+        "11-23 15:01:48.243 I/flutter ( 2567): STARTUP 217ms preferences ready",
+        "11-23 15:01:48.438 I/flutter ( 2567): STARTUP 413ms chrome ready",
+        "11-23 15:01:48.441 I/flutter ( 2567): STARTUP 415ms wallet preparation started",
+        "11-23 15:01:48.862 I/flutter ( 2567): STARTUP 836ms wallet records ready; artwork started",
+        "11-23 15:01:49.387 I/flutter ( 2567): STARTUP 1361ms artwork ready",
+        "11-23 15:01:49.387 I/flutter ( 2567): STARTUP 1361ms runApp",
+        "11-23 15:01:51.762 I/flutter ( 2567): STARTUP frame build=0ms raster=43ms total=43ms",
+        "11-23 15:01:51.764 I/flutter ( 2567): STARTUP 3739ms first frame rasterized"
+      ]
+    }
+  ],
+  "originalApkRestored": true,
+  "restoredApkSha256MatchesBackup": true,
+  "originalDebugAfterRestoreMs": [
+    9895,
+    6659
+  ],
+  "limitations": [
+    "Three cold process starts per diagnostic build; no reboot or filesystem cache reset.",
+    "Profile measured, release not measured.",
+    "Other UI work was in progress in the shared workspace; no source optimization is claimed.",
+    "Original installed APK timings varied before and after reinstall; installation, runtime caches, device load and temperature were not controlled."
+  ]
+}

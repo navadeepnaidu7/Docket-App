@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../../core/haptics/haptic_service.dart';
@@ -155,41 +153,38 @@ class _MorphSheetState extends State<MorphSheet>
         padding: EdgeInsets.fromLTRB(16, 0, 16, mq.padding.bottom + 12),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(_radius),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppTokens.sheetBackground(scheme),
-                borderRadius: BorderRadius.circular(_radius),
-                border: Border.all(color: borderColor, width: 0.5),
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
-                    blurRadius: 32,
-                    spreadRadius: -4,
-                    offset: const Offset(0, -10),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const SizedBox(height: 12),
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: AppTokens.sheetHandle(scheme),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppTokens.sheetBackground(scheme),
+              borderRadius: BorderRadius.circular(_radius),
+              border: Border.all(color: borderColor, width: 0.5),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
+                  blurRadius: 32,
+                  spreadRadius: -4,
+                  offset: const Offset(0, -10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const SizedBox(height: 12),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: AppTokens.sheetHandle(scheme),
+                      borderRadius: BorderRadius.circular(99),
                     ),
                   ),
-                  _buildHeader(theme, scheme),
-                  _buildMorphingBody(theme, scheme, mq),
-                ],
-              ),
+                ),
+                _buildHeader(theme, scheme),
+                _buildMorphingBody(theme, scheme, mq),
+              ],
             ),
           ),
         ),

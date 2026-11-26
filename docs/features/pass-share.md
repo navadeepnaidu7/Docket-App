@@ -1,207 +1,84 @@
-# Pass share
+# Pass sharing
 
-Exporting a pass as an image plus text, to another app or to the photo library.
+Status: implemented. Source reviewed 23 November 2026. Owners:
+`lib/features/tickets/application/pass_share_service.dart`,
+`presentation/share/pass_share_card.dart`, `presentation/share/pass_share_actions.dart`,
+`presentation/pass_code_view.dart` and the pass detail screens.
 
-## Why
+## Actions and output
 
-A pass detail screen used to be a dead end. The only "Share ticket" affordance in the tickets
-feature was a stub whose `onTap` popped the sheet and did nothing, so the only way to forward a
-ticket was a manual screenshot of a screen that was never composed to be one.
+Train, bus, movie and flight detail screens expose Save/Share through the shared pass actions.
+Actions sit at the end of the scroll content. The primary Save action is filled; Share is
+secondary. Its local surface must stay distinguishable from the page without changing the
+shared `AppTheme.surfaceElevated` role for unrelated consumers.
 
-## Surface
+The label carries progress: Save → Saving → Saved, then resets after 1.6 seconds. Share uses
+Preparing while rendering and does not claim Shared after a dismissible OS sheet. Disable
+both actions while either operates; rendering two off-screen copies concurrently is wasteful.
 
-Every pass detail screen — train, bus and movie — ends with two **text-only** buttons, `Save`
-and `Share`. No icons: the same rule the boarding-code row already follows, and for the same
-reason (these need to be the obvious thing to press, not a glyph to hunt for).
+Export is the glance face on a fixed dark plate, optional genuine code, and Docket wordmark.
+The detail screen is not a screenshot target. Detail rows travel as selectable share-message
+text. There is no version label or banner above the ticket. Each face uses `WalletCardCanvas`
+with its own bounded design canvas, scaled to a common width. Force `useBrandColors` so an
+expired pass exports its booking artwork rather than the wallet's muted spent palette.
 
-They are the **last item in the scroll view**, not a pinned bar. Sharing is something you decide
-to do after reading the pass, not the first thing the screen should offer, and a sticky plate
-over the ticket face would cost vertical space on every visit for an action most visits do not
-want. So `PassActionBar` carries no plate, no hairline and no safe-area inset — it scrolls away
-with everything else.
+Movie glance/export artwork prefers the transparent title logo with its normal fallback;
+the opened detail hero uses the poster. See [movie artwork](movie-logo-glance.md).
 
-| Piece | Path |
-|---|---|
-| Bar chrome | `lib/shared/widgets/pass_action_bar.dart` |
-| State + wiring | `lib/features/tickets/presentation/share/pass_share_actions.dart` |
-| The exported card | `lib/features/tickets/presentation/share/pass_share_card.dart` |
-| Capture / files / gallery | `lib/features/tickets/application/pass_share_service.dart` |
-| Share text + QR rule | `lib/features/tickets/domain/pass_share_summary.dart` |
+## Scannable codes
 
-It borrows `_StickyCta`'s type and metrics from `document_entry_scaffold.dart` (56pt tall, Inter
-16/w700) but not its chrome, and is a sibling rather than a refactor of it: that widget is built
-around a single full-width CTA and widening its contract would complicate every document entry
-screen for one caller's benefit. The corner radius is 24 rather than that CTA's 18 — sitting
-inline on the page, they need more shape to read as buttons and not as another grouped row.
+Render through `PassCodeView` with the pass's original format: QR uses `qr_flutter`; other
+symbologies use `barcode_widget`. Binary payloads are supported where the pass/code model
+permits them. Keep black-on-white contrast and the quiet zone.
 
-Both buttons are **flat**. That CTA's drop glow exists to lift a floating bar off the content it
-covers; these sit in the content, where a halo only made them look unseated.
+Absent payload means **no block, placeholder or caption**. Never substitute a PNR or booking
+reference. `passShareCodePayload` resolves the usable code; code validation belongs to the
+shared code model. See [code extraction](ticket-code-extraction.md).
 
-The secondary fill is `PassActionBar.secondaryFill`, not `AppTokens.groupedFieldFill`. That
-token is calibrated to separate a row from the card behind it, and in light mode it resolves to
-`#FBF8F5` on a `#F5F0E8` page — *lighter* than the background, so the button read as blank
-space rather than as a control. The local value carries the same ink far enough to be plainly
-grey: `#2F2F32` on dark, `#D9D6D1` on light. It is kept local because a dozen other screens
-depend on the token at its current weight. `pass_action_bar_test.dart` pins the property rather
-than the hex — composited onto the page, the secondary must sit clearly off the background and
-still below the filled primary.
+The decorative `PassCodeBlock` and `TicketQrPainter` are gone. The current train face draws
+no embedded code; the share card adds the genuine code separately. An exported pass must
+contain one real code or none, never a second decorative/code-like mark. The old train-code
+wart and suppression-flag proposal are resolved history, not work to implement again.
 
-The label is the progress indicator: `Save → Saving → Saved`, settling back after 1.6s. A
-spinner on a two-second operation reads as a stall; a word that changes reads as a reply. Share
-has a `Preparing` state but no `Shared` one — the OS sheet is its own confirmation, and a button
-reading "Shared" would be a lie when the sheet was dismissed. Both buttons disable together
-while either is working: they rasterise the same card, and letting the second start would put
-two off-screen copies in the overlay at once.
+## Capture contract
 
-## What the image is
+`PassShareService.renderPng` inserts a real off-screen `OverlayEntry` at `left: -10000`,
+waits two frames and captures its `RepaintBoundary`. `Offstage` does not paint and can produce
+a blank PNG without throwing. Pre-warm network artwork with a bounded timeout; offline,
+missing or failed artwork must use the normal fallback rather than block export.
 
-The wallet **glance** face, a code block, and a wordmark, on a fixed dark plate — not the
-detail screen. Nothing sits above the face: a header naming the app and the pass kind was tried
-and cut, because a banner across the top of someone else's ticket is the app talking over the
-thing being shared.
+`PassShareCard` supplies an explicit `DefaultTextStyle` with `TextDecoration.none`.
+An overlay without Material otherwise inherits WidgetsApp's red/yellow debug underline.
+The fixed style and plate make output independent of the user's light/dark theme; text
+scaling is disabled for the export canvas. Tests pump it without MaterialApp to cover this.
 
-Branding closes the image instead — one big translucent "Docket", the same treatment as the
-watermark at the foot of Settings. It reads as a mark on the artwork rather than a line of text
-competing with the pass's own type. No version string: Settings shows one because that screen is
-about the app, and a build number on a forwarded ticket is noise.
+Capture scale is `min(3.0, 2400 / logicalHeight)` to bound large PNGs and share-target failures.
+Guard against overflow from long movie titles or other unbounded face content.
 
-The `PassInfoCard` rows on the detail screen are readable text, and they travel in the share
-*message* instead, where they can be selected, searched and quoted. Burning them into pixels
-would make them none of those things.
+## Plaintext file lifetime
 
-Every kind is drawn through `WalletCardCanvas` on its own design canvas and scaled to one shared
-width, so a train and a movie shared into the same chat arrive the same size. That wrapper is
-load-bearing for more than tidiness: the movie face sizes from its content, and handing it an
-unbounded height lets a long title push it past its canvas. On screen that is a scroll; in an
-export it would be an overflow banner burned into the PNG.
+Sharing writes one PNG into the app's **cache**, never app documents. The OS receiver needs
+a real file/content URI; the image contains ticket data and needs a bounded lifetime.
 
-`useBrandColors` is forced on, so an expired pass exports as itself rather than in the drained
-palette. A shared image is a record of the booking; the wallet's "this one is spent" tint is
-wallet chrome.
+- Purge at the next share and at dashboard startup.
+- Keep the file after the share sheet closes: dismissal does not mean the receiving mail/chat
+  app finished reading it. Deleting on dismissal can break an unsent draft.
+- Purge immediately when sharing fails, since no receiver acquired the file.
+- Saving to the photo library hands bytes directly to `gal`; it creates no app temp file.
 
-### Movies use the title logo, not the poster
+`Gal.requestAccess()` runs before saving: put methods throw on missing permission rather
+than requesting it. Cancellation and permission rejection return `PassShareResult` values.
 
-Glance density is what selects the transparent TMDB title logo over the full 2:3 one-sheet
-(`_HeroBand`, and [`movie-logo-glance.md`](movie-logo-glance.md)). That was already the wallet
-treatment; here it is also what keeps the exported PNG a fraction of what a one-sheet would
-cost. No change to the face was needed.
+The external-attachment viewer has a different cleanup boundary; do not copy its close-time
+purge to pass sharing. See [attachment lifecycle](id-media-attachments.md).
 
-## The QR rule
+## Platform and verification
 
-**A code appears only when the pass carries a `codePayload`.** When it does not, the block is
-absent entirely — no placeholder, no caption, no decorative square.
+`share_plus` supplies its FileProvider through manifest merge; do not add a duplicate.
+Android 26–28 needs `WRITE_EXTERNAL_STORAGE` with `maxSdkVersion=28`; API 29+ uses MediaStore.
+iOS needs `NSPhotoLibraryAddUsageDescription` for saving. Its platform scaffold is ignored,
+so configure and verify this on each iOS setup rather than assuming another machine's plist.
 
-`passShareCodePayload` is the single place this lives, and it never falls back to a PNR or a
-booking ID. Those identify a booking; they are not what a gate scanner reads, and a QR that
-scans to the wrong thing is worse at a turnstile than no QR at all.
-
-This used to matter more than it looked, because the faces drew decorative code art of their
-own — a hardcoded 7×7 grid in `PassCodeBlock`, a procedural `TicketQrPainter` on the movie
-chrome, both documented as encoding nothing. Both are now gone: a face draws its real code or
-none (`docs/features/ticket-code-extraction.md`). The train face still carries a code square,
-so the share card passes it `showCode: false` — two copies of the same symbol in one image
-gives a scanner a choice it should not have to make. A test asserts the exported card contains
-exactly one code.
-
-The QR itself is `qr_flutter`'s `QrImageView`, pinned to black on white. A brand-tinted code
-loses contrast when a phone screen is photographed by another phone, which is exactly how a
-forwarded ticket gets scanned.
-
-Its white plate hugs the code rather than spanning the card, and the human reference sits below
-it on the dark ground. A small code centred in a full-width white slab reads as a mistake, and
-the quiet zone a scanner needs is only a few modules — the rest was empty paper.
-
-`codePayload` is now populated for real, by decoding the symbol off the uploaded ticket on
-device (`docs/features/ticket-code-extraction.md`). **Mock fixtures still carry realistic values
-on their active passes** and none on their expired ones, so both paths stay visible in the
-running app without a backend.
-
-The share card renders through `PassCodeView` like every other surface, so a pass whose code is
-a Code 128 strip exports as a Code 128 strip. Only `qr_flutter` is involved for QR; the rest go
-through `barcode_widget`.
-
-## Capture
-
-`PassShareService.renderPng` parks a `PassShareCard` in the root `Overlay` at `left: -10000`,
-waits two frames, and captures its `RepaintBoundary`.
-
-It has to be a real overlay entry. `Offstage` does not paint, and `toImage` over an offstage
-subtree returns a **blank image rather than an error** — the kind of bug that ships because
-nothing throws. `test/pass_share_card_test.dart` guards it by asserting the bytes are a real PNG
-of non-trivial length.
-
-Two frames, not one: the first lays out and paints, the second catches anything that resolved
-during the first. Network art is pre-warmed before the entry is inserted, because the movie hero
-is a `CachedNetworkImage` and a cold capture would export its shimmer placeholder forever. That
-pre-warm swallows every failure on a timeout — offline, a blocked host, or a film with no
-artwork are all normal, and the face already falls back to its `posterHint` gradient.
-
-### The card supplies its own text style
-
-`PassShareCard` installs an explicit `DefaultTextStyle` at its root, and that is load-bearing.
-An Overlay entry has no `Material` above it, so it inherits the fallback style `WidgetsApp`
-installs for that case: red type under a **yellow double underline**. Every `PassType` role sets
-colour, size and weight but not `decoration`, so the underline inherited straight through into
-the exported PNG. The style is written out in full rather than read from the theme, because the
-export must not change with the viewer's light/dark setting.
-
-The test for this pumps the card **without** a `MaterialApp` on purpose — the other card tests
-wrap it in one, which supplies a sane default, and that is exactly why they did not catch it.
-
-Capture scale is `min(3.0, 2400 / logicalHeight)`. A full 3× capture of a ~1000pt card is a
-multi-megabyte PNG, and some share targets silently drop or recompress attachments past a few
-megabytes.
-
-## Files on disk
-
-Sharing writes one plaintext PNG to the **cache** directory. This is the second such site in the
-app after `AttachmentOpenService`, and it follows that class's written policy for the same
-reasons: cache only, never app documents; one file at a time; bounded lifetime. A share sheet
-needs a real path — it cannot take a buffer — so the tradeoff is bounded rather than avoided.
-
-The lifetime ends at the **next share** and at **app start** (`dashboard_screen.dart`), not when
-the share sheet closes. That is deliberate and it is the one place the attachment policy could
-not be copied verbatim: `share` resolves on dismissal, which is not when the receiving app is
-finished — a mail client can hold the `content://` URI until the draft is sent. Purging there
-would yank a ticket out of a half-sent message. A share that *fails* still purges immediately,
-since no receiver ever got the file.
-
-Saving writes **no** file: `gal` takes the bytes straight to MediaStore / PHPhotoLibrary.
-
-`Gal.requestAccess()` is called first, deliberately. `gal`'s `put*` methods *throw* on a missing
-permission rather than asking for one, so without that call the first save on iOS would fail
-with "no access" and the person would never actually be prompted. On Android 29+ it returns true
-without showing anything.
-
-Failures are returned as `PassShareResult` values rather than thrown. Refusing a photo permission
-and dismissing a share sheet are ordinary things a person does, not exceptions.
-
-## Platform
-
-- `share_plus` ships its own `FileProvider` through manifest merge, so no `<provider>` is
-  declared by hand.
-- Android: `WRITE_EXTERNAL_STORAGE` with `maxSdkVersion="28"`. API 29+ needs no permission at
-  all; `minSdk` is 26, so the 26–28 window is the only reason it is declared.
-- iOS: `NSPhotoLibraryAddUsageDescription`. Saving is an *Add* operation and needs its own key —
-  the existing read-framed `NSPhotoLibraryUsageDescription` does not cover it, and without it
-  iOS terminates the app the moment a save is attempted.
-
-  **This key is not in version control.** `.gitignore` excludes `/ios/` wholesale ("Android-only
-  commits for now"), so the edit exists on one machine and will be absent from a fresh clone.
-  Adding it is a required step whenever iOS work starts, alongside the `NSAllowsLocalNetworking`
-  exception the main `CLAUDE.md` already flags.
-
-## Known wart: the train face brings its own code square
-
-The train face prints a decorative `PassCodeBlock` as part of its design, so a shared train pass
-carries that square **and** the real QR below it — two code-like marks, one of them unscannable.
-The movie and bus glance faces contribute none, so only trains are affected.
-
-Fixing it means changing the train pass face (a flag to suppress the block when it is being
-exported, or dropping it from the face outright), which is a wider decision than this feature.
-A test in `pass_share_card_test.dart` pins the current behaviour deliberately, so the next
-person meets the fact rather than finding it in a screenshot.
-
-## Not verified from a dev machine
-
-The iOS photo-library prompt and save, and the Android 26–28 `WRITE_EXTERNAL_STORAGE` path.
+Existing suites: `pass_share_card_test.dart` (real PNG, canvas/style/code behavior),
+`pass_share_text_test.dart`, `pass_code_view_test.dart` and `pass_action_bar_test.dart`.
+The iOS photo-library prompt/save and Android 26–28 permission path still need device checks.

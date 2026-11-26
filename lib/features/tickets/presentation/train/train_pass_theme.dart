@@ -262,13 +262,29 @@ abstract final class TrainTimeOptics {
   TrainTimeOptics._();
 
   static const Map<String, double> _lsb = <String, double>{
-    '0': 0.050, '1': 0.040, '2': 0.060, '3': 0.050, '4': 0.030,
-    '5': 0.060, '6': 0.060, '7': 0.020, '8': 0.040, '9': 0.060,
+    '0': 0.050,
+    '1': 0.040,
+    '2': 0.060,
+    '3': 0.050,
+    '4': 0.030,
+    '5': 0.060,
+    '6': 0.060,
+    '7': 0.020,
+    '8': 0.040,
+    '9': 0.060,
   };
 
   static const Map<String, double> _rsb = <String, double>{
-    '0': 0.050, '1': 0.110, '2': 0.060, '3': 0.050, '4': 0.050,
-    '5': 0.061, '6': 0.061, '7': 0.000, '8': 0.040, '9': 0.061,
+    '0': 0.050,
+    '1': 0.110,
+    '2': 0.060,
+    '3': 0.050,
+    '4': 0.050,
+    '5': 0.061,
+    '6': 0.061,
+    '7': 0.000,
+    '8': 0.040,
+    '9': 0.061,
   };
 
   /// Typical side bearing of the 14 dp text the time aligns with.
@@ -288,6 +304,8 @@ abstract final class TrainTimeOptics {
   static double rightPush(String text) {
     if (text.isEmpty) return 0;
     final double rsb = _rsb[text[text.length - 1]] ?? 0.05;
-    return rsb * TrainPassType.timeSize + TrainPassType.timeTracking - _companion;
+    return rsb * TrainPassType.timeSize +
+        TrainPassType.timeTracking -
+        _companion;
   }
 }

@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flight Pass Motion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --stage:#E7E2D7; --bg:#F4F0E7; --ink:#16181D; --muted:#6B6F78; --faint:#A3A6AD;
+  --card:#FFFFFF; --line:rgba(22,24,29,.08); --fill:rgba(22,24,29,.05); --seg:#E6E1D5; --segOn:#FFFFFF; --panel:#FBF9F4;
+  --green:#248A3D; --amber:#B25000; --red:#D70015; --blue:#0066CC;
+  --map:#ECE8DF; --dotDay:#BDB6A7; --dotNight:#7D776C; --dotDusk:#E0995A; --onMap:#16181D;
+  --brand:#001B94; --flap:#1A33A6;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --stage:#050506; --bg:#0B0B0C; --ink:#F2F2F3; --muted:#8B8F98; --faint:#55585F;
+    --card:#17181B; --line:rgba(255,255,255,.07); --fill:rgba(255,255,255,.06); --seg:#141518; --segOn:#2A2C31; --panel:#111214;
+    --green:#30D158; --amber:#FFB340; --red:#FF453A; --blue:#0A84FF;
+    --map:#101216; --dotDay:#7C8699; --dotNight:#2A2F3A; --dotDusk:#C9844A; --onMap:#FFFFFF;
+  }
+}
+:root[data-theme="dark"]{
+  --stage:#050506; --bg:#0B0B0C; --ink:#F2F2F3; --muted:#8B8F98; --faint:#55585F;
+  --card:#17181B; --line:rgba(255,255,255,.07); --fill:rgba(255,255,255,.06); --seg:#141518; --segOn:#2A2C31; --panel:#111214;
+  --green:#30D158; --amber:#FFB340; --red:#FF453A; --blue:#0A84FF;
+  --map:#101216; --dotDay:#7C8699; --dotNight:#2A2F3A; --dotDusk:#C9844A; --onMap:#FFFFFF;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--stage);color:var(--ink);font-family:Geist,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+body{padding:28px 16px 48px}
+.stage{display:flex;flex-wrap:wrap;gap:36px;justify-content:center;align-items:flex-start;max-width:1180px;margin:0 auto}
+
+/* ── Phone ─────────────────────────────────────────────── */
+.phone{width:min(393px,100%);height:852px;background:var(--bg);border-radius:46px;overflow:hidden;position:relative;
+  box-shadow:0 0 0 10px #000,0 0 0 11px #2a2a2e,0 40px 90px -20px rgba(0,0,0,.45)}
+.screen{position:absolute;inset:0;overflow-y:auto;scrollbar-width:none;padding-bottom:40px}
+.screen::-webkit-scrollbar{display:none}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:54px 22px 12px}
+.topbar h1{font-size:17px;font-weight:600}
+.iconbtn{width:34px;height:34px;border-radius:50%;background:var(--card);display:grid;place-items:center;border:1px solid var(--line);color:var(--ink)}
+@media (max-width:440px){.phone{box-shadow:none;border-radius:28px;height:auto}.screen{position:relative}}
+
+/* ── Face (unchanged direction) ───────────────────────── */
+.face{margin:4px 16px 0;border-radius:24px;background:var(--brand);color:#fff;position:relative;overflow:hidden;
+  box-shadow:0 18px 40px -18px rgba(0,27,148,.7)}
+.face::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 70% at 100% 0%,rgba(255,255,255,.10),transparent 60%),radial-gradient(90% 60% at 0% 100%,rgba(0,0,0,.18),transparent 70%)}
+.face .main{padding:22px 22px 20px;position:relative}
+.row{display:flex;justify-content:space-between;align-items:baseline}
+.logo{height:21px;width:auto;display:block}
+.date{font-size:14px;font-weight:600}
+.sub{font-size:12px;color:rgba(255,255,255,.62);margin-top:6px;font-weight:500}
+.cities{margin-top:26px;font-size:12.5px;color:rgba(255,255,255,.62);font-weight:500}
+.arcwrap{position:relative;height:56px;margin:4px -4px 6px}
+.arcwrap svg{width:100%;height:100%;overflow:visible}
+.codes{display:flex;justify-content:space-between;align-items:flex-end}
+.code{font-size:56px;font-weight:500;letter-spacing:-.035em;line-height:.95;position:relative}
+.code.arrive::after{content:"";position:absolute;inset:-6px -10px;border-radius:14px;background:radial-gradient(closest-side,rgba(255,255,255,.35),transparent);animation:glow 1.6s ease-out forwards}
+@keyframes glow{0%{opacity:0;transform:scale(.6)}25%{opacity:1}100%{opacity:0;transform:scale(1.35)}}
+.times{display:flex;justify-content:space-between;margin-top:10px;font-size:22px;font-weight:600;gap:8px}
+.times .t{display:flex;gap:8px;align-items:baseline;white-space:nowrap}
+.struck{color:rgba(255,255,255,.5);text-decoration:line-through;text-decoration-thickness:2px}
+.note{font-size:12.5px;font-weight:500;color:rgba(255,255,255,.62);margin-top:4px}
+.right{text-align:right}
+.status{margin-top:22px;min-height:58px}
+.status .lead{font-size:25px;font-weight:500;letter-spacing:-.015em}
+.status .lead span{color:rgba(255,255,255,.62)}
+.status .detail{font-size:13.5px;color:rgba(255,255,255,.62);margin-top:5px;font-weight:500}
+.tear{position:relative;height:22px}
+.tear::before{content:"";position:absolute;left:24px;right:24px;top:10px;border-top:2px dotted rgba(255,255,255,.24)}
+.notch{position:absolute;top:0;width:22px;height:22px;border-radius:50%;background:var(--bg)}
+.notch.l{left:-11px}.notch.r{right:-11px}
+.stub{padding:12px 22px 22px;position:relative}
+.cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.lbl{font-size:12px;color:rgba(255,255,255,.62);font-weight:500}
+.val{font-size:28px;font-weight:600;margin-top:6px;letter-spacing:-.01em}
+.cols>div:last-child{text-align:right}
+.pax{margin-top:18px}.pax .v{font-size:15px;font-weight:600;margin-top:4px}
+
+/* split-flap */
+.flap{display:inline-flex;gap:3px;font-size:26px;font-weight:600}
+.cell{position:relative;width:.78em;height:1.22em;perspective:240px;display:inline-block}
+.cell .half{position:absolute;left:0;right:0;height:50%;overflow:hidden;background:var(--flap)}
+.cell .top{top:0;border-radius:5px 5px 0 0}.cell .bot{bottom:0;border-radius:0 0 5px 5px}
+.cell span span,.leaf .fc span{position:absolute;left:0;right:0;height:200%;display:flex;align-items:center;justify-content:center;line-height:1}
+.cell .top>span,.leaf .front>span{top:0}.cell .bot>span,.leaf .back>span{bottom:0}
+.cell::after{content:"";position:absolute;left:0;right:0;top:calc(50% - .5px);height:1px;background:rgba(0,0,0,.4);z-index:4}
+.leaf{position:absolute;left:0;right:0;top:0;height:50%;transform-origin:50% 100%;transform-style:preserve-3d;z-index:3;animation:flip var(--d,110ms) cubic-bezier(.5,0,.9,.6) forwards}
+.leaf .fc{position:absolute;inset:0;overflow:hidden;backface-visibility:hidden;background:var(--flap)}
+.leaf .front{border-radius:5px 5px 0 0;background:linear-gradient(var(--flap),#122a9a)}
+.leaf .back{transform:rotateX(180deg);border-radius:0 0 5px 5px}
+@keyframes flip{to{transform:rotateX(-180deg)}}
+
+/* ── Segmented ───────────────────────────────────────── */
+.seg{margin:22px 16px 0;background:var(--seg);border-radius:14px;padding:4px;display:flex;border:1px solid var(--line)}
+.seg button{flex:1;border:0;background:transparent;color:var(--muted);font:600 13.5px Geist;padding:9px;border-radius:10px;cursor:pointer}
+.seg button.on{background:var(--segOn);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+/* ── Updates tab ─────────────────────────────────────── */
+.section{display:flex;justify-content:space-between;align-items:baseline;margin:26px 20px 8px;
+  font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.section span:last-child{letter-spacing:0;text-transform:none;font-weight:500}
+.card{margin:0 16px;background:var(--card);border-radius:20px;overflow:hidden}
+
+/* map */
+.mapcard{position:relative;margin:16px 16px 0;border-radius:20px;overflow:hidden;background:var(--map)}
+.mapcard canvas{display:block;width:100%;height:auto}
+.mapchips{position:absolute;left:12px;top:12px;right:12px;display:flex;gap:6px;flex-wrap:wrap}
+.mchip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:99px;font-size:12.5px;font-weight:600;
+  background:color-mix(in srgb,var(--card) 82%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:0 1px 0 var(--line) inset,0 2px 10px rgba(0,0,0,.08);color:var(--ink)}
+.mchip svg{width:13px;height:13px;color:var(--muted)}
+.mchip .unit{color:var(--muted);font-weight:500}
+.ldot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:ping 2s infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 55%,transparent)}80%,100%{box-shadow:0 0 0 8px transparent}}
+
+/* status sheet */
+.sheet{padding:18px 18px 6px}
+.hl{font-size:22px;font-weight:600;letter-spacing:-.015em;line-height:1.2}
+.hl em{font-style:normal}
+.hs{font-size:14px;color:var(--muted);margin-top:6px;line-height:1.45;font-weight:500}
+.ep{padding:16px 0 14px;border-top:1px solid var(--line);margin-top:16px}
+.ep-top{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--ink)}
+.ep-top svg{width:14px;height:14px;color:var(--muted)}
+.ep-top .apt{color:var(--muted);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ep-row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:8px;gap:12px}
+.ep-time{font-size:36px;font-weight:600;letter-spacing:-.03em;line-height:1;display:flex;align-items:baseline;gap:8px}
+.ep-time s{font-size:15px;font-weight:500;color:var(--faint);letter-spacing:0;text-decoration-thickness:1.5px}
+.ep-sub{font-size:13px;color:var(--muted);margin-top:7px;font-weight:500}
+.ep-sub b{font-weight:600}
+.chip{min-width:64px;text-align:right}
+.chip-v{display:inline-flex;align-items:center;gap:3px;height:30px;padding:0 9px;border-radius:9px;background:var(--fill);
+  font-size:17px;font-weight:700;letter-spacing:-.01em;transition:background .4s,color .4s}
+.chip-v svg{width:12px;height:12px}
+.chip-v.changed{background:var(--amber);color:#16181D}
+.chip-l{font-size:11.5px;color:var(--muted);margin-top:5px;font-weight:500}
+.mid{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-weight:500;padding:0 0 14px}
+.mid svg{width:12px;height:12px}
+.green{color:var(--green)}.amber{color:var(--amber)}.blue{color:var(--blue)}.red{color:var(--red)}
+
+/* aircraft */
+.ac{padding:12px}
+.ac img{display:block;width:100%;aspect-ratio:2/1;object-fit:cover;border-radius:12px;background:var(--fill)}
+.ac .txt{padding:12px 6px 4px}
+.ac .name{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.ac .name span{color:var(--blue)}
+.ac .meta{font-size:13px;color:var(--muted);margin-top:4px;font-weight:500}
+.ac .credit{font-size:10.5px;color:var(--faint);margin-top:8px}
+.ac.empty .txt{padding:6px}
+.ac.empty .meta{line-height:1.45}
+
+/* timeline */
+.tl{display:grid;grid-template-columns:30px 1fr auto;gap:12px;padding:13px 16px 13px 14px;position:relative}
+.tl + .tl::before{content:"";position:absolute;left:58px;right:0;top:0;border-top:1px solid var(--line)}
+.tl-ico{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:var(--c);
+  background:color-mix(in srgb,var(--c) 14%,transparent)}
+.tl-ico svg{width:15px;height:15px}
+.tl-t{font-size:15px;font-weight:600;line-height:1.25}
+.tl-s{font-size:13px;color:var(--muted);margin-top:3px;font-weight:500;line-height:1.35}
+.tl-time{font-size:13px;color:var(--muted);font-weight:500;padding-top:2px}
+.tl.enter{animation:rise .55s cubic-bezier(.2,.9,.25,1)}
+@keyframes rise{from{opacity:0;transform:translateY(-8px)}}
+.tl-empty{padding:16px;font-size:14px;color:var(--muted);line-height:1.45}
+
+/* details */
+.info{margin:14px 16px 0;background:var(--card);border-radius:18px;padding:18px 16px 10px}
+.info h3{font-size:16px;font-weight:600;margin-bottom:8px}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:12px;padding:9px 0;font-size:14px;font-weight:500}
+.kv span:first-child{color:var(--muted);font-weight:400}
+.photo{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;background:var(--fill);margin:2px 0 8px}
+.credit{font-size:11px;color:var(--faint);padding:2px 0 8px;line-height:1.4}
+
+/* ── Side panel ─────────────────────────────────────── */
+.panel{width:min(440px,100%);display:flex;flex-direction:column;gap:18px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:18px}
+.box h2{font-size:13px;color:var(--muted);font-weight:500;margin-bottom:12px}
+.clock{display:flex;align-items:baseline;justify-content:space-between}
+.clock .now{font-size:34px;font-weight:600;letter-spacing:-.02em}
+.clock .phase{font-size:13px;color:var(--muted);font-weight:500}
+input[type=range]{width:100%;margin:14px 0 6px;accent-color:var(--ink)}
+.ctrls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);font:600 13px Geist;padding:9px 13px;border-radius:11px;cursor:pointer}
+.btn.primary{background:var(--ink);color:var(--bg)}
+.btn.sel{outline:2px solid var(--ink);outline-offset:-2px}
+.chips .btn{font-weight:500;padding:7px 11px;font-size:12.5px}
+.moments{font:500 12px "Geist Mono",monospace;color:var(--muted);display:flex;flex-direction:column;gap:6px;min-height:40px}
+.lock{border-radius:24px;padding:16px 18px;color:#fff;background:linear-gradient(160deg,#20263a,#0d1018)}
+.lock .r1{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600}
+.lock .r1 .air{display:flex;gap:8px;align-items:center}
+.lock .big{font-size:24px;font-weight:600;margin-top:10px;letter-spacing:-.015em}
+.lock .big span{color:rgba(255,255,255,.55);font-weight:500}
+.lock .track{position:relative;height:16px;margin:14px 0 6px}
+.lock .rail{position:absolute;left:0;right:0;top:7px;height:2px;background:rgba(255,255,255,.16);border-radius:2px}
+.lock .fill{position:absolute;left:0;top:7px;height:2px;background:#fff;border-radius:2px}
+.lock .pl{position:absolute;top:0;width:16px;height:16px;margin-left:-8px}
+.lock .ends{display:flex;justify-content:space-between;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.6)}
+.notes{font-size:13px;line-height:1.55;color:var(--muted)}
+.notes b{color:var(--ink);font-weight:600}
+.notes li{margin:0 0 6px 16px}
+@media (prefers-reduced-motion: reduce){.tl.enter{animation:none}.ldot{animation:none}}
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <div class="phone"><div class="screen" id="screen">
+    <div class="topbar">
+      <div class="iconbtn" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M9 2L4 7l5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h1>Boarding Pass</h1>
+      <div class="iconbtn" aria-hidden="true"><svg width="14" height="4" viewBox="0 0 14 4"><circle cx="2" cy="2" r="1.6" fill="currentColor"/><circle cx="7" cy="2" r="1.6" fill="currentColor"/><circle cx="12" cy="2" r="1.6" fill="currentColor"/></svg></div>
+    </div>
+
+    <div class="face" id="face">
+      <div class="main">
+        <div class="row"><svg class="logo" viewBox="0 0 84 23" role="img" aria-label="IndiGo"><path d="M 62.542932 20.222534 C 60.367336 22.074698 57.806401 23 54.865857 23 C 51.710253 23 48.977479 21.891717 46.675866 19.679828 C 44.394041 17.445067 43.251046 14.725822 43.251046 11.533009 C 43.251046 8.339677 44.393521 5.619392 46.675345 3.384631 C 48.976437 1.130636 51.709211 0 54.865336 0 C 56.734225 0 58.375035 0.306701 59.788808 0.927382 C 61.202061 1.524669 62.62729 2.546661 64.066579 3.984518 L 64.184263 4.102 L 61.973257 6.483874 L 61.84672 6.378348 C 60.440758 5.205085 59.36025 4.418578 58.598427 4.007391 C 57.46897 3.413222 56.226516 3.114838 54.865857 3.115358 C 52.516859 3.114838 50.565695 3.936174 49.003515 5.578325 C 47.43769 7.224116 46.655558 9.204678 46.655037 11.533009 C 46.655558 13.838468 47.436648 15.809154 49.003515 17.454424 C 50.565695 19.097616 52.516338 19.917392 54.865336 19.917392 C 57.036767 19.917912 58.86556 19.289954 60.365773 18.039236 C 61.920664 16.745892 62.717896 15.089185 62.760075 13.058719 L 55.101746 13.058719 L 55.101746 9.974551 L 66.197913 9.974031 L 66.198434 12.003978 C 66.197913 15.407323 64.981496 18.15256 62.542932 20.222534 Z M 81.645794 20.687784 C 80.079448 22.186462 78.197021 22.93762 76.008927 22.93762 C 73.842703 22.93762 71.971211 22.185942 70.404865 20.687784 C 68.834874 19.184428 68.050139 17.271443 68.050139 14.961306 C 68.050139 12.674042 68.823939 10.771974 70.37258 9.269138 C 71.938926 7.747587 73.821354 6.985512 76.008927 6.985512 C 78.177233 6.985512 80.047684 7.747067 81.61403 9.268098 C 83.205371 10.770415 84 12.672483 84 14.961826 C 84 17.271443 83.216827 19.183908 81.645794 20.687784 Z M 79.413959 11.337552 C 78.525079 10.409131 77.394581 9.943361 76.008927 9.943361 C 74.602964 9.943361 73.462052 10.409131 72.573171 11.337552 C 71.705641 12.242581 71.265627 13.445474 71.265627 14.961826 C 71.265627 16.456345 71.715534 17.658719 72.604415 18.58714 C 73.494337 19.515561 74.624314 19.980811 76.008927 19.980811 C 77.394581 19.980811 78.524558 19.515561 79.413959 18.58714 C 80.303361 17.658719 80.753269 16.455826 80.753269 14.961826 C 80.753269 13.468867 80.303361 12.265454 79.413959 11.337552 Z M 40.909859 5.389106 C 40.594298 5.74883 40.131372 5.916217 39.553365 5.915698 C 39.010247 5.916217 38.550445 5.740513 38.198434 5.389106 C 37.874542 5.020545 37.709472 4.576088 37.709472 4.074969 C 37.709472 3.57333 37.871418 3.141349 38.197913 2.793061 C 38.531699 2.434897 38.991501 2.265431 39.553886 2.265431 C 40.098566 2.265431 40.546912 2.447892 40.878615 2.823732 C 41.222295 3.16994 41.39778 3.589445 41.39778 4.074969 C 41.39778 4.594802 41.237396 5.037179 40.909859 5.389106 Z M 37.993789 22.623641 L 37.993789 7.300011 L 41.113983 7.300011 L 41.113983 22.623641 L 37.993789 22.623641 Z M 33.66707 20.617607 C 32.223615 22.165668 30.358892 22.93762 28.087482 22.93762 C 25.688494 22.93762 23.738372 22.113165 22.252739 20.457498 C 20.854587 18.890722 20.159417 16.928354 20.159417 14.583388 C 20.159417 12.46455 20.880623 10.668008 22.321474 9.208837 C 23.782113 7.728873 25.527589 6.985512 27.551134 6.985512 C 29.15341 6.985512 30.601551 7.337959 31.889829 8.044932 L 31.979915 8.094836 L 31.979915 11.418646 L 31.709137 11.234625 C 31.197783 10.888417 30.589054 10.588993 29.886593 10.340513 C 29.207565 10.074879 28.585818 9.943361 28.023953 9.943361 C 26.571646 9.943361 25.422402 10.401334 24.556434 11.305843 C 23.688903 12.212431 23.24941 13.413244 23.24941 14.930636 C 23.24941 16.424116 23.697755 17.638445 24.588719 18.58766 C 25.498429 19.515561 26.659649 19.980811 28.086961 19.980811 C 29.423146 19.980811 30.521359 19.477094 31.392535 18.467058 C 32.278812 17.460662 32.73601 15.986417 32.73601 14.01781 L 32.73601 0.377399 L 35.856205 0.377399 L 35.856205 14.521008 C 35.856205 17.010487 35.130833 19.049271 33.66707 20.617607 Z M 15.185955 22.623121 L 15.185955 13.703311 C 15.185955 12.610623 14.841234 11.720149 14.160644 11.021494 C 13.501404 10.302565 12.684384 9.943361 11.702814 9.943361 C 10.765506 9.943361 9.947965 10.299446 9.24238 11.023573 C 8.562831 11.721709 8.220193 12.610623 8.220193 13.703311 L 8.220193 22.623121 L 5.131242 22.623121 L 5.131242 13.703311 C 5.131242 11.734705 5.743616 10.115945 6.976697 8.862109 C 8.211341 7.608272 9.791226 6.985512 11.702814 6.985512 C 13.594614 6.985512 15.173979 7.609312 16.427368 8.861589 C 17.68284 10.114386 18.30615 11.734185 18.306671 13.703311 L 18.30615 22.623121 L 15.185955 22.623121 Z M 0 22.623121 L 0 0.377399 L 3.277454 0.377399 L 3.277975 22.623121 L 0 22.623121 Z" fill="#fff"/></svg><div class="date">Sat, 21 Nov</div></div>
+        <div class="sub">6E 2134 · PNR X7KQ2M</div>
+        <div class="row cities"><div>Bengaluru</div><div>New Delhi</div></div>
+        <div class="arcwrap">
+          <svg viewBox="0 0 321 56" preserveAspectRatio="none" aria-hidden="true">
+            <path id="arcBase" d="M30 50 Q160.5 -12 291 50" fill="none" stroke="rgba(255,255,255,.38)" stroke-width="1.7" stroke-linecap="round" stroke-dasharray="0.01 6"/>
+            <path id="arcTrail" d="M30 50 Q160.5 -12 291 50" fill="none" stroke="url(#trailGrad)" stroke-width="1.8" stroke-linecap="round"/>
+            <defs><linearGradient id="trailGrad" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".25"/><stop offset="1" stop-color="#fff"/></linearGradient></defs>
+            <circle cx="30" cy="50" r="3" fill="#fff"/>
+            <circle id="destDot" cx="291" cy="50" r="3" fill="none" stroke="#fff" stroke-width="1.5"/>
+            <text x="160.5" y="40" text-anchor="middle" fill="rgba(255,255,255,.62)" font-size="11.5" font-weight="500" font-family="Geist">2h 50m</text>
+            <g id="arcPlane"><path transform="translate(-9 -9) scale(1.5)" d="M6 .4 7 4.4l4.6 2.5v1.1L7 6.8l-.2 3.2 1.5 1.1v.7L6 11.2l-2.3.6v-.7l1.5-1.1L5 6.8.4 8V6.9L5 4.4z" fill="#fff"/></g>
+          </svg>
+        </div>
+        <div class="codes"><div class="code">BLR</div><div class="code" id="codeTo">DEL</div></div>
+        <div class="times">
+          <div><div class="t" id="depT"><span>06:10</span></div><div class="note">Terminal 1</div></div>
+          <div class="right"><div class="t" style="justify-content:flex-end"><span>09:00</span></div><div class="note" id="arrNote">Terminal 1</div></div>
+        </div>
+        <div class="status"><div class="lead" id="stLead"></div><div class="detail" id="stDetail"></div></div>
+      </div>
+      <div class="tear"><div class="notch l"></div><div class="notch r"></div></div>
+      <div class="stub">
+        <div class="cols">
+          <div><div class="lbl">Gate</div><div class="val"><span class="flap" id="gate"></span></div></div>
+          <div><div class="lbl">Seat</div><div class="val">14C</div></div>
+          <div><div class="lbl">Boards</div><div class="val">05:30</div></div>
+        </div>
+        <div class="pax"><div class="lbl">Passenger</div><div class="v">Navadeep Naidu</div></div>
+      </div>
+    </div>
+
+    <div class="seg" role="tablist">
+      <button id="tabDetails" role="tab">Details</button>
+      <button id="tabUpdates" role="tab" class="on">Updates</button>
+    </div>
+
+    <div id="updatesPane">
+      <div class="mapcard">
+        <canvas id="map"></canvas>
+        <div class="mapchips" id="mapchips"></div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="sheet">
+          <div class="hl" id="hl"></div>
+          <div class="hs" id="hs"></div>
+          <div class="ep">
+            <div class="ep-top"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13.5h12M2.5 9.5l9.5-5.2 1.7.6-8.2 6.3-2.6.3z"/></svg>BLR <span class="apt">· Kempegowda International</span></div>
+            <div class="ep-row">
+              <div><div class="ep-time" id="depTime"></div><div class="ep-sub" id="depSub"></div></div>
+              <div class="chip"><div class="chip-v" id="gateChip"></div><div class="chip-l">Gate · Terminal 1</div></div>
+            </div>
+          </div>
+          <div class="mid"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="6" cy="6" r="4.6"/><path d="M6 3.6V6l1.6 1"/></svg><span id="mid"></span></div>
+          <div class="ep" style="margin-top:0;padding-bottom:12px">
+            <div class="ep-top"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13.5h12M2.5 5.5l9.4 4.6.9 1.7-8.4-1.3-2.4-3.1z"/></svg>DEL <span class="apt">· Indira Gandhi International</span></div>
+            <div class="ep-row">
+              <div><div class="ep-time" id="arrTime"></div><div class="ep-sub" id="arrSub"></div></div>
+              <div class="chip"><div class="chip-v">T1</div><div class="chip-l">Terminal</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section"><span>Your aircraft</span><span id="acWhen"></span></div>
+      <div class="card"><div class="ac" id="ac"></div></div>
+
+      <div class="section"><span>Updates</span><span id="feedCount"></span></div>
+      <div class="card" id="feed"></div>
+    </div>
+
+    <div id="detailsPane" hidden>
+      <div class="info"><h3>Flight</h3>
+        <div class="kv"><span>Airline</span><span>IndiGo</span></div>
+        <div class="kv"><span>Flight</span><span>6E 2134</span></div>
+        <div class="kv"><span>Date</span><span>21 Nov 2026</span></div>
+        <div class="kv"><span>Duration</span><span>2h 50m</span></div>
+        <div class="kv"><span>Cabin</span><span>Economy</span></div>
+      </div>
+      <div class="info"><h3>Aircraft</h3>
+        <img class="photo" id="dPhoto" src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/IndiGo_VT-IJB_A320neo_Mumbai_Apr22_R16_05934.jpg/960px-IndiGo_VT-IJB_A320neo_Mumbai_Apr22_R16_05934.jpg" alt="IndiGo Airbus A320neo">
+        <div class="credit" id="dCredit">Pictured: VT-IJB, same type and livery. Photo T. A. Gonsalves, CC BY-SA 4.0</div>
+        <div class="kv"><span>Type</span><span id="dType">Assigned on the day</span></div>
+        <div class="kv"><span>Registration</span><span id="dReg">Not yet known</span></div>
+        <div class="kv"><span>Operator</span><span>IndiGo</span></div>
+      </div>
+      <div class="info"><h3>Departure</h3>
+        <div class="kv"><span>Airport</span><span>Kempegowda International (BLR)</span></div>
+        <div class="kv"><span>Scheduled</span><span>06:10</span></div>
+        <div class="kv"><span>Terminal</span><span>1</span></div>
+        <div class="kv"><span>Gate</span><span id="dGate">12</span></div>
+        <div class="kv"><span>Boarding</span><span>05:30</span></div>
+      </div>
+      <div class="info"><h3>Arrival</h3>
+        <div class="kv"><span>Airport</span><span>Indira Gandhi International (DEL)</span></div>
+        <div class="kv"><span>Scheduled</span><span>09:00</span></div>
+        <div class="kv"><span>Terminal</span><span>1</span></div>
+      </div>
+      <div class="info"><h3>Booking</h3>
+        <div class="kv"><span>PNR</span><span>X7KQ2M</span></div>
+        <div class="kv"><span>Seat</span><span>14C</span></div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="panel">
+    <div class="box">
+      <h2>Flight clock · IST</h2>
+      <div class="clock"><div class="now" id="clockNow">05:00</div><div class="phase" id="phase"></div></div>
+      <input type="range" id="scrub" min="280" max="580" step="0.25" value="280" aria-label="Flight time">
+      <div class="ctrls">
+        <button class="btn primary" id="play">Pause</button>
+        <button class="btn" data-speed="60">60x</button>
+        <button class="btn sel" data-speed="300">300x</button>
+        <button class="btn" data-speed="1200">1200x</button>
+      </div>
+      <div class="ctrls chips" style="margin-top:12px">
+        <button class="btn" data-jump="300">Morning of</button>
+        <button class="btn" data-jump="339">Aircraft found</button>
+        <button class="btn" data-jump="388">Take-off</button>
+        <button class="btn" data-jump="452">Cruise</button>
+        <button class="btn" data-jump="528">Landing</button>
+      </div>
+      <div class="ctrls" style="margin-top:12px">
+        <button class="btn" id="gateBtn">Simulate gate change</button>
+        <button class="btn" id="themeBtn">Theme: auto</button>
+      </div>
+    </div>
+    <div class="box">
+      <h2>Lock screen · live activity</h2>
+      <div class="lock">
+        <div class="r1"><div class="air"><svg viewBox="0 0 84 23" style="height:13px;width:auto"><path d="M 62.542932 20.222534 C 60.367336 22.074698 57.806401 23 54.865857 23 C 51.710253 23 48.977479 21.891717 46.675866 19.679828 C 44.394041 17.445067 43.251046 14.725822 43.251046 11.533009 C 43.251046 8.339677 44.393521 5.619392 46.675345 3.384631 C 48.976437 1.130636 51.709211 0 54.865336 0 C 56.734225 0 58.375035 0.306701 59.788808 0.927382 C 61.202061 1.524669 62.62729 2.546661 64.066579 3.984518 L 64.184263 4.102 L 61.973257 6.483874 L 61.84672 6.378348 C 60.440758 5.205085 59.36025 4.418578 58.598427 4.007391 C 57.46897 3.413222 56.226516 3.114838 54.865857 3.115358 C 52.516859 3.114838 50.565695 3.936174 49.003515 5.578325 C 47.43769 7.224116 46.655558 9.204678 46.655037 11.533009 C 46.655558 13.838468 47.436648 15.809154 49.003515 17.454424 C 50.565695 19.097616 52.516338 19.917392 54.865336 19.917392 C 57.036767 19.917912 58.86556 19.289954 60.365773 18.039236 C 61.920664 16.745892 62.717896 15.089185 62.760075 13.058719 L 55.101746 13.058719 L 55.101746 9.974551 L 66.197913 9.974031 L 66.198434 12.003978 C 66.197913 15.407323 64.981496 18.15256 62.542932 20.222534 Z M 81.645794 20.687784 C 80.079448 22.186462 78.197021 22.93762 76.008927 22.93762 C 73.842703 22.93762 71.971211 22.185942 70.404865 20.687784 C 68.834874 19.184428 68.050139 17.271443 68.050139 14.961306 C 68.050139 12.674042 68.823939 10.771974 70.37258 9.269138 C 71.938926 7.747587 73.821354 6.985512 76.008927 6.985512 C 78.177233 6.985512 80.047684 7.747067 81.61403 9.268098 C 83.205371 10.770415 84 12.672483 84 14.961826 C 84 17.271443 83.216827 19.183908 81.645794 20.687784 Z M 79.413959 11.337552 C 78.525079 10.409131 77.394581 9.943361 76.008927 9.943361 C 74.602964 9.943361 73.462052 10.409131 72.573171 11.337552 C 71.705641 12.242581 71.265627 13.445474 71.265627 14.961826 C 71.265627 16.456345 71.715534 17.658719 72.604415 18.58714 C 73.494337 19.515561 74.624314 19.980811 76.008927 19.980811 C 77.394581 19.980811 78.524558 19.515561 79.413959 18.58714 C 80.303361 17.658719 80.753269 16.455826 80.753269 14.961826 C 80.753269 13.468867 80.303361 12.265454 79.413959 11.337552 Z M 40.909859 5.389106 C 40.594298 5.74883 40.131372 5.916217 39.553365 5.915698 C 39.010247 5.916217 38.550445 5.740513 38.198434 5.389106 C 37.874542 5.020545 37.709472 4.576088 37.709472 4.074969 C 37.709472 3.57333 37.871418 3.141349 38.197913 2.793061 C 38.531699 2.434897 38.991501 2.265431 39.553886 2.265431 C 40.098566 2.265431 40.546912 2.447892 40.878615 2.823732 C 41.222295 3.16994 41.39778 3.589445 41.39778 4.074969 C 41.39778 4.594802 41.237396 5.037179 40.909859 5.389106 Z M 37.993789 22.623641 L 37.993789 7.300011 L 41.113983 7.300011 L 41.113983 22.623641 L 37.993789 22.623641 Z M 33.66707 20.617607 C 32.223615 22.165668 30.358892 22.93762 28.087482 22.93762 C 25.688494 22.93762 23.738372 22.113165 22.252739 20.457498 C 20.854587 18.890722 20.159417 16.928354 20.159417 14.583388 C 20.159417 12.46455 20.880623 10.668008 22.321474 9.208837 C 23.782113 7.728873 25.527589 6.985512 27.551134 6.985512 C 29.15341 6.985512 30.601551 7.337959 31.889829 8.044932 L 31.979915 8.094836 L 31.979915 11.418646 L 31.709137 11.234625 C 31.197783 10.888417 30.589054 10.588993 29.886593 10.340513 C 29.207565 10.074879 28.585818 9.943361 28.023953 9.943361 C 26.571646 9.943361 25.422402 10.401334 24.556434 11.305843 C 23.688903 12.212431 23.24941 13.413244 23.24941 14.930636 C 23.24941 16.424116 23.697755 17.638445 24.588719 18.58766 C 25.498429 19.515561 26.659649 19.980811 28.086961 19.980811 C 29.423146 19.980811 30.521359 19.477094 31.392535 18.467058 C 32.278812 17.460662 32.73601 15.986417 32.73601 14.01781 L 32.73601 0.377399 L 35.856205 0.377399 L 35.856205 14.521008 C 35.856205 17.010487 35.130833 19.049271 33.66707 20.617607 Z M 15.185955 22.623121 L 15.185955 13.703311 C 15.185955 12.610623 14.841234 11.720149 14.160644 11.021494 C 13.501404 10.302565 12.684384 9.943361 11.702814 9.943361 C 10.765506 9.943361 9.947965 10.299446 9.24238 11.023573 C 8.562831 11.721709 8.220193 12.610623 8.220193 13.703311 L 8.220193 22.623121 L 5.131242 22.623121 L 5.131242 13.703311 C 5.131242 11.734705 5.743616 10.115945 6.976697 8.862109 C 8.211341 7.608272 9.791226 6.985512 11.702814 6.985512 C 13.594614 6.985512 15.173979 7.609312 16.427368 8.861589 C 17.68284 10.114386 18.30615 11.734185 18.306671 13.703311 L 18.30615 22.623121 L 15.185955 22.623121 Z M 0 22.623121 L 0 0.377399 L 3.277454 0.377399 L 3.277975 22.623121 L 0 22.623121 Z" fill="#fff"/></svg><span style="opacity:.6;font-weight:500">6E 2134</span></div><div id="lkRight" style="opacity:.7;font-weight:500"></div></div>
+        <div class="big" id="lkBig"></div>
+        <div class="track"><div class="rail"></div><div class="fill" id="lkFill"></div>
+          <svg class="pl" id="lkPlane" viewBox="0 0 12 12"><path transform="rotate(90 6 6)" d="M6 .4 7 4.4l4.6 2.5v1.1L7 6.8l-.2 3.2 1.5 1.1v.7L6 11.2l-2.3.6v-.7l1.5-1.1L5 6.8.4 8V6.9L5 4.4z" fill="#fff"/></svg></div>
+        <div class="ends"><span>BLR <span id="lkDep"></span></span><span id="lkMid"></span><span>DEL <span id="lkArr"></span></span></div>
+      </div>
+    </div>
+    <div class="box">
+      <h2>Moments · haptics and sound</h2>
+      <div class="moments" id="moments"><div>Scrub or play through the flight.</div></div>
+    </div>
+    <div class="box notes">
+      <h2>What is real here</h2>
+      <ul>
+        <li><b>Map:</b> coastlines only, no borders. Each dot is shaded by the real sun at that place and time, so dawn sweeps across India during the climb.</li>
+        <li><b>Times, aircraft, take-off and landing:</b> free ADS-B feeds. A landing time is an estimate until the wheels are down.</li>
+        <li><b>Gate:</b> from the printed pass. The gate-change demo needs an airline source later.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const SCHED_DEP = 370, SCHED_ARR = 540, BOARD = 330, MATCH = 340, PUSH = 381, TAKEOFF = 391,
+      TOC = 413, TOD = 502, LAND = 532, START = 280, END = 580;
+const BLR = {lat: 13.1986, lon: 77.7066}, DEL = {lat: 28.5562, lon: 77.1000};
+const ROUTE_KM = 1708, CRUISE = 36000, IST = 330, DOY = 325;
+const LAND_DOTS = {"S":6.0,"LON0":63.3333,"LAT1":34.0,"sx":11.7462,"sy":12.5,"runs":[[0,0,60],[1,0,60],[2,0,60],[3,0,60],[4,0,60],[5,0,60],[6,0,60],[7,0,60],[8,0,60],[9,0,60],[10,0,60],[11,0,60],[12,0,60],[13,0,60],[14,0,60],[15,0,60],[16,0,60],[17,0,60],[18,7,60],[19,7,60],[20,8,60],[21,10,60],[22,11,60],[23,12,52],[23,55,60],[24,12,52],[24,56,60],[25,12,49],[25,56,60],[26,13,45],[26,56,60],[27,15,15],[27,18,45],[27,57,60],[28,19,45],[28,57,60],[29,19,43],[29,58,60],[30,19,41],[30,59,60],[31,19,40],[31,60,60],[32,19,40],[32,60,60],[33,19,38],[34,19,37],[35,20,36],[36,20,36],[37,20,33],[38,21,32],[39,21,32],[40,22,32],[41,22,32],[42,22,32],[43,22,32],[44,23,32],[45,23,31],[46,24,31],[47,24,31],[48,25,31],[49,25,30],[50,25,30],[51,26,30],[51,33,33],[52,26,28],[52,32,34],[53,27,28],[53,32,34],[54,32,35]]};
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => t * t * (3 - 2 * t);
+const hhmm = m => { m = ((Math.round(m) % 1440) + 1440) % 1440;
+  return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+const dur = m => { m = Math.max(0, Math.round(m)); if (m < 60) return m + ' min';
+  return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm'; };
+const num = n => Math.round(n).toLocaleString('en-US');
+const setText = (el, html) => { if (el._v !== html) { el._v = html; el.innerHTML = html; } };
+
+function altitude(m) {
+  if (m <= TAKEOFF || m >= LAND) return 0;
+  if (m < TOC) { const t = (m - TAKEOFF) / (TOC - TAKEOFF); return CRUISE * (1 - Math.pow(1 - t, 1.8)); }
+  if (m < TOD) return CRUISE;
+  const t = (m - TOD) / (LAND - TOD); return CRUISE * Math.pow(1 - t, 1.25);
+}
+function groundSpeed(m) {
+  if (m < PUSH) return 0;
+  if (m < PUSH + 3) return 3;
+  if (m < TAKEOFF - 0.8) return 15 + 3 * Math.sin(m * 3);
+  if (m < TAKEOFF) return lerp(15, 150, (m - (TAKEOFF - 0.8)) / 0.8);
+  if (m < TOC) return lerp(150, 450, ease((m - TAKEOFF) / (TOC - TAKEOFF)));
+  if (m < TOD) return 452 + 5 * Math.sin(m / 6);
+  if (m < LAND) return lerp(450, 140, ease((m - TOD) / (LAND - TOD)));
+  if (m < LAND + 1) return lerp(140, 18, m - LAND);
+  if (m < LAND + 8) return lerp(18, 0, (m - LAND - 1) / 7);
+  return 0;
+}
+function progress(m) {
+  if (m <= TAKEOFF) return 0; if (m >= LAND) return 1;
+  const t = (m - TAKEOFF) / (LAND - TAKEOFF);
+  return 0.78 * t + 0.22 * ease(t);
+}
+// NOAA-style approximation; good to a fraction of a degree, plenty for shading.
+const DECL = 23.44 * Math.sin(2 * Math.PI / 365 * (DOY - 81)) * Math.PI / 180;
+const G = 2 * Math.PI / 365 * (DOY - 81);
+const EOT = 9.87 * Math.sin(2 * G) - 7.53 * Math.cos(G) - 1.5 * Math.sin(G);
+function solarElevation(lat, lon, utcMin) {
+  const h = ((utcMin + 4 * lon + EOT) / 4 - 180) * Math.PI / 180, phi = lat * Math.PI / 180;
+  return Math.asin(Math.sin(phi) * Math.sin(DECL) + Math.cos(phi) * Math.cos(DECL) * Math.cos(h)) * 180 / Math.PI;
+}
+
+// ── Split-flap ────────────────────────────────────────────────────────────
+const FLAP_ORDER = ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+function flapInit(el, text) {
+  el.innerHTML = '';
+  for (const ch of text) {
+    const c = document.createElement('span'); c.className = 'cell'; c.dataset.c = ch;
+    c.innerHTML = `<span class="half top"><span>${ch}</span></span><span class="half bot"><span>${ch}</span></span>`;
+    el.appendChild(c);
+  }
+}
+function flipOnce(cell, from, to, d) {
+  return new Promise(res => {
+    cell.querySelector('.top>span').textContent = to;
+    cell.querySelector('.bot>span').textContent = from;
+    const leaf = document.createElement('span'); leaf.className = 'leaf';
+    leaf.style.setProperty('--d', d + 'ms');
+    leaf.innerHTML = `<span class="fc front"><span>${from}</span></span><span class="fc back"><span>${to}</span></span>`;
+    cell.appendChild(leaf);
+    leaf.addEventListener('animationend', () => { cell.querySelector('.bot>span').textContent = to; leaf.remove(); res(); }, {once: true});
+  });
+}
+async function flapTo(el, text) {
+  if (reduce) { flapInit(el, text); return; }
+  await Promise.all([...el.children].map(async (cell, i) => {
+    const target = text[i] ?? ' ';
+    let cur = cell.dataset.c;
+    if (cur === target) return;
+    await new Promise(r => setTimeout(r, i * 70));
+    const a = FLAP_ORDER.indexOf(cur), b = FLAP_ORDER.indexOf(target), steps = [];
+    let k = a; while (k !== b && steps.length < 9) { k = (k + 1) % FLAP_ORDER.length; steps.push(FLAP_ORDER[k]); }
+    if (steps.at(-1) !== target) steps.push(target);
+    for (let s = 0; s < steps.length; s++) { await flipOnce(cell, cur, steps[s], s === steps.length - 1 ? 190 : 85); cur = steps[s]; }
+    cell.dataset.c = target;
+  }));
+}
+let gate = '12', gateChanged = false;
+flapInit($('gate'), gate);
+
+// ── Face arc ──────────────────────────────────────────────────────────────
+const arcBase = $('arcBase'), arcTrail = $('arcTrail'), arcPlane = $('arcPlane');
+const arcLen = arcBase.getTotalLength();
+function placeArc(p) {
+  const L = arcLen * p;
+  arcTrail.setAttribute('stroke-dasharray', `${L} ${arcLen}`);
+  const a = arcBase.getPointAtLength(clamp(L, 0, arcLen));
+  const b = arcBase.getPointAtLength(clamp(L + 1, 0, arcLen)), c = arcBase.getPointAtLength(clamp(L - 1, 0, arcLen));
+  arcPlane.setAttribute('transform', `translate(${a.x} ${a.y}) rotate(${Math.atan2(b.y - c.y, b.x - c.x) * 180 / Math.PI + 90})`);
+}
+function faceState(m) {
+  if (m >= LAND) return {lead: `<span>Landed</span> ${hhmm(LAND)}`, detail: `Flight time ${dur(LAND - TAKEOFF)} · Delhi`, phase: 'Landed'};
+  if (m >= TAKEOFF) return {lead: `<span>Lands in</span> ~${dur(LAND - m)}`, detail: `Took off ${hhmm(TAKEOFF)} · ${TAKEOFF - SCHED_DEP} min after schedule`,
+    phase: m < TOC ? 'Climbing' : m < TOD ? 'Cruising' : 'Descending'};
+  if (m >= SCHED_DEP) return m >= PUSH
+    ? {lead: 'Taxiing <span>to take off</span>', detail: `Scheduled ${hhmm(SCHED_DEP)}`, phase: 'Taxiing'}
+    : {lead: '<span>Still at</span> the gate', detail: `Scheduled ${hhmm(SCHED_DEP)} · ${Math.floor(m - SCHED_DEP)} min past`, phase: 'At the gate'};
+  return {lead: `<span>Departs in</span> ${dur(SCHED_DEP - m)}`, detail: `Gate ${gate} · Boarding ${hhmm(BOARD)}`, phase: m >= MATCH ? 'Aircraft at the gate' : 'Morning of'};
+}
+
+// ── Status sheet ──────────────────────────────────────────────────────────
+const late = TAKEOFF - SCHED_DEP;
+function sheet(m) {
+  const kmLeft = ROUTE_KM * (1 - progress(m));
+  let hl, hs;
+  if (m >= LAND) { hl = `Landed <em class="green">${hhmm(LAND)}</em>`; hs = `On the ground in Delhi after ${dur(LAND - TAKEOFF)} in the air.`; }
+  else if (m >= TAKEOFF) {
+    hl = `Landing in <em class="blue">~${dur(LAND - m)}</em>`;
+    const doing = m < TOC ? `Climbing through ${num(Math.round(altitude(m) / 1000) * 1000)} ft` : m < TOD ? `Cruising at ${num(CRUISE)} ft` : 'Descending into Delhi';
+    hs = `Took off ${late} min late. ${doing}, ${num(kmLeft)}&nbsp;km to go.`;
+  } else if (m >= PUSH) { hl = `Taxiing for <em class="amber">${dur(m - PUSH)}</em>`; hs = `Pushed back at ${hhmm(PUSH)}, ${PUSH - SCHED_DEP} min after the scheduled departure.`; }
+  else if (m >= SCHED_DEP) { hl = `<em class="amber">${dur(m - SCHED_DEP)}</em> past departure`; hs = 'VT-IPZ has not moved from the gate yet.'; }
+  else if (m >= MATCH) { hl = `Departs in <em>${dur(SCHED_DEP - m)}</em>`; hs = `Your aircraft, VT-IPZ, is at Bengaluru. Boarding ${m < BOARD ? 'starts' : 'started'} ${hhmm(BOARD)} at Gate ${gate}.`; }
+  else { hl = `Departs in <em>${dur(SCHED_DEP - m)}</em>`; hs = `Boarding starts ${hhmm(BOARD)} at Gate ${gate}, as printed on your pass. Live tracking begins once your aircraft is found.`; }
+  setText($('hl'), hl); setText($('hs'), hs);
+
+  if (m >= TAKEOFF) {
+    setText($('depTime'), `<span class="amber">${hhmm(TAKEOFF)}</span><s>${hhmm(SCHED_DEP)}</s>`);
+    setText($('depSub'), `<b class="amber">${late} min late</b> · Took off`);
+  } else {
+    setText($('depTime'), hhmm(SCHED_DEP));
+    setText($('depSub'), m >= SCHED_DEP ? `Scheduled · <b class="amber">${dur(m - SCHED_DEP)} ago</b>` : `Scheduled · Departs in ${dur(SCHED_DEP - m)}`);
+  }
+  if (m >= LAND) { setText($('arrTime'), `<span class="green">${hhmm(LAND)}</span>`); setText($('arrSub'), `<b class="green">Landed</b> · Due ${hhmm(SCHED_ARR)}`); }
+  else if (m >= TAKEOFF) { setText($('arrTime'), `<span class="blue">${hhmm(LAND)}</span>`); setText($('arrSub'), `<b class="blue">Estimated landing</b> · Due ${hhmm(SCHED_ARR)}`); }
+  else { setText($('arrTime'), hhmm(SCHED_ARR)); setText($('arrSub'), `Scheduled · Arrives in ${dur(SCHED_ARR - m)}`); }
+  setText($('gateChip'), `<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l6-6M4.5 3H9v4.5"/></svg>${gate}`);
+  $('gateChip').classList.toggle('changed', gateChanged);
+  setText($('mid'), m >= LAND ? `${dur(LAND - TAKEOFF)} in the air · 1,708 km` : m >= TAKEOFF ? `${dur(m - TAKEOFF)} flown · ${num(kmLeft)} km left` : '2h 50m scheduled · 1,708 km');
+}
+
+// ── Aircraft card ─────────────────────────────────────────────────────────
+const PHOTO = 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/IndiGo_VT-IJB_A320neo_Mumbai_Apr22_R16_05934.jpg/960px-IndiGo_VT-IJB_A320neo_Mumbai_Apr22_R16_05934.jpg';
+function aircraft(m) {
+  const known = m >= MATCH;
+  setText($('acWhen'), known ? `Found ${hhmm(MATCH)}` : '');
+  $('ac').classList.toggle('empty', !known);
+  setText($('ac'), known
+    ? `<img src="${PHOTO}" alt="IndiGo Airbus A320neo"><div class="txt"><div class="name">Airbus A320neo <span>· VT-IPZ</span></div>
+       <div class="meta">IndiGo · seen by ADS-B receivers at Bengaluru</div><div class="credit">Pictured: VT-IJB, same type and livery. Photo T. A. Gonsalves, CC BY-SA 4.0</div></div>`
+    : `<div class="txt"><div class="name">Assigned on the day</div><div class="meta">Docket looks for the aircraft flying 6E 2134 from 30 minutes before departure, then shows it here.</div></div>`);
+  setText($('dType'), known ? 'Airbus A320neo' : 'Assigned on the day');
+  setText($('dReg'), known ? 'VT-IPZ' : 'Not yet known');
+  $('dPhoto').hidden = !known; $('dCredit').hidden = !known; setText($('dGate'), gate);
+}
+
+// ── Updates timeline ──────────────────────────────────────────────────────
+const ICON = {
+  found: '<circle cx="8" cy="8" r="2.6"/><path d="M8 1.5v2.5M8 12v2.5M1.5 8H4M12 8h2.5"/>',
+  off: '<path d="M2 13.5h12M2.5 9.5l9.5-5.2 1.7.6-8.2 6.3-2.6.3z"/>',
+  cruise: '<path d="M2 8h11M9.5 4.5 13 8l-3.5 3.5"/>',
+  down: '<path d="M3 4.5l9 6.5M8 11h4V7"/>',
+  land: '<path d="M2 13.5h12M2.5 5.5l9.4 4.6.9 1.7-8.4-1.3-2.4-3.1z"/>',
+  gate: '<path d="M4.5 14V2.5h7V14M2.5 14h11M9.2 8.3h.01"/>',
+};
+const EVENTS = [
+  {key: 'found', at: MATCH, c: 'var(--blue)', icon: 'found', t: 'Aircraft found', s: 'VT-IPZ, an Airbus A320neo, at Bengaluru'},
+  {key: 'off', at: TAKEOFF, c: 'var(--amber)', icon: 'off', t: 'Took off from Bengaluru', s: `${late} min after the scheduled ${hhmm(SCHED_DEP)}`},
+  {key: 'cruise', at: TOC, c: 'var(--muted)', icon: 'cruise', t: 'Reached 36,000 ft', s: 'Cruising at 452 kt'},
+  {key: 'down', at: TOD, c: 'var(--muted)', icon: 'down', t: 'Started descent', s: 'About 30 min from Delhi'},
+  {key: 'land', at: LAND, c: 'var(--green)', icon: 'land', t: 'Landed in Delhi', s: `After ${dur(LAND - TAKEOFF)} in the air`},
+];
+const seen = new Set(); let lastSig = null;
+function feed(m) {
+  const evs = EVENTS.filter(e => e.at <= m).sort((a, b) => b.at - a.at);
+  const sig = evs.map(e => e.key).join();
+  if (sig === lastSig) return;
+  const grew = lastSig !== null && sig.length > lastSig.length; lastSig = sig;
+  setText($('feedCount'), evs.length ? `${evs.length}` : '');
+  if (!evs.length) { $('feed').innerHTML = '<div class="tl-empty">Nothing yet. Take-off, cruise and landing appear here as the aircraft reports them.</div>'; $('feed')._v = null; seen.clear(); return; }
+  $('feed').innerHTML = evs.map(e => `<div class="tl${grew && !seen.has(e.key) && !reduce ? ' enter' : ''}" style="--c:${e.c}">
+    <div class="tl-ico"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICON[e.icon]}</svg></div>
+    <div><div class="tl-t">${e.t}</div><div class="tl-s">${e.s}</div></div><div class="tl-time">${hhmm(e.at)}</div></div>`).join('');
+  $('feed')._v = null;
+  seen.clear(); evs.forEach(e => seen.add(e.key));
+}
+
+// ── Map ───────────────────────────────────────────────────────────────────
+const canvas = $('map'), ctx = canvas.getContext('2d');
+const MW = 361, MH = 330;
+let scale = 1, DPR = 1;
+function sizeMap() {
+  const w = canvas.parentElement.clientWidth; scale = w / MW; DPR = Math.min(2, devicePixelRatio || 1);
+  canvas.width = w * DPR; canvas.height = MH * scale * DPR; canvas.style.height = MH * scale + 'px';
+}
+new ResizeObserver(sizeMap).observe(canvas.parentElement);
+const DOTS = [];
+for (const [j, i0, i1] of LAND_DOTS.runs) for (let i = i0; i <= i1; i++) {
+  const x = LAND_DOTS.S / 2 + i * LAND_DOTS.S, y = LAND_DOTS.S / 2 + j * LAND_DOTS.S;
+  DOTS.push({x, y, lon: LAND_DOTS.LON0 + x / LAND_DOTS.sx, lat: LAND_DOTS.LAT1 - y / LAND_DOTS.sy});
+}
+const P = (lon, lat) => ({x: (lon - LAND_DOTS.LON0) * LAND_DOTS.sx, y: (LAND_DOTS.LAT1 - lat) * LAND_DOTS.sy});
+const A = P(BLR.lon, BLR.lat), B = P(DEL.lon, DEL.lat);
+const C = {x: (A.x + B.x) / 2 - 42, y: (A.y + B.y) / 2};   // bow the route west, the way great circles read on a flat map
+const q = t => ({x: (1 - t) ** 2 * A.x + 2 * (1 - t) * t * C.x + t * t * B.x, y: (1 - t) ** 2 * A.y + 2 * (1 - t) * t * C.y + t * t * B.y});
+const PLANE = new Path2D('M6 .4 7 4.4l4.6 2.5v1.1L7 6.8l-.2 3.2 1.5 1.1v.7L6 11.2l-2.3.6v-.7l1.5-1.1L5 6.8.4 8V6.9L5 4.4z');
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const hex = h => h[0] === '#' ? [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)) : h.match(/\d+/g).map(Number);
+const mix = (a, b, t) => { const x = hex(a), y = hex(b); return `rgb(${x.map((v, i) => Math.round(lerp(v, y[i], t))).join()})`; };
+
+function label(text, x, y, ink, bg) {
+  ctx.font = '600 11px Geist, system-ui'; const w = ctx.measureText(text).width + 12;
+  ctx.fillStyle = bg; ctx.beginPath(); ctx.roundRect(x, y - 10, w, 20, 6); ctx.fill();
+  ctx.fillStyle = ink; ctx.fillText(text, x + 6, y + 4);
+}
+function drawMap(m, t) {
+  const w = canvas.width / DPR, h = canvas.height / DPR; if (!w) return;
+  const col = {map: css('--map'), day: css('--dotDay'), night: css('--dotNight'), dusk: css('--dotDusk'), blue: css('--blue'),
+               on: css('--onMap'), card: css('--card'), muted: css('--muted')};
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = col.map; ctx.fillRect(0, 0, w, h);
+  ctx.scale(scale, scale);
+  // Land, lit by the real sun
+  const utc = m - IST;
+  for (const d of DOTS) {
+    const e = solarElevation(d.lat, d.lon, utc);
+    const day = clamp((e + 6) / 10, 0, 1), dusk = clamp(1 - Math.abs(e + 1) / 5, 0, 1);
+    ctx.fillStyle = dusk > .05 ? mix(mix(col.night, col.day, day), col.dusk, dusk * .75) : mix(col.night, col.day, day);
+    ctx.beginPath(); ctx.arc(d.x, d.y, 1.35, 0, 7); ctx.fill();
+  }
+  // Route: ahead dashed, flown solid
+  const p = progress(m), N = 80;
+  ctx.lineCap = 'round';
+  ctx.setLineDash([1, 5]); ctx.strokeStyle = col.muted; ctx.lineWidth = 1.6; ctx.beginPath();
+  for (let i = Math.floor(p * N); i <= N; i++) { const s = q(i / N); i === Math.floor(p * N) ? ctx.moveTo(s.x, s.y) : ctx.lineTo(s.x, s.y); } ctx.stroke();
+  ctx.setLineDash([]);
+  if (p > 0) {
+    ctx.strokeStyle = col.blue; ctx.lineWidth = 2.6; ctx.beginPath();
+    for (let i = 0; i <= N; i++) { const tt = Math.min(i / N, p), s = q(tt); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); if (tt === p) break; } ctx.stroke();
+  }
+  // Airports
+  for (const [pt, code] of [[A, 'BLR'], [B, 'DEL']]) {
+    ctx.fillStyle = col.card; ctx.beginPath(); ctx.arc(pt.x, pt.y, 4.5, 0, 7); ctx.fill();
+    ctx.strokeStyle = col.on; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(pt.x, pt.y, 4.5, 0, 7); ctx.stroke();
+    label(code, pt.x + 10, pt.y, col.on, col.card);
+  }
+  // Aircraft, once found
+  if (m >= MATCH) {
+    const s = q(p), s2 = q(Math.min(1, p + .01)), s1 = q(Math.max(0, p - .01));
+    const ang = m < TAKEOFF ? Math.atan2(C.y - A.y, C.x - A.x) : m >= LAND ? Math.atan2(B.y - C.y, B.x - C.x) : Math.atan2(s2.y - s1.y, s2.x - s1.x);
+    const live = m < LAND + 30;
+    if (live && !reduce) {
+      const r = 10 + ((t % 2000) / 2000) * 16, a = 1 - (t % 2000) / 2000;
+      ctx.fillStyle = `color-mix(in srgb, ${col.blue} ${Math.round(a * 30)}%, transparent)`;
+      ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, 7); ctx.fill();
+    }
+    ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(ang + Math.PI / 2); ctx.scale(1.9, 1.9); ctx.translate(-6, -6);
+    ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
+    ctx.fillStyle = col.blue; ctx.fill(PLANE);
+    ctx.shadowColor = 'transparent'; ctx.strokeStyle = col.card; ctx.lineWidth = .8; ctx.stroke(PLANE);
+    ctx.restore();
+  }
+}
+function chips(m) {
+  const I = {alt: '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 12V2M3.5 5.5 7 2l3.5 3.5"/></svg>',
+             spd: '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2.5 10a4.5 4.5 0 1 1 9 0M7 10l2.5-3"/></svg>'};
+  let html;
+  if (m < MATCH) html = `<span class="mchip">Tracking from ${hhmm(MATCH)}</span>`;
+  else if (m > LAND + 30) html = `<span class="mchip">Tracking ended</span>`;
+  else {
+    html = `<span class="mchip"><span class="ldot"></span>Live</span>`;
+    if (m >= PUSH) html += `<span class="mchip">${I.spd}${num(groundSpeed(m))}<span class="unit">kt</span></span>`;
+    if (m >= TAKEOFF && m < LAND) html += `<span class="mchip">${I.alt}${num(Math.round(altitude(m) / 100) * 100)}<span class="unit">ft</span></span>`;
+  }
+  setText($('mapchips'), html);
+}
+
+// ── Moments ───────────────────────────────────────────────────────────────
+function moment(text) {
+  const box = $('moments');
+  if (box.firstChild && box.firstChild.textContent.startsWith('Scrub')) box.innerHTML = '';
+  const d = document.createElement('div'); d.textContent = text; box.prepend(d);
+  while (box.children.length > 5) box.lastChild.remove();
+}
+
+// ── Frame ─────────────────────────────────────────────────────────────────
+const pinned = /t=([\d.]+)/.exec(location.hash) || /PIN_T=([\d.]+)/.exec(document.documentElement.dataset.pin || '');
+let m = pinned ? +pinned[1] : START, playing = !reduce && !pinned, speed = 300, last = performance.now(), prevM = m;
+const scrub = $('scrub');
+function update(t) {
+  const st = faceState(m);
+  setText($('stLead'), st.lead); setText($('stDetail'), st.detail);
+  setText($('phase'), st.phase); setText($('clockNow'), hhmm(m));
+  placeArc(progress(m));
+  setText($('depT'), m >= TAKEOFF ? `<span class="struck">${hhmm(SCHED_DEP)}</span><span>${hhmm(TAKEOFF)}</span>` : `<span>${hhmm(SCHED_DEP)}</span>`);
+  setText($('arrNote'), m >= LAND ? `Landed ${hhmm(LAND)} · T1` : m >= TAKEOFF ? `est. ${hhmm(LAND)} · T1` : 'Terminal 1');
+  sheet(m); aircraft(m); feed(m); chips(m);
+
+  const p = progress(m);
+  $('lkFill').style.width = (p * 100) + '%'; $('lkPlane').style.left = (p * 100) + '%';
+  setText($('lkBig'), st.lead);
+  setText($('lkRight'), m >= TAKEOFF ? (m >= LAND ? 'Landed' : `${num(Math.round(altitude(m) / 100) * 100)} ft`) : `Gate ${gate}`);
+  setText($('lkDep'), m >= TAKEOFF ? hhmm(TAKEOFF) : hhmm(SCHED_DEP));
+  setText($('lkArr'), m >= LAND ? hhmm(LAND) : m >= TAKEOFF ? '~' + hhmm(LAND) : hhmm(SCHED_ARR));
+  setText($('lkMid'), m >= TAKEOFF && m < LAND ? dur(LAND - m) + ' left' : '');
+
+  if (prevM < MATCH && m >= MATCH) moment(`${hhmm(MATCH)}  aircraft found · soft tick, plane appears on the map`);
+  if (prevM < TAKEOFF && m >= TAKEOFF) moment(`${hhmm(TAKEOFF)}  took off · light impact`);
+  if (prevM < LAND && m >= LAND) {
+    moment(`${hhmm(LAND)}  landed · success haptic + touchdown chime`);
+    const c = $('codeTo'); c.classList.remove('arrive'); void c.offsetWidth; c.classList.add('arrive');
+  }
+  $('destDot').setAttribute('fill', m >= LAND ? '#fff' : 'none');
+  prevM = m;
+  if (!$('updatesPane').hidden) drawMap(m, t);
+}
+function frame(t) {
+  const dt = Math.min(64, t - last); last = t;
+  if (playing) {
+    m += dt / 1000 * speed / 60;
+    if (m >= END) { m = END; playing = false; $('play').textContent = 'Replay'; }
+    scrub.value = m;
+  }
+  update(t);
+  requestAnimationFrame(frame);
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────
+$('play').textContent = playing ? 'Pause' : 'Play';
+$('play').onclick = () => { if (m >= END) { m = START; prevM = START; } playing = !playing; $('play').textContent = playing ? 'Pause' : 'Play'; };
+scrub.oninput = () => { m = +scrub.value; if (m < prevM) prevM = m; };
+document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => {
+  speed = +b.dataset.speed; document.querySelectorAll('[data-speed]').forEach(x => x.classList.toggle('sel', x === b));
+});
+document.querySelectorAll('[data-jump]').forEach(b => b.onclick = () => { m = +b.dataset.jump; prevM = m - .01; scrub.value = m; });
+$('gateBtn').onclick = () => {
+  const next = gate === '12' ? '17' : '12', from = gate; gate = next; gateChanged = next !== '12';
+  flapTo($('gate'), next);
+  EVENTS.push({key: 'gate' + Date.now(), at: m, c: 'var(--amber)', icon: 'gate', t: `Gate changed to ${next}`, s: `Was ${from}. Needs an airline source; ADS-B cannot see gates.`});
+  lastSig = ''; moment(`${hhmm(m)}  gate ${from} → ${next} · split-flap, warning haptic`);
+};
+const themes = ['auto', 'light', 'dark']; let ti = 0;
+$('themeBtn').onclick = () => {
+  ti = (ti + 1) % 3; const th = themes[ti];
+  if (th === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = th;
+  $('themeBtn').textContent = 'Theme: ' + th;
+};
+const tab = upd => { $('tabUpdates').classList.toggle('on', upd); $('tabDetails').classList.toggle('on', !upd);
+  $('updatesPane').hidden = !upd; $('detailsPane').hidden = upd; if (upd) sizeMap(); };
+$('tabDetails').onclick = () => tab(false); $('tabUpdates').onclick = () => tab(true);
+if (/details/.test(location.hash + (document.documentElement.dataset.pin || ''))) tab(false);
+
+scrub.value = m;
+sizeMap();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

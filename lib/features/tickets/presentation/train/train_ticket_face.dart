@@ -234,7 +234,8 @@ class TrainTicketFace extends StatelessWidget {
             if (dayOffset > 0)
               _Baselined(
                 baseline: TrainPassMetrics.dayMarkerBaseline,
-                left: TrainPassMetrics.contentRight +
+                left:
+                    TrainPassMetrics.contentRight +
                     TrainPassMetrics.dayMarkerGap,
                 child: Text(
                   '+$dayOffset',
@@ -425,17 +426,32 @@ String _code(String raw) => _orDash(raw.trim().toUpperCase());
 
 /// A parseable time in 24-hour form, else a dash. Free text ("To be
 /// announced") set at 50 dp would run straight off the card.
-String _faceTime(String raw, int? shiftMinutes) =>
-    parseTrainClock(raw) == null
+String _faceTime(String raw, int? shiftMinutes) => parseTrainClock(raw) == null
     ? _absent
     : trainClock24(raw, shiftMinutes: shiftMinutes ?? 0);
 
 const List<String> _weekdays = <String>[
-  'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun',
+  'Mon',
+  'Tue',
+  'Wed',
+  'Thu',
+  'Fri',
+  'Sat',
+  'Sun',
 ];
 const List<String> _months = <String>[
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 /// "16 Aug 2026" -> "Sun, 16 Aug". The year is noise on a live ticket; the
@@ -462,9 +478,10 @@ String _berths(MockTicket t) {
   if (t.passengers.length == 1) {
     final TicketPassenger p = t.passengers.first;
     return _orDash(
-      <String>[p.seat.trim(), p.berth.trim()]
-          .where((String s) => s.isNotEmpty && s != _absent)
-          .join(' '),
+      <String>[
+        p.seat.trim(),
+        p.berth.trim(),
+      ].where((String s) => s.isNotEmpty && s != _absent).join(' '),
     );
   }
   final List<String> seats = <String>[

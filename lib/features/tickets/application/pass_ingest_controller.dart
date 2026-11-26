@@ -3,10 +3,12 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/network_failure.dart';
 import '../domain/pass_catalog.dart';
 import '../domain/pass_ingest.dart';
 import '../domain/pnr_format.dart';
 import 'pass_ingest_service.dart';
+import 'pending_pass_queue.dart';
 
 const Duration kPassIngestMinimumVisibleDuration = Duration(milliseconds: 700);
 
@@ -147,9 +149,16 @@ class PassIngestController extends Notifier<PassIngestUiState> {
           kPassIngestMinimumVisibleDuration - visibleFor.elapsed;
       if (remaining > Duration.zero) await Future<void>.delayed(remaining);
       state = PassIngestSucceeded(request: request, item: item);
-    } on PassIngestException catch (error) {
-      state = PassIngestFailed(request: request, error: error);
-    } catch (_) {
+    } catch (error) {
+      // Unreachable server: keep the pass and send it once back online.
+      if (isNetworkFailure(error) && await _queue(request)) {
+        state = const PassIngestIdle();
+        return;
+      }
+      if (error is PassIngestException) {
+        state = PassIngestFailed(request: request, error: error);
+        return;
+      }
       state = PassIngestFailed(
         request: request,
         error: const PassIngestException(
@@ -157,6 +166,21 @@ class PassIngestController extends Notifier<PassIngestUiState> {
           'Could not add that pass.',
         ),
       );
+    }
+  }
+
+  Future<bool> _queue(PassIngestRequest request) async {
+    try {
+      final PendingPassQueue queue = ref.read(
+        pendingPassQueueProvider.notifier,
+      );
+      return switch (request) {
+        PnrPassIngestRequest(:final pnr) => await queue.enqueuePnr(pnr),
+        FilePassIngestRequest(:final path, :final category) =>
+          await queue.enqueueFile(path: path, category: category),
+      };
+    } catch (_) {
+      return false;
     }
   }
 }

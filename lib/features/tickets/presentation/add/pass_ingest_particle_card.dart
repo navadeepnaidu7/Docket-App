@@ -299,6 +299,7 @@ String _subjectFor(WalletPassItem item) {
     TrainPassItem(:final ticket) => ticket.trainName,
     MoviePassItem(:final pass) => pass.movieTitle,
     BusPassItem(:final pass) => pass.operator,
+    FlightPassItem(:final pass) => pass.airline,
   };
   return label.trim().isEmpty ? 'Your pass' : label.trim();
 }
@@ -308,6 +309,7 @@ String _addedTitle(WalletPassItem item) {
     PassKind.train => 'train ticket',
     PassKind.movie => 'movie ticket',
     PassKind.bus => 'bus ticket',
+    PassKind.flight => 'boarding pass',
   };
   return item.status == TicketStatus.expired
       ? 'Your $thing is in Archive'

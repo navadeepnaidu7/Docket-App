@@ -118,3 +118,6 @@ tool/train_ref.png
 # here on any golden mismatch; they are output, never source. Four of them were
 # committed by accident in #32.
 /test/failures/
+
+# Firebase client config (per developer)
+**/android/app/google-services.json

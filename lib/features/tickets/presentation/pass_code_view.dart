@@ -56,8 +56,7 @@ class PassCodeView extends StatelessWidget {
     return switch (code.format) {
       PassCodeFormat.qr ||
       PassCodeFormat.aztec ||
-      PassCodeFormat.dataMatrix =>
-        width,
+      PassCodeFormat.dataMatrix => width,
       PassCodeFormat.pdf417 => width * _pdf417Aspect,
       _ => width * _linearAspect,
     };
@@ -165,20 +164,20 @@ class PassCodeView extends StatelessWidget {
   /// Never guesses: every value here is one ML Kit can return, and QR is
   /// handled before this is reached.
   static bw.Barcode _symbologyFor(PassCodeFormat format) => switch (format) {
-        PassCodeFormat.qr => bw.Barcode.qrCode(),
-        PassCodeFormat.aztec => bw.Barcode.aztec(),
-        PassCodeFormat.dataMatrix => bw.Barcode.dataMatrix(),
-        PassCodeFormat.pdf417 => bw.Barcode.pdf417(),
-        PassCodeFormat.code128 => bw.Barcode.code128(),
-        PassCodeFormat.code39 => bw.Barcode.code39(),
-        PassCodeFormat.code93 => bw.Barcode.code93(),
-        PassCodeFormat.codabar => bw.Barcode.codabar(),
-        PassCodeFormat.ean13 => bw.Barcode.ean13(),
-        PassCodeFormat.ean8 => bw.Barcode.ean8(),
-        PassCodeFormat.itf => bw.Barcode.itf(),
-        PassCodeFormat.upcA => bw.Barcode.upcA(),
-        PassCodeFormat.upcE => bw.Barcode.upcE(),
-      };
+    PassCodeFormat.qr => bw.Barcode.qrCode(),
+    PassCodeFormat.aztec => bw.Barcode.aztec(),
+    PassCodeFormat.dataMatrix => bw.Barcode.dataMatrix(),
+    PassCodeFormat.pdf417 => bw.Barcode.pdf417(),
+    PassCodeFormat.code128 => bw.Barcode.code128(),
+    PassCodeFormat.code39 => bw.Barcode.code39(),
+    PassCodeFormat.code93 => bw.Barcode.code93(),
+    PassCodeFormat.codabar => bw.Barcode.codabar(),
+    PassCodeFormat.ean13 => bw.Barcode.ean13(),
+    PassCodeFormat.ean8 => bw.Barcode.ean8(),
+    PassCodeFormat.itf => bw.Barcode.itf(),
+    PassCodeFormat.upcA => bw.Barcode.upcA(),
+    PassCodeFormat.upcE => bw.Barcode.upcE(),
+  };
 }
 
 /// A pass code on the white plate a scanner expects, or an honest empty state.
@@ -229,8 +228,9 @@ class PassCodePlate extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: (shadowColor ?? Colors.black)
-                .withValues(alpha: isDark ? 0.35 : 0.10),
+            color: (shadowColor ?? Colors.black).withValues(
+              alpha: isDark ? 0.35 : 0.10,
+            ),
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),

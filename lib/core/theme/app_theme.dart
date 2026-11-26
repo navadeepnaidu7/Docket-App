@@ -483,13 +483,15 @@ class AppTokens {
         : Colors.white.withValues(alpha: 0.72);
   }
 
-  static Color sheetBackground(ColorScheme scheme) {
-    final bool dark = _isDark(scheme);
-    final Color base = AppTheme.elevated(
-      dark ? Brightness.dark : Brightness.light,
-    );
-    return base.withValues(alpha: dark ? 0.92 : 0.94);
-  }
+  /// Fill for sheets and the Home menu. Opaque, with no blur behind it.
+  ///
+  /// These surfaces used to be 92-94% opaque over a sigma-24 backdrop blur, so
+  /// the blur showed through at 6-8% -- barely visible -- while re-blurring the
+  /// screen behind the sheet on every frame it moved or resized. On a 120Hz
+  /// phone that made the add menu's steps rasterise at ~12ms a frame with
+  /// spikes past 100ms; without it, ~6ms.
+  static Color sheetBackground(ColorScheme scheme) =>
+      AppTheme.elevated(_isDark(scheme) ? Brightness.dark : Brightness.light);
 
   static Color sheetHandle(ColorScheme scheme) => _isDark(scheme)
       ? scheme.onSurface.withValues(alpha: 0.28)

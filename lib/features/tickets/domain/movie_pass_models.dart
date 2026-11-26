@@ -207,6 +207,7 @@ class MoviePass {
     this.posterUrl,
     this.posterAsset,
     this.logoUrl,
+    this.logoAsset,
     this.showAt,
   }) : assert(seats.length >= 1 && seats.length <= 10);
 
@@ -249,10 +250,10 @@ class MoviePass {
 
   /// The scannable code, or null when this pass has none.
   PassCode? get passCode => PassCode.parse(
-        payload: codePayload,
-        payloadBase64: codePayloadBase64,
-        format: codeFormat,
-      );
+    payload: codePayload,
+    payloadBase64: codePayloadBase64,
+    format: codeFormat,
+  );
 
   /// Network poster URL from API (preferred).
   final String? posterUrl;
@@ -267,6 +268,9 @@ class MoviePass {
   /// full poster. Absent means glance falls back to the poster crop / gradient.
   /// Not yet a server contract field — fixtures and future API may populate it.
   final String? logoUrl;
+
+  /// Bundled title treatment for demo fixtures; takes priority over [logoUrl].
+  final String? logoAsset;
 
   /// Preferred machine-readable show time (ISO-8601).
   final String? showAt;
@@ -328,6 +332,11 @@ class MoviePass {
     return (url == null || url.isEmpty) ? null : url;
   }
 
+  String? get resolvedLogoAsset {
+    final asset = logoAsset?.trim();
+    return asset == null || asset.isEmpty ? null : asset;
+  }
+
   factory MoviePass.fromJson(Map<String, dynamic> json) {
     final List<dynamic> seatsRaw = json['seats'] is List
         ? json['seats'] as List
@@ -375,6 +384,7 @@ class MoviePass {
       posterUrl: json['posterUrl']?.toString(),
       posterAsset: json['posterAsset']?.toString(),
       logoUrl: json['logoUrl']?.toString(),
+      logoAsset: json['logoAsset']?.toString(),
       showAt: json['showAt']?.toString(),
     );
   }
@@ -407,6 +417,7 @@ class MoviePass {
     if (posterUrl != null) 'posterUrl': posterUrl,
     if (posterAsset != null) 'posterAsset': posterAsset,
     if (logoUrl != null) 'logoUrl': logoUrl,
+    if (logoAsset != null) 'logoAsset': logoAsset,
     if (showAt != null) 'showAt': showAt,
   };
 }

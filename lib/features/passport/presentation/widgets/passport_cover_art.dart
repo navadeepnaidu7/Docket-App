@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -118,8 +120,8 @@ class PassportCoverArt extends StatelessWidget {
       PassportCoverCrop.wordmark => BorderRadius.circular(8),
     };
 
-    final Widget art = SvgPicture.asset(
-      assetFor(variant),
+    final Widget art = _RasterizedSvg(
+      asset: assetFor(variant),
       width: artWidth,
       height: artHeight,
     );
@@ -170,6 +172,112 @@ class PassportCoverArt extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// An SVG asset drawn as a bitmap, rendered once per pixel size and reused.
+///
+/// Each cover is ~100 KB of emblem path data. Drawn as vectors, every frame
+/// re-encodes all of it, and in the add menu the cover sits inside several
+/// fades at once -- the step's own, the tile row's reveal -- so a step change
+/// re-drew it several times a frame. On a 120Hz phone that made going back to
+/// the Documents step rasterise at 60-80ms a frame. As a bitmap it costs what
+/// any image costs. Until the bitmap is ready the vector draws in its place,
+/// and the two are pixel for pixel the same, so the swap is invisible.
+class _RasterizedSvg extends StatefulWidget {
+  const _RasterizedSvg({
+    required this.asset,
+    required this.width,
+    required this.height,
+  });
+
+  final String asset;
+  final double width;
+  final double height;
+
+  /// Bitmaps by asset and pixel size. A handful at most: two covers, at the
+  /// few sizes the add menu draws them.
+  static final Map<String, ui.Image> _images = <String, ui.Image>{};
+  static final Map<String, Future<ui.Image?>> _pending =
+      <String, Future<ui.Image?>>{};
+
+  static Future<ui.Image?> _render(String asset, int pw, int ph) async {
+    final PictureInfo info = await vg.loadPicture(SvgAssetLoader(asset), null);
+    try {
+      final ui.PictureRecorder recorder = ui.PictureRecorder();
+      Canvas(recorder)
+        ..scale(pw / info.size.width, ph / info.size.height)
+        ..drawPicture(info.picture);
+      final ui.Picture scaled = recorder.endRecording();
+      final ui.Image image = await scaled.toImage(pw, ph);
+      scaled.dispose();
+      return image;
+    } finally {
+      info.picture.dispose();
+    }
+  }
+
+  @override
+  State<_RasterizedSvg> createState() => _RasterizedSvgState();
+}
+
+class _RasterizedSvgState extends State<_RasterizedSvg> {
+  String? _key;
+  ui.Image? _image;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(_RasterizedSvg old) {
+    super.didUpdateWidget(old);
+    _resolve();
+  }
+
+  void _resolve() {
+    // Twice the device pixels, drawn down with mipmaps: the cover sits at
+    // fractional offsets and sizes, and a bitmap at exactly screen resolution
+    // would be resampled up and read softer than the vector it replaces.
+    final double scale = MediaQuery.devicePixelRatioOf(context) * 2;
+    final int pw = (widget.width * scale).round();
+    final int ph = (widget.height * scale).round();
+    final String key = '${widget.asset}@${pw}x$ph';
+    if (key == _key) return;
+    _key = key;
+    _image = _RasterizedSvg._images[key];
+    if (_image != null || pw <= 0 || ph <= 0) return;
+    _RasterizedSvg._pending
+        .putIfAbsent(key, () => _RasterizedSvg._render(widget.asset, pw, ph))
+        .then((ui.Image? image) {
+          _RasterizedSvg._pending.remove(key);
+          if (image == null) return;
+          _RasterizedSvg._images.putIfAbsent(key, () => image);
+          if (mounted && _key == key) {
+            setState(() => _image = _RasterizedSvg._images[key]);
+          }
+        }, onError: (Object _) => _RasterizedSvg._pending.remove(key));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ui.Image? image = _image;
+    if (image == null) {
+      return SvgPicture.asset(
+        widget.asset,
+        width: widget.width,
+        height: widget.height,
+      );
+    }
+    return RawImage(
+      image: image,
+      width: widget.width,
+      height: widget.height,
+      fit: BoxFit.fill,
+      filterQuality: FilterQuality.medium,
     );
   }
 }

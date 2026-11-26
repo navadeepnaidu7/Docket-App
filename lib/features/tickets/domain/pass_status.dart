@@ -52,13 +52,15 @@ enum TrainRunState {
 enum PassKind {
   train,
   movie,
-  bus;
+  bus,
+  flight;
 
   static PassKind fromJson(Object? raw) {
     final String s = raw?.toString().toLowerCase() ?? '';
     return switch (s) {
       'movie' || 'cinema' => PassKind.movie,
       'bus' => PassKind.bus,
+      'flight' || 'air' => PassKind.flight,
       _ => PassKind.train,
     };
   }

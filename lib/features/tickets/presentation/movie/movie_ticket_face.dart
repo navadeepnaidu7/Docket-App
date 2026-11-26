@@ -8,8 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/wallet/wallet_card_metrics.dart';
 import '../../domain/movie_pass_models.dart';
-import '../../domain/pass_code.dart';
-import '../pass_code_view.dart';
+import '../pass_code_row.dart';
 import 'movie_artwork_backdrop.dart';
 import 'movie_blended_poster.dart';
 import 'movie_brand_style.dart';
@@ -202,9 +201,9 @@ class _TicketBody extends StatelessWidget {
           children: <Widget>[
             Padding(
               padding: EdgeInsets.fromLTRB(
-                14 * scale,
+                MovieTicketMetrics.heroHorizontalPadding * scale,
                 (style.showTopHairline ? 14 : 12) * scale,
-                14 * scale,
+                MovieTicketMetrics.heroHorizontalPadding * scale,
                 0,
               ),
               child: _HeroBand(
@@ -312,7 +311,7 @@ class _TicketBody extends StatelessWidget {
                   // that opens an empty plate is worse than no affordance.
                   if (_detail && pass.passCode != null) ...<Widget>[
                     SizedBox(height: 16 * scale),
-                    _TicketCodes(
+                    PassCodeRow.embedded(
                       code: pass.passCode!,
                       accent: style.accent,
                       onTap: onOpenCodes,
@@ -413,95 +412,6 @@ class _TicketBody extends StatelessWidget {
 
 // ── Pieces ────────────────────────────────────────────────────────────────────
 
-/// The detail face's row for the pass's code: a real thumbnail plus the tap
-/// that opens it full screen.
-///
-/// Only built when the pass actually has a code — the call site omits it
-/// otherwise rather than offering a tap that leads to an empty plate. The
-/// thumbnail is the genuine symbol, small: it is an affordance, not something
-/// to scan from, and the full-screen view is one tap away.
-class _TicketCodes extends StatelessWidget {
-  const _TicketCodes({required this.code, required this.accent, this.onTap});
-
-  final PassCode code;
-  final Color accent;
-  final VoidCallback? onTap;
-
-  bool get _isQr => code.format == PassCodeFormat.qr;
-
-  /// Side of the white tile. Linear symbols get the same footprint so the row
-  /// keeps its height whatever the ticket carries.
-  static const double _tile = 88;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Text(
-                _isQr ? 'QR code' : 'Barcode',
-                style: GoogleFonts.inter(
-                  color: Colors.white.withValues(alpha: 0.50),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: <Widget>[
-                  Container(
-                    width: _tile,
-                    height: _tile,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: <BoxShadow>[
-                        BoxShadow(
-                          color: accent.withValues(alpha: 0.30),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: PassCodeView(code: code, width: _tile - 16),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      'Tap to open full screen for scanning',
-                      style: GoogleFonts.inter(
-                        color: Colors.white.withValues(alpha: 0.55),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: Colors.white.withValues(alpha: 0.45),
-                    size: 22,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _HeroBand extends StatelessWidget {
   const _HeroBand({
     super.key,
@@ -529,7 +439,9 @@ class _HeroBand extends StatelessWidget {
   Widget build(BuildContext context) {
     // Design probe: glance shows a transparent TMDB title logo on a dark plate when
     // logoUrl is present. Detail always uses the full one-sheet poster (or gradient).
-    final bool logoGlance = !detail && pass.resolvedLogoUrl != null;
+    final bool logoGlance =
+        !detail &&
+        (pass.resolvedLogoAsset != null || pass.resolvedLogoUrl != null);
     if (artworkBlend && detail) {
       return MovieBlendedPoster(pass: pass);
     }
@@ -593,7 +505,7 @@ class _HeroBand extends StatelessWidget {
 
   /// Glance-only: dark field + contained transparent logo.
   Widget _buildLogoGlanceArt() {
-    final String logoUrl = pass.resolvedLogoUrl!;
+    final String? logoAsset = pass.resolvedLogoAsset;
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
@@ -620,21 +532,34 @@ class _HeroBand extends StatelessWidget {
                 horizontal: constraints.maxWidth * 0.10,
                 vertical: constraints.maxHeight * 0.16,
               ),
-              child: CachedNetworkImage(
-                imageUrl: logoUrl,
-                fit: BoxFit.contain,
-                fadeInDuration: const Duration(milliseconds: 220),
-                memCacheWidth: _decodeWidth(context, constraints.maxWidth),
-                placeholder: (BuildContext context, String url) => artworkBlend
-                    ? const SizedBox.shrink()
-                    : const _PosterShimmer(),
-                errorWidget: (BuildContext context, String url, Object error) {
-                  // Logo miss → same path as a posterless glance (gradient only).
-                  return artworkBlend
-                      ? const SizedBox.shrink()
-                      : _buildGradientBackdrop();
-                },
-              ),
+              child: logoAsset != null
+                  ? Image.asset(
+                      logoAsset,
+                      fit: BoxFit.contain,
+                      cacheWidth: _decodeWidth(context, constraints.maxWidth),
+                      errorBuilder: (context, error, stack) =>
+                          const SizedBox.shrink(),
+                    )
+                  : CachedNetworkImage(
+                      imageUrl: pass.resolvedLogoUrl!,
+                      fit: BoxFit.contain,
+                      fadeInDuration: const Duration(milliseconds: 220),
+                      memCacheWidth: _decodeWidth(
+                        context,
+                        constraints.maxWidth,
+                      ),
+                      placeholder: (BuildContext context, String url) =>
+                          artworkBlend
+                          ? const SizedBox.shrink()
+                          : const _PosterShimmer(),
+                      errorWidget:
+                          (BuildContext context, String url, Object error) {
+                            // Logo miss → same path as a posterless glance (gradient only).
+                            return artworkBlend
+                                ? const SizedBox.shrink()
+                                : _buildGradientBackdrop();
+                          },
+                    ),
             );
           },
         ),

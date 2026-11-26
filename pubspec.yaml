@@ -39,6 +39,11 @@ dependencies:
   google_fonts: ^8.1.0
   flutter_svg: ^2.0.17
   shared_preferences: ^2.5.5
+  flutter_local_notifications: ^22.3.3
+  timezone: ^0.11.2
+  flutter_timezone: ^5.1.1
+  firebase_core: '>=5.1.0 <5.2.0'
+  firebase_messaging: '>=17.0.1 <17.1.0'
   path_provider: ^2.1.5
   cryptography: ^2.7.2
   # Held at 10.x on purpose. v11 removed the RSA_ECB_PKCS1Padding /
@@ -73,6 +78,9 @@ dependencies:
   # cache, so every cold start would re-download; the proxy serves posters as immutable,
   # which flutter_cache_manager honours indefinitely.
   cached_network_image: ^3.4.1
+  # Airline logos are SVG bytes, not images, so they go through the cache
+  # manager directly. Already pulled in by cached_network_image.
+  flutter_cache_manager: ^3.4.1
   # Wallet + extract client. Kept as a direct dependency so RemotePassRepository
   # can talk to docket_server without a heavier client stack.
   http: ^1.2.2
@@ -151,15 +159,16 @@ flutter:
     - assets/fonts/NotoSansDevanagari-OFL.txt
     - assets/fonts/Geist-OFL.txt
     - assets/fonts/InstrumentSerif-OFL.txt
-    - assets/branding/docket_logo.svg
-    - assets/branding/docket_logo_circle.svg
-    - assets/branding/docket_logo_square.svg
-    - assets/branding/docket_logo_squircle.svg
+    - assets/branding/docket_icon.png
+    - assets/branding/docket_mark.svg
     - assets/passes/bookmyshow.svg
     - assets/passes/bookmyshow-logo-vector.svg
     - assets/passes/zomato.svg
     - assets/passes/district-logo.svg
     - assets/passes/history_clock.svg
+    - assets/passes/fixtures/dune_part_three_logo.png
+    - assets/passes/fixtures/dune_part_three_poster.jpg
+    - assets/passes/fixtures/avengers_doomsday_poster.jpg
     # Lucide line icons (ISC) — see ATTRIBUTIONS.md. Directory entry: this set
     # grows as pass categories are added.
     - assets/passes/icons/

@@ -48,9 +48,9 @@ class _PassShareActionsState extends State<PassShareActions> {
     if (result.isOk || result.message == null) return;
     if (!mounted) return;
     HapticService.error();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(result.message!)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(result.message!)));
   }
 
   Future<void> _onSave() async {
@@ -59,8 +59,10 @@ class _PassShareActionsState extends State<PassShareActions> {
     _settle?.cancel();
     setState(() => _save = PassActionState.busy);
 
-    final PassShareResult result =
-        await PassShareService.saveToGallery(context, widget.item);
+    final PassShareResult result = await PassShareService.saveToGallery(
+      context,
+      widget.item,
+    );
     if (!mounted) return;
 
     if (result.isOk) {
@@ -79,8 +81,10 @@ class _PassShareActionsState extends State<PassShareActions> {
     HapticService.select();
     setState(() => _share = PassActionState.busy);
 
-    final PassShareResult result =
-        await PassShareService.share(context, widget.item);
+    final PassShareResult result = await PassShareService.share(
+      context,
+      widget.item,
+    );
     if (!mounted) return;
 
     // No "done" state for share: the OS sheet is its own confirmation, and a

@@ -1,6 +1,10 @@
 # Visual refresh — "indie Apple" direction
 
-Status: in progress (branch `visual-refresh`).
+Status: direction, partially shipped. The `visual-refresh` branch is merged into `master`
+(for example `f14517d`, and the neutral `#F4F4F2` / `#0B0B0C` page backgrounds in `AppTheme`).
+This is not proof every item below shipped; check `lib/core/theme/` and the screen's own
+source before extending it. Later `AGENTS.md` guidance (no blanket icon or font bans) takes
+precedence over the "fewer icons" item.
 
 ## Why
 

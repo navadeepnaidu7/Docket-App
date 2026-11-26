@@ -1,213 +1,84 @@
 # Weather glance
 
-Polish the existing pull-down sky without changing the wallet's visual language.
+The pull-down sky above the wallet: local weather, then the next upcoming pass.
 
-- Keep scene previews in Settings → Developer and ignore them in release builds.
-- Preserve finger tracking; stop settling motion on drag start, carry release velocity
-  into a critically damped spring, and avoid rebuilding the wallet on every drag frame.
-- Request foreground approximate location only after the user chooses local weather.
-  No background tracking or persisted coordinates. Refresh on reveal/resume with a
-  15-minute cache and keep recent data visibly marked when refresh fails.
-- Use the backend `/v1/weather` Open-Meteo proxy. The owner selected its free
-  non-commercial service; Railway `WEATHER_NON_COMMERCIAL=true` explicitly
-  enables it without a key. If commercial use begins, switch provider terms or
-  add a paid `WEATHER_API_KEY` on the server.
-- Return timestamps, timezone offset, day/night, temperature and WMO conditions.
-  Accept an optional UTC `at` for trip/event forecasts inside the 16-day horizon.
-  No destination guessing or forecasts outside the provider horizon.
-- Preserve interruptible scene blends, pause hidden sky tickers, add snow/fog, and
-  use provider daylight rather than assuming that night starts at 21:00 everywhere.
+Status: implemented; device gesture feel and iOS location still need hardware review.
+Owners: `DashboardScreen` (drag, spring, `_animateWeather`),
+`lib/features/dashboard/presentation/widgets/` (`easter_egg_constants.dart`,
+`easter_egg_drawer.dart`, `travel_weather_glance.dart`, `weather_soft_transition.dart`),
+`lib/features/weather/` (`weather_provider.dart`, `weather_glance_session.dart`,
+`local_weather_drawer.dart`), shader `assets/shaders/docket_sky.frag`. Backend:
+`GET /v1/weather` in `../docket_server`.
 
-Verification: Flutter analysis and meaningful widget/model/controller tests, rendered
-sky inspection, Go tests/race checks, live Railway readiness/configuration audit.
-Device gesture feel and iOS location require hardware follow-up.
+## Opening and closing
 
-The iOS host is intentionally gitignored in this Android-first repository.
-Its local Info.plist has the foreground usage description. After regenerating
-an iOS host, run `python tool/configure_weather_ios.py` before building.
+- **Manual only.** The glance opens when the user pulls the dashboard down. It does not
+  open by itself at launch: `WeatherGlanceSession.scheduleOpening()` still exists and is
+  tested, but `DashboardScreen` does not call it (calm-startup decision, 29 Oct 2026; see
+  `startup.md`). Re-enabling it is a product decision, not a bug fix.
+- The whole dashboard, navigation and Add included, translates as one full-size surface. It
+  never shrinks or reflows the wallet. One full-width clip; the sky paints only the exposed
+  height plus the corner allowance.
+- Panel rests at 176 logical px (`kEasterEggPanelHeight`), growing with text scale
+  (`weatherPanelHeight`). Opening needs 64 px of deliberate travel; slow releases commit past
+  56%; fling thresholds +650 / -550 px/s; an already-open glance has its own close threshold.
+- Overpull starts at finger speed and resists progressively (bounded at 0.28 of the panel).
+  Release velocity follows the derivative of that curve so the spring continues the visible
+  motion. Grabbing a settling sheet keeps its position. The spring is interruptible and
+  respects reduced motion.
+- The wallet sits behind a repaint boundary and its backdrop tickers pause during the
+  reveal. Wallet surface corner radius scales with screen width (32-48 px) and does not
+  change with pull progress.
 
+## Reading sequence (after a manual open)
 
-Verification (1 October 2026): 26 focused weather/scene tests passed, including
-shader frame inspection, interruptible transitions, reduced motion, permission
-states, latest-target request races, and 320/390px layouts at 1x/2x text.
-The broader full-suite run has 605 passes and two add-menu golden failures; weather
-checks pass. Flutter analysis has no errors/warnings and four existing info lints.
-Go full suite and go vet pass. Race instrumentation is unavailable because the
-Windows host has no usable C runtime toolchain. A debug APK builds with a temporary
-JDK; the globally configured Adoptium install is missing bin/java.exe.
+`WeatherGlanceSession.openedManually()` starts the reading time once refreshing finishes:
+weather for 3 s, then the nearest upcoming pass (`nextUpcomingPass`) for the rest of 7 s,
+then the wallet glides back. Touch pauses the timer; routes, dialogs, backgrounding and
+disposal cancel scheduled movement. Network waits do not consume reading time. With no
+eligible pass, weather stays for the whole period. Event copy describes pass times, never
+venue forecasts.
 
-The backend is deployed to staging and real current and trip forecast responses
-were smoke-tested. A paid weather key is unnecessary for the selected non-commercial
-use. Production still requires real Google auth setup. A physical handset was not connected; gesture feel and location prompts
-still need a device review before calling the feature production ready.
+Refresh frosts the exposed weather area with an 8 px blur (no label, no tint) that resolves
+over 760 ms; overlapping refreshes cannot clear the latest request's veil. The pass text
+replaces weather through a blur dissolve (heading first, detail ~60 ms later, 760 ms, 4 px
+travel) while the sky stays mounted and defocuses behind it. The opening pull also resolves
+the sky and summary from a haze that follows progress both ways; actions become available at
+95%. Blur covers weather material only, never the wallet, and is off at rest and under
+reduced motion.
 
+## Privacy and data
 
-Final motion handoff uses the derivative of the overpull rubber band so release
-velocity matches the visible sheet. Added a separate ordinary-rain scene; drizzle,
-rain, heavy rain, snow, fog and thunderstorms now have distinct rendering states.
-The APK manifest removes the geolocator plugin's unused foreground tracking-service
-permission; only approximate foreground location is requested for single fixes.
+- Foreground approximate location, requested only after the user chooses local weather.
+  No background tracking, no persisted coordinates. The manifest strips geolocator's
+  foreground-service permission.
+- 15-minute cache, refreshed on reveal/resume. Cached conditions stay visible during a
+  refresh; stale data is marked "Updated earlier" when refresh fails.
+- Provider: the backend's Open-Meteo proxy, free non-commercial tier (Railway
+  `WEATHER_NON_COMMERCIAL=true`, no key). If Docket ever goes commercial, change provider
+  terms or set a paid `WEATHER_API_KEY` server-side. Optional UTC `at` serves trip/event
+  forecasts inside the 16-day horizon; nothing outside it, no destination guessing.
+- Day/night comes from provider daylight, not a fixed 21:00. Attribution: Settings ->
+  About -> Weather credits, also registered in the licence registry.
 
-## Pull-down refinement — 1 October 2026
+## Rendering
 
-The Moto Edge 30 feedback came from a debug build; the Nothing Phone 3a had
-also felt uneven during general navigation. This change focuses on the sky reveal.
+Shader scenes: clear, partly/mostly cloudy, overcast, fog, snow, drizzle, rain, heavy rain,
+thunderstorm (localized branching lightning), plus an illustrative gibbous moon (phase is
+decorative, not astronomical). Scene changes blend over 800 ms and are interruptible; sky
+tickers pause when hidden; unused rain/snow loops are skipped. A shader load failure falls
+back to a gradient and is retried on a later reveal.
 
-- The complete dashboard, including navigation and Add, translates as one
-  full-size surface. It never shrinks or reflows the wallet to make room.
-- A single full-width clip replaces the scaled surface and corner shadow.
-  The sky paints only the exposed height plus the corner allowance.
-- Opening requires at least 64 logical pixels of deliberate travel. Slow
-  releases commit beyond 56% of the panel; an already-open glance has a separate
-  closing threshold. A rejected tiny flick cannot throw the sheet farther open.
-- Overpull starts at finger speed and progressively resists, with bounded
-  extra travel. Grabbing a settling overpull preserves its visible position.
-  Release velocity follows the derivative of the resistance curve.
-- The wallet stays behind a repaint boundary and its backdrop tickers pause
-  during the reveal. The spring remains interruptible and respects reduced motion.
-- The glance has 252px of space before large-text expansion. Sun and moon sit
-  below the actual status-bar inset. Sparse, broken and overcast cloud patterns
-  blend with the conditions; WMO 1 and 2 now have distinct visual coverage.
-- Night uses a shaded, textured illustrative gibbous moon and faint stars.
-  Its phase is decorative, not an astronomical measurement. Transient shader
-  load failures can be retried on a later reveal.
+## Testing aids
 
-Rendered clear/partial/overcast/night scenes and small/large-text summaries were
-reviewed. Physical frame times are unmeasured: no phone is connected. Use the
-profile APK to review gesture feel on the Moto, then the Nothing Phone 3a.
+Settings -> Developer -> Weather glance preview (debug/profile only; ignored in release):
+session-only scenes and "Movie in 4 hours" / "Train in 2 days" previews with a simulated
+900 ms refresh, no location or network.
 
-Final verification: all 30 focused weather/motion checks pass, including a
-regression that keeps wallet interaction tickers active while the sky is open.
-The isolated checkout's full analysis has no errors/warnings and four existing
-info lints. Its ARM64 profile APK builds successfully and is copied to
-`build/weather-polish/app-weather-profile.apk` (76,744,360 bytes).
+iOS: the host is gitignored in this Android-first repo. After regenerating it, run
+`python tool/configure_weather_ios.py` to restore the location usage description.
 
-The final package was built from `D:\dev\projects\docket_weather_app_release`,
-based on committed responsiveness revision `6b5240d`, with the weather files
-overlaid. An in-progress add-menu artwork change in the main workspace references
-images that do not yet exist and blocked its rebuild; that work was preserved.
+## Still unverified
 
-
-## Softer sky refinement
-
-Restore the previous five-octave soft cloud style and remove the forced opaque
-bank. Mostly cloudy and overcast retain different coverage without cut-out
-edges. Drizzle uses short, fine, sparse drops; rain varies drop length, depth,
-lane phase and speed; storm gusts and localized branching lightning add depth.
-Unused rain/snow fields skip their per-pixel loops. Existing moon, safe-area sun
-position, interruptible transitions and reduced-motion behavior stay covered.
-
-Remove the provider button and local-location caption from the reveal. Keep
-an "Updated earlier" notice for cached conditions. Settings > About > Weather
-credits provides attribution, provider and licence links; the same weather
-credit is registered in the app's licence registry.
-
-The wallet surface corner radius now scales with screen width from 32 to 48
-logical pixels (about 41 at 390px), instead of 24. This is a visual adaptive
-radius, not a reading of the phone's physical display radius. The sky extends
-48px below the reveal to cover the larger corner cutouts without a border.
-
-Verification: 31 weather/provider/motion/Settings checks pass, including
-rendered sky previews, interrupted transitions, localized lightning and
-reduced motion. Layouts cover 320/390px and 1x/2x text. The initial full suite
-reported 623 passes and four failures during concurrent add-menu work; a
-recheck clears Passes menu and pass removal, leaving the two existing
-Documents-menu golden mismatches. Device frame timing has not been measured.
-
-
-The final stale-data/accessibility layout checks also pass (four cases), and
-an arm64 profile APK builds successfully with the new sky, credits and pass
-menu artwork. Hardware smoothness still needs validation on Moto Edge 30 and
-Nothing Phone 3a.
-
-## Compact blur reveal — 5 October 2026
-
-The normal reveal now rests at 176 logical pixels, reduced from 252 (30% less
-space). Large-text expansion remains available, with tighter safe-area spacing.
-The local weather permission/loading view shows the greeting and weather action
-without the unrelated document-count row.
-
-The exposed sky and summary resolve from a gentle blur as the gesture opens.
-The blur follows pull progress in both directions and is fully disabled at rest;
-reduced motion also disables it. The filters only cover weather material and
-text. The wallet is not blurred and still translates with navigation as one
-unchanged, isolated layer. Sky filtering is clipped to the exposed region and
-corner allowance, avoiding a full-screen backdrop blur.
-
-Changed conditions use a brief blur/fade exchange (320ms in, 180ms out). Cached
-conditions remain clear while a request is loading: that status alone does not
-restart the transition. Outgoing content is excluded from accessibility and
-pointer interaction. Existing shader scene blending and provider caching remain
-in place; network delays do not hold the panel open or keep cached data blurred.
-
-Verification covers reversible blur pixel contrast, filtering disabled at rest,
-unchanged cached-refresh content, new-data swaps, outgoing controls, reduced
-motion, accessible layouts, gesture thresholds and the complete sky/provider
-checks. Preview frames use the actual translated wallet surface at 55%, 85% and
-full reveal. Permission/loading controls are checked with the bundled Inter font
-at 320/390px, 1x/2x text, and a 59px status inset. No APK generated; use local
-`flutter run` for device review.
-
-All 36 focused weather, provider, gesture, layout and transition checks pass.
-Static analysis of the changed weather files and tests reports no issues.
-Device frame timing remains to be checked during local testing.
-
-The opening transition now retains a visible haze until the last part of the
-pull, with the summary fading in alongside it. Previously, the blur resolved
-before most of the text cleared the wallet edge. Reversing the gesture restores
-the haze directly; fully open weather is clear and its actions become available
-at 95% progress. The refresh transition remains separate from this opening.
-All 30 reveal, transition, sky and layout checks pass after this adjustment;
-static analysis is clean. The 85% preview visibly retains blur and the full
-reveal is sharp. No APK generated.
-
-The wallet's top corner radius is now independent of pull progress. Its
-width-adaptive curve remains constant while opening, overpulling, closing and
-at rest, instead of flattening on the upward slide. Translation and navigation
-layout are unchanged. Seven focused reveal/transition checks pass, including
-the closing endpoint; static analysis is clean. No APK generated.
-
-## Automatic glance — 15 October 2026
-
-The dashboard schedules a glance once, one second after cold startup. Returning
-from another route, a picker, a dialog or the background never replays it. The existing spring moves the complete wallet and navigation down;
-manual pull-down and upward dismissal still use the same interruptible motion.
-Touch cancels a pending automatic reveal and pauses the reading timer. Covered
-routes, dialogs, backgrounding and disposal cancel scheduled movement.
-
-Refreshing silently frosts the complete exposed weather area with an 8px image
-blur. There is no loading label or tint: the live weather and its colors stay
-visible. The veil resolves over 760ms when the refresh finishes. Cached
-conditions remain behind it. The
-seven-second reading period starts when loading finishes, so network waits do
-not consume it. Overlapping refreshes cannot clear the latest request's veil.
-
-After three seconds, the weather copy dissolves into blur before the nearest
-upcoming pass appears. The heading resolves first and its detail follows about
-60ms later, using a 760ms reveal with only 4px of travel. The existing weather
-renderer stays mounted and running; its sky gradually defocuses to 8px behind
-the activity. There is no movie/train palette or replacement background. After
-seven seconds the
-wallet glides back up, retaining its curved corners. If no eligible pass exists,
-weather stays visible for the reading period. Permission/retry controls remain
-available when weather is unavailable; permission is never requested by the
-automatic reveal itself. Event messages describe pass times, not venue forecasts.
-
-For local testing: Settings → Developer → Weather glance preview → Movie in
-4 hours / Train in 2 days. Pull down manually to see the preview. These
-session-only debug previews simulate a 900ms refresh and show sample weather
-without location or network access; live mode uses the actual weather and passes.
-Release builds ignore preview overrides. No APK is generated; use `flutter run`.
-
-Verification: 72 focused checks pass across session timing, automatic/manual
-dashboard interaction, route/dialog/background handling, overlapping refreshes,
-reduced motion, provider behavior, pass selection, shader rendering, startup and
-320/390px layouts at 1x/2x text. The updated weather code and tests have clean
-static analysis. Rendered loading/movie/train previews are under
-`build/weather_flow_preview/`. Device frame timing still requires local testing.
-
-The focus refinement passes 53 transition, dashboard, layout, gesture and sky
-checks; static analysis is clean. Keyframes at 0/140/220/360/520/800ms are saved
-as `build/weather_flow_preview/focus_*.png`. They verify the continuous weather
-scene, silent loading, non-overlapping copy and staggered text reveal. No APK
-generated.
+Physical frame timing and gesture feel (Motorola Edge 30, Nothing Phone 3a, profile build),
+iOS location prompts. Go race checks have not run (no C toolchain on the Windows host).

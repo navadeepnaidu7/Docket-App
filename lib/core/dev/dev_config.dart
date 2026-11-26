@@ -28,10 +28,12 @@ abstract final class DevConfig {
 
   /// Web OAuth client ID. This is the ID token `aud` the server verifies
   /// against `GOOGLE_CLIENT_IDS`, and the `serverClientId` Google Sign-In
-  /// needs on Android. Not a secret — it ships in the app.
+  /// needs on Android. Not a secret — it ships in the app. The default is the
+  /// `docket-wallet` project's Web client; pass an empty define to opt out.
   static const String googleServerClientId = String.fromEnvironment(
     'GOOGLE_SERVER_CLIENT_ID',
-    defaultValue: '',
+    defaultValue:
+        '989074687571-a2kqvaguh7igfsjncs1avl2bfg8vpi7j.apps.googleusercontent.com',
   );
 
   /// iOS OAuth client ID, passed to Google Sign-In as `clientId`.

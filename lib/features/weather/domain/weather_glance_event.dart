@@ -22,6 +22,7 @@ class WeatherGlanceEvent {
       MoviePassItem() => 'Movie',
       TrainPassItem() => 'Train',
       BusPassItem() => 'Bus',
+      FlightPassItem() => 'Flight',
     };
     final remaining = start.difference(now);
     final String when;

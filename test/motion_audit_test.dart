@@ -173,7 +173,8 @@ void main() {
       await tester.pumpWidget(_backdrop());
       await _settleBackdropStart(tester);
       await tester.pump(const Duration(milliseconds: 100));
-      expect(tester.binding.hasScheduledFrame, isTrue);
+      // Progress, not a pending frame: the drift runs on a timer and asks for
+      // a frame only when it moves, so between steps none is scheduled.
       expect(_painterOf(tester).ambientProgress, greaterThan(0));
     });
 

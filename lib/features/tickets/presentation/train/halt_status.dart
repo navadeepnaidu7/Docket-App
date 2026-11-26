@@ -61,10 +61,7 @@ HaltStatus? resolveHaltStatus({
 
   switch (halt.state) {
     case HaltState.departed:
-      return const HaltStatus(
-        label: 'Departed',
-        tone: HaltStatusTone.neutral,
-      );
+      return const HaltStatus(label: 'Departed', tone: HaltStatusTone.neutral);
     case HaltState.arriving:
       // Once the journey is over nothing is arriving, whatever the halt says.
       if (completed) {
@@ -85,10 +82,7 @@ HaltStatus? resolveHaltStatus({
       }
       // Delayed run state with no magnitude means "running late, extent unknown"
       if (runState == TrainRunState.delayed && delayMinutes == null) {
-        return const HaltStatus(
-          label: 'Delayed',
-          tone: HaltStatusTone.warning,
-        );
+        return const HaltStatus(label: 'Delayed', tone: HaltStatusTone.warning);
       }
       if (runState == TrainRunState.onTime) {
         return const HaltStatus(

@@ -34,12 +34,12 @@ import '../../../core/wallet/wallet_backdrop_tilt.dart';
 import '../../../core/wallet/wallet_filter.dart';
 import '../../../core/wallet/wallet_items.dart';
 import '../../../core/dev/dev_flags_provider.dart';
-import '../application/auth_session_provider.dart';
+import '../../auth/application/auth_session_provider.dart';
 import '../application/search_button_provider.dart';
 import '../application/wallet_filter_provider.dart';
 import '../application/trash_provider.dart';
 import '../application/wallet_order_provider.dart';
-import '../application/wallet_loading_provider.dart';
+import '../../../core/wallet/wallet_loading_provider.dart';
 
 // Modular widgets imports
 import 'widgets/add_fab.dart';

@@ -20,7 +20,7 @@ class PassInfoCard extends StatelessWidget {
     required this.muted,
     required this.isDark,
     required this.rows,
-    this.labelWidth = 120,
+    this.stacked = false,
     this.valueColor,
   });
 
@@ -29,7 +29,11 @@ class PassInfoCard extends StatelessWidget {
   final Color muted;
   final bool isDark;
   final List<(String, String)> rows;
-  final double labelWidth;
+
+  /// Each row's label as the primary line with its value beneath, for rows
+  /// that name a person rather than a field. A name in the 120dp label column
+  /// wrapped, and widening the column on one card broke the shared value edge.
+  final bool stacked;
 
   /// Colour for one row's value, or null for [ink]. Keyed by the row itself
   /// because blank rows are dropped, so an index would drift.
@@ -50,23 +54,32 @@ class PassInfoCard extends StatelessWidget {
         ...shown.map(
           ((String, String) r) => Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                SizedBox(
-                  width: labelWidth,
-                  child: Text(r.$1, style: PassType.label(muted)),
-                ),
-                Expanded(
-                  child: Text(
-                    r.$2,
-                    style: PassType.value(valueColor?.call(r.$1, r.$2) ?? ink),
-                  ),
-                ),
-              ],
-            ),
+            child: stacked ? _stackedRow(r) : _row(r),
           ),
         ),
+      ],
+    );
+  }
+
+  Color _valueInk((String, String) r) => valueColor?.call(r.$1, r.$2) ?? ink;
+
+  Widget _row((String, String) r) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      SizedBox(width: 120, child: Text(r.$1, style: PassType.label(muted))),
+      Expanded(child: Text(r.$2, style: PassType.value(_valueInk(r)))),
+    ],
+  );
+
+  Widget _stackedRow((String, String) r) {
+    final Color value = _valueInk(r);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(r.$1, style: PassType.value(ink)),
+        const SizedBox(height: 3),
+        // Muted unless the row carries a status colour.
+        Text(r.$2, style: PassType.label(value == ink ? muted : value)),
       ],
     );
   }

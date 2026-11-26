@@ -1,6 +1,12 @@
 # ID document tools
 
-Status: implemented locally and core flows checked on Android, 29 October 2026.
+Status: implemented and merged; core flows checked on Android, 29 October 2026. Owners:
+`lib/features/ids/presentation/` (`id_document_screen.dart`, `id_image_editor.dart`,
+`id_incoming_imports.dart`, `id_redaction_screen.dart`, `id_share_screen.dart`),
+`lib/features/ids/application/id_share_service.dart`,
+`android/app/src/main/res/xml/id_file_paths.xml`. Storage and encryption rules for originals
+are in `id-media-attachments.md`; this file owns details, import, sharing and the temp-file
+lifecycle.
 
 User scope: implement the first three ID-wallet recommendations: usable document
 details, easier capture/import, and precise sharing. Preserve existing wallet card
@@ -45,8 +51,8 @@ faces, the tap-to-flip interaction, passes and other threads' working changes.
 
 ## Verification
 
-Respect the user's instruction not to run automated tests. Run focused static
-analysis and an Android build after source changes, then use the connected phone
+Run the affected ID, attachment, scanner and sharing tests, focused static
+analysis and an Android build after source changes, then use a connected phone
 if available for details, editing, import, PDF password, preview and sharing checks.
 Use synthetic documents for destructive and sharing checks. Record actual results
 and platform limitations here; do not infer runtime success from compilation.

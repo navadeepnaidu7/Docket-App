@@ -10,7 +10,7 @@ import '../../tickets/application/pass_list_provider.dart';
 import '../../tickets/domain/pass_catalog.dart';
 import '../../tickets/domain/pass_status.dart';
 import '../../tickets/presentation/open_pass.dart';
-import '../application/wallet_loading_provider.dart';
+import '../../../core/wallet/wallet_loading_provider.dart';
 import '../domain/wallet_search.dart';
 import 'widgets/wallet_row_tile.dart';
 
@@ -317,6 +317,7 @@ class _SearchRow extends StatelessWidget {
                           PassKind.train => Icons.train_outlined,
                           PassKind.movie => Icons.movie_outlined,
                           PassKind.bus => Icons.directions_bus_outlined,
+                          PassKind.flight => Icons.flight_outlined,
                         }, color: scheme.onSurface),
                       ),
                     const SizedBox(width: 14),

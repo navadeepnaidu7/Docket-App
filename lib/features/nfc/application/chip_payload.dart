@@ -1,5 +1,5 @@
 import '../../../core/validation/document_validators.dart';
-import '../../passport/presentation/flow/passport_prompt_flow.dart';
+import '../../passport/domain/passport_fields.dart';
 import 'bac_key_format.dart';
 
 /// Maps the Android NFC channel payload into prompt-flow field values.
@@ -72,11 +72,11 @@ abstract final class ChipPayload {
         PassportField.passportNumber: documentNumber,
       if (nationality.isNotEmpty) PassportField.nationality: nationality,
       if (gender.isNotEmpty) PassportField.gender: gender,
-      if (dob != null) PassportField.dateOfBirth: dob,
-      if (expiry != null) PassportField.expiryDate: expiry,
+      PassportField.dateOfBirth: ?dob,
+      PassportField.expiryDate: ?expiry,
       if (photo.isNotEmpty) 'photoBase64': photo,
       if (placeOfBirth.isNotEmpty) 'placeOfBirth': placeOfBirth,
-      if (issueDate != null) 'issueDate': issueDate,
+      'issueDate': ?issueDate,
       if (issuingAuthority.isNotEmpty) 'issuingAuthority': issuingAuthority,
       if (issuingState.isNotEmpty) 'issuingState': issuingState,
     };

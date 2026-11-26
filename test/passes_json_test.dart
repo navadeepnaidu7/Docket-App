@@ -117,13 +117,17 @@ void main() {
       }
     });
 
-    // The static poster JPEGs were removed with the TMDB switch.
-    test('no fixture references a bundled poster asset', () {
+    test('only the requested demo films pin matching bundled posters', () {
+      const bundled = {
+        'movie_bms_1': 'assets/passes/fixtures/dune_part_three_poster.jpg',
+        'movie_dist_doomsday':
+            'assets/passes/fixtures/avengers_doomsday_poster.jpg',
+      };
       for (final MoviePass m in mockMoviePasses) {
         expect(
           m.posterAsset,
-          isNull,
-          reason: '${m.movieTitle} still pins a local asset',
+          bundled[m.id],
+          reason: '${m.movieTitle} has the wrong bundled artwork',
         );
       }
     });
@@ -145,13 +149,18 @@ void main() {
     // The logo exists so the glance card has legible art, and only an active
     // pass renders a glance card. Archived fixtures carry a poster and no
     // logo on purpose — the detail face they open into uses the poster.
-    test('active fixtures use absolute TMDB CDN logo PNGs', () {
+    test('active fixtures have a bundled or TMDB title treatment', () {
       final Iterable<MoviePass> active = mockMoviePasses.where(
         (MoviePass m) => m.status == TicketStatus.active,
       );
       expect(active, isNotEmpty);
 
       for (final MoviePass m in active) {
+        if (m.resolvedLogoAsset != null) {
+          expect(m.resolvedLogoAsset, startsWith('assets/passes/fixtures/'));
+          expect(m.resolvedLogoAsset, endsWith('.png'));
+          continue;
+        }
         final String? url = m.resolvedLogoUrl;
         expect(url, isNotNull, reason: '${m.movieTitle} missing logo');
         expect(
@@ -166,6 +175,29 @@ void main() {
         );
       }
     });
+
+    test(
+      'requested demo films keep distinct artwork and District branding',
+      () {
+        final dune = mockMoviePasses.singleWhere((m) => m.id == 'movie_bms_1');
+        final avengers = mockMoviePasses.singleWhere(
+          (m) => m.id == 'movie_dist_doomsday',
+        );
+        expect(dune.movieTitle, 'Dune: Part Three');
+        expect(dune.resolvedPosterUrl, contains('4mTXkCtz75P4VjbaxRJzTVZkUxK'));
+        expect(dune.resolvedLogoAsset, isNotNull);
+        expect(MoviePass.fromJson(dune.toJson()).logoAsset, dune.logoAsset);
+        expect(avengers.movieTitle, 'Avengers: Doomsday');
+        expect(avengers.brand, MoviePassBrand.district);
+        expect(avengers.status, TicketStatus.active);
+        expect(avengers.passCode, isNull);
+        expect(avengers.showAt, isNotNull);
+        expect(
+          mockMoviePasses.map((m) => m.id).toSet().length,
+          mockMoviePasses.length,
+        );
+      },
+    );
 
     // Whatever the archive does about logos, every fixture needs a poster:
     // it is the only art the archive grid and the detail face have.
@@ -253,10 +285,7 @@ void main() {
       });
       expect(withCode.codePayload, 'RBQR8842119');
       expect(withCode.toJson()['codePayload'], 'RBQR8842119');
-      expect(
-        BusPass.fromJson(withCode.toJson()).codePayload,
-        'RBQR8842119',
-      );
+      expect(BusPass.fromJson(withCode.toJson()).codePayload, 'RBQR8842119');
 
       final BusPass without = BusPass.fromJson(<String, dynamic>{
         'id': 'bus-3',
@@ -340,8 +369,10 @@ void main() {
       final String id = mockTrainPasses.first.id;
       await repo.deletePass(id);
       expect(await repo.fetchPassById(id), isNull);
-      expect((await repo.fetchPasses()).map((WalletPassItem p) => p.id),
-          isNot(contains(id)));
+      expect(
+        (await repo.fetchPasses()).map((WalletPassItem p) => p.id),
+        isNot(contains(id)),
+      );
       await repo.deletePass(id);
       expect(await repo.fetchPassById('missing'), isNull);
     });

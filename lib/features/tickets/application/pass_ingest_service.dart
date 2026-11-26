@@ -111,9 +111,9 @@ class PassIngestService {
     // outcome for a ticket that carries no code, and for a first run where the
     // Play Services model has not downloaded yet; the upload proceeds either
     // way. See docs/features/ticket-code-extraction.md.
-    final ScannedTicketCode? code = await _ref
+    final List<ScannedTicketCode> codes = await _ref
         .read(ticketCodeScannerProvider)
-        .scan(file: file, mimeType: mime);
+        .scanAll(file: file, mimeType: mime);
 
     onPhase?.call(PassIngestPhase.submitting);
     try {
@@ -123,7 +123,8 @@ class PassIngestService {
             filename: filename.isEmpty ? 'ticket' : filename,
             mimeType: mime,
             categoryHint: category.hint,
-            code: code,
+            code: codes.isEmpty ? null : codes.first,
+            moreCodes: codes.skip(1).toList(growable: false),
             attachToPassId: attachToPassId,
           )
           .timeout(_ingestTimeout);

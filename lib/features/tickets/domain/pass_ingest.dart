@@ -4,15 +4,17 @@ import 'pass_status.dart';
 enum PassInputCategory {
   train,
   bus,
+  flight,
   movie;
 
   String get hint => name;
 
   PassKind get kind => switch (this) {
-        PassInputCategory.train => PassKind.train,
-        PassInputCategory.bus => PassKind.bus,
-        PassInputCategory.movie => PassKind.movie,
-      };
+    PassInputCategory.train => PassKind.train,
+    PassInputCategory.bus => PassKind.bus,
+    PassInputCategory.flight => PassKind.flight,
+    PassInputCategory.movie => PassKind.movie,
+  };
 }
 
 /// How the user is providing the ticket.

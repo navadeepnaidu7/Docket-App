@@ -1,0 +1,28 @@
+<!doctype html>
+<!--
+  Docket app icon (v5) master: the Android adaptive layers on a 108dp canvas,
+  sized to the viewport. Open with #bgonly, #fgonly or #all.
+  tool/generate_launcher_icons.py renders this with headless Chrome.
+  Design source: Doop canvas FwwKqVwjGy, component "Android Adaptive Icon".
+-->
+<html><head><meta charset="utf-8"><style>
+*{margin:0;box-sizing:border-box}
+html,body{background:transparent;width:100vw;height:100vw;overflow:hidden}
+.ad{position:relative;width:100vw;height:100vw;container-type:inline-size;--u:.6667cqw;
+--tile-top:#2F8CF0;--tile-mid:#5AB0FA;--tile-bot:#8FCDFF;--bloom-a:rgba(255,255,255,.2);--bloom-b:rgba(0,0,0,0);--bloom-c:rgba(140,220,255,.22);--glow:rgba(255,255,255,.28);
+--d-top:#FFFFFF;--d-mid:#F5F8FD;--d-bot:#DCE8F6;--rim-a:rgba(255,255,255,1);--rim-b:rgba(255,255,255,.35);--cast:rgba(15,79,160,.38);--cast2:rgba(15,79,160,.22);
+--well-top:#B9D3EC;--well-bot:#FFFFFF;--halo:rgba(255,180,60,.16);--lock-hi:#FFF1BF;--lock:#FFB43C;--lock-lo:#F06A1D;--lock-shadow:rgba(240,106,29,.45);--slot:#111113}
+.canvas,.bg,.fg{position:absolute;inset:0}
+.bg{background:radial-gradient(53.3% 24% at 50% 90%,var(--glow),transparent 75%),radial-gradient(46.7% 33.3% at 28.7% 16.7%,var(--bloom-a),transparent 72%),radial-gradient(46.7% 36.7% at 20.7% 82%,var(--bloom-b),transparent 70%),radial-gradient(40% 40% at 82% 53.3%,var(--bloom-c),transparent 70%),linear-gradient(180deg,var(--tile-top) 16.67%,var(--tile-mid) 53.3%,var(--tile-bot) 83.33%)}
+.dwrap{position:absolute;left:33.73%;top:31.78%;width:34.11%;height:36.46%;filter:drop-shadow(0 calc(3.2*var(--u)) calc(3.3*var(--u)) var(--cast)) drop-shadow(0 calc(.55*var(--u)) calc(.55*var(--u)) var(--cast2))}
+.d,.rim{position:absolute;inset:0;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='262 232 524 560'%3E%3Cpath d='M262 300C262 262 292 232 330 232H500C680 232 786 340 786 512C786 684 680 792 500 792H330C292 792 262 762 262 724Z'/%3E%3C/svg%3E") center/100% 100% no-repeat}
+.d{background:radial-gradient(120% 100% at 30% 8%,var(--d-top) 0%,var(--d-mid) 52%,var(--d-bot) 100%)}
+.rim{background:linear-gradient(170deg,var(--rim-a) 0%,var(--rim-b) 55%,var(--rim-a) 100%);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='262 232 524 560'%3E%3Cpath d='M262 300C262 262 292 232 330 232H500C680 232 786 340 786 512C786 684 680 792 500 792H330C292 792 262 762 262 724Z' fill='none' stroke='black' stroke-width='16'/%3E%3C/svg%3E") center/100% 100% no-repeat,url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='262 232 524 560'%3E%3Cpath d='M262 300C262 262 292 232 330 232H500C680 232 786 340 786 512C786 684 680 792 500 792H330C292 792 262 762 262 724Z'/%3E%3C/svg%3E") center/100% 100% no-repeat;-webkit-mask-composite:source-in}
+.halo{position:absolute;left:50%;top:42.71%;width:14.59%;height:14.59%;border-radius:50%;background:radial-gradient(circle closest-side,var(--halo) 30%,transparent 100%)}
+.well{position:absolute;left:52.61%;top:45.31%;width:9.37%;height:9.37%;border-radius:50%;background:linear-gradient(180deg,var(--well-top),var(--well-bot));box-shadow:inset 0 calc(.5*var(--u)) calc(.7*var(--u)) rgba(0,0,0,.12)}
+.cyl{position:absolute;left:53.52%;top:46.36%;width:7.55%;height:7.55%;border-radius:50%;background:radial-gradient(circle at 42% 36%,var(--lock-hi) 0%,var(--lock) 45%,var(--lock-lo) 100%);box-shadow:0 calc(.6*var(--u)) calc(.6*var(--u)) var(--lock-shadow)}
+.shine{position:absolute;left:54.3%;top:47.14%;width:5.99%;height:5.99%;border-radius:50%;border:calc(.68*var(--u)) solid transparent;border-top-color:rgba(255,255,255,.75);transform:rotate(-38deg)}
+.slot{position:absolute;left:56.78%;top:48.57%;width:1.04%;height:3.25%;border-radius:calc(1*var(--u));background:var(--slot);opacity:.62}
+body.bgonly .fg{display:none} body.fgonly .bg{display:none}
+</style></head><body><div class="ad"><div class="canvas"><div class="bg"></div><div class="fg"><div class="dwrap"><div class="d"></div><div class="rim"></div></div><div class="halo"></div><div class="well"></div><div class="cyl"></div><div class="shine"></div><div class="slot"></div></div></div></div>
+<script>document.body.className=(location.hash||'#all').slice(1)</script></body></html>

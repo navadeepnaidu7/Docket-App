@@ -17,6 +17,7 @@ import '../../../tickets/domain/pass_activity_date.dart';
 import '../../../tickets/domain/pass_catalog.dart';
 import '../../../tickets/domain/pass_display.dart';
 import '../../../tickets/presentation/bus/bus_pass_detail_screen.dart';
+import '../../../tickets/presentation/flight/flight_pass_detail_screen.dart';
 import '../../../tickets/presentation/movie_pass_detail_screen.dart';
 import '../../../tickets/presentation/ticket_detail_screen.dart';
 
@@ -276,6 +277,7 @@ class _UpNextSummaryState extends State<UpNextSummary> {
           TrainPassItem(:final ticket) => TicketDetailScreen(ticket: ticket),
           MoviePassItem(:final pass) => MoviePassDetailScreen(pass: pass),
           BusPassItem(:final pass) => BusPassDetailScreen(pass: pass),
+          FlightPassItem(:final pass) => FlightPassDetailScreen(pass: pass),
         },
       ),
     );
@@ -305,6 +307,11 @@ class _UpNextSummaryState extends State<UpNextSummary> {
             ? 'bus journey'
             : 'trip to ${pass.resolvedToCity}',
         '🚌',
+      ),
+      FlightPassItem(:final pass) => (
+        'You have a ',
+        'flight to ${pass.destination.displayCity}',
+        '✈️',
       ),
     };
     final days = DateTime.utc(
@@ -917,6 +924,7 @@ class _Summary {
 
     int trains = 0;
     int buses = 0;
+    int flights = 0;
     final Map<MoviePassBrand, int> movieBrands = <MoviePassBrand, int>{};
     final Map<SummaryApp, int> busApps = <SummaryApp, int>{};
     final Map<(int, int), int> months = <(int, int), int>{};
@@ -933,6 +941,8 @@ class _Summary {
               ? SummaryApp.redBus
               : SummaryApp.bus;
           busApps.update(app, (int c) => c + 1, ifAbsent: () => 1);
+        case FlightPassItem():
+          flights++;
       }
       final DateTime? d = PassActivityDate.of(item);
       if (d != null) {
@@ -972,6 +982,12 @@ class _Summary {
         _Piece.accent(_n(trains, 'train', 'trains'), cool),
         _Piece.words('with', _Tone.muted),
         _Piece.apps(const <SummaryApp>[SummaryApp.irctc]),
+      ]);
+    }
+    if (flights > 0) {
+      clauses.add(<_Piece>[
+        _Piece.words('flew', _Tone.muted),
+        _Piece.accent(_n(flights, 'flight', 'flights'), cool),
       ]);
     }
     if (buses > 0) {

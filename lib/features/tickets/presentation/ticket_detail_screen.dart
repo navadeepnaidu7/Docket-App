@@ -3,15 +3,18 @@ import 'package:flutter/material.dart';
 import '../../../core/haptics/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/wallet/wallet_card_metrics.dart';
-import '../../../shared/widgets/docket_button.dart';
 import '../../../shared/widgets/pill_segmented.dart';
 import '../domain/pass_catalog.dart';
 import '../domain/pnr_format.dart';
 import '../domain/ticket_models.dart';
 import '../domain/train_booking_state.dart';
-import 'pass_code_view.dart';
+import '../domain/pass_code.dart';
+import 'pass_code_row.dart';
+import 'pass_code_screen.dart';
+import 'train/train_ticket_code_screen.dart';
 import 'pass_info_card.dart';
-import 'pass_remove_flow.dart';
+import 'pass_detail_header.dart';
+import 'pass_detail_tab_content.dart';
 import 'pass_typography.dart';
 import 'share/pass_share_actions.dart';
 import 'train/halt_status.dart';
@@ -31,58 +34,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   int _tab = 0; // 0 Details, 1 Live status
 
   void _openCodes(BuildContext context, MockTicket t) {
-    HapticService.tap();
-    _showQrSheet(context, t);
-  }
-
-  void _showQrSheet(BuildContext context, MockTicket t) {
-    final ThemeData theme = Theme.of(context);
-    final Color ink = theme.colorScheme.onSurface;
-
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: theme.scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (BuildContext ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: ink.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text('Boarding code', style: PassType.screenTitle(ink)),
-                const SizedBox(height: 18),
-                PassCodePlate(
-                  code: t.passCode,
-                  width: 188,
-                  shadowColor: _kMint,
-                  emptyLabel:
-                      'This ticket has no scannable code. '
-                      'Show the PNR below at the counter.',
-                ),
-                const SizedBox(height: 16),
-                Text(t.pnr, style: PassType.code(ink)),
-                const SizedBox(height: 4),
-                Text(
-                  'PNR Number',
-                  style: PassType.label(ink.withValues(alpha: 0.5)),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    showPassCodeScreen(
+      context,
+      builder: (_) => TrainTicketCodeScreen(ticket: t),
     );
   }
 
@@ -102,28 +56,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
-              child: Row(
-                children: <Widget>[
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 24),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'E-Ticket',
-                      textAlign: TextAlign.center,
-                      style: PassType.screenTitle(ink),
-                    ),
-                  ),
-                  PassOverflowButton(
-                    item: TrainPassItem(t),
-                    copyLabel: 'Copy PNR',
-                    copyValue: t.pnr,
-                  ),
-                ],
-              ),
+            PassDetailHeader(
+              item: TrainPassItem(t),
+              title: 'E-Ticket',
+              copyLabel: 'Copy PNR',
+              copyValue: t.pnr,
             ),
             Expanded(
               child: ListView(
@@ -148,12 +85,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   // The face draws no code, so this is the way to it. Omitted
                   // entirely when there is none: a button that opens an empty
                   // plate is worse than no button.
-                  if (t.passCode != null) ...<Widget>[
+                  if (t.passCode case final PassCode code) ...<Widget>[
                     const SizedBox(height: 18),
-                    DocketButton(
-                      label: 'Show ticket code',
-                      expand: true,
-                      onPressed: () => _openCodes(context, t),
+                    PassCodeRow(
+                      code: code,
+                      onTap: () => _openCodes(context, t),
                     ),
                   ],
                   const SizedBox(height: 22),
@@ -172,37 +108,22 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   // The pill's thumb carries the motion; the content only
                   // cross-fades in place while the card height eases to fit.
                   // The old slide-up made both tabs drift through each other.
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 280),
-                    curve: Curves.easeOutCubic,
-                    alignment: Alignment.topCenter,
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 220),
-                      reverseDuration: const Duration(milliseconds: 120),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      layoutBuilder: (Widget? current, List<Widget> previous) {
-                        return Stack(
-                          alignment: Alignment.topCenter,
-                          children: <Widget>[...previous, ?current],
-                        );
-                      },
-                      child: _tab == 0
-                          ? _DetailsTab(
-                              key: const ValueKey<String>('details'),
-                              ticket: t,
-                              ink: ink,
-                              muted: muted,
-                              isDark: isDark,
-                            )
-                          : _LiveStatusTab(
-                              key: const ValueKey<String>('live'),
-                              ticket: t,
-                              ink: ink,
-                              muted: muted,
-                              isDark: isDark,
-                            ),
-                    ),
+                  PassDetailTabContent(
+                    child: _tab == 0
+                        ? _DetailsTab(
+                            key: const ValueKey<String>('details'),
+                            ticket: t,
+                            ink: ink,
+                            muted: muted,
+                            isDark: isDark,
+                          )
+                        : _LiveStatusTab(
+                            key: const ValueKey<String>('live'),
+                            ticket: t,
+                            ink: ink,
+                            muted: muted,
+                            isDark: isDark,
+                          ),
                   ),
                   const SizedBox(height: 24),
                   // Below the tab content, so it is the last thing on either
@@ -217,8 +138,6 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     );
   }
 }
-
-// ── Palette ───────────────────────────────────────────────────────────────────
 
 const Color _kMint = Color(0xFF1FBF75);
 
@@ -278,13 +197,14 @@ class _DetailsTab extends StatelessWidget {
         ),
         if (t.passengers.isNotEmpty) ...<Widget>[
           const SizedBox(height: 12),
-          // The default label width, the same as Journey and Booking, so every
-          // value on the screen starts on one line.
+          // One passenger keeps the field grid shared with Journey and Booking;
+          // several are listed by name, each with their berth beneath.
           PassInfoCard(
             title: onePassenger ? 'Passenger' : 'Passengers',
             ink: ink,
             muted: muted,
             isDark: isDark,
+            stacked: !onePassenger,
             rows: onePassenger
                 ? <(String, String)>[
                     ('Name', primary.name),

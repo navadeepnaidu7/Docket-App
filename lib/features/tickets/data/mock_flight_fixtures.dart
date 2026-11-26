@@ -1,0 +1,418 @@
+import '../domain/flight_pass_models.dart';
+
+// Flights are dated relative to the current *instant*, not just the day, so
+// each fixture sits in the state it exists to show (delayed before departure,
+// timetable only, in the air) whenever the app is opened. Times carry the
+// airport's +05:30 offset, the shape the server sends.
+
+const Duration _ist = Duration(hours: 5, minutes: 30);
+
+/// The instant [from] now, rounded down to five minutes.
+DateTime _instant(Duration from) {
+  final DateTime t = DateTime.now().toUtc().add(from);
+  return DateTime.utc(t.year, t.month, t.day, t.hour, t.minute - t.minute % 5);
+}
+
+String _utc(Duration from) => _instant(from).toIso8601String();
+
+/// RFC3339 at an Indian airport, [from] now.
+String _istIn(Duration from) => _localIn(from, _ist);
+
+/// RFC3339 at an airport [offset] from UTC, [from] now.
+String _localIn(Duration from, Duration offset) {
+  final DateTime l = _instant(from).add(offset);
+  String two(int v) => v.toString().padLeft(2, '0');
+  final String sign = offset.isNegative ? '-' : '+';
+  final Duration o = offset.abs();
+  return '${l.year}-${two(l.month)}-${two(l.day)}'
+      'T${two(l.hour)}:${two(l.minute)}:00'
+      '$sign${two(o.inHours)}:${two(o.inMinutes % 60)}';
+}
+
+const Duration _cet = Duration(hours: 1);
+const Duration _gst = Duration(hours: 4);
+
+/// Demo boarding passes. Two of them are trips: IndiGo to Srinagar through
+/// Delhi (a connection), and Lufthansa to Frankfurt and back (a return).
+final List<FlightPass> mockFlightPasses = _linkTrips(<Map<String, dynamic>>[
+  // Delayed 25 min with a gate change: the Updates feed's showcase.
+  <String, dynamic>{
+    'id': 'mock_f1',
+    'airline': 'IndiGo',
+    'airlineCode': '6E',
+    'flightNumber': '6E 2134',
+    'bookingRef': 'X7KQ2M',
+    'origin': <String, dynamic>{
+      'code': 'BLR',
+      'city': 'Bengaluru',
+      'airport': 'Kempegowda International',
+      'terminal': '1',
+    },
+    'destination': <String, dynamic>{
+      'code': 'DEL',
+      'city': 'New Delhi',
+      'airport': 'Indira Gandhi International',
+      'terminal': '1',
+    },
+    'departAt': _istIn(const Duration(hours: 2, minutes: 40)),
+    'arriveAt': _istIn(const Duration(hours: 5, minutes: 30)),
+    'boardingAt': _istIn(const Duration(hours: 2)),
+    'gate': '12',
+    'seat': '14C',
+    'cabin': 'Economy',
+    'boardingGroup': '3',
+    'sequence': '42',
+    'status': 'active',
+    'passengers': <Map<String, dynamic>>[
+      <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '14C'},
+      <String, dynamic>{'name': 'Ananya Rao', 'seat': '14D'},
+    ],
+    'live': <String, dynamic>{
+      'state': 'scheduled',
+      'departEstimatedAt': _istIn(const Duration(hours: 3, minutes: 5)),
+      'arriveEstimatedAt': _istIn(const Duration(hours: 5, minutes: 50)),
+      'departGate': '17',
+      'departTerminal': '1',
+      'arriveTerminal': '1',
+      'aircraft': 'Airbus A320neo',
+      'registration': 'VT-IPZ',
+      // Parked at Bengaluru: ADS-B sees it on the ground before departure.
+      'lat': 13.1986,
+      'lon': 77.7066,
+      'aircraftPhotoUrl':
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/IndiGo_VT-IJB_A320neo_Mumbai_Apr22_R16_05934.jpg/960px-IndiGo_VT-IJB_A320neo_Mumbai_Apr22_R16_05934.jpg',
+      'aircraftPhotoCredit':
+          'Pictured: VT-IJB, same type and livery. Photo T. A. Gonsalves, '
+          'CC BY-SA 4.0',
+      'updatedAt': _utc(const Duration(minutes: -3)),
+    },
+    'updates': <Map<String, dynamic>>[
+      <String, dynamic>{
+        'at': _utc(const Duration(hours: -5)),
+        'type': 'gateAssigned',
+        'to': '12',
+      },
+      <String, dynamic>{
+        'at': _utc(const Duration(minutes: -35)),
+        'type': 'aircraftFound',
+        'to': 'VT-IPZ',
+      },
+      <String, dynamic>{
+        'at': _utc(const Duration(minutes: -50)),
+        'type': 'delay',
+        'minutes': 25,
+      },
+      <String, dynamic>{
+        'at': _utc(const Duration(minutes: -20)),
+        'type': 'gateChange',
+        'from': '12',
+        'to': '17',
+      },
+    ],
+    // A BCBP string, as the scanner hands it back off a PDF417.
+    'codePayload':
+        'M1NAIDU/NAVADEEP      EX7KQ2M BLRDEL6E 2134 325Y014C0042 100',
+    'codeFormat': 'pdf417',
+  },
+
+  // Timetable only: no feed yet, so the face counts down and claims nothing.
+  <String, dynamic>{
+    'id': 'mock_f2',
+    'airline': 'Air India',
+    'airlineCode': 'AI',
+    'flightNumber': 'AI 803',
+    'bookingRef': 'Q4ZP8L',
+    'origin': <String, dynamic>{
+      'code': 'DEL',
+      'city': 'New Delhi',
+      'airport': 'Indira Gandhi International',
+      'terminal': '3',
+    },
+    'destination': <String, dynamic>{
+      'code': 'BOM',
+      'city': 'Mumbai',
+      'airport': 'Chhatrapati Shivaji Maharaj International',
+      'terminal': '2',
+    },
+    'departAt': _istIn(const Duration(days: 3, hours: 4)),
+    'arriveAt': _istIn(const Duration(days: 3, hours: 6, minutes: 10)),
+    'boardingAt': _istIn(const Duration(days: 3, hours: 3, minutes: 25)),
+    'seat': '3A',
+    'cabin': 'Business',
+    'status': 'active',
+    'passengers': <Map<String, dynamic>>[
+      <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '3A'},
+    ],
+    'codePayload':
+        'M1NAIDU/NAVADEEP      EQ4ZP8L DELBOMAI 0803 328C003A0011 100',
+    'codeFormat': 'aztec',
+  },
+
+  // In the air, running ten minutes behind.
+  <String, dynamic>{
+    'id': 'mock_f3',
+    'airline': 'Akasa Air',
+    'airlineCode': 'QP',
+    'flightNumber': 'QP 1406',
+    'bookingRef': 'MN3T7V',
+    'origin': <String, dynamic>{
+      'code': 'BOM',
+      'city': 'Mumbai',
+      'airport': 'Chhatrapati Shivaji Maharaj International',
+      'terminal': '1',
+    },
+    'destination': <String, dynamic>{
+      'code': 'GOX',
+      'city': 'Goa (Mopa)',
+      'airport': 'Manohar International',
+    },
+    'departAt': _istIn(const Duration(minutes: -45)),
+    'arriveAt': _istIn(const Duration(minutes: 25)),
+    'boardingAt': _istIn(const Duration(minutes: -80)),
+    'gate': '4',
+    'seat': '21F',
+    'status': 'active',
+    'passengers': <Map<String, dynamic>>[
+      <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '21F'},
+    ],
+    'live': <String, dynamic>{
+      'state': 'enRoute',
+      'departActualAt': _istIn(const Duration(minutes: -35)),
+      'arriveEstimatedAt': _istIn(const Duration(minutes: 35)),
+      'aircraft': 'Boeing 737 MAX 8',
+      'registration': 'VT-YAO',
+      // Two thirds of the way down the coast, starting the descent.
+      'lat': 16.65,
+      'lon': 73.25,
+      'altitudeFt': 21400,
+      'groundSpeedKt': 386,
+      'aircraftPhotoUrl':
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Akasa_Air_VT-YAO_Mumbai_Jul25_A7CR_05993.jpg/960px-Akasa_Air_VT-YAO_Mumbai_Jul25_A7CR_05993.jpg',
+      'aircraftPhotoCredit': 'Photo of VT-YAO by T. A. Gonsalves, CC BY-SA 4.0',
+      'updatedAt': _utc(const Duration(minutes: -1)),
+    },
+    'updates': <Map<String, dynamic>>[
+      <String, dynamic>{
+        'at': _utc(const Duration(minutes: -110)),
+        'type': 'aircraftFound',
+        'to': 'VT-YAO',
+      },
+      <String, dynamic>{
+        'at': _utc(const Duration(minutes: -80)),
+        'type': 'boarding',
+      },
+      <String, dynamic>{
+        'at': _utc(const Duration(minutes: -35)),
+        'type': 'departed',
+      },
+      <String, dynamic>{
+        'at': _utc(const Duration(minutes: -18)),
+        'type': 'cruising',
+        'to': '32000',
+      },
+      <String, dynamic>{
+        'at': _utc(const Duration(minutes: -4)),
+        'type': 'descending',
+      },
+    ],
+  },
+
+  // A foreign carrier next week: timetable only, overnight with a +1.
+  <String, dynamic>{
+    'id': 'mock_f4',
+    'airline': 'Lufthansa',
+    'airlineCode': 'LH',
+    'flightNumber': 'LH 754',
+    'bookingRef': 'R2HW9C',
+    'origin': <String, dynamic>{
+      'code': 'FRA',
+      'city': 'Frankfurt',
+      'airport': 'Frankfurt am Main',
+      'terminal': '1',
+    },
+    'destination': <String, dynamic>{
+      'code': 'BLR',
+      'city': 'Bengaluru',
+      'airport': 'Kempegowda International',
+      'terminal': '2',
+    },
+    'departAt': _localIn(const Duration(days: 6, hours: 2), _cet),
+    'arriveAt': _istIn(const Duration(days: 6, hours: 12, minutes: 5)),
+    'boardingAt': _localIn(
+      const Duration(days: 6, hours: 1, minutes: 20),
+      _cet,
+    ),
+    'gate': 'Z25',
+    'seat': '31K',
+    'cabin': 'Economy',
+    'status': 'active',
+    'passengers': <Map<String, dynamic>>[
+      <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '31K'},
+    ],
+  },
+
+  // Past flights: the archive's Flights folder and the spent palette.
+  <String, dynamic>{
+    'id': 'mock_f5',
+    'airline': 'Emirates',
+    'airlineCode': 'EK',
+    'flightNumber': 'EK 500',
+    'bookingRef': 'K8DM4S',
+    'origin': <String, dynamic>{
+      'code': 'DXB',
+      'city': 'Dubai',
+      'airport': 'Dubai International',
+      'terminal': '3',
+    },
+    'destination': <String, dynamic>{
+      'code': 'BOM',
+      'city': 'Mumbai',
+      'airport': 'Chhatrapati Shivaji Maharaj International',
+      'terminal': '2',
+    },
+    'departAt': _localIn(const Duration(days: -12, hours: -6), _gst),
+    'arriveAt': _istIn(const Duration(days: -12, hours: -3)),
+    'gate': 'B14',
+    'seat': '42A',
+    'cabin': 'Economy',
+    'status': 'expired',
+    'passengers': <Map<String, dynamic>>[
+      <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '42A'},
+    ],
+  },
+  <String, dynamic>{
+    'id': 'mock_f6',
+    'airline': 'Vueling',
+    'airlineCode': 'VY',
+    'flightNumber': 'VY 6104',
+    'bookingRef': 'T5NB2Q',
+    'origin': <String, dynamic>{
+      'code': 'BCN',
+      'city': 'Barcelona',
+      'airport': 'Josep Tarradellas Barcelona-El Prat',
+      'terminal': '1',
+    },
+    'destination': <String, dynamic>{
+      'code': 'FCO',
+      'city': 'Rome',
+      'airport': 'Leonardo da Vinci-Fiumicino',
+      'terminal': '1',
+    },
+    'departAt': _localIn(const Duration(days: -48, hours: -5), _cet),
+    'arriveAt': _localIn(
+      const Duration(days: -48, hours: -3, minutes: -15),
+      _cet,
+    ),
+    'gate': 'D41',
+    'seat': '3A',
+    'status': 'expired',
+    'passengers': <Map<String, dynamic>>[
+      <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '3A'},
+    ],
+  },
+
+  // The connection out of Delhi after mock_f1: same booking, 1h 45m on the
+  // ground.
+  <String, dynamic>{
+    'id': 'mock_f7',
+    'airline': 'IndiGo',
+    'airlineCode': '6E',
+    'flightNumber': '6E 6042',
+    'bookingRef': 'X7KQ2M',
+    'origin': <String, dynamic>{
+      'code': 'DEL',
+      'city': 'New Delhi',
+      'airport': 'Indira Gandhi International',
+      'terminal': '1',
+    },
+    'destination': <String, dynamic>{
+      'code': 'SXR',
+      'city': 'Srinagar',
+      'airport': 'Sheikh ul-Alam International',
+    },
+    'departAt': _istIn(const Duration(hours: 7, minutes: 15)),
+    'arriveAt': _istIn(const Duration(hours: 8, minutes: 50)),
+    'boardingAt': _istIn(const Duration(hours: 6, minutes: 35)),
+    'seat': '9A',
+    'cabin': 'Economy',
+    'status': 'active',
+    'passengers': <Map<String, dynamic>>[
+      <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '9A'},
+      <String, dynamic>{'name': 'Ananya Rao', 'seat': '9B'},
+    ],
+  },
+
+  // The way out for mock_f4, flown last week: mock_f4 is its return.
+  <String, dynamic>{
+    'id': 'mock_f8',
+    'airline': 'Lufthansa',
+    'airlineCode': 'LH',
+    'flightNumber': 'LH 755',
+    'bookingRef': 'R2HW9C',
+    'origin': <String, dynamic>{
+      'code': 'BLR',
+      'city': 'Bengaluru',
+      'airport': 'Kempegowda International',
+      'terminal': '2',
+    },
+    'destination': <String, dynamic>{
+      'code': 'FRA',
+      'city': 'Frankfurt',
+      'airport': 'Frankfurt am Main',
+      'terminal': '1',
+    },
+    'departAt': _istIn(const Duration(days: -9, hours: -20)),
+    'arriveAt': _localIn(
+      const Duration(days: -9, hours: -10, minutes: -15),
+      _cet,
+    ),
+    'gate': '24',
+    'seat': '33H',
+    'cabin': 'Economy',
+    'status': 'expired',
+    'passengers': <Map<String, dynamic>>[
+      <String, dynamic>{'name': 'Navadeep Naidu', 'seat': '33H'},
+    ],
+  },
+]);
+
+/// Adds a `trip` to every fixture sharing a booking reference with another,
+/// the way `GET /v1/passes` does on the server (`linkFlightTrips`), then
+/// parses them. Fixture order is kept; only the trip lists legs by departure.
+List<FlightPass> _linkTrips(List<Map<String, dynamic>> raw) {
+  final Map<String, List<Map<String, dynamic>>> byRef =
+      <String, List<Map<String, dynamic>>>{};
+  for (final Map<String, dynamic> f in raw) {
+    final String ref = f['bookingRef']?.toString() ?? '';
+    if (ref.isEmpty) continue;
+    byRef.putIfAbsent(ref, () => <Map<String, dynamic>>[]).add(f);
+  }
+  for (final List<Map<String, dynamic>> group in byRef.values) {
+    if (group.length < 2) continue;
+    group.sort(
+      (Map<String, dynamic> a, Map<String, dynamic> b) => DateTime.parse(
+        a['departAt'] as String,
+      ).compareTo(DateTime.parse(b['departAt'] as String)),
+    );
+    final List<Map<String, dynamic>> legs = <Map<String, dynamic>>[
+      for (final Map<String, dynamic> f in group)
+        <String, dynamic>{
+          'id': f['id'],
+          'flightNumber': f['flightNumber'],
+          'airlineCode': f['airlineCode'],
+          'from': (f['origin'] as Map<String, dynamic>)['code'],
+          'to': (f['destination'] as Map<String, dynamic>)['code'],
+          'departAt': f['departAt'],
+          'arriveAt': f['arriveAt'],
+        },
+    ];
+    for (int i = 0; i < group.length; i++) {
+      group[i]['trip'] = <String, dynamic>{
+        'id': group.first['bookingRef'],
+        'index': i,
+        'legs': legs,
+      };
+    }
+  }
+  return raw.map(FlightPass.fromJson).toList(growable: false);
+}

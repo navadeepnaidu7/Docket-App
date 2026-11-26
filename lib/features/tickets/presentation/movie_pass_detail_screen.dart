@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/haptics/haptic_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../application/movie_artwork_blend_provider.dart';
 import '../domain/movie_pass_models.dart';
 import '../domain/pass_catalog.dart';
 import 'movie/movie_ticket_code_screen.dart';
+import 'pass_code_screen.dart';
 import 'pass_info_card.dart';
 import 'movie/movie_ticket_face.dart';
-import 'pass_remove_flow.dart';
-import 'pass_typography.dart';
+import 'movie/movie_ticket_chrome.dart';
+import 'pass_detail_header.dart';
 import 'share/pass_share_actions.dart';
 
 /// Fullscreen e-ticket detail — shared face + booking/cinema sections.
@@ -20,13 +20,7 @@ class MoviePassDetailScreen extends ConsumerWidget {
   final MoviePass pass;
 
   void _openCodes(BuildContext context, MoviePass p) {
-    HapticService.tap();
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => MovieTicketCodeScreen(pass: p),
-      ),
-    );
+    showPassCodeScreen(context, builder: (_) => MovieTicketCodeScreen(pass: p));
   }
 
   @override
@@ -44,32 +38,20 @@ class MoviePassDetailScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
-              child: Row(
-                children: <Widget>[
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 24),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'E-Ticket',
-                      textAlign: TextAlign.center,
-                      style: PassType.screenTitle(ink),
-                    ),
-                  ),
-                  PassOverflowButton(
-                    item: MoviePassItem(p),
-                    copyLabel: 'Copy booking ID',
-                    copyValue: p.bookingId,
-                  ),
-                ],
-              ),
+            PassDetailHeader(
+              item: MoviePassItem(p),
+              title: 'E-Ticket',
+              copyLabel: 'Copy booking ID',
+              copyValue: p.bookingId,
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
+                padding: const EdgeInsets.fromLTRB(
+                  MovieTicketMetrics.detailHorizontalPadding,
+                  4,
+                  MovieTicketMetrics.detailHorizontalPadding,
+                  28,
+                ),
                 physics: const BouncingScrollPhysics(),
                 children: <Widget>[
                   MovieTicketFace(
