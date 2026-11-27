@@ -289,6 +289,25 @@ class _WalletPassportCardState extends State<WalletPassportCard>
   }
 }
 
+/// One face of the passport card on its design canvas, without the tilt and
+/// tap-flip shell, for surfaces that drive their own motion (onboarding).
+class PassportCardFace extends StatelessWidget {
+  const PassportCardFace({super.key, required this.profile, this.back = false});
+
+  final PassportProfile profile;
+
+  /// The cream data page instead of the cover.
+  final bool back;
+
+  @override
+  Widget build(BuildContext context) {
+    return WalletCardCanvas(
+      designSize: WalletCardMetrics.passportCanvas,
+      child: back ? _CardBack(profile: profile) : _CardFront(profile: profile),
+    );
+  }
+}
+
 // ─── FRONT SIDE ──────────────────────────────────────────────────────────────
 //
 // 2021 / 2024 Indian passport cover lockup. Positions are card-local on the
